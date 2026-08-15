@@ -1,0 +1,219 @@
+{
+  "schema": "aipt.public.supersessions/v1",
+  "authority_snapshot_id": "AIPT-DCA-CLOSEOUT-R0-R16-002",
+  "generated_at": "2026-08-16",
+  "installed_by_batch": "AIPT-M0-B000",
+  "public_reference": "docs/authority/SUPERSEDED_DECISIONS.md",
+  "relationships": [
+    {
+      "superseded_decision": "R6-F004",
+      "superseding_decision": "R7-F003",
+      "type": "FULL",
+      "reason": "AIPT 模型下载能力由未来可选改为永久不提供；仅登记和验证外部已下载模型。"
+    },
+    {
+      "superseded_decision": "R12-F003",
+      "superseding_decision": "R13-F001",
+      "type": "FULL",
+      "reason": "提示词资产仓库最终确定为单一本地 Git 权威且不配置远端，上传隔离不再依赖 .gitignore。"
+    },
+    {
+      "superseded_decision": "R15-Q012",
+      "superseding_decision": "DCA-Q006",
+      "type": "FULL",
+      "reason": "商业平台免费托管豁免被收紧：仅在无广告、订阅、付费权益和获客用途时可按非商业处理。"
+    },
+    {
+      "superseded_decision": "R15-F007",
+      "superseding_decision": "DCA-Q006",
+      "type": "FULL",
+      "reason": "一般商业平台托管豁免被最终商业行为测试取代。"
+    },
+    {
+      "superseded_decision": "R15-F003",
+      "superseding_decision": "DCA-Q003",
+      "type": "REFINEMENT",
+      "reason": "Fable→Opus5→Opus4.8 明确为管理员独立重试阶梯；平台自动切换只记录为 FALLBACK_ATTEMPT。"
+    },
+    {
+      "superseded_decision": "R15-F005",
+      "superseding_decision": "DCA-Q004",
+      "type": "REFINEMENT",
+      "reason": "Claude 隐私状态未知时最终限定为开发 Break-glass，生产/发行必须已知状态或 Incognito 证据。"
+    },
+    {
+      "superseded_decision": "R16-Q015",
+      "superseding_decision": "DCA-Q005",
+      "type": "REFINEMENT",
+      "reason": "准据法最终确定为昆士兰州及适用澳大利亚联邦法律，中国大陆不可排除强制法保留。"
+    },
+    {
+      "superseded_decision": "R0-Q002",
+      "superseding_decision": "R12-F001",
+      "type": "REFINEMENT",
+      "reason": "UNREGISTERED 的正式中文名称由早期《未注册》统一为《未登记》。"
+    },
+    {
+      "superseded_decision": "R0-Q014",
+      "superseding_decision": "R13-F001",
+      "type": "REFINEMENT",
+      "reason": "私有 Git 提示词资产最终固定为本地唯一加密 Git 权威、无远端。"
+    },
+    {
+      "superseded_decision": "R5-F002",
+      "superseding_decision": "R13-F001",
+      "type": "REFINEMENT",
+      "reason": "当前不保留已配置远端；未来远端同步必须形成新治理决定。"
+    },
+    {
+      "superseded_decision": "R0-Q017",
+      "superseding_decision": "DCA-Q001",
+      "type": "REFINEMENT",
+      "reason": "真实 MVP 使用《未登记》；AIPT 自带内容收敛为非叙事最小协议夹具。"
+    },
+    {
+      "superseded_decision": "R2-Q007",
+      "superseding_decision": "DCA-Q001",
+      "type": "REFINEMENT",
+      "reason": "参考游戏包收敛为最小协议夹具，不维护完整第二套 TRPG。"
+    },
+    {
+      "superseded_decision": "R9-Q017",
+      "superseding_decision": "R9-F001",
+      "type": "REFINEMENT",
+      "reason": "Codex 角色最终为 AUDIT_READY 包准备，GPT 为主要实质审计者。"
+    },
+    {
+      "superseded_decision": "R9-Q019",
+      "superseding_decision": "R10-F003",
+      "type": "REFINEMENT",
+      "reason": "GPT 保持主审，但第二厂商 FAIL/BLOCKED 会触发 MERGE_HOLD 与争议流程。"
+    },
+    {
+      "superseded_decision": "R10-Q006",
+      "superseding_decision": "R10-F002",
+      "type": "REFINEMENT",
+      "reason": "所有环境运行包安全验证；生产/发行追加完整证据资格验证。"
+    },
+    {
+      "superseded_decision": "R11-Q008",
+      "superseding_decision": "R11-F001",
+      "type": "REFINEMENT",
+      "reason": "开发最低命令证据较轻；生产/发行命令保存完整执行身份。"
+    },
+    {
+      "superseded_decision": "R9-Q009",
+      "superseding_decision": "R9-F002",
+      "type": "REFINEMENT",
+      "reason": "环境字段分核心与辅助，生产/发行缺失核心字段即阻塞。"
+    },
+    {
+      "superseded_decision": "R6-Q007",
+      "superseding_decision": "R6-F001",
+      "type": "REFINEMENT",
+      "reason": "远端模型 ID 为主要身份，能力指纹作为观察性漂移信号而非自动门禁。"
+    },
+    {
+      "superseded_decision": "R6-Q010",
+      "superseding_decision": "R6-F002",
+      "type": "REFINEMENT",
+      "reason": "LOCAL_ONLY_SECRET 默认阻塞；仅诊断 break-glass 可外发且运行失格。"
+    },
+    {
+      "superseded_decision": "R6-Q024",
+      "superseding_decision": "R6-F003",
+      "type": "REFINEMENT",
+      "reason": "开发更新为自动检查、管理员确认、安装到候选区；不自动覆盖生产基线。"
+    },
+    {
+      "superseded_decision": "R7-Q002",
+      "superseding_decision": "R7-F001",
+      "type": "REFINEMENT",
+      "reason": "开发 PostgreSQL 配置权威增加最小外部 Bootstrap 以解决自举。"
+    },
+    {
+      "superseded_decision": "R7-Q015",
+      "superseding_decision": "R7-F002",
+      "type": "REFINEMENT",
+      "reason": "开发可复用不完全匹配服务，但须最低能力探测并标记无正式证据资格。"
+    },
+    {
+      "superseded_decision": "R8-Q001",
+      "superseding_decision": "R8-F001",
+      "type": "REFINEMENT",
+      "reason": "Attempt 保留为 Run 内部执行记录，不进入用户任务层级。"
+    },
+    {
+      "superseded_decision": "R10-Q019",
+      "superseding_decision": "R10-F004",
+      "type": "REFINEMENT",
+      "reason": "关闭生产/发行备份必须登记风险接受。"
+    },
+    {
+      "superseded_decision": "R12-Q024",
+      "superseding_decision": "R12-F004",
+      "type": "REFINEMENT",
+      "reason": "批次关闭保存最终必需验收、CI 和审计，不要求全部探索过程。"
+    },
+    {
+      "superseded_decision": "R12-Q024",
+      "superseding_decision": "BOOTSTRAP-Q001",
+      "type": "BOOTSTRAP_EXCEPTION",
+      "reason": "B000 在 CI 尚不存在时以本地确定性验收 + GPT 审计关闭；B001 追溯 CI 验证。"
+    },
+    {
+      "superseded_decision": "R15-Q001",
+      "superseding_decision": "R15-F001",
+      "type": "REFINEMENT",
+      "reason": "保留已知真值测试，但最终启用由管理员签署批准。"
+    },
+    {
+      "superseded_decision": "R15-Q004",
+      "superseding_decision": "R15-F002",
+      "type": "REFINEMENT",
+      "reason": "系统自动发出漂移 REVIEW_REQUIRED，管理员决定继续、暂停或重测。"
+    },
+    {
+      "superseded_decision": "R3-Q009",
+      "superseding_decision": "R3-F001",
+      "type": "REFINEMENT",
+      "reason": "无作者语义图时 AIPT 推断图只能支持探索，作者确认前不能支持正式 Gate。"
+    },
+    {
+      "superseded_decision": "R4-Q004",
+      "superseding_decision": "R4-F005",
+      "type": "REFINEMENT",
+      "reason": "第一阶段 stdio JSON-RPC，后续增加 UDS，协议支持两种传输。"
+    },
+    {
+      "superseded_decision": "R4-Q003",
+      "superseding_decision": "R4-F001",
+      "type": "REFINEMENT",
+      "reason": "双进程指两个长期应用服务，不排除 PostgreSQL 和短生命周期 Worker。"
+    },
+    {
+      "superseded_decision": "R4-Q016",
+      "superseding_decision": "R4-F002",
+      "type": "REFINEMENT",
+      "reason": "远端处理边界通过字段级数据分类与 fail-closed 默认实施。"
+    },
+    {
+      "superseded_decision": "R14-Q022",
+      "superseding_decision": "R14-F001",
+      "type": "REFINEMENT",
+      "reason": "默认六场 Campaign 保持，MVP 资格额外增加两场 Mutant Run，总计八场。"
+    },
+    {
+      "superseded_decision": "R14-F004",
+      "superseding_decision": "DCA-Q003",
+      "type": "REFINEMENT",
+      "reason": "备用模型使用必须是独立管理员批准 Profile，自动切换不直接作为正式结果。"
+    },
+    {
+      "superseded_decision": "R15-F004",
+      "superseding_decision": "DCA-Q003",
+      "type": "REFINEMENT",
+      "reason": "管理员声明仍是最低身份凭证，但必须记录自动切换并按独立重试阶梯处理。"
+    }
+  ]
+}
