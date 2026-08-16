@@ -1,17 +1,26 @@
-// SBOM validator (AIPT-M0-B001-REPAIR-R4, finding B001-GPT-002): the gate now
-// enforces deterministic output AND SPDX 2.3 / component semantics, plus a
-// negative probe proving an invalid SRI-style checksum is rejected.
+// SBOM validator (AIPT-M0-B001-REPAIR-R5): the gate enforces deterministic
+// output AND SPDX 2.3 / component semantics, plus negative probes proving
+// invalid documents are rejected:
+//   - an invalid SRI-style checksum;
+//   - the human full license name "PostgreSQL License" in place of the SPDX
+//     short identifier PostgreSQL;
+//   - a version-defining mutation that retains the original namespace
+//     (content-addressed namespace binding);
+//   - the legacy static pre-R5 documentNamespace.
 //
 // `node scripts/ci/validate/sbom.mjs` reports PASS only when:
-//   1. semantic validation passes (SPDX-2.3, CC0-1.0, absolute document
-//      namespace, unique package SPDXIDs, the exact B001 required package
-//      set, toolchain/action versions matching the lock files, resolvable
-//      relationships with SPDX 2.3-valid types, lowercase-hex checksums of
-//      algorithm-appropriate length, pnpm SHA512 hex decoded from the pinned
-//      SRI payload, PostgreSQL digest identity, zero third-party deps);
+//   1. semantic validation passes (SPDX-2.3, CC0-1.0, version-unique
+//      content-addressed documentNamespace — SHA-256 of the canonical
+//      version-defining payload — with the legacy static namespace
+//      explicitly rejected, unique package SPDXIDs, the exact B001 required
+//      package set, SPDX short-identifier licenseConcluded/licenseDeclared
+//      for every current package, toolchain/action versions matching the
+//      lock files, resolvable relationships with SPDX 2.3-valid types,
+//      lowercase-hex checksums of algorithm-appropriate length, pnpm SHA512
+//      hex decoded from the pinned SRI payload, PostgreSQL digest identity,
+//      zero third-party deps);
 //   2. two independent generations are byte-identical;
-//   3. a negative probe that rewrites the pnpm SHA512 checksumValue into
-//      SRI/base64 form is rejected (semantic validator returns FAIL).
+//   3. the four negative probes above are each rejected for the right reason.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,6 +37,9 @@ const SPDX_VERSION = 'SPDX-2.3';
 const DATA_LICENSE = 'CC0-1.0';
 const DOCUMENT_SPDXID = 'SPDXRef-DOCUMENT';
 const AIPT_SPDXID = 'SPDXRef-AIPT';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
+// The static namespace reused by distinct R3/R4 documents; forbidden after R5.
+const LEGACY_NAMESPACE = NAMESPACE_BASE;
 
 // SPDX 2.3 specification relationship types.
 const SPDX23_RELATIONSHIP_TYPES = new Set([
@@ -61,6 +73,44 @@ const REQUIRED_PACKAGES = [
 ];
 
 const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
+
+// Expected SPDX short identifiers for every current B001 SBOM package
+// (keyed by package name). PostgreSQL carries the SPDX identifier
+// `PostgreSQL`; the human full name "PostgreSQL License" is NOT accepted.
+const EXPECTED_PACKAGE_LICENSES = {
+  AIPT: 'MIT',
+  'Go toolchain': 'BSD-3-Clause',
+  'Node.js': 'MIT',
+  pnpm: 'MIT',
+  'PostgreSQL Docker Official Image': 'PostgreSQL',
+  govulncheck: 'BSD-3-Clause',
+  'actions/checkout': 'MIT',
+  'actions/setup-go': 'MIT',
+  'actions/setup-node': 'MIT',
+};
+
+// Canonical JSON: arrays in order, object keys sorted recursively. Mirrors
+// the generator's serializer (independent copy, so a generator defect cannot
+// validate itself into PASS).
+function canonicalJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value && typeof value === 'object') {
+    const sorted = {};
+    for (const key of Object.keys(value).sort()) sorted[key] = canonicalJson(value[key]);
+    return sorted;
+  }
+  return value;
+}
+
+// Independently recompute the expected content-addressed namespace from the
+// document's version-defining payload (the whole document minus
+// documentNamespace): SHA-256, 64 lowercase hex.
+function computeExpectedNamespace(doc) {
+  const withoutNamespace = { ...doc };
+  delete withoutNamespace.documentNamespace;
+  const hash = crypto.createHash('sha256').update(JSON.stringify(canonicalJson(withoutNamespace))).digest('hex');
+  return `${NAMESPACE_BASE}/${hash}`;
+}
 
 function readJson(repo, rel) {
   return JSON.parse(fs.readFileSync(path.join(repo, rel), 'utf8'));
@@ -101,6 +151,15 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   }
   if (!namespaceOk) fail(`documentNamespace is not a valid absolute URI: ${JSON.stringify(doc.documentNamespace)}`);
   else ok('documentNamespace is a valid absolute URI');
+  if (doc.documentNamespace === LEGACY_NAMESPACE) {
+    fail(`documentNamespace is the legacy static pre-R5 namespace ${JSON.stringify(LEGACY_NAMESPACE)} (already reused by distinct R3/R4 documents); a version-unique hash suffix is required`);
+  }
+  const expectedNamespace = computeExpectedNamespace(doc);
+  if (doc.documentNamespace !== expectedNamespace) {
+    fail(`documentNamespace must equal the content-addressed version namespace ${expectedNamespace} (SHA-256 of the canonical version-defining payload), got ${JSON.stringify(doc.documentNamespace)}`);
+  } else {
+    ok('documentNamespace is the version-unique content-addressed namespace (SHA-256 of the canonical version-defining payload)');
+  }
   if (doc.SPDXID !== DOCUMENT_SPDXID) fail(`document SPDXID must be ${DOCUMENT_SPDXID}`);
   else ok(`document SPDXID = ${DOCUMENT_SPDXID}`);
 
@@ -139,6 +198,26 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   const depIds = ids.filter((id) => id.startsWith('SPDXRef-GoDep-') || id.startsWith('SPDXRef-PnpmDep-'));
   if (depIds.length > 0) fail(`SBOM carries dependency packages: ${depIds.join(', ')}`);
   else ok('no GoDep/PnpmDep dependency packages in the SBOM');
+
+  // ---- SPDX short identifiers for every current package's licenses ----
+  // Exact-match against the expected B001 SPDX identifier; arbitrary
+  // strings (including the human full name "PostgreSQL License") fail.
+  let licenseOk = true;
+  for (const pkg of doc.packages) {
+    const expected = EXPECTED_PACKAGE_LICENSES[pkg.name];
+    if (expected === undefined) {
+      fail(`${pkg.SPDXID}: package ${JSON.stringify(pkg.name)} has no expected B001 SPDX license identifier`);
+      licenseOk = false;
+      continue;
+    }
+    for (const field of ['licenseConcluded', 'licenseDeclared']) {
+      if (pkg[field] !== expected) {
+        fail(`${pkg.SPDXID}: ${field} must be the SPDX short identifier ${JSON.stringify(expected)}, got ${JSON.stringify(pkg[field])}`);
+        licenseOk = false;
+      }
+    }
+  }
+  if (licenseOk) ok('every package licenseConcluded/licenseDeclared matches the expected B001 SPDX short identifier (PostgreSQL = PostgreSQL)');
 
   // ---- app-level zero-dependency invariants (go.mod / pnpm-lock) ----
   const goMod = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
@@ -399,6 +478,56 @@ export function run(ctx) {
     const rightReason = probe.details.some((d) => d.includes('pnpm') || d.includes('SHA512') || d.includes('hex'));
     if (!rightReason) fail('negative probe failed for an unexpected reason');
     else ok('negative-probe PASS: SRI/base64 pnpm checksumValue rejected by the semantic validator');
+  }
+
+  // 4. Negative probe: the human full license name "PostgreSQL License" in
+  // place of the SPDX short identifier must be rejected.
+  const licenseProbe = JSON.parse(JSON.stringify(doc));
+  const licenseProbePg = licenseProbe.packages.find((p) => p.SPDXID === 'SPDXRef-PostgreSQL-Image');
+  if (!licenseProbePg) {
+    fail('negative full-name license probe could not run: PostgreSQL package missing from SBOM');
+    return { name: 'sbom', result: 'FAIL', details };
+  }
+  licenseProbePg.licenseConcluded = 'PostgreSQL License';
+  licenseProbePg.licenseDeclared = 'PostgreSQL License';
+  const licenseProbeResult = validateSbomSemantics(licenseProbe, { repo: ctx.repo, toolchainLock, actionsLock });
+  if (licenseProbeResult.result !== 'FAIL') {
+    fail('negative full-name license probe was NOT rejected ("PostgreSQL License" accepted as a license expression)');
+  } else {
+    const rightReason = licenseProbeResult.details.some((d) => d.includes('license'));
+    if (!rightReason) fail('full-name license probe failed for an unexpected reason');
+    else ok('negative-probe PASS: full human license name "PostgreSQL License" rejected; SPDX short identifier PostgreSQL required');
+  }
+
+  // 5. Negative probe: a version-defining mutation must invalidate the
+  // retained namespace (content-addressed binding).
+  const versionProbe = JSON.parse(JSON.stringify(doc));
+  const versionProbeAipt = versionProbe.packages.find((p) => p.SPDXID === AIPT_SPDXID);
+  if (!versionProbeAipt) {
+    fail('negative version-binding probe could not run: AIPT package missing from SBOM');
+    return { name: 'sbom', result: 'FAIL', details };
+  }
+  versionProbeAipt.comment += ' [version-defining mutation probe]';
+  const versionProbeResult = validateSbomSemantics(versionProbe, { repo: ctx.repo, toolchainLock, actionsLock });
+  if (versionProbeResult.result !== 'FAIL') {
+    fail('negative version-binding probe was NOT rejected (mutated version-defining content kept the original namespace)');
+  } else {
+    const rightReason = versionProbeResult.details.some((d) => d.includes('documentNamespace'));
+    if (!rightReason) fail('version-binding probe failed for an unexpected reason');
+    else ok('negative-probe PASS: version-defining mutation invalidates the retained namespace (content-addressed namespace binding enforced)');
+  }
+
+  // 6. Negative probe: the legacy static pre-R5 namespace must be rejected
+  // explicitly, even though it is a valid absolute URI.
+  const legacyProbe = JSON.parse(JSON.stringify(doc));
+  legacyProbe.documentNamespace = LEGACY_NAMESPACE;
+  const legacyProbeResult = validateSbomSemantics(legacyProbe, { repo: ctx.repo, toolchainLock, actionsLock });
+  if (legacyProbeResult.result !== 'FAIL') {
+    fail('negative legacy-namespace probe was NOT rejected (stale static namespace accepted)');
+  } else {
+    const rightReason = legacyProbeResult.details.some((d) => d.includes('legacy') || d.includes('documentNamespace'));
+    if (!rightReason) fail('legacy-namespace probe failed for an unexpected reason');
+    else ok(`negative-probe PASS: legacy static namespace ${JSON.stringify(LEGACY_NAMESPACE)} explicitly rejected (stale/reused namespace forbidden)`);
   }
 
   return { name: 'sbom', result: pass ? 'PASS' : 'FAIL', details };

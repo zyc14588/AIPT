@@ -70,7 +70,7 @@
     {
       "id": "postgresql",
       "kind": "infrastructure_image",
-      "license": "PostgreSQL License",
+      "license": "PostgreSQL",
       "version": "18.4",
       "image_multi_arch_digest": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
       "evidence": "Docker Official Image library/postgres:18.4 (PostgreSQL License)",

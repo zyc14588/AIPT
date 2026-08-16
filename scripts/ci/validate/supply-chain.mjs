@@ -1,6 +1,7 @@
-// B001 supply-chain foundation validator (R4-Q023 basics):
-// lock presence/integrity, action SHA pins, container digest pin, dependency
-// inventory/license coverage, deterministic SBOM inputs, and the
+// B001 supply-chain foundation validator (R5): lock presence/integrity,
+// action SHA pins, container digest pin, dependency inventory/license
+// coverage (with the machine license values checked against the expected
+// B001 SPDX short identifiers), deterministic SBOM inputs, and the
 // secret-free / no-real-model-config rules.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,6 +13,22 @@ import {
 } from '../lib/constants.mjs';
 import { scanTreeForHazards } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
+
+// Expected SPDX short identifiers for the machine `license` values of the
+// current B001 license inventory. PostgreSQL carries the SPDX identifier
+// `PostgreSQL`; the human full name "PostgreSQL License" may only appear in
+// the human-readable evidence text, never as the machine license value.
+const EXPECTED_SPDX_LICENSES = {
+  AIPT: 'MIT',
+  'actions/checkout': 'MIT',
+  'actions/setup-go': 'MIT',
+  'actions/setup-node': 'MIT',
+  go: 'BSD-3-Clause',
+  node: 'MIT',
+  pnpm: 'MIT',
+  postgresql: 'PostgreSQL',
+  'golang.org/x/vuln': 'BSD-3-Clause',
+};
 
 export function run(ctx) {
   const details = [];
@@ -67,6 +84,25 @@ export function run(ctx) {
   const aiptRec = records.find((r) => r.id === 'AIPT');
   if (aiptRec?.license !== 'MIT') fail('AIPT license record must be MIT');
   else ok('AIPT = MIT (root LICENSE)');
+  // Machine-check every current B001 inventory record against its expected
+  // SPDX short identifier (postgresql must be `PostgreSQL`, not the full
+  // human name).
+  let spdxLicenseOk = true;
+  for (const [id, expected] of Object.entries(EXPECTED_SPDX_LICENSES)) {
+    const rec = records.find((r) => r.id === id);
+    if (!rec) {
+      fail(`licenses.json missing record ${id}`);
+      spdxLicenseOk = false;
+      continue;
+    }
+    if (rec.license !== expected) {
+      fail(`licenses.json record ${id} machine license must be the SPDX short identifier ${JSON.stringify(expected)}, got ${JSON.stringify(rec.license)}`);
+      spdxLicenseOk = false;
+    }
+  }
+  if (spdxLicenseOk) {
+    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} B001 license records carry the expected SPDX short identifiers (postgresql = PostgreSQL)`);
+  }
   if (licenses.application_dependencies?.go_runtime_third_party_modules !== 0 || licenses.application_dependencies?.pnpm_runtime_third_party_packages !== 0) {
     fail('licenses.json application_dependencies must both be 0 at B001');
   } else ok('licenses.json application dependency inventory = 0 / 0');

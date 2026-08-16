@@ -6,15 +6,42 @@
 // environment- or time-dependent content. Dynamic provenance is emitted
 // separately by scripts/ci/provenance.mjs.
 //
+// The SPDX documentNamespace is content-addressed: the version-defining
+// payload (the whole document minus documentNamespace) is canonically
+// serialized (sorted object keys) and SHA-256 hashed, and the 64 lowercase
+// hex characters become the namespace suffix under
+// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001/. Any change to a
+// version-defining field therefore yields a different, version-unique
+// namespace; the static pre-R5 namespace is never reused.
+//
 // Coverage: AIPT root package, Go module direct/transitive deps, pnpm
 // direct/transitive deps, CI action fixed commits, supply-chain ephemeral
 // scanner/tool identities, PostgreSQL image digest, and toolchain versions.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CREATED = '2026-08-16T00:00:00Z';
-const DOC_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
+
+// Canonical JSON: arrays in order, object keys sorted recursively, so the
+// serialized version-defining payload is independent of insertion order.
+function canonicalJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value && typeof value === 'object') {
+    const sorted = {};
+    for (const key of Object.keys(value).sort()) sorted[key] = canonicalJson(value[key]);
+    return sorted;
+  }
+  return value;
+}
+
+// SHA-256 (64 lowercase hex) over the canonical serialization of a document
+// payload that must NOT contain a documentNamespace property.
+function documentVersionHash(docWithoutNamespace) {
+  return crypto.createHash('sha256').update(JSON.stringify(canonicalJson(docWithoutNamespace))).digest('hex');
+}
 
 function readJson(repo, rel) {
   return JSON.parse(fs.readFileSync(path.join(repo, rel), 'utf8'));
@@ -153,8 +180,8 @@ export function buildSbom(repoRoot) {
       SPDXID: 'SPDXRef-PostgreSQL-Image',
       downloadLocation: `https://hub.docker.com/_/postgres`,
       versionInfo: `library/postgres:${pg.version} @ ${pg.docker_official_image.multi_arch_digest}`,
-      licenseConcluded: 'PostgreSQL License',
-      licenseDeclared: 'PostgreSQL License',
+      licenseConcluded: 'PostgreSQL',
+      licenseDeclared: 'PostgreSQL',
       copyrightText: 'PostgreSQL Global Development Group',
       filesAnalyzed: false,
       externalRefs: [
@@ -164,7 +191,9 @@ export function buildSbom(repoRoot) {
           referenceLocator: `pkg:docker/library/postgres@${pg.docker_official_image.multi_arch_digest}`,
         },
       ],
-      comment: `multi-arch digest ${pg.docker_official_image.multi_arch_digest}; linux/amd64 platform digest ${pg.docker_official_image.linux_amd64_platform_digest}`,
+      comment:
+        `license: PostgreSQL (SPDX short identifier; human-readable full name "PostgreSQL License" is recorded in the B001 license inventory). ` +
+        `multi-arch digest ${pg.docker_official_image.multi_arch_digest}; linux/amd64 platform digest ${pg.docker_official_image.linux_amd64_platform_digest}`,
     },
     {
       name: 'govulncheck',
@@ -242,7 +271,6 @@ export function buildSbom(repoRoot) {
     dataLicense: 'CC0-1.0',
     SPDXID: 'SPDXRef-DOCUMENT',
     name: 'AIPT-M0-B001-supply-chain-sbom',
-    documentNamespace: DOC_NAMESPACE,
     creationInfo: {
       created: CREATED,
       creators: ['Tool: AIPT-M0-B001 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
@@ -254,6 +282,11 @@ export function buildSbom(repoRoot) {
     relationships,
     documentDescribes: ['SPDXRef-AIPT'],
   };
+
+  // Version-unique, content-addressed namespace: the hash is computed over
+  // the full document payload WITHOUT documentNamespace, so the namespace is
+  // a deterministic function of the document's version-defining content.
+  doc.documentNamespace = `${NAMESPACE_BASE}/${documentVersionHash(doc)}`;
 
   return Buffer.from(`${JSON.stringify(doc, null, 2)}\n`, 'utf8');
 }

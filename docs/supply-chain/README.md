@@ -30,7 +30,7 @@
 
 ## 许可证清单
 
-[../../tools/supply-chain/licenses.json](../../tools/supply-chain/licenses.json) 覆盖：AIPT 本体（MIT）、CI Actions（MIT，在 pin commit 处验证）、工具链（Go BSD-3-Clause、Node MIT、pnpm MIT、PostgreSQL PostgreSQL License）与供应链工具（govulncheck BSD-3-Clause）。
+[../../tools/supply-chain/licenses.json](../../tools/supply-chain/licenses.json) 覆盖：AIPT 本体（MIT）、CI Actions（MIT，在 pin commit 处验证）、工具链（Go BSD-3-Clause、Node MIT、pnpm MIT、PostgreSQL 使用 SPDX 短标识符 **`PostgreSQL`**；人类可读 evidence 保留全名 PostgreSQL License）与供应链工具（govulncheck BSD-3-Clause）。验证器对当前 9 条清单记录的机器 `license` 值逐一校验期望的 SPDX 短标识符：AIPT/actions/checkout/actions/setup-go/actions/setup-node/node/pnpm → MIT、go/golang.org/x/vuln → BSD-3-Clause、postgresql → PostgreSQL。
 
 B001 的第三方应用运行时依赖为 **0**（`go.mod` 无 require、`pnpm-lock.yaml` 仅根 importer）。**任何未来依赖必须先进入该清单并获得显式批准记录**，否则 CI 门禁 FAIL（`unknown_license_blocks = true`）。当前不引入超出冻结设计的复杂许可证白名单。
 
@@ -38,7 +38,7 @@ B001 的第三方应用运行时依赖为 **0**（`go.mod` 无 require、`pnpm-l
 
 仓库自带无第三方依赖的 Node 标准库脚本 [../../scripts/ci/sbom/generate-sbom.mjs](../../scripts/ci/sbom/generate-sbom.mjs) 生成**确定性 SPDX 2.3 JSON**，覆盖：AIPT 根包、Go module 直接/传递依赖、pnpm 直接/传递依赖、CI Actions 固定 Commit、供应链临时扫描器/工具身份、PostgreSQL 镜像 digest、工具链版本。所有校验和按 SPDX 2.3 规范输出：算法大写标识 + **小写十六进制** `checksumValue`（SHA256=64 位、SHA512=128 位）；pnpm 的 SHA512 由锁定 SRI base64 载荷解码为 128 位小写 hex，**不带** `sha512-` 前缀。
 
-同一输入生成两次必须 **byte-identical**（确定性，CI 强制验证并输出 SHA-256）。此外 CI 对 SBOM 执行 **SPDX 2.3 语义/组件校验**（[../../scripts/ci/validate/sbom.mjs](../../scripts/ci/validate/sbom.mjs)）：`spdxVersion == SPDX-2.3`、`dataLicense == CC0-1.0`、documentNamespace 为合法绝对 URI、包 SPDXID 唯一且格式合法、必需包集合齐全（AIPT、Go toolchain、Node.js、pnpm、PostgreSQL Docker Official Image、govulncheck、actions/checkout、actions/setup-go、actions/setup-node）、工具链/Action 版本与锁文件一致、关系源/目标 SPDXID 可解析且关系类型合法于 SPDX 2.3、校验和为算法长度匹配的小写 hex、pnpm SHA512 hex 从精确锁定的 SRI 载荷解码、PostgreSQL digest 身份保留、B001 第三方应用依赖数保持 0；另含**负向探针**：将 pnpm SHA512 校验和替换为 SRI/base64 形式，语义校验器必须 FAIL。B001 不把 SBOM 产物 commit 进仓库；动态来源溯源由 [../../scripts/ci/provenance.mjs](../../scripts/ci/provenance.mjs) 在 CI 中生成（仓库、commit、workflow run、runner 环境、SBOM SHA-256、工具链版本）。
+同一输入生成两次必须 **byte-identical**（确定性，CI 强制验证并输出 SHA-256）。此外 CI 对 SBOM 执行 **SPDX 2.3 语义/组件校验**（[../../scripts/ci/validate/sbom.mjs](../../scripts/ci/validate/sbom.mjs)）：`spdxVersion == SPDX-2.3`、`dataLicense == CC0-1.0`、**版本唯一的内容寻址 documentNamespace**（对去除 `documentNamespace` 后的版本定义载荷做规范序列化——递归键排序——并取 SHA-256 64 位小写 hex 作为 `https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001/<hash>` 的后缀；验证器独立重算并要求完全相等；R3/R4 复用过的旧静态 namespace `https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001` 被显式拒绝）、包 SPDXID 唯一且格式合法、必需包集合齐全（AIPT、Go toolchain、Node.js、pnpm、PostgreSQL Docker Official Image、govulncheck、actions/checkout、actions/setup-go、actions/setup-node）、**每个当前包的 `licenseConcluded`/`licenseDeclared` 与期望 B001 SPDX 短标识符精确一致（PostgreSQL 必须为 `PostgreSQL`，全名 PostgreSQL License 会被拒绝）**、工具链/Action 版本与锁文件一致、关系源/目标 SPDXID 可解析且关系类型合法于 SPDX 2.3、校验和为算法长度匹配的小写 hex、pnpm SHA512 hex 从精确锁定的 SRI 载荷解码、PostgreSQL digest 身份保留、B001 第三方应用依赖数保持 0；另含**四个负向探针**，语义校验器必须全部 FAIL：(1) pnpm SHA512 校验和替换为 SRI/base64 形式；(2) PostgreSQL 许可字段替换为全名 `PostgreSQL License`；(3) 修改版本定义字段（如包 comment）但保留原 namespace——namespace 不再匹配文档版本；(4) 显式复用旧静态 namespace。B001 不把 SBOM 产物 commit 进仓库；动态来源溯源由 [../../scripts/ci/provenance.mjs](../../scripts/ci/provenance.mjs) 在 CI 中生成（仓库、commit、workflow run、runner 环境、SBOM SHA-256、工具链版本）。
 
 ## 漏洞扫描
 
