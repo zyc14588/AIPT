@@ -69,11 +69,28 @@
     },
     {
       "id": "postgresql",
-      "kind": "infrastructure_image",
+      "kind": "infrastructure_image_component",
       "license": "PostgreSQL",
       "version": "18.4",
+      "evidence": "PostgreSQL 18.4 main software from postgresql.org (PostgreSQL License; SPDX short identifier PostgreSQL)",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "docker-library/postgres",
+      "kind": "infrastructure_image_component",
+      "license": "MIT",
+      "version": "18.4",
+      "evidence": "docker-library/postgres packaging source (LICENSE is MIT) for library/postgres:18.4",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "postgresql-docker-official-image",
+      "kind": "infrastructure_image",
+      "license": "NOASSERTION",
+      "version": "18.4",
       "image_multi_arch_digest": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
-      "evidence": "Docker Official Image library/postgres:18.4 (PostgreSQL License)",
+      "linux_amd64_platform_digest": "sha256:4cc13dede823cab4e05290c7fb3350fb4e599ecabd9b07e6706b5d5e8f5bc929",
+      "evidence": "library/postgres:18.4 Docker Official Image: composite container of PostgreSQL 18.4 main software (PostgreSQL), docker-library/postgres packaging source (MIT) and base-image components; whole-image license is NOASSERTION",
       "verified_at": "2026-08-16T06:51:41Z"
     },
     {

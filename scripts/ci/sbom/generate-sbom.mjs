@@ -16,7 +16,23 @@
 //
 // Coverage: AIPT root package, Go module direct/transitive deps, pnpm
 // direct/transitive deps, CI action fixed commits, supply-chain ephemeral
-// scanner/tool identities, PostgreSQL image digest, and toolchain versions.
+// scanner/tool identities, toolchain versions, and the three-layer
+// PostgreSQL model (AIPT-M0-B001-R6):
+//   1. PostgreSQL 18.4 main software — its own package identity with
+//      licenseConcluded/licenseDeclared = SPDX short identifier PostgreSQL;
+//   2. docker-library/postgres packaging source — its own package identity
+//      with licenseConcluded/licenseDeclared = MIT;
+//   3. PostgreSQL Docker Official Image — a composite container of multiple
+//      sources/components; its licenseConcluded/licenseDeclared are BOTH
+//      NOASSERTION (never PostgreSQL, never MIT). The image package's
+//      versionInfo, purl and comment each carry the exact pinned multi-arch
+//      digest, and its comment also carries the linux/amd64 platform digest.
+//
+// Composition (precise three-layer relationship model): the image CONTAINS
+// the main software (a component actually present inside the container),
+// and the docker-library/postgres packaging source is the image's build
+// INPUT rather than its content — so the image GENERATED_FROM the packaging
+// source. An image never CONTAINS its own packaging sources.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -176,13 +192,39 @@ export function buildSbom(repoRoot) {
       ],
     },
     {
+      name: 'PostgreSQL',
+      SPDXID: 'SPDXRef-PostgreSQL',
+      downloadLocation: 'https://www.postgresql.org/download/',
+      versionInfo: pg.version,
+      licenseConcluded: 'PostgreSQL',
+      licenseDeclared: 'PostgreSQL',
+      copyrightText: 'PostgreSQL Global Development Group',
+      filesAnalyzed: false,
+      comment:
+        `PostgreSQL ${pg.version} main software from postgresql.org; SPDX short identifier PostgreSQL ` +
+        `(human-readable full name "PostgreSQL License" is recorded in the B001 license inventory).`,
+    },
+    {
+      name: 'docker-library/postgres',
+      SPDXID: 'SPDXRef-docker-library-postgres',
+      downloadLocation: 'https://github.com/docker-library/postgres',
+      versionInfo: `${pg.version} packaging source`,
+      licenseConcluded: 'MIT',
+      licenseDeclared: 'MIT',
+      copyrightText: 'docker-library/postgres contributors',
+      filesAnalyzed: false,
+      comment:
+        `docker-library/postgres packaging source for library/postgres:${pg.version} (the image is GENERATED_FROM ` +
+        `this packaging source, never CONTAINS it); MIT (recorded in the B001 license inventory).`,
+    },
+    {
       name: 'PostgreSQL Docker Official Image',
       SPDXID: 'SPDXRef-PostgreSQL-Image',
       downloadLocation: `https://hub.docker.com/_/postgres`,
       versionInfo: `library/postgres:${pg.version} @ ${pg.docker_official_image.multi_arch_digest}`,
-      licenseConcluded: 'PostgreSQL',
-      licenseDeclared: 'PostgreSQL',
-      copyrightText: 'PostgreSQL Global Development Group',
+      licenseConcluded: 'NOASSERTION',
+      licenseDeclared: 'NOASSERTION',
+      copyrightText: 'NOASSERTION',
       filesAnalyzed: false,
       externalRefs: [
         {
@@ -192,8 +234,11 @@ export function buildSbom(repoRoot) {
         },
       ],
       comment:
-        `license: PostgreSQL (SPDX short identifier; human-readable full name "PostgreSQL License" is recorded in the B001 license inventory). ` +
-        `multi-arch digest ${pg.docker_official_image.multi_arch_digest}; linux/amd64 platform digest ${pg.docker_official_image.linux_amd64_platform_digest}`,
+        `composite container: CONTAINS PostgreSQL ${pg.version} main software (PostgreSQL) and GENERATED_FROM the ` +
+        `docker-library/postgres packaging source (MIT), plus base-image components; the whole image carries NOASSERTION ` +
+        `for licenseConcluded/licenseDeclared (never PostgreSQL, never MIT). ` +
+        `multi-arch digest ${pg.docker_official_image.multi_arch_digest}; ` +
+        `linux/amd64 platform digest ${pg.docker_official_image.linux_amd64_platform_digest}`,
     },
     {
       name: 'govulncheck',
@@ -256,6 +301,18 @@ export function buildSbom(repoRoot) {
       spdxElementId: 'SPDXRef-DOCUMENT',
       relationshipType: 'DESCRIBES',
       relatedSpdxElement: 'SPDXRef-AIPT',
+    },
+    {
+      spdxElementId: 'SPDXRef-PostgreSQL-Image',
+      relationshipType: 'CONTAINS',
+      relatedSpdxElement: 'SPDXRef-PostgreSQL',
+    },
+    {
+      // The packaging source is the image's build input, not its content:
+      // GENERATED_FROM, never CONTAINS.
+      spdxElementId: 'SPDXRef-PostgreSQL-Image',
+      relationshipType: 'GENERATED_FROM',
+      relatedSpdxElement: 'SPDXRef-docker-library-postgres',
     },
     ...packages
       .filter((p) => p.SPDXID !== 'SPDXRef-AIPT')

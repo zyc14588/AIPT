@@ -1,26 +1,45 @@
-// SBOM validator (AIPT-M0-B001-REPAIR-R5): the gate enforces deterministic
-// output AND SPDX 2.3 / component semantics, plus negative probes proving
-// invalid documents are rejected:
+// SBOM validator (AIPT-M0-B001-REPAIR-R6): the gate enforces deterministic
+// output AND SPDX 2.3 / component semantics — including the three-layer
+// PostgreSQL license model — plus negative probes proving invalid documents
+// are rejected:
 //   - an invalid SRI-style checksum;
 //   - the human full license name "PostgreSQL License" in place of the SPDX
-//     short identifier PostgreSQL;
+//     short identifier PostgreSQL (on the main-software package);
 //   - a version-defining mutation that retains the original namespace
 //     (content-addressed namespace binding);
-//   - the legacy static pre-R5 documentNamespace.
+//   - the legacy static pre-R5 documentNamespace;
+//   - the composite image mislabeled as PostgreSQL or as MIT;
+//   - the PostgreSQL main software moved away from PostgreSQL;
+//   - the docker-library/postgres packaging source moved away from MIT;
+//   - the pinned multi-arch digest deleted from or modified in the image
+//     versionInfo / purl / comment;
+//   - the image CONTAINS PostgreSQL main software composition relationship
+//     deleted or retyped;
+//   - the image GENERATED_FROM docker-library/postgres packaging source
+//     composition relationship deleted or retyped (treating the packaging
+//     source as image content — e.g. CONTAINS — is rejected).
 //
 // `node scripts/ci/validate/sbom.mjs` reports PASS only when:
 //   1. semantic validation passes (SPDX-2.3, CC0-1.0, version-unique
 //      content-addressed documentNamespace — SHA-256 of the canonical
 //      version-defining payload — with the legacy static namespace
 //      explicitly rejected, unique package SPDXIDs, the exact B001 required
-//      package set, SPDX short-identifier licenseConcluded/licenseDeclared
-//      for every current package, toolchain/action versions matching the
-//      lock files, resolvable relationships with SPDX 2.3-valid types,
-//      lowercase-hex checksums of algorithm-appropriate length, pnpm SHA512
-//      hex decoded from the pinned SRI payload, PostgreSQL digest identity,
-//      zero third-party deps);
+//      package set, SPDX license values for every current package (the
+//      three-layer PostgreSQL model: main software = PostgreSQL, packaging
+//      source = MIT, composite image = NOASSERTION), the exact composition
+//      relationships (image CONTAINS main software, image GENERATED_FROM
+//      packaging source — never CONTAINS the packaging source),
+//      toolchain/action versions matching the lock files, resolvable
+//      relationships with SPDX 2.3-valid types, lowercase-hex checksums of
+//      algorithm-appropriate length, pnpm SHA512 hex decoded from the pinned
+//      SRI payload, the exact PostgreSQL multi-arch digest in the image
+//      versionInfo + purl + comment and the linux/amd64 platform digest in
+//      the comment, zero third-party deps);
 //   2. two independent generations are byte-identical;
-//   3. the four negative probes above are each rejected for the right reason.
+//   3. every negative probe above is rejected for the right reason
+//      (relationship-drift probes must be rejected by the composition
+//      relationship check itself, not merely by the content-addressed
+//      namespace mismatch that any mutation causes).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -65,6 +84,8 @@ const REQUIRED_PACKAGES = [
   { name: 'Go toolchain', spdxId: 'SPDXRef-Toolchain-Go' },
   { name: 'Node.js', spdxId: 'SPDXRef-Toolchain-Node' },
   { name: 'pnpm', spdxId: 'SPDXRef-Toolchain-pnpm' },
+  { name: 'PostgreSQL', spdxId: 'SPDXRef-PostgreSQL' },
+  { name: 'docker-library/postgres', spdxId: 'SPDXRef-docker-library-postgres' },
   { name: 'PostgreSQL Docker Official Image', spdxId: 'SPDXRef-PostgreSQL-Image' },
   { name: 'govulncheck', spdxId: 'SPDXRef-Tool-govulncheck' },
   { name: 'actions/checkout', spdxId: 'SPDXRef-Action-actions-checkout' },
@@ -74,15 +95,22 @@ const REQUIRED_PACKAGES = [
 
 const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
 
-// Expected SPDX short identifiers for every current B001 SBOM package
-// (keyed by package name). PostgreSQL carries the SPDX identifier
-// `PostgreSQL`; the human full name "PostgreSQL License" is NOT accepted.
+// Expected SPDX license values for every current B001 SBOM package (keyed
+// by package name). Three-layer PostgreSQL model:
+//   - PostgreSQL (18.4 main software) carries the SPDX identifier
+//     `PostgreSQL`; the human full name "PostgreSQL License" is NOT accepted;
+//   - docker-library/postgres (packaging source) carries `MIT`;
+//   - PostgreSQL Docker Official Image (composite container of multiple
+//     sources/components) carries `NOASSERTION` for BOTH fields — asserting
+//     `PostgreSQL` or `MIT` for the whole image is rejected.
 const EXPECTED_PACKAGE_LICENSES = {
   AIPT: 'MIT',
   'Go toolchain': 'BSD-3-Clause',
   'Node.js': 'MIT',
   pnpm: 'MIT',
-  'PostgreSQL Docker Official Image': 'PostgreSQL',
+  PostgreSQL: 'PostgreSQL',
+  'docker-library/postgres': 'MIT',
+  'PostgreSQL Docker Official Image': 'NOASSERTION',
   govulncheck: 'BSD-3-Clause',
   'actions/checkout': 'MIT',
   'actions/setup-go': 'MIT',
@@ -199,25 +227,26 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   if (depIds.length > 0) fail(`SBOM carries dependency packages: ${depIds.join(', ')}`);
   else ok('no GoDep/PnpmDep dependency packages in the SBOM');
 
-  // ---- SPDX short identifiers for every current package's licenses ----
-  // Exact-match against the expected B001 SPDX identifier; arbitrary
-  // strings (including the human full name "PostgreSQL License") fail.
+  // ---- SPDX license values for every current package ----
+  // Exact-match against the expected B001 SPDX license value; arbitrary
+  // strings (including the human full name "PostgreSQL License" on the main
+  // software, or PostgreSQL/MIT on the composite image) fail.
   let licenseOk = true;
   for (const pkg of doc.packages) {
     const expected = EXPECTED_PACKAGE_LICENSES[pkg.name];
     if (expected === undefined) {
-      fail(`${pkg.SPDXID}: package ${JSON.stringify(pkg.name)} has no expected B001 SPDX license identifier`);
+      fail(`${pkg.SPDXID}: package ${JSON.stringify(pkg.name)} has no expected B001 SPDX license value`);
       licenseOk = false;
       continue;
     }
     for (const field of ['licenseConcluded', 'licenseDeclared']) {
       if (pkg[field] !== expected) {
-        fail(`${pkg.SPDXID}: ${field} must be the SPDX short identifier ${JSON.stringify(expected)}, got ${JSON.stringify(pkg[field])}`);
+        fail(`${pkg.SPDXID}: ${field} must be the SPDX license value ${JSON.stringify(expected)}, got ${JSON.stringify(pkg[field])}`);
         licenseOk = false;
       }
     }
   }
-  if (licenseOk) ok('every package licenseConcluded/licenseDeclared matches the expected B001 SPDX short identifier (PostgreSQL = PostgreSQL)');
+  if (licenseOk) ok('every package licenseConcluded/licenseDeclared matches the expected B001 SPDX license value (PostgreSQL main software = PostgreSQL, docker-library/postgres = MIT, composite image = NOASSERTION)');
 
   // ---- app-level zero-dependency invariants (go.mod / pnpm-lock) ----
   const goMod = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
@@ -241,6 +270,8 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   expectVersion(find('SPDXRef-Toolchain-Node'), `${tc.node.version} (LTS ${tc.node.release_codename})`);
   expectVersion(find('SPDXRef-Toolchain-pnpm'), tc.pnpm.version);
   const pg = tc.postgresql.docker_official_image;
+  expectVersion(find('SPDXRef-PostgreSQL'), tc.postgresql.version);
+  expectVersion(find('SPDXRef-docker-library-postgres'), `${tc.postgresql.version} packaging source`);
   expectVersion(find('SPDXRef-PostgreSQL-Image'), `library/postgres:${tc.postgresql.version} @ ${pg.multi_arch_digest}`);
   expectVersion(find('SPDXRef-Tool-govulncheck'), toolchainLock.tooling.govulncheck.version);
 
@@ -328,16 +359,34 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`pnpm SHA512 checksumValue must be the 128-char lowercase hex decode of the pinned SRI payload, got ${JSON.stringify(pnpmCs?.[0])}`);
   } else ok('pnpm SHA512 checksumValue decodes from the exact pinned SRI payload (no sha512- prefix)');
 
-  // ---- PostgreSQL digest identity remains represented ----
+  // ---- PostgreSQL digest identity: the exact multi-arch digest must be
+  // carried in the image versionInfo AND purl AND comment, and the exact
+  // linux/amd64 platform digest in the comment ----
   const pgPkg = find('SPDXRef-PostgreSQL-Image');
-  const pgText = `${JSON.stringify(pgPkg?.externalRefs ?? [])} ${pgPkg?.comment ?? ''} ${pgPkg?.versionInfo ?? ''}`;
   if (pg.multi_arch_digest !== PG_MULTI_ARCH_DIGEST) fail('toolchain lock postgresql multi-arch digest drifted from frozen value');
   else ok('toolchain lock postgresql multi-arch digest == frozen value');
   if (pg.linux_amd64_platform_digest !== PG_LINUX_AMD64_PLATFORM_DIGEST) fail('toolchain lock postgresql linux/amd64 platform digest drifted from frozen value');
   else ok('toolchain lock postgresql linux/amd64 platform digest == frozen value');
-  if (!pgText.includes(PG_MULTI_ARCH_DIGEST) || !pgText.includes(PG_LINUX_AMD64_PLATFORM_DIGEST)) {
-    fail('PostgreSQL package must represent both pinned digests (multi-arch + linux/amd64 platform)');
-  } else ok('PostgreSQL digest identity (multi-arch + linux/amd64) represented in the SBOM');
+  if (!pgPkg) {
+    fail('PostgreSQL Docker Official Image package missing from SBOM');
+  } else {
+    const imgVersion = pgPkg.versionInfo ?? '';
+    if (!imgVersion.includes(PG_MULTI_ARCH_DIGEST)) {
+      fail(`image versionInfo must carry the exact multi-arch digest ${PG_MULTI_ARCH_DIGEST}`);
+    } else ok('image versionInfo carries the exact multi-arch digest');
+    const expectedPurl = `pkg:docker/library/postgres@${PG_MULTI_ARCH_DIGEST}`;
+    const purlRef = (pgPkg.externalRefs ?? []).find((r) => r?.referenceType === 'purl');
+    if (!purlRef || purlRef.referenceLocator !== expectedPurl) {
+      fail(`image purl referenceLocator must be exactly ${expectedPurl}, got ${JSON.stringify(purlRef?.referenceLocator)}`);
+    } else ok('image purl referenceLocator == exact multi-arch digest purl');
+    const imgComment = pgPkg.comment ?? '';
+    if (!imgComment.includes(PG_MULTI_ARCH_DIGEST)) {
+      fail(`image comment must carry the exact multi-arch digest ${PG_MULTI_ARCH_DIGEST}`);
+    } else ok('image comment carries the exact multi-arch digest');
+    if (!imgComment.includes(PG_LINUX_AMD64_PLATFORM_DIGEST)) {
+      fail(`image comment must carry the exact linux/amd64 platform digest ${PG_LINUX_AMD64_PLATFORM_DIGEST}`);
+    } else ok('image comment carries the exact linux/amd64 platform digest');
+  }
 
   // ---- govulncheck identity ----
   const gvPkg = find('SPDXRef-Tool-govulncheck');
@@ -386,6 +435,25 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   );
   if (missingDevTool.length > 0) fail(`packages missing DEV_TOOL_OF relationship to AIPT: ${missingDevTool.map((p) => p.SPDXID).join(', ')}`);
   else ok('every non-AIPT package has a DEV_TOOL_OF relationship to AIPT');
+
+  // ---- three-layer PostgreSQL composition: the composite image CONTAINS
+  // the main software (a component inside the container) and GENERATED_FROM
+  // the packaging source (the image's build input, never its content) ----
+  const composition = [
+    ['SPDXRef-PostgreSQL-Image', 'CONTAINS', 'SPDXRef-PostgreSQL', 'PostgreSQL main software'],
+    ['SPDXRef-PostgreSQL-Image', 'GENERATED_FROM', 'SPDXRef-docker-library-postgres', 'docker-library/postgres packaging source (build input, not image content)'],
+  ];
+  let compositionOk = true;
+  for (const [src, type, tgt, label] of composition) {
+    const found = doc.relationships.some(
+      (r) => r.spdxElementId === src && r.relationshipType === type && r.relatedSpdxElement === tgt,
+    );
+    if (!found) {
+      fail(`missing composition relationship: ${src} ${type} ${tgt} (${label})`);
+      compositionOk = false;
+    }
+  }
+  if (compositionOk) ok('three-layer PostgreSQL composition: composite image CONTAINS main software + GENERATED_FROM packaging source (never CONTAINS the packaging source)');
 
   // ---- documentDescribes ----
   if (!Array.isArray(doc.documentDescribes) || doc.documentDescribes.length === 0) {
@@ -481,11 +549,12 @@ export function run(ctx) {
   }
 
   // 4. Negative probe: the human full license name "PostgreSQL License" in
-  // place of the SPDX short identifier must be rejected.
+  // place of the SPDX short identifier on the MAIN SOFTWARE package must be
+  // rejected.
   const licenseProbe = JSON.parse(JSON.stringify(doc));
-  const licenseProbePg = licenseProbe.packages.find((p) => p.SPDXID === 'SPDXRef-PostgreSQL-Image');
+  const licenseProbePg = licenseProbe.packages.find((p) => p.SPDXID === 'SPDXRef-PostgreSQL');
   if (!licenseProbePg) {
-    fail('negative full-name license probe could not run: PostgreSQL package missing from SBOM');
+    fail('negative full-name license probe could not run: PostgreSQL main-software package missing from SBOM');
     return { name: 'sbom', result: 'FAIL', details };
   }
   licenseProbePg.licenseConcluded = 'PostgreSQL License';
@@ -496,7 +565,7 @@ export function run(ctx) {
   } else {
     const rightReason = licenseProbeResult.details.some((d) => d.includes('license'));
     if (!rightReason) fail('full-name license probe failed for an unexpected reason');
-    else ok('negative-probe PASS: full human license name "PostgreSQL License" rejected; SPDX short identifier PostgreSQL required');
+    else ok('negative-probe PASS: full human license name "PostgreSQL License" rejected on the main software; SPDX short identifier PostgreSQL required');
   }
 
   // 5. Negative probe: a version-defining mutation must invalidate the
@@ -528,6 +597,154 @@ export function run(ctx) {
     const rightReason = legacyProbeResult.details.some((d) => d.includes('legacy') || d.includes('documentNamespace'));
     if (!rightReason) fail('legacy-namespace probe failed for an unexpected reason');
     else ok(`negative-probe PASS: legacy static namespace ${JSON.stringify(LEGACY_NAMESPACE)} explicitly rejected (stale/reused namespace forbidden)`);
+  }
+
+  // 7-10. Negative probes (B001-GPT-003 regressions): the three-layer
+  // license model and the exact digest identity must each be enforced.
+  const threeLayerProbes = [
+    {
+      label: 'composite image mislabeled PostgreSQL',
+      reason: /NOASSERTION/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-PostgreSQL-Image');
+        p.licenseConcluded = 'PostgreSQL';
+        p.licenseDeclared = 'PostgreSQL';
+      },
+    },
+    {
+      label: 'composite image mislabeled MIT',
+      reason: /NOASSERTION/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-PostgreSQL-Image');
+        p.licenseConcluded = 'MIT';
+        p.licenseDeclared = 'MIT';
+      },
+    },
+    {
+      label: 'PostgreSQL main software moved away from PostgreSQL',
+      reason: /PostgreSQL/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-PostgreSQL');
+        p.licenseConcluded = 'MIT';
+        p.licenseDeclared = 'MIT';
+      },
+    },
+    {
+      label: 'docker-library/postgres packaging source moved away from MIT',
+      reason: /MIT/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-docker-library-postgres');
+        p.licenseConcluded = 'BSD-3-Clause';
+        p.licenseDeclared = 'BSD-3-Clause';
+      },
+    },
+    {
+      label: 'multi-arch digest deleted from image versionInfo/purl/comment',
+      reason: /digest|purl|versionInfo/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-PostgreSQL-Image');
+        p.versionInfo = p.versionInfo.replace(` @ ${PG_MULTI_ARCH_DIGEST}`, '');
+        p.externalRefs = [];
+        p.comment = p.comment.split(PG_MULTI_ARCH_DIGEST).join('').split(PG_LINUX_AMD64_PLATFORM_DIGEST).join('');
+      },
+    },
+    {
+      label: 'multi-arch digest modified in image versionInfo/purl/comment',
+      reason: /digest/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-PostgreSQL-Image');
+        const tampered = PG_MULTI_ARCH_DIGEST.slice(0, -1) + (PG_MULTI_ARCH_DIGEST.endsWith('6') ? '7' : '6');
+        p.versionInfo = p.versionInfo.split(PG_MULTI_ARCH_DIGEST).join(tampered);
+        p.comment = p.comment.split(PG_MULTI_ARCH_DIGEST).join(tampered);
+        for (const ref of p.externalRefs ?? []) {
+          if (ref.referenceType === 'purl') ref.referenceLocator = ref.referenceLocator.split(PG_MULTI_ARCH_DIGEST).join(tampered);
+        }
+      },
+    },
+  ];
+  for (const def of threeLayerProbes) {
+    const probeDoc = JSON.parse(JSON.stringify(doc));
+    const probeImage = probeDoc.packages.find((x) => x.SPDXID === 'SPDXRef-PostgreSQL-Image');
+    if (!probeImage || !probeDoc.packages.some((x) => x.SPDXID === 'SPDXRef-PostgreSQL') || !probeDoc.packages.some((x) => x.SPDXID === 'SPDXRef-docker-library-postgres')) {
+      fail(`negative ${def.label} probe could not run: three-layer PostgreSQL packages missing from SBOM`);
+      continue;
+    }
+    def.mutate(probeDoc);
+    const probeResult = validateSbomSemantics(probeDoc, { repo: ctx.repo, toolchainLock, actionsLock });
+    if (probeResult.result !== 'FAIL') {
+      fail(`negative ${def.label} probe was NOT rejected`);
+    } else {
+      const rightReason = probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d));
+      if (!rightReason) fail(`negative ${def.label} probe failed for an unexpected reason`);
+      else ok(`negative-probe PASS: ${def.label} rejected by the semantic validator`);
+    }
+  }
+
+  // 11-14. Negative probes (B001-GPT-003 relationship drift): deleting or
+  // changing the image CONTAINS PostgreSQL main software composition
+  // relationship, or the image GENERATED_FROM docker-library/postgres
+  // packaging source composition relationship, must be rejected — and each
+  // rejection must come from the composition relationship check itself, not
+  // merely from the content-addressed namespace mismatch that any mutation
+  // of the document causes.
+  const relContains = (r) =>
+    r.spdxElementId === 'SPDXRef-PostgreSQL-Image' &&
+    r.relationshipType === 'CONTAINS' &&
+    r.relatedSpdxElement === 'SPDXRef-PostgreSQL';
+  const relGeneratedFrom = (r) =>
+    r.spdxElementId === 'SPDXRef-PostgreSQL-Image' &&
+    r.relationshipType === 'GENERATED_FROM' &&
+    r.relatedSpdxElement === 'SPDXRef-docker-library-postgres';
+  const relationshipProbes = [
+    {
+      label: 'composition relationship deleted: image CONTAINS PostgreSQL main software',
+      reason: /composition relationship: SPDXRef-PostgreSQL-Image CONTAINS SPDXRef-PostgreSQL/,
+      predicate: relContains,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter((r) => !relContains(r));
+      },
+    },
+    {
+      label: 'composition relationship changed: image CONTAINS PostgreSQL main software retyped to DEPENDS_ON',
+      reason: /composition relationship: SPDXRef-PostgreSQL-Image CONTAINS SPDXRef-PostgreSQL/,
+      predicate: relContains,
+      mutate: (probeDoc) => {
+        probeDoc.relationships.find(relContains).relationshipType = 'DEPENDS_ON';
+      },
+    },
+    {
+      label: 'composition relationship deleted: image GENERATED_FROM docker-library/postgres packaging source',
+      reason: /composition relationship: SPDXRef-PostgreSQL-Image GENERATED_FROM SPDXRef-docker-library-postgres/,
+      predicate: relGeneratedFrom,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter((r) => !relGeneratedFrom(r));
+      },
+    },
+    {
+      label: 'composition relationship changed: image GENERATED_FROM packaging source retyped to CONTAINS',
+      reason: /composition relationship: SPDXRef-PostgreSQL-Image GENERATED_FROM SPDXRef-docker-library-postgres/,
+      predicate: relGeneratedFrom,
+      mutate: (probeDoc) => {
+        probeDoc.relationships.find(relGeneratedFrom).relationshipType = 'CONTAINS';
+      },
+    },
+  ];
+  for (const def of relationshipProbes) {
+    const probeDoc = JSON.parse(JSON.stringify(doc));
+    if (!probeDoc.relationships.some(def.predicate)) {
+      fail(`negative ${def.label} probe could not run: expected composition relationship missing from generated SBOM`);
+      continue;
+    }
+    def.mutate(probeDoc);
+    const probeResult = validateSbomSemantics(probeDoc, { repo: ctx.repo, toolchainLock, actionsLock });
+    if (probeResult.result !== 'FAIL') {
+      fail(`negative ${def.label} probe was NOT rejected`);
+    } else {
+      const rightReason = probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d));
+      if (!rightReason) {
+        fail(`negative ${def.label} probe failed for an unexpected reason (composition relationship check did not fire)`);
+      } else ok(`negative-probe PASS: ${def.label} rejected by the composition relationship check`);
+    }
   }
 
   return { name: 'sbom', result: pass ? 'PASS' : 'FAIL', details };
