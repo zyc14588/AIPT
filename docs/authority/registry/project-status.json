@@ -1,0 +1,60 @@
+{
+  "schema": "aipt.public.project-status/v1",
+  "as_of": "2026-08-16",
+  "authority_snapshot_id": "AIPT-DCA-CLOSEOUT-R0-R16-002",
+  "tracks": {
+    "AIPT-STANDALONE": {
+      "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
+      "construction": "AIPT-M0-B000_READY_TO_EXECUTE",
+      "global_wip": 1
+    },
+    "AIPT-PLATFORM-INTEGRATION": {
+      "status": "FROZEN_WAITING_M1_ENGINE",
+      "unfreeze_authorized": false
+    }
+  },
+  "repositories": {
+    "AIPT": {
+      "url": "https://github.com/zyc14588/AIPT",
+      "default_branch": "main",
+      "verified_head": "8b1c6b322c0a1a14df33b0e29e8324d4f1dd1f61",
+      "verified_state": "one placeholder README commit"
+    },
+    "UNREGISTERED": {
+      "url": "https://github.com/zyc14588/UNREGISTERED",
+      "default_branch": "main",
+      "planning_snapshot": "3e4a28bba1caf44828412f90bb6715b6955e3604",
+      "readiness": "PLAYTESTABLE_DRAFT",
+      "formal_name_zh": "《未登记》"
+    }
+  },
+  "runtime": {
+    "deepseek_harness_commit": "47f943859bef60e4160492346772ded9b24f765a",
+    "harness_installation": "source",
+    "os": "Ubuntu 26.04 LTS",
+    "shell": "Bash",
+    "primary_remote_model": "deepseek-v4-pro",
+    "llama_cpp_build": "b10217-ddd4ec142",
+    "local_model": "UNASSIGNED",
+    "gpu": "AMD Radeon 8060S",
+    "unified_memory": "128 GB"
+  },
+  "auditing": {
+    "primary": "GPT",
+    "package_preparer": "local Codex CLI",
+    "secondary": "Anthropic Claude Web",
+    "secondary_profiles": [
+      "Fable 5",
+      "Opus 5",
+      "Opus 4.8"
+    ],
+    "secondary_status": "ADMIN_APPROVAL_AND_PRIVACY_PROFILE_PENDING",
+    "model_improvement_status": "UNKNOWN"
+  },
+  "prompt_assets": {
+    "authority": "local encrypted Git repository",
+    "remote": "none",
+    "public_disclosure": "forbidden"
+  },
+  "public_reference": "docs/authority/PROJECT_STATUS.md"
+}

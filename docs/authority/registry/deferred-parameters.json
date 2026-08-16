@@ -1,0 +1,222 @@
+{
+  "schema": "aipt.public.deferred-parameters/v1",
+  "authority_snapshot_id": "AIPT-DCA-CLOSEOUT-R0-R16-002",
+  "generated_at": "2026-08-16",
+  "installed_by_batch": "AIPT-M0-B000",
+  "public_reference": "docs/authority/DEFERRED_PARAMETERS.md",
+  "parameters": [
+    {
+      "parameter_id": "DEFER-001",
+      "name": "platform_integration_m1_engine_batch",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "value": null,
+      "reason": "TRPG_PLATFORM 中负责稳定游戏引擎接口的具体 M1 批次尚未确定。",
+      "blocks": [
+        "AIPT-PLATFORM-INTEGRATION unfreeze"
+      ],
+      "does_not_block": [
+        "AIPT-STANDALONE M0",
+        "AIPT-STANDALONE development MVP"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-002",
+      "name": "local_gguf_model_identity",
+      "status": "DEFERRED_TO_MODEL_REGISTRATION",
+      "value": null,
+      "reason": "本地 llama.cpp 模型名称和 GGUF 尚未选定。",
+      "blocks": [
+        "local model role certification"
+      ],
+      "does_not_block": [
+        "M0",
+        "remote DeepSeek MVP path"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-003",
+      "name": "local_model_performance_thresholds",
+      "status": "DEFERRED_TO_BENCHMARK",
+      "value": null,
+      "reason": "需在实际 8060S/128GB 统一内存主机上基准测量后冻结。",
+      "blocks": [
+        "production local-model role eligibility"
+      ],
+      "does_not_block": [
+        "M0"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-004",
+      "name": "formal_campaign_minimum_run_count",
+      "status": "DEFERRED_TO_VARIANCE_BASELINE",
+      "value": null,
+      "reason": "六场仅为默认模板，正式最低运行数需根据成本与方差确定。",
+      "blocks": [
+        "production/release campaign minimum policy"
+      ],
+      "does_not_block": [
+        "development MVP eight-run qualification"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-005",
+      "name": "runtime_concurrency_limits",
+      "status": "DEFERRED_TO_RESOURCE_CERTIFICATION",
+      "value": "GLOBAL_WIP_1_INITIAL",
+      "reason": "首个纵向切片固定 WIP=1；后续并发需资源池资格测试。",
+      "blocks": [
+        "parallel scale-out"
+      ],
+      "does_not_block": [
+        "serial MVP"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-006",
+      "name": "audit_bundle_default_size_limits",
+      "status": "DEPLOYMENT_CONFIGURABLE",
+      "value": null,
+      "reason": "包大小、内联阈值与分块大小为部署 Profile 可配置项。",
+      "blocks": [],
+      "does_not_block": [
+        "M0"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-007",
+      "name": "tpm_signer_delivery_milestone",
+      "status": "FUTURE_CAPABILITY",
+      "value": null,
+      "reason": "生产签名先支持本地可替换密钥提供器，TPM 接入时间待定。",
+      "blocks": [
+        "TPM-backed signer claim"
+      ],
+      "does_not_block": [
+        "development",
+        "production with non-TPM local signer"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-008",
+      "name": "human_calibration_sample_size",
+      "status": "DEFERRED_TO_FIRST_HUMAN_DATASET",
+      "value": null,
+      "reason": "当前无真人桌测记录；发布前必须校准但样本数尚未基准化。",
+      "blocks": [
+        "human-equivalence claims",
+        "final human calibration gate"
+      ],
+      "does_not_block": [
+        "synthetic development playtests"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-009",
+      "name": "release_coverage_thresholds",
+      "status": "DEFERRED_TO_MVP_BASELINE",
+      "value": null,
+      "reason": "规则、模组与组合覆盖率阈值需根据首个 MVP 增长曲线冻结。",
+      "blocks": [
+        "release coverage gate"
+      ],
+      "does_not_block": [
+        "M0",
+        "prototype development MVP"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-010",
+      "name": "claude_known_truth_acceptance_thresholds",
+      "status": "ADMIN_DECISION_PENDING",
+      "value": null,
+      "reason": "已知真值套件保留，但由管理员查看硬/软指标后批准 Auditor Profile。",
+      "blocks": [
+        "secondary auditor production eligibility"
+      ],
+      "does_not_block": [
+        "GPT-only prototype design audit",
+        "development pass"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-011",
+      "name": "claude_model_improvement_status",
+      "status": "UNKNOWN",
+      "value": null,
+      "reason": "Claude Pro 的 Model Improvement 状态尚未确认。",
+      "blocks": [
+        "production/release Claude Web audit unless explicit Incognito privacy evidence"
+      ],
+      "does_not_block": [
+        "development break-glass audit with attestation"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-012",
+      "name": "claude_opus5_auditor_profile",
+      "status": "UNAPPROVED",
+      "value": null,
+      "reason": "备用 Opus 5 Profile 尚未经过管理员批准。",
+      "blocks": [
+        "formal Opus 5 fallback"
+      ],
+      "does_not_block": [
+        "Fable 5 development attempts"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-013",
+      "name": "claude_opus48_auditor_profile",
+      "status": "UNAPPROVED",
+      "value": null,
+      "reason": "备用 Opus 4.8 Profile 尚未经过管理员批准。",
+      "blocks": [
+        "formal Opus 4.8 fallback"
+      ],
+      "does_not_block": [
+        "M0 development"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-014",
+      "name": "unregistered_custom_license_final_legal_text",
+      "status": "POLICY_FROZEN_TEXT_NOT_DRAFTED",
+      "value": "LicenseRef-UNREGISTERED-NC-SA-1.0",
+      "reason": "许可政策已冻结，但最终法律正文未起草且应在发布前法律审阅。",
+      "blocks": [
+        "formal publication of the custom content license"
+      ],
+      "does_not_block": [
+        "AIPT B000 documentation",
+        "draft licensing boundary documentation"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-015",
+      "name": "rootless_docker_capability",
+      "status": "ENVIRONMENT_PROBE_PENDING",
+      "value": "Docker confirmed; rootless/isolated context unknown",
+      "reason": "当前确认普通用户可运行 Docker，具体 rootless/隔离 Context 能力待探测。",
+      "blocks": [
+        "production Evidence Adapter Docker certification"
+      ],
+      "does_not_block": [
+        "B000"
+      ]
+    },
+    {
+      "parameter_id": "DEFER-016",
+      "name": "go_node_pnpm_postgresql_exact_versions",
+      "status": "DEFERRED_TO_AIPT-M0-B001",
+      "value": null,
+      "reason": "精确工具链锁定由 B001 资格与 CI 批次决定。",
+      "blocks": [
+        "B001 closeout"
+      ],
+      "does_not_block": [
+        "B000"
+      ]
+    }
+  ]
+}
