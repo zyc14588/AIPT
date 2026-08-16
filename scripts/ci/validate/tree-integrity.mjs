@@ -24,7 +24,12 @@ export function run(ctx) {
 
   // ---- scope (changed paths vs private task manifest) ----
   const diff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
-  const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard']).stdout.split('\n').filter(Boolean);
+  // Regenerable package-manager install output is not candidate source: the
+  // repository carries no .gitignore (adding one is outside the B001 allowed
+  // path set), so filter the generated node_modules tree here.
+  const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
+    .stdout.split('\n')
+    .filter((p) => p && p !== 'node_modules' && !p.startsWith('node_modules/'));
   const changed = [...new Set([...diff, ...untracked])].sort();
   if (changed.length === 0) fail('no changed paths found vs base');
   else ok(`${changed.length} changed paths vs base`);
