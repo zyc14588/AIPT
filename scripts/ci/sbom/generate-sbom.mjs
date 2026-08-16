@@ -55,6 +55,23 @@ function purl(type, locator) {
   return { referenceCategory: 'PACKAGE-MANAGER', referenceType: 'purl', referenceLocator: `pkg:${type}/${locator}` };
 }
 
+// The pnpm lock stores the npm registry SHA-512 SRI value as a base64
+// payload. SPDX 2.3 requires checksumValue to be the digest encoded as
+// lowercase hexadecimal digits (128 chars for SHA512), never an `sha512-`
+// SRI string. Decode and re-encode deterministically, failing loudly when
+// the pinned payload is not a 64-byte SHA-512 digest.
+function sriSha512ToHex(sri) {
+  const bytes = Buffer.from(sri, 'base64');
+  if (bytes.length !== 64) {
+    throw new Error(`pnpm registry integrity_sha512 must decode to 64 bytes, got ${bytes.length}`);
+  }
+  const hex = bytes.toString('hex');
+  if (!/^[0-9a-f]{128}$/.test(hex)) {
+    throw new Error(`pnpm registry integrity_sha512 must encode to 128 lowercase hex chars, got ${hex.length}`);
+  }
+  return hex;
+}
+
 export function buildSbom(repoRoot) {
   const repo = path.resolve(repoRoot);
   const toolchain = readJson(repo, 'tools/toolchain.lock.json');
@@ -127,7 +144,7 @@ export function buildSbom(repoRoot) {
       checksums: [
         {
           algorithm: 'SHA512',
-          checksumValue: `sha512-${toolchain.toolchains.pnpm.registry.integrity_sha512}`,
+          checksumValue: sriSha512ToHex(toolchain.toolchains.pnpm.registry.integrity_sha512),
         },
       ],
     },

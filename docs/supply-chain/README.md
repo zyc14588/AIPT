@@ -25,7 +25,7 @@
 - 三个 required jobs：
   - `b000-retro`：用 B001 验证器对固定历史提交 `777a3f39ba78c1ef3168597890c61abf7a55d962` 做只读展开并追溯验证 B000（MIT 许可、454 条决策、35 条 supersession、16 项延期参数以 B000 自身状态为准、17 篇 Markdown 相对链接、JSON 解析、无凭据/私有路径/Prompt 正文、merge tree == `f5f845b860ba0944ef104b4679fa074ad6efecbb`）。
   - `toolchain`：在 `ubuntu-24.04` 与 `ubuntu-26.04` 上验证精确 Go/Node/pnpm、`gofmt`、`go vet`、`go test`、`pnpm install --frozen-lockfile`、B001 Node 验证器、PostgreSQL Official Image digest pull/run（`postgres --version` 精确 18.4）。
-  - `supply-chain`：锁文件存在性与完整性、Action SHA pin、容器 digest pin、依赖清单/许可证覆盖、确定性 SBOM（生成两次 byte-identical 并输出 SHA-256）、Go 漏洞扫描、`pnpm audit`、来源溯源元数据、无秘密/无真实模型网络配置扫描。
+  - `supply-chain`：锁文件存在性与完整性、Action SHA pin、容器 digest pin、依赖清单/许可证覆盖、确定性 + SPDX 2.3/组件语义 SBOM 校验（生成两次 byte-identical 并输出 SHA-256；语义校验与负向无效校验和探针必须通过）、Go 漏洞扫描、`pnpm audit`、来源溯源元数据、无秘密/无真实模型网络配置扫描。
 - 全部 required jobs PASS 是 B001 候选进入验收的前提；不自动 deploy/publish。
 
 ## 许可证清单
@@ -36,9 +36,9 @@ B001 的第三方应用运行时依赖为 **0**（`go.mod` 无 require、`pnpm-l
 
 ## 确定性 SBOM
 
-仓库自带无第三方依赖的 Node 标准库脚本 [../../scripts/ci/sbom/generate-sbom.mjs](../../scripts/ci/sbom/generate-sbom.mjs) 生成**确定性 SPDX 2.3 JSON**，覆盖：AIPT 根包、Go module 直接/传递依赖、pnpm 直接/传递依赖、CI Actions 固定 Commit、供应链临时扫描器/工具身份、PostgreSQL 镜像 digest、工具链版本。
+仓库自带无第三方依赖的 Node 标准库脚本 [../../scripts/ci/sbom/generate-sbom.mjs](../../scripts/ci/sbom/generate-sbom.mjs) 生成**确定性 SPDX 2.3 JSON**，覆盖：AIPT 根包、Go module 直接/传递依赖、pnpm 直接/传递依赖、CI Actions 固定 Commit、供应链临时扫描器/工具身份、PostgreSQL 镜像 digest、工具链版本。所有校验和按 SPDX 2.3 规范输出：算法大写标识 + **小写十六进制** `checksumValue`（SHA256=64 位、SHA512=128 位）；pnpm 的 SHA512 由锁定 SRI base64 载荷解码为 128 位小写 hex，**不带** `sha512-` 前缀。
 
-同一输入生成两次必须 **byte-identical**（CI 强制验证并输出 SHA-256）。B001 不把 SBOM 产物 commit 进仓库；动态来源溯源由 [../../scripts/ci/provenance.mjs](../../scripts/ci/provenance.mjs) 在 CI 中生成（仓库、commit、workflow run、runner 环境、SBOM SHA-256、工具链版本）。
+同一输入生成两次必须 **byte-identical**（确定性，CI 强制验证并输出 SHA-256）。此外 CI 对 SBOM 执行 **SPDX 2.3 语义/组件校验**（[../../scripts/ci/validate/sbom.mjs](../../scripts/ci/validate/sbom.mjs)）：`spdxVersion == SPDX-2.3`、`dataLicense == CC0-1.0`、documentNamespace 为合法绝对 URI、包 SPDXID 唯一且格式合法、必需包集合齐全（AIPT、Go toolchain、Node.js、pnpm、PostgreSQL Docker Official Image、govulncheck、actions/checkout、actions/setup-go、actions/setup-node）、工具链/Action 版本与锁文件一致、关系源/目标 SPDXID 可解析且关系类型合法于 SPDX 2.3、校验和为算法长度匹配的小写 hex、pnpm SHA512 hex 从精确锁定的 SRI 载荷解码、PostgreSQL digest 身份保留、B001 第三方应用依赖数保持 0；另含**负向探针**：将 pnpm SHA512 校验和替换为 SRI/base64 形式，语义校验器必须 FAIL。B001 不把 SBOM 产物 commit 进仓库；动态来源溯源由 [../../scripts/ci/provenance.mjs](../../scripts/ci/provenance.mjs) 在 CI 中生成（仓库、commit、workflow run、runner 环境、SBOM SHA-256、工具链版本）。
 
 ## 漏洞扫描
 
@@ -49,7 +49,7 @@ B001 的第三方应用运行时依赖为 **0**（`go.mod` 无 require、`pnpm-l
 ## 无秘密与无真实模型网络配置
 
 - CI workflow 不引用 `secrets.*`、不请求 OIDC token、不携带任何 API Key。
-- 仓库任何公共文件不含凭据、本机私有绝对路径、模型端点或 Prompt 正文（由 B001 验证器逐文件扫描）。
+- 仓库公共文件不含凭据、本机私有绝对路径、模型端点或 Prompt 正文。B001 验证器实际扫描的文本/脚本后缀为 `.md` `.json` `.yaml` `.yml` `.txt` `.go` `.mjs` `.js` `.ts` `.sh`（跳过 `.git`、`node_modules`、`.b001-toolcache` 目录）；`scripts/ci/` 可执行脚本**不做整目录豁免**——扫描器自身的危险字面量全部由片段拼装，因此可以安全自扫描。机器回归含临时目录负向探针：在临时 `scripts/ci/probe.mjs` 中运行时拼装禁用模型端点，必须被检出，否则门禁 FAIL（防止 `.mjs` 支持或脚本树覆盖被移除）。
 
 ## 相邻文档
 

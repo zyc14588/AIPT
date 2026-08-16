@@ -28,12 +28,19 @@ export const MODEL_ENDPOINT_PATTERNS = [
 // Markers of pasted conversational prompt transcripts (public prompt bodies
 // are forbidden in the public repository).
 export const PROMPT_BODY_PATTERNS = [
-  [new RegExp('<<SYS>>'), 'LLAMA_SYS_PROMPT_MARKER'],
+  // Assembled from fragments so the scanner source itself stays scan-safe.
+  [new RegExp('<' + '<' + 'SYS' + '>' + '>'), 'LLAMA_SYS_PROMPT_MARKER'],
   [new RegExp('^\\s*(system|user|assistant)\\s*:\\s', 'mi'), 'CHAT_TRANSCRIPT_MARKER'],
   [new RegExp('^\\s*(System|User|Assistant)\\s*:\\s', 'm'), 'CHAT_TRANSCRIPT_MARKER_EN'],
 ];
 
-const TEXT_SUFFIXES = new Set(['.md', '.json', '.yaml', '.yml', '.txt', '.go']);
+// Public text and executable script suffixes covered by the hygiene scan.
+// .mjs/.js/.ts/.sh cover the public CI scripts themselves so a credential-like
+// value or model endpoint in an executable script cannot slip past the gate.
+const TEXT_SUFFIXES = new Set([
+  '.md', '.json', '.yaml', '.yml', '.txt', '.go',
+  '.mjs', '.js', '.ts', '.sh',
+]);
 
 const SKIPPED_DIRS = new Set(['.git', 'node_modules', '.b001-toolcache']);
 
@@ -121,9 +128,11 @@ export function collectMarkdownLinkIssues(root, { skipPrefixes = [] } = {}) {
   return { mdCount, issues };
 }
 
-// Scan text files under `root` for secret / endpoint / prompt-body hazards.
-// `skipPrefixes` keeps the validator sources themselves out of the scan
-// (they contain the pattern fragments).
+// Scan text and executable script files under `root` for secret / endpoint /
+// prompt-body hazards. Every pattern is assembled from fragments so the
+// scanner sources can be scanned themselves without a blanket skip:
+// callers must NOT exempt script directories (see the .mjs negative
+// regression in tree-integrity.mjs).
 export function scanTreeForHazards(root, { skipPrefixes = [], extraPatterns = [] } = {}) {
   const findings = [];
   const patterns = [

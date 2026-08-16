@@ -1,6 +1,10 @@
 // B001 tree-integrity validator: scope, Markdown links, JSON parse, and
-// secret / private-path / prompt-body hygiene for the candidate tree.
+// secret / private-path / prompt-body hygiene for the candidate tree
+// (including the executable scripts/ci sources themselves), plus a
+// temporary-fixture regression proving the hygiene scan really covers .mjs
+// files under a scripts/ci-shaped path.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {
   BASE_COMMIT,
@@ -53,10 +57,9 @@ export function run(ctx) {
     else ok('LICENSE untouched, exact MIT text');
   }
 
-  // ---- Markdown links ----
-  const { mdCount, issues: linkIssues } = collectMarkdownLinkIssues(ctx.repo, {
-    skipPrefixes: ['scripts/ci/'],
-  });
+  // ---- Markdown links (no blanket scripts/ci skip: every Markdown document
+  // in the tree participates) ----
+  const { mdCount, issues: linkIssues } = collectMarkdownLinkIssues(ctx.repo);
   if (linkIssues.length > 0) {
     for (const issue of linkIssues.slice(0, 20)) {
       fail(`broken relative link: ${issue.file} -> ${issue.target} (${issue.reason})`);
@@ -81,14 +84,39 @@ export function run(ctx) {
   } else ok(`${jsonCount} JSON files parse`);
 
   // ---- secret / private-path / prompt-body hygiene ----
-  const hazards = scanTreeForHazards(ctx.repo, {
-    skipPrefixes: ['scripts/ci/'],
-  });
+  // No blanket skip for scripts/ci: the executable public scripts are scanned
+  // too. This is safe because every hazard literal in lib/scan.mjs is
+  // assembled from fragments, so the scanner cannot flag its own source.
+  const hazards = scanTreeForHazards(ctx.repo);
   if (hazards.length > 0) {
     for (const h of hazards.slice(0, 20)) {
       fail(`hazard ${h.hazard} in ${h.file}: ${JSON.stringify(h.sample)}`);
     }
-  } else ok('no credential material, private absolute paths, model endpoints or prompt bodies');
+  } else ok('no credential material, private absolute paths, model endpoints or prompt bodies (scripts/ci included)');
+
+  // ---- hygiene regression (B001-GPT-001): a forbidden hazard inside a
+  // temporary .mjs file under a scripts/ci-shaped path MUST be detected ----
+  const probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aipt-hygiene-probe-'));
+  try {
+    const probeRel = path.join('scripts', 'ci', 'probe.mjs');
+    const probeFile = path.join(probeDir, probeRel);
+    fs.mkdirSync(path.dirname(probeFile), { recursive: true });
+    // The forbidden endpoint is assembled from fragments at runtime, so this
+    // validator source never contains the literal hazard string.
+    fs.writeFileSync(
+      probeFile,
+      `// temporary hygiene negative probe\nexport const probeEndpoint = 'https://${['api', 'deepseek', 'com'].join('.')}/v1';\n`,
+    );
+    const probeFindings = scanTreeForHazards(probeDir);
+    const detected = probeFindings.some(
+      (f) => f.file === 'scripts/ci/probe.mjs' && f.hazard === 'DEEPSEEK_ENDPOINT',
+    );
+    if (!detected) {
+      fail('hygiene regression: runtime-assembled forbidden endpoint in temp scripts/ci/probe.mjs was NOT detected (.mjs support or script-tree coverage regressed)');
+    } else ok('hygiene regression: .mjs negative probe under scripts/ci/ detected (script-tree coverage intact)');
+  } finally {
+    fs.rmSync(probeDir, { recursive: true, force: true });
+  }
 
   return { name: 'tree-integrity', result: pass ? 'PASS' : 'FAIL', details };
 }

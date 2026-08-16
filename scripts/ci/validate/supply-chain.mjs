@@ -174,11 +174,13 @@ export function run(ctx) {
   if (!actionTimestamps) fail('ci-actions.lock.json missing source verification timestamps');
   else ok('ci-actions.lock.json records source verification times');
 
-  // ---- secret / real-model-config hygiene on tracked config ----
-  const hazards = scanTreeForHazards(ctx.repo, { skipPrefixes: ['scripts/ci/'] });
+  // ---- secret / real-model-config hygiene on tracked config AND executable
+  // scripts (no blanket scripts/ci skip; the scanner sources are self-safe
+  // because every hazard literal is assembled from fragments) ----
+  const hazards = scanTreeForHazards(ctx.repo);
   if (hazards.length > 0) {
     for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}: ${JSON.stringify(h.sample)}`);
-  } else ok('no secrets, private paths, model endpoints or prompt bodies in tracked config');
+  } else ok('no secrets, private paths, model endpoints or prompt bodies in tracked config or executable scripts');
   if (workflow.includes('secrets.')) fail('workflow references secrets.*');
   else ok('workflow secret-free');
 
