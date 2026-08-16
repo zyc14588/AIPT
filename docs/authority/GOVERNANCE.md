@@ -65,7 +65,7 @@
 ## 8. 高风险双审计与 MERGE_HOLD
 
 - GPT 为主要实质审计者（`R10-F003`）。
-- 高风险/生产边界由第二厂商（Anthropic Claude Web）独立审计；第二审计 `FAIL`/`BLOCKED` 触发 `AUDIT_DISPUTE` 与 `MERGE_HOLD`（`R10-F003`）。
+- 高风险/生产边界由第二厂商（Anthropic Claude Web）独立审计；第二审计 `FAIL`/`BLOCKED` 触发 `AUDIT_DISPUTE` 与 `MERGE_HOLD`（`R10-F003`、`R9-F003`）。
 - 第二审计者未配置时允许开发态施工与真实桌测，生产/发行 Gate 阻塞（`R13-Q024`）。
 - MVP Development Pass 以 GPT 审计为硬门禁；Claude 完成管理员批准后用于生产/高风险（`R14-Q024`）。
 - 当前第二审计状态：`ADMIN_APPROVAL_AND_PRIVACY_PROFILE_PENDING`，尚不具备生产资格（见 [registry/project-status.json](registry/project-status.json)）。

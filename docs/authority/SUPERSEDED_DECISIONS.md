@@ -47,7 +47,7 @@
 | `R3-Q009`（REFINED） | `R3-F001`（ACTIVE） | `REFINEMENT` | 无作者语义图时 AIPT 推断图只能支持探索，作者确认前不能支持正式 Gate。 | AIPT 推断语义图仅为未验证探索图；作者审核前不能支持 MODULE/Release PASS |
 | `R4-Q004`（REFINED） | `R4-F005`（ACTIVE） | `REFINEMENT` | 第一阶段 stdio JSON-RPC，后续增加 UDS，协议支持两种传输。 | 协议支持 stdio 与 UDS；施工顺序 stdio 后 UDS |
 | `R4-Q003`（REFINED） | `R4-F001`（ACTIVE） | `REFINEMENT` | 双进程指两个长期应用服务，不排除 PostgreSQL 和短生命周期 Worker。 | 两个长期应用服务；PostgreSQL 为基础设施，Worker 为短生命周期进程 |
-| `R4-Q016`（REFINED） | `R4-F002`（ACTIVE） | `REFINEMENT` | 远端处理边界通过字段级数据分类与 fail-closed 默认实施。 | 内容按 PUBLIC/UNRELEASED_REMOTE_ALLOWED/TABLE_HIDDEN_REMOTE_ALLOWED/LOCAL_ONLY_SECRET/HUMAN_PRIVATE/CREDENTIAL 分类 |
+| `R4-Q016`（REFINED） | `R4-F002`（ACTIVE） | `REFINEMENT` | 远端处理边界通过字段级数据分类与 fail-closed 默认实施。 | 内容按 PUBLIC/UNRELEASED_REMOTE_ALLOWED/TABLE_HIDDEN_REMOTE_ALLOWED/LOCAL_ONLY_SECRET/HUMAN_PRIVATE_DATA/CREDENTIAL_SECRET 分类 |
 | `R14-Q022`（REFINED） | `R14-F001`（ACTIVE） | `REFINEMENT` | 默认六场 Campaign 保持，MVP 资格额外增加两场 Mutant Run，总计八场。 | 保留六场基础 Campaign，追加两场 Mutant Qualification，总计 8 场 |
 | `R14-F004`（REFINED） | `DCA-Q003`（ACTIVE） | `REFINEMENT` | 备用模型使用必须是独立管理员批准 Profile，自动切换不直接作为正式结果。 | Claude 自动切换响应仅作 FALLBACK_ATTEMPT；管理员按 Fable 5、Opus 5、Opus 4.8 建立独立审计 |
 | `R15-F004`（REFINED） | `DCA-Q003`（ACTIVE） | `REFINEMENT` | 管理员声明仍是最低身份凭证，但必须记录自动切换并按独立重试阶梯处理。 | Claude 自动切换响应仅作 FALLBACK_ATTEMPT；管理员按 Fable 5、Opus 5、Opus 4.8 建立独立审计 |
@@ -62,7 +62,7 @@
 4. **审计角色**：`R9-Q017`（Codex 审计）→ `R9-F001`（Codex 准备 AUDIT_READY 包，GPT 主审）；`R9-Q019` → `R10-F003`（Claude 第二审计与 MERGE_HOLD）。
 5. **商业平台**：`R15-Q012`/`R15-F007`（一般免费托管豁免）→ `DCA-Q006`（存在广告/订阅/付费权益/获客用途即需授权）。
 6. **Claude 自动切换**：`R15-F003`/`R14-F004`/`R15-F004` → `DCA-Q003`（只记 FALLBACK_ATTEMPT，管理员建立独立 Profile 审计）。
-7. **批次命令证据**：`R12-Q024`（全部探索过程）→ `R12-F004`（开发/M0 仅保存最终必需验收、CI 与适用审计）。
+7. **批次命令证据**：`R12-Q024`（要求 CI 与适用审计通过，本就不要求全部探索/失败命令）→ `R12-F004`（留存证据收敛为最终必需验收命令、退出码、CI 与审计）。
 8. **B000 CI**：`R12-Q024` → `BOOTSTRAP-Q001`（B000 无 CI 一次性例外；B001 建 CI 后追溯验证 B000）。
 9. **Claude 隐私状态**：`R15-F005` → `DCA-Q004`（未知时仅开发 Break-glass；生产/发行须已知状态或 Incognito 证据）。
 10. **准据法**：`R16-Q015` → `DCA-Q005`（昆士兰州及适用澳大利亚联邦法律；保留中国大陆不可排除强制法）。

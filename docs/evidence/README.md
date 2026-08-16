@@ -14,7 +14,7 @@
 2. `AUDIT_READY`：Codex CLI 只读核验远端 Commit、规范化证据并生成审计包（`R9-F001`、`R10-Q005`）。
 3. `AUDIT_RESULT`：GPT 主审产出结构化审计结论（`R9-F001`、`R10-F003`）。
 
-Canonical JSON 为机器权威；审计包以版本化 JSON Manifest 为机器权威（`R10-Q002`）。
+Canonical JSON 为机器权威（`R8-Q021`）；审计包以版本化 JSON Manifest 为机器权威（`R9-Q002`）；版本化审计 Schema 在公开仓库维护（`R10-Q002`）。
 
 ## 披露 Profile
 
@@ -37,13 +37,13 @@ Canonical JSON 为机器权威；审计包以版本化 JSON Manifest 为机器�
 | AIPT / Harness | 产出 `RAW_CAPTURE` |
 | Codex CLI | 只读核验、规范化、生成 `AUDIT_READY`；只写独立 audit-output（`R10-Q005`、`R11-Q003`） |
 | GPT | 主要实质审计，产出 `AUDIT_RESULT`（`R10-F003`） |
-| Claude Web | 独立第二审计；`FAIL`/`BLOCKED` 触发 `AUDIT_DISPUTE` 与 `MERGE_HOLD`（`R10-F003`） |
+| Claude Web | 独立第二审计；`FAIL`/`BLOCKED` 触发 `AUDIT_DISPUTE` 与 `MERGE_HOLD`（`R10-F003`、`R9-F003`） |
 
 ## 开发与生产的验证差异
 
 - 开发：允许引用封存父包的增量包；生产/发行使用自包含包（`R10-Q008`）。
 - 开发命令证据较轻（记录命令/退出码即可）；生产/发行测试、构建、迁移与资格命令保存完整执行身份（`R11-F001`、`R12-F004`）。
-- 生产/发行追加完整证据资格、签名与核心环境完整性验证（`R10-F002`）。
+- 生产/发行追加完整证据资格、签名与核心环境完整性验证（`R10-F002`、`R9-Q015`、`R9-F002`、`R10-Q016`）。
 - 开发可风险接受；生产和发行双审计冲突不能仅靠风险接受合并（`R16-Q005`）。
 
 ## B000 Bootstrap 简化证据路径

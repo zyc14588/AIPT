@@ -54,7 +54,7 @@
 | 队列 | Campaign→Suite→Case→Run；Attempt 是 Run 内部记录；PostgreSQL 持久队列 | `R8-F001`、`R8-Q003`、`R8-Q005`、`R8-Q006` |
 | Campaign | 默认六场；MVP 资格另加两场 Mutant，共八场 | `R14-F001` |
 | MVP 阵容 | 1 GM + 4 玩家（固定四名 Sentinel 角色） | `R12-Q008`、`R13-Q009` |
-| MVP 门禁 | 五场 Clean Run 完成；三个 Mutant 检出；无隐藏信息泄漏；状态可重放；关键路径/结局/恢复可达；GPT 审计 PASS | `R12-Q006`、`R15-Q019`、`R14-Q021`、`R14-Q024` |
+| MVP 门禁 | 五场 Clean Run 完成；三个 Mutant 检出；无隐藏信息泄漏；状态可重放；关键路径/结局/恢复可达；GPT 审计 PASS | `R12-Q006`、`R15-Q019`、`R14-Q021`、`R14-Q024`、`R15-Q020`、`R15-Q022`、`R15-Q024` |
 | 模型分配 | 完整 Campaign 用 deepseek-v4-pro；本地 llama.cpp 只做启动、认证与最小角色调用 | `R14-Q023`、`R12-Q004` |
 
 ## 覆盖率与缺陷
@@ -68,11 +68,11 @@
 
 | 领域 | 当前唯一权威 | 关键决定 ID |
 |---|---|---|
-| 证据流水线 | RAW_CAPTURE→AUDIT_READY→AUDIT_RESULT；Canonical JSON 为机器权威 | `R10-Q001`、`R9-F001` |
-| 证据披露 | PUBLIC、EXTERNAL_AUDITOR、PRIVATE_FULL 三种 Profile；大型证据内容寻址分块 | `R10-Q012`、`R10-Q009` |
-| 审计安全 | 所有环境执行包安全验证；生产/发行追加证据资格、签名和核心环境完整性验证 | `R10-Q013`、`R10-Q014`、`R10-F002` |
-| Codex 权限 | 只读 source-mirror、可销毁 verification-worktree、持久可写 audit-output；无原始 Docker Socket | `R10-Q005`、`R11-Q002`、`R11-Q003`、`R11-Q004` |
-| 双审计 | GPT 主审；Claude Web 为独立第二审计通道；第二审计 FAIL/BLOCKED 触发 MERGE_HOLD | `R10-F003`、`R13-Q024`、`R14-Q024` |
+| 证据流水线 | RAW_CAPTURE→AUDIT_READY→AUDIT_RESULT；Canonical JSON 为机器权威；审计包以版本化 JSON Manifest 为机器权威 | `R10-Q001`、`R9-F001`、`R8-Q021`、`R9-Q002` |
+| 证据披露 | PUBLIC、EXTERNAL_AUDITOR、PRIVATE_FULL 三种 Profile；大型证据内容寻址分块 | `R10-Q012`、`R10-Q009`、`R9-Q013` |
+| 审计安全 | 所有环境执行包安全验证；生产/发行追加证据资格、签名和核心环境完整性验证 | `R10-Q013`、`R10-Q014`、`R10-F002`、`R9-Q015`、`R9-F002`、`R10-Q016` |
+| Codex 权限 | 只读 source-mirror、可销毁 verification-worktree、持久可写 audit-output；无原始 Docker Socket | `R10-Q005`、`R11-Q002`、`R11-Q003`、`R11-Q004`、`R11-F005` |
+| 双审计 | GPT 主审；Claude Web 为独立第二审计通道；第二审计 FAIL/BLOCKED 触发 MERGE_HOLD | `R10-F003`、`R13-Q024`、`R14-Q024`、`R9-F003` |
 | Claude 路由 | Fable 5、Opus 5、Opus 4.8 是管理员独立重试 Profile；自动切换只记录为 FALLBACK_ATTEMPT | `DCA-Q003`、`DCA-Q004`、`R15-F001`、`R15-F002` |
 
 ## 许可、管理员与集成
