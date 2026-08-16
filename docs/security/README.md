@@ -23,8 +23,8 @@
 - `UNRELEASED_REMOTE_ALLOWED`：未发布但允许按策略发送远端模型。
 - `TABLE_HIDDEN_REMOTE_ALLOWED`：桌面隐藏信息，按策略允许远端。
 - `LOCAL_ONLY_SECRET`：**默认阻塞**远端发送；仅诊断 break-glass 可外发且运行失格（`R6-F002`）。
-- `HUMAN_PRIVATE`：真人隐私数据。
-- `CREDENTIAL`：凭据。
+- `HUMAN_PRIVATE_DATA`：真人隐私数据。
+- `CREDENTIAL_SECRET`：凭据。
 
 ## 提示注入防护
 
@@ -38,8 +38,9 @@
 
 ## 本地端点与界面
 
-- 本地模型端点默认仅 **Loopback**（`R6-Q020`）。
-- 本地 Web UI 使用动态 Loopback 端口（`R7-Q014`）；loopback llama.cpp 首版不设置 API Key（`R7-Q017`）。
+- AIPT Web UI 仅绑定 `127.0.0.1`，无登录认证；仍强制 Origin/CSRF 等 Web 安全控制（`R4-Q019`）。
+- llama.cpp 本地模型端点默认仅 **Loopback**（`R6-Q020`）；Launcher 为其分配动态 Loopback 端口（`R7-Q014`）。
+- loopback llama.cpp 首版不设置 API Key（`R7-Q017`）。
 
 ## 不可豁免门禁
 

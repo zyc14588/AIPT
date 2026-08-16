@@ -28,7 +28,7 @@
 
 | 领域 | 当前唯一权威 | 关键决定 ID |
 |---|---|---|
-| 技术栈 | Go Core + TypeScript Harness Adapter/Web UI；单一多语言 Monorepo | `R0-Q005`、`R2-Q008` |
+| 技术栈 | Go Core + TypeScript Harness Adapter/Web UI；单一多语言 Monorepo | `R4-Q001`、`R4-Q002`、`R2-Q008` |
 | 进程边界 | 长期应用服务为 AIPT Core 与 Harness Host；PostgreSQL 是基础设施；适配器 Worker 短生命周期 | `R4-F001` |
 | IPC | 第一阶段 stdio JSON-RPC；后续增加 Unix Domain Socket | `R4-F005` |
 | 持久化 | PostgreSQL 追加式哈希链事件账本为权威；快照、UI 和 Harness Session 均为派生/次级 | `R4-Q008`、`R4-Q009` |
@@ -51,7 +51,7 @@
 
 | 领域 | 当前唯一权威 | 关键决定 ID |
 |---|---|---|
-| 队列 | Campaign→Suite→Case→Run；Attempt 是 Run 内部记录；PostgreSQL 持久队列 | `R8-F001`、`R8-Q003`、`R8-Q005` |
+| 队列 | Campaign→Suite→Case→Run；Attempt 是 Run 内部记录；PostgreSQL 持久队列 | `R8-F001`、`R8-Q003`、`R8-Q005`、`R8-Q006` |
 | Campaign | 默认六场；MVP 资格另加两场 Mutant，共八场 | `R14-F001` |
 | MVP 阵容 | 1 GM + 4 玩家（固定四名 Sentinel 角色） | `R12-Q008`、`R13-Q009` |
 | MVP 门禁 | 五场 Clean Run 完成；三个 Mutant 检出；无隐藏信息泄漏；状态可重放；关键路径/结局/恢复可达；GPT 审计 PASS | `R12-Q006`、`R15-Q019`、`R14-Q021`、`R14-Q024` |

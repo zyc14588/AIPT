@@ -26,7 +26,7 @@
 
 - 任务层级 `Campaign → Suite → Case → Run`；`Attempt` 是 Run 内部执行记录，不进入用户层级（`R8-F001`）。
 - 每个 Run 生成不可变 Manifest，固定源码、模型、Prompt、阵容、预算与证据（`R8-Q003`）；入队后冻结（`R8-Q005`）。
-- PostgreSQL 持久队列，确定性优先级调度（`R8-Q007`）。
+- PostgreSQL 持久队列（`R8-Q006`），确定性优先级调度（`R8-Q007`）。
 
 ## Campaign 与 Mutant
 

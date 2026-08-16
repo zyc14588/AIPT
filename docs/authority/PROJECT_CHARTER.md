@@ -13,7 +13,7 @@ AIPT 是一个完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌�
 
 ## 2. 首发范围
 
-- 技术栈：Go Core + TypeScript Harness Adapter / Web UI，单一多语言 Monorepo（`R0-Q005`、`R2-Q008`）。
+- 技术栈：Go Core + TypeScript Harness Adapter / Web UI，单一多语言 Monorepo（`R4-Q001`、`R4-Q002`、`R2-Q008`）。
 - 首个真实 MVP：**《未登记》UNREGISTERED** 任务 0（`R12-Q001`、`R12-Q013`），当前就绪等级 `PLAYTESTABLE_DRAFT`（`R13-Q007`）。
 - 基准桌：1 GM + 4 玩家（`R12-Q008`）。
 - AIPT 自带内容收敛为**最小非叙事协议夹具**，仅测试 Schema / JSON-RPC / 账本 / 投影 / 回放 / 证据，不维护第二套完整 TRPG（`DCA-Q001`）。

@@ -1321,7 +1321,7 @@
     {
       "decision_id": "R4-F002",
       "choice": "C",
-      "qualifier": "内容按 PUBLIC/UNRELEASED_REMOTE_ALLOWED/TABLE_HIDDEN_REMOTE_ALLOWED/LOCAL_ONLY_SECRET/HUMAN_PRIVATE/CREDENTIAL 分类",
+      "qualifier": "内容按 PUBLIC/UNRELEASED_REMOTE_ALLOWED/TABLE_HIDDEN_REMOTE_ALLOWED/LOCAL_ONLY_SECRET/HUMAN_PRIVATE_DATA/CREDENTIAL_SECRET 分类",
       "domain": "architecture-security-storage",
       "status": "ACTIVE",
       "superseded_by": [],
