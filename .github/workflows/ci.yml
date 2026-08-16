@@ -119,7 +119,10 @@ jobs:
           docker pull "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
           PG_VERSION="$(docker run --rm "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636" postgres --version)"
           echo "postgres --version => ${PG_VERSION}"
-          test "${PG_VERSION}" = "postgres (PostgreSQL) 18.4"
+          case "${PG_VERSION}" in
+            "postgres (PostgreSQL) 18.4"*) ;;
+            *) echo "unexpected postgres version: ${PG_VERSION}"; exit 1 ;;
+          esac
           REPO_DIGESTS="$(docker image inspect "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636" --format '{{join .RepoDigests ","}}')"
           echo "RepoDigests: ${REPO_DIGESTS}"
           case "${REPO_DIGESTS}" in

@@ -101,6 +101,7 @@
         "verified_at": "2026-08-16T06:51:41Z"
       },
       "expected_version_output": "postgres (PostgreSQL) 18.4",
+      "version_match": "prefix — the Docker Official Image appends the standard Debian build suffix (CI observed: postgres (PostgreSQL) 18.4 (Debian 18.4-1.pgdg13+1)); the pinned major.minor.patch 18.4 must match exactly",
       "repo_pins": [
         ".github/workflows/ci.yml (digest-pinned docker pull/run)",
         "tools/supply-chain/licenses.json (image identity)"
