@@ -2,7 +2,9 @@
 
 > 本页由机器种子 `DEFERRED_PARAMETERS.json` 生成。机器权威为
 > [registry/deferred-parameters.json](registry/deferred-parameters.json)。
-> 以下全部参数**尚未冻结**：任何文档不得把它们写成已实现或已关闭的能力。
+> 16 项参数中，**`DEFER-016` 已 `RESOLVED`**（B001 已冻结精确工具链版本，见
+> [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）；其余 15 项**尚未冻结**：
+> 任何文档不得把它们写成已实现或已关闭的能力。
 > 状态名与含义：
 
 - `OPEN_EXTERNAL_DEPENDENCY`：等待外部依赖确定。
@@ -14,6 +16,7 @@
 - `ENVIRONMENT_PROBE_PENDING`：等待环境探测。
 - `POLICY_FROZEN_TEXT_NOT_DRAFTED`：政策已冻结、正文未起草。
 - `DEFERRED_TO_AIPT-M0-B001`：由 B001 批次决定。
+- `RESOLVED`：已由指定批次资格化并冻结；`value` 写入冻结值，`blocks` 清空（当前仅 `DEFER-016`）。
 
 ## 完整延期参数表（共 16 项）
 
@@ -34,7 +37,7 @@
 | `DEFER-013` | claude_opus48_auditor_profile | `UNAPPROVED` | （未设置） | 备用 Opus 4.8 Profile 尚未经过管理员批准。 | formal Opus 4.8 fallback | M0 development | 管理员批准 Opus 4.8 Auditor Profile |
 | `DEFER-014` | unregistered_custom_license_final_legal_text | `POLICY_FROZEN_TEXT_NOT_DRAFTED` | LicenseRef-UNREGISTERED-NC-SA-1.0 | 许可政策已冻结，但最终法律正文未起草且应在发布前法律审阅。 | formal publication of the custom content license | AIPT B000 documentation；draft licensing boundary documentation | 起草正式许可正文并通过发布前法律审阅 |
 | `DEFER-015` | rootless_docker_capability | `ENVIRONMENT_PROBE_PENDING` | Docker confirmed; rootless/isolated context unknown | 当前确认普通用户可运行 Docker，具体 rootless/隔离 Context 能力待探测。 | production Evidence Adapter Docker certification | B000 | 探测并认证 rootless/隔离 Docker Context |
-| `DEFER-016` | go_node_pnpm_postgresql_exact_versions | `DEFERRED_TO_AIPT-M0-B001` | （未设置） | 精确工具链锁定由 B001 资格与 CI 批次决定。 | B001 closeout | B000 | B001 资格与 CI 批次锁定精确工具链版本 |
+| `DEFER-016` | go_node_pnpm_postgresql_exact_versions | `RESOLVED` | Go 1.26.5 / Node 24.19.0 / pnpm 11.4.0 / PostgreSQL 18.4 | B001 资格批次与公共 CI 已冻结精确版本（`tools/toolchain.lock.json`） | （无） | B000 | 已由 B001 关闭 |
 
 ## 必须公开强调的延期项
 
@@ -45,9 +48,9 @@
 - Claude `Model Improvement` 状态与备用 Profile 批准（`DEFER-010` 至 `DEFER-013`）：第二审计生产资格未达成。
 - 《未登记》自定义许可最终法律正文（`DEFER-014`）：政策冻结、正文未起草，须发布前法律审阅。
 - rootless Docker 实际资格（`DEFER-015`）：等待环境探测。
-- Go/Node/pnpm/PostgreSQL 精确版本（`DEFER-016`）：由 B001 决定。
+- Go/Node/pnpm/PostgreSQL 精确版本（`DEFER-016`）：**已 `RESOLVED`**——Go 1.26.5 / Node.js 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，由 B001 资格批次与公共 CI 冻结（[../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）。
 
 ## 相邻文档
 
-- [Authority Index](README.md) · [DECISION_MATRIX.md](DECISION_MATRIX.md) · [PROJECT_STATUS.md](PROJECT_STATUS.md) · [registry/deferred-parameters.json](registry/deferred-parameters.json)
+- [Authority Index](README.md) · [DECISION_MATRIX.md](DECISION_MATRIX.md) · [PROJECT_STATUS.md](PROJECT_STATUS.md) · [registry/deferred-parameters.json](registry/deferred-parameters.json) · [../supply-chain/README.md](../supply-chain/README.md)
 - [返回仓库首页](../../README.md)

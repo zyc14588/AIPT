@@ -1,0 +1,35 @@
+{
+  "schema": "aipt.public.supply-chain-policy/v1",
+  "selected_by_batch": "AIPT-M0-B001",
+  "generated_at": "2026-08-16",
+  "authority_reference": "R4-Q023",
+  "rules": {
+    "exact_toolchain_versions_required": true,
+    "frozen_pnpm_lock_required": true,
+    "go_module_tidy_clean_required": true,
+    "action_full_sha_pin_required": true,
+    "container_digest_pin_required": true,
+    "dependency_license_record_required": true,
+    "unknown_license_blocks": true,
+    "sbom_required": true,
+    "vulnerability_scan_required": true,
+    "source_provenance_required": true,
+    "public_ci_secret_reference_forbidden": true,
+    "remote_model_call_forbidden": true
+  },
+  "license_policy": {
+    "no_complex_whitelist": true,
+    "current_third_party_application_runtime_dependencies": 0,
+    "future_dependency_rule": "Any future third-party dependency must first receive an explicit entry in tools/supply-chain/licenses.json and an approval record before it may enter go.mod / pnpm-lock.yaml; a discovered dependency without a license record fails the CI gate."
+  },
+  "sbom_policy": {
+    "format": "SPDX 2.3 JSON",
+    "determinism": "same inputs must produce byte-identical output (verified by generating twice in CI)",
+    "committed_artifacts": "B001 does not commit generated SBOM artifacts; CI generates, verifies determinism and records SHA-256."
+  },
+  "vulnerability_policy": {
+    "go": "official Go vulnerability tooling (govulncheck), exact tool version pinned in tools/toolchain.lock.json tooling section",
+    "node": "pnpm audit via pinned pnpm 11.4.0",
+    "advisory_data": "scanner/advisory database data is intentionally NOT pinned; fresh advisories may fail future CI by design."
+  }
+}

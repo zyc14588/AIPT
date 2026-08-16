@@ -6,10 +6,12 @@ AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`），正在 M0 施工；当前批次 `AIPT-M0-B000` |
+| `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`），正在 M0 施工；当前批次 `AIPT-M0-B001`（`B001_IN_PROGRESS`） |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`：冻结等待平台 M1 游戏引擎，解冻未获授权 |
 
-**设计基线已冻结、运行时代码尚未建设。** `AIPT-M0-B000` 只安装公共权威文档、MIT 许可与机器决策登记，不实现任何运行时代码，也不建立 CI。
+批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）。当前批次 = `AIPT-M0-B001`：Go/pnpm 工具链骨架、无秘密公共 CI、供应链基础（`R4-Q023`），并首次用 CI 追溯验证 B000。已验证接受的主线基点 = `777a3f39ba78c1ef3168597890c61abf7a55d962`。GLOBAL_WIP = 1。
+
+**设计基线已冻结、运行时代码尚未建设。** B001 只建立工程骨架（工具链、CI、供应链门禁），不实现 Core、Launcher、Schema、JSON-RPC、Adapter 或 DB 业务代码；`AIPT-M0-B002` 尚未授权；`AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`。
 
 首个真实游戏目标为 **《未登记》UNREGISTERED**（当前就绪等级 `PLAYTESTABLE_DRAFT`）。
 
@@ -19,12 +21,13 @@ AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌
 - 项目现状与下一步：[docs/authority/PROJECT_STATUS.md](docs/authority/PROJECT_STATUS.md)
 - 里程碑合同：[docs/milestones/M0.md](docs/milestones/M0.md) 与 [docs/milestones/MVP.md](docs/milestones/MVP.md)
 - 机器决策权威：[docs/authority/registry/decisions.json](docs/authority/registry/decisions.json)（共 454 条决策 ID）
+- 工具链与供应链：[docs/supply-chain/README.md](docs/supply-chain/README.md) 与 [tools/toolchain.lock.json](tools/toolchain.lock.json)
 
 ## 面向读者
 
 | 读者 | 最短阅读路径 |
 |---|---|
-| 施工者（实施批次） | [docs/authority/README.md](docs/authority/README.md) → [docs/authority/DECISION_MATRIX.md](docs/authority/DECISION_MATRIX.md) → [docs/authority/GOVERNANCE.md](docs/authority/GOVERNANCE.md) → [docs/milestones/M0.md](docs/milestones/M0.md) |
+| 施工者（实施批次） | [docs/authority/README.md](docs/authority/README.md) → [docs/authority/DECISION_MATRIX.md](docs/authority/DECISION_MATRIX.md) → [docs/authority/GOVERNANCE.md](docs/authority/GOVERNANCE.md) → [docs/milestones/M0.md](docs/milestones/M0.md) → [docs/supply-chain/README.md](docs/supply-chain/README.md) |
 | 审计者（GPT 主审；Claude 第二审计） | [docs/authority/README.md](docs/authority/README.md) → [docs/authority/SUPERSEDED_DECISIONS.md](docs/authority/SUPERSEDED_DECISIONS.md) → [docs/evidence/README.md](docs/evidence/README.md) → [docs/security/README.md](docs/security/README.md) |
 | 游戏适配器作者 | [docs/integration/README.md](docs/integration/README.md) → [docs/architecture/README.md](docs/architecture/README.md) → [docs/milestones/MVP.md](docs/milestones/MVP.md) |
 
@@ -38,6 +41,7 @@ AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌
 | 测试模型 | [docs/test-model/README.md](docs/test-model/README.md) |
 | 多仓库集成 | [docs/integration/README.md](docs/integration/README.md) |
 | 许可 | [docs/licensing/README.md](docs/licensing/README.md) |
+| 供应链 | [docs/supply-chain/README.md](docs/supply-chain/README.md) |
 
 ## 权威与冲突处理
 
@@ -54,5 +58,5 @@ MIT 只覆盖 AIPT 本体，**不自动覆盖**游戏内容：《未登记》游
 ## 仓库与分支
 
 - 仓库：<https://github.com/zyc14588/AIPT>，权威分支 `main`。
-- 施工使用独立任务分支（如 `task/AIPT-M0-B000`）与隔离工作树；候选 Commit 推送后，经独立本地验收与 GPT 审计核验，仅由用户批准才合并到 `main`。
-- `AIPT-M0-B000` 是一次性 Bootstrap 例外：无 CI，以最终本地确定性验收 + GPT 审计关闭；`AIPT-M0-B001` 建立公共 CI 并追溯验证 B000。
+- 施工使用独立任务分支（如 `task/AIPT-M0-B001`）与隔离工作树；候选 Commit 推送后，经独立本地验收与 GPT 审计核验，仅由用户批准才合并到 `main`。
+- `AIPT-M0-B000` 是一次性 Bootstrap 例外：无 CI，以最终本地确定性验收 + GPT 审计关闭（已 `MERGED/CLOSED`）；`AIPT-M0-B001` 建立公共 CI 并追溯验证 B000（`b000-retro` job）。

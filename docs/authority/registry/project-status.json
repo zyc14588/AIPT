@@ -5,7 +5,11 @@
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "AIPT-M0-B000_READY_TO_EXECUTE",
+      "construction": "AIPT-M0-B001_IN_PROGRESS",
+      "current_batch": "AIPT-M0-B001",
+      "batch_history": {
+        "AIPT-M0-B000": "MERGED_CLOSED"
+      },
       "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
@@ -17,8 +21,8 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "8b1c6b322c0a1a14df33b0e29e8324d4f1dd1f61",
-      "verified_state": "one placeholder README commit"
+      "verified_head": "777a3f39ba78c1ef3168597890c61abf7a55d962",
+      "verified_state": "AIPT-M0-B000 merge commit (merged/closed); AIPT-M0-B001 in progress on task/AIPT-M0-B001"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",
@@ -29,6 +33,7 @@
     }
   },
   "runtime": {
+    "status": "not built yet",
     "deepseek_harness_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "harness_installation": "source",
     "os": "Ubuntu 26.04 LTS",

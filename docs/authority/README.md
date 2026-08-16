@@ -35,7 +35,20 @@ AIPT 的权威信息分两层：
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | 当前项目状态与下一步 |
 | [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) | 全局串行批次依赖图 |
 
-领域文档：架构 [../architecture/README.md](../architecture/README.md) · 安全 [../security/README.md](../security/README.md) · 证据 [../evidence/README.md](../evidence/README.md) · 测试模型 [../test-model/README.md](../test-model/README.md) · 集成 [../integration/README.md](../integration/README.md) · 许可 [../licensing/README.md](../licensing/README.md)
+领域文档：架构 [../architecture/README.md](../architecture/README.md) · 安全 [../security/README.md](../security/README.md) · 证据 [../evidence/README.md](../evidence/README.md) · 测试模型 [../test-model/README.md](../test-model/README.md) · 集成 [../integration/README.md](../integration/README.md) · 许可 [../licensing/README.md](../licensing/README.md) · 供应链 [../supply-chain/README.md](../supply-chain/README.md)
+
+## 工具与供应链登记（B001）
+
+B001 建立公共 CI 与供应链基础后，以下工具登记随仓库同行（工程锁，不是决策权威）：
+
+| 登记 | 内容 |
+|---|---|
+| [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json) | 精确工具链资格：Go 1.26.5 / Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，含官方来源、完整性材料与验证时间 |
+| [../../tools/ci-actions.lock.json](../../tools/ci-actions.lock.json) | 公共 CI Actions 的稳定 tag → 完整 Commit SHA 映射与来源验证 |
+| [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json) | `R4-Q023` 供应链机器规则 |
+| [../../tools/supply-chain/licenses.json](../../tools/supply-chain/licenses.json) | 许可证清单（AIPT MIT、CI Actions、工具链与扫描工具） |
+
+规则：Workflow `uses:` 必须与该登记一致；任何新依赖必须先进入许可证清单并获得批准记录。
 
 ## 最短阅读路径
 
@@ -49,7 +62,7 @@ AIPT 的权威信息分两层：
 ## 状态名约定
 
 - 决策状态：`ACTIVE`（当前权威）、`REFINED`（已被细化，指向细化决定）、`SUPERSEDED`（已被取代，指向取代决定）。
-- 延期参数状态：见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)，全部为非冻结状态（如 `DEFERRED_TO_*`、`ADMIN_DECISION_PENDING`），不得写成已实现。
+- 延期参数状态：见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)。`DEFER-016` 已由 B001 资格批次 `RESOLVED`（精确工具链版本已冻结）；其余 15 项为非冻结状态（如 `DEFERRED_TO_*`、`ADMIN_DECISION_PENDING`），不得写成已实现。
 
 ## 返回
 

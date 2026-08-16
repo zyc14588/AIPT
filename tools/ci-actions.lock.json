@@ -1,0 +1,44 @@
+{
+  "schema": "aipt.public.ci-actions-lock/v1",
+  "selected_by_batch": "AIPT-M0-B001",
+  "generated_at": "2026-08-16",
+  "policy": {
+    "full_sha_pin_required": true,
+    "floating_refs_forbidden": [
+      "@main",
+      "@master",
+      "@vN"
+    ],
+    "tag_comments_informational_only": true,
+    "workflow_source": ".github/workflows/ci.yml"
+  },
+  "actions": [
+    {
+      "repository": "actions/checkout",
+      "stable_release_tag": "v7.0.1",
+      "resolved_commit_sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "release_published_at": "2026-07-20T15:10:05Z",
+      "license": "MIT",
+      "source_verified_at": "2026-08-16T06:51:41Z",
+      "purpose": "checkout repository sources in public CI (full history where fixed-commit validation is needed)"
+    },
+    {
+      "repository": "actions/setup-go",
+      "stable_release_tag": "v7.0.0",
+      "resolved_commit_sha": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+      "release_published_at": "2026-07-16T02:50:50Z",
+      "license": "MIT",
+      "source_verified_at": "2026-08-16T06:51:41Z",
+      "purpose": "install the exact pinned Go toolchain (1.26.5) on GitHub-hosted Linux runners"
+    },
+    {
+      "repository": "actions/setup-node",
+      "stable_release_tag": "v7.0.0",
+      "resolved_commit_sha": "820762786026740c76f36085b0efc47a31fe5020",
+      "release_published_at": "2026-07-14T02:46:05Z",
+      "license": "MIT",
+      "source_verified_at": "2026-08-16T06:51:41Z",
+      "purpose": "install the exact pinned Node.js LTS (24.19.0) on GitHub-hosted Linux runners"
+    }
+  ]
+}

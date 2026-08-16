@@ -1,0 +1,19 @@
+{
+  "name": "aipt",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. B001 scope: Go/pnpm toolchain skeleton, public secret-free CI, and supply-chain foundation only; no runtime packages yet.",
+  "license": "MIT",
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "check": "node scripts/ci/run-checks.mjs",
+    "check:retro": "node scripts/ci/validate/b000-retro.mjs",
+    "check:supply-chain": "node scripts/ci/validate/supply-chain.mjs",
+    "check:sbom": "node scripts/ci/validate/sbom.mjs",
+    "sbom": "node scripts/ci/sbom/generate-sbom.mjs",
+    "provenance": "node scripts/ci/provenance.mjs"
+  }
+}

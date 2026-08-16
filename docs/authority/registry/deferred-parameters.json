@@ -208,12 +208,12 @@
     {
       "parameter_id": "DEFER-016",
       "name": "go_node_pnpm_postgresql_exact_versions",
-      "status": "DEFERRED_TO_AIPT-M0-B001",
-      "value": null,
-      "reason": "精确工具链锁定由 B001 资格与 CI 批次决定。",
-      "blocks": [
-        "B001 closeout"
-      ],
+      "status": "RESOLVED",
+      "value": "go 1.26.5, node 24.19.0, pnpm 11.4.0, postgresql 18.4",
+      "reason": "B001 资格批次与公共 CI 已冻结精确版本；完整资格与完整性材料见 tools/toolchain.lock.json。",
+      "resolved_by_batch": "AIPT-M0-B001",
+      "resolution": "tools/toolchain.lock.json",
+      "blocks": [],
       "does_not_block": [
         "B000"
       ]
