@@ -1,0 +1,7 @@
+# AIPT pnpm workspace.
+#
+# B001 keeps the workspace empty by design: no runtime packages exist yet and
+# no runtime dependency is allowed in this batch. Future batches register
+# runtime packages (Core tooling, Harness Adapter, Web UI) under packages/*.
+packages:
+  - "packages/*"

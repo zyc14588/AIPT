@@ -86,13 +86,14 @@
 | 不可豁免门禁 | Commit/Tree、哈希/签名、凭据、隐藏信息、权威状态和账本完整性故障不得被管理员覆盖 | `R16-Q003`、`R16-Q004` |
 | 平台集成 | 解冻必须同时满足指定 M1 游戏引擎批次通过、稳定接口、兼容探测和用户明确批准 | `R0-Q011`、`DEFER-001` |
 | B000 Bootstrap | 无 CI；以最终本地确定性验收 + GPT 审计关闭；B001 首次 CI 追溯验证 | `BOOTSTRAP-Q001` |
+| B001 供应链基础 | 固定版本、锁文件、SBOM、许可证、漏洞、来源、升级资格的完整供应链门禁；B001 建立无秘密公共 CI 与确定性 SBOM，机器规则见 [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json)，人读文档见 [../supply-chain/README.md](../supply-chain/README.md) | `R4-Q023`、`DEFER-016` |
 | 参考环境 | Ubuntu 26.04 LTS；Bash 启动 + 本地 Web 可视化 | `ENV-F001`、`ENV-F002` |
 
 ## 使用说明
 
 - 需要某条决定的原文语义时，在 [registry/decisions.json](registry/decisions.json) 中按 `decision_id` 查找。
 - `REFINED`/`SUPERSEDED` 决定的当前含义见 [SUPERSEDED_DECISIONS.md](SUPERSEDED_DECISIONS.md) 与 [registry/supersessions.json](registry/supersessions.json)。
-- 延期参数（如 `DEFER-001`）尚未冻结，见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)。
+- 延期参数见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)：`DEFER-016` 已 `RESOLVED`（Go 1.26.5 / Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）；其余 15 项（如 `DEFER-001`）尚未冻结。
 
 ## 相邻文档
 

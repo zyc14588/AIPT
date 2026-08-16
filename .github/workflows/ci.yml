@@ -1,0 +1,182 @@
+name: AIPT M0 B001 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "task/**"
+      - "repair/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aipt-m0-b001-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ------------------------------------------------------------------
+  # Retroactively validate the fixed historical B000 merge commit using
+  # B001's own validators, against a temporary read-only expansion.
+  # ------------------------------------------------------------------
+  b000-retro:
+    name: b000-retro (fixed B000 commit, read-only expansion)
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Record runner environment (evidence)
+        run: |
+          echo "GITHUB_WORKFLOW=$GITHUB_WORKFLOW"
+          echo "GITHUB_RUN_ID=$GITHUB_RUN_ID GITHUB_RUN_ATTEMPT=$GITHUB_RUN_ATTEMPT"
+          echo "GITHUB_REF=$GITHUB_REF GITHUB_SHA=$GITHUB_SHA"
+          echo "RUNNER_OS=$RUNNER_OS RUNNER_ARCH=$RUNNER_ARCH"
+          echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
+          grep -E '^(NAME|PRETTY_NAME|VERSION|VERSION_ID|ID)=' /etc/os-release || true
+          uname -a
+      - name: Checkout B001 candidate (full history for the fixed B000 commit)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup exact Node.js 24.19.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+      - name: Verify exact Node.js version
+        run: |
+          test "$(node --version)" = "v24.19.0"
+          node --version
+      - name: B000 retro validation (fixed commit + fixed expected tree)
+        run: >-
+          node scripts/ci/validate/b000-retro.mjs
+          --repo .
+          --commit 777a3f39ba78c1ef3168597890c61abf7a55d962
+          --expected-tree f5f845b860ba0944ef104b4679fa074ad6efecbb
+
+  # ------------------------------------------------------------------
+  # Exact toolchain qualification on GA and reference runner images.
+  # ------------------------------------------------------------------
+  toolchain:
+    name: toolchain (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-26.04
+    steps:
+      - name: Record runner environment (evidence)
+        run: |
+          echo "GITHUB_WORKFLOW=$GITHUB_WORKFLOW"
+          echo "GITHUB_RUN_ID=$GITHUB_RUN_ID GITHUB_RUN_ATTEMPT=$GITHUB_RUN_ATTEMPT"
+          echo "GITHUB_REF=$GITHUB_REF GITHUB_SHA=$GITHUB_SHA"
+          echo "RUNNER_OS=$RUNNER_OS RUNNER_ARCH=$RUNNER_ARCH"
+          echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
+          grep -E '^(NAME|PRETTY_NAME|VERSION|VERSION_ID|ID)=' /etc/os-release || true
+          uname -a
+      - name: Checkout candidate (full history for retro replay)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup exact Go 1.26.5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache: false
+      - name: Verify exact Go version
+        run: |
+          test "$(go version)" = "go version go1.26.5 linux/amd64"
+          go version
+      - name: Setup exact Node.js 24.19.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+      - name: Verify exact Node.js version
+        run: |
+          test "$(node --version)" = "v24.19.0"
+          node --version
+      - name: Install exact pnpm 11.4.0
+        run: |
+          npm install --global --no-audit --no-fund pnpm@11.4.0
+          test "$(pnpm --version)" = "11.4.0"
+          pnpm --version
+      - name: gofmt check
+        run: |
+          test -z "$(gofmt -l .)"
+          echo "gofmt clean"
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+      - name: pnpm frozen install
+        run: pnpm install --frozen-lockfile
+      - name: B001 Node validators
+        run: pnpm run check
+      - name: PostgreSQL Official Image digest pull/run (exact 18.4)
+        run: |
+          docker pull "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+          PG_VERSION="$(docker run --rm "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636" postgres --version)"
+          echo "postgres --version => ${PG_VERSION}"
+          test "${PG_VERSION}" = "postgres (PostgreSQL) 18.4"
+          REPO_DIGESTS="$(docker image inspect "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636" --format '{{join .RepoDigests ","}}')"
+          echo "RepoDigests: ${REPO_DIGESTS}"
+          case "${REPO_DIGESTS}" in
+            *"sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"*) ;;
+            *) echo "pinned multi-arch digest not reported in RepoDigests"; exit 1 ;;
+          esac
+
+  # ------------------------------------------------------------------
+  # R4-Q023 supply-chain gates.
+  # ------------------------------------------------------------------
+  supply-chain:
+    name: supply-chain (R4-Q023 gates)
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Record runner environment (evidence)
+        run: |
+          echo "GITHUB_WORKFLOW=$GITHUB_WORKFLOW"
+          echo "GITHUB_RUN_ID=$GITHUB_RUN_ID GITHUB_RUN_ATTEMPT=$GITHUB_RUN_ATTEMPT"
+          echo "GITHUB_REF=$GITHUB_REF GITHUB_SHA=$GITHUB_SHA"
+          echo "RUNNER_OS=$RUNNER_OS RUNNER_ARCH=$RUNNER_ARCH"
+          echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
+          grep -E '^(NAME|PRETTY_NAME|VERSION|VERSION_ID|ID)=' /etc/os-release || true
+          uname -a
+      - name: Checkout candidate (full history for provenance)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup exact Go 1.26.5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache: false
+      - name: Setup exact Node.js 24.19.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+      - name: Install exact pnpm 11.4.0
+        run: |
+          npm install --global --no-audit --no-fund pnpm@11.4.0
+          test "$(pnpm --version)" = "11.4.0"
+      - name: Frozen install (lock integrity)
+        run: pnpm install --frozen-lockfile
+      - name: Supply-chain policy / pins / license coverage / secret-free scan
+        run: node scripts/ci/validate/supply-chain.mjs
+      - name: Go module tidy clean (lock integrity)
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          echo "go.mod / go.sum tidy-clean"
+      - name: Go vulnerability scan (govulncheck, exact pinned tool)
+        run: |
+          GOBIN="${RUNNER_TEMP}/bin" go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          "${RUNNER_TEMP}/bin/govulncheck" -version
+          "${RUNNER_TEMP}/bin/govulncheck" ./...
+      - name: pnpm audit
+        run: pnpm audit
+      - name: Deterministic SBOM (generate twice, byte-identical, SHA-256)
+        run: node scripts/ci/validate/sbom.mjs
+      - name: Source provenance metadata
+        run: node scripts/ci/provenance.mjs

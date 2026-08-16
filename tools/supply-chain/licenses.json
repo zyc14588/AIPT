@@ -1,0 +1,88 @@
+{
+  "schema": "aipt.public.supply-chain-licenses/v1",
+  "selected_by_batch": "AIPT-M0-B001",
+  "generated_at": "2026-08-16",
+  "application_dependencies": {
+    "go_runtime_third_party_modules": 0,
+    "pnpm_runtime_third_party_packages": 0,
+    "note": "B001 introduces no third-party application runtime dependency (go.mod has zero require entries; pnpm-lock.yaml records only the private root package). Any future dependency must first be added to records below and receive explicit approval."
+  },
+  "records": [
+    {
+      "id": "AIPT",
+      "kind": "first_party",
+      "license": "MIT",
+      "version": "M0-B001",
+      "evidence": "LICENSE (Copyright (c) 2026 AIPT contributors)",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "actions/checkout",
+      "kind": "ci_action",
+      "license": "MIT",
+      "version": "v7.0.1",
+      "resolved_commit_sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "evidence": "LICENSE file at the pinned commit (The MIT License (MIT))",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "actions/setup-go",
+      "kind": "ci_action",
+      "license": "MIT",
+      "version": "v7.0.0",
+      "resolved_commit_sha": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+      "evidence": "LICENSE file at the pinned commit (The MIT License (MIT))",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "actions/setup-node",
+      "kind": "ci_action",
+      "license": "MIT",
+      "version": "v7.0.0",
+      "resolved_commit_sha": "820762786026740c76f36085b0efc47a31fe5020",
+      "evidence": "LICENSE file at the pinned commit (The MIT License (MIT))",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "go",
+      "kind": "toolchain",
+      "license": "BSD-3-Clause",
+      "version": "1.26.5",
+      "evidence": "Go distribution LICENSE (Copyright 2009 The Go Authors)",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "node",
+      "kind": "toolchain",
+      "license": "MIT",
+      "version": "24.19.0",
+      "evidence": "Node.js distribution LICENSE (MIT; bundled dependencies carry their own notices)",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "pnpm",
+      "kind": "toolchain",
+      "license": "MIT",
+      "version": "11.4.0",
+      "evidence": "pnpm/pnpm LICENSE at tag v11.4.0",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "postgresql",
+      "kind": "infrastructure_image",
+      "license": "PostgreSQL License",
+      "version": "18.4",
+      "image_multi_arch_digest": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "evidence": "Docker Official Image library/postgres:18.4 (PostgreSQL License)",
+      "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "golang.org/x/vuln",
+      "kind": "supply_chain_tooling",
+      "license": "BSD-3-Clause",
+      "version": "v1.7.0",
+      "evidence": "LICENSE at go.googlesource.com/vuln (Copyright 2009 The Go Authors)",
+      "verified_at": "2026-08-16T06:51:41Z"
+    }
+  ]
+}
