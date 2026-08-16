@@ -93,4 +93,4 @@ export function run(ctx) {
   return { name: 'tree-integrity', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('tree-integrity', run);
+runAsMain(import.meta.url, 'tree-integrity', run);

@@ -34,9 +34,13 @@ export function parseArgs(argv) {
 
 // Run a validator as a standalone script when executed directly:
 //   node scripts/ci/validate/<name>.mjs [--repo /path] [extra args]
-export function runAsMain(name, runFn) {
+//
+// The caller must pass its own module identity explicitly so the comparison
+// uses the CALLING validator's file URL, never this helper's import.meta.url:
+//   runAsMain(import.meta.url, '<name>', run);
+export function runAsMain(moduleUrl, name, runFn) {
   const isMain =
-    process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+    process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(moduleUrl);
   if (!isMain) return;
   const args = parseArgs(process.argv.slice(2));
   const ctx = { repo: path.resolve(args.repo || process.cwd()) };

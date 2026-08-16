@@ -21,4 +21,4 @@ export function run(ctx) {
   return { name: 'sbom', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('sbom', run);
+runAsMain(import.meta.url, 'sbom', run);

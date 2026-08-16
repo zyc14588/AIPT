@@ -93,4 +93,4 @@ export function run(ctx) {
   return { name: 'status-transition', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('status-transition', run);
+runAsMain(import.meta.url, 'status-transition', run);

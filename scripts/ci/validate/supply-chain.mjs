@@ -185,4 +185,4 @@ export function run(ctx) {
   return { name: 'supply-chain', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('supply-chain', run);
+runAsMain(import.meta.url, 'supply-chain', run);

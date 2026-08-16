@@ -12,6 +12,7 @@ import { run as runTree } from './validate/tree-integrity.mjs';
 import { run as runRetro } from './validate/b000-retro.mjs';
 import { run as runSupplyChain } from './validate/supply-chain.mjs';
 import { run as runSbom } from './validate/sbom.mjs';
+import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
 import { TASK_ID } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
@@ -24,6 +25,7 @@ const checks = [
   runRetro(ctx),
   runSupplyChain(ctx),
   runSbom(ctx),
+  runStandalone(ctx),
 ];
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';

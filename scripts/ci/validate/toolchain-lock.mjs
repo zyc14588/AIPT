@@ -125,4 +125,4 @@ export function run(ctx) {
   return { name: 'toolchain-lock', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('toolchain-lock', run);
+runAsMain(import.meta.url, 'toolchain-lock', run);

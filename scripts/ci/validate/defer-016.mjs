@@ -116,4 +116,4 @@ export function run(ctx) {
   return { name: 'defer-016', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('defer-016', run);
+runAsMain(import.meta.url, 'defer-016', run);

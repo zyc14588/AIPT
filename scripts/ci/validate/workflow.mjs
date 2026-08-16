@@ -140,4 +140,4 @@ export function run(ctx) {
   return { name: 'workflow', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('workflow', run);
+runAsMain(import.meta.url, 'workflow', run);

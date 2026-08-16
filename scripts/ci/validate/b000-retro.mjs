@@ -165,4 +165,4 @@ export function run(ctx, args = {}) {
   return { name: 'b000-retro', result: pass ? 'PASS' : 'FAIL', details };
 }
 
-runAsMain('b000-retro', run);
+runAsMain(import.meta.url, 'b000-retro', run);
