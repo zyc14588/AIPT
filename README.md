@@ -9,9 +9,9 @@ AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌
 | `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`），正在 M0 施工；当前批次 `AIPT-M0-B002`（`B002_IN_PROGRESS`） |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`：冻结等待平台 M1 游戏引擎，解冻未获授权（`unfreeze_authorized = false`） |
 
-批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）；`AIPT-M0-B001` = **MERGED/CLOSED**（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`，树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`，合并后公共 CI run `31951440133` PASS）。当前批次 = `AIPT-M0-B002`：Schema、JSON-RPC、Adapter SDK 与最小协议夹具合同（协议批次）。已验证接受的主线基点 = `8bcadc9669e7d04f589f883daa6d4f593875fc9e`。GLOBAL_WIP = 1。
+批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）；`AIPT-M0-B001` = **MERGED/CLOSED**（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`，树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`，合并后公共 CI run `31951440133` PASS）。当前批次 = `AIPT-M0-B002`：Schema、JSON-RPC、Adapter SDK 与最小协议夹具合同（协议批次）；迭代 2 已落地权威协议 Schema（`schemas/protocol/v1/`）、游戏中立最小确定性夹具（`testdata/protocol/v1/minimal-fixture/`）与协议资产验证器。已验证接受的主线基点 = `8bcadc9669e7d04f589f883daa6d4f593875fc9e`。GLOBAL_WIP = 1。
 
-**设计基线已冻结、运行时代码尚未建设。** B001 已合并关闭（工具链骨架、公共 CI、供应链门禁）；B002 本迭代仅执行公开状态迁移与验证器基线升级，不实现 Core、Launcher、Schema、JSON-RPC、Adapter 或 DB 业务代码；`AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`。
+**设计基线已冻结、运行时代码尚未建设。** B001 已合并关闭（工具链骨架、公共 CI、供应链门禁）；B002 本迭代新增权威协议 Schema、最小确定性夹具与协议资产验证器（含 Schema/JSON-RPC/可见性负向探针），尚未建设 Adapter SDK、Go 契约与任何 server/socket/worker/model/数据库运行时；`AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`。
 
 首个真实游戏目标为 **《未登记》UNREGISTERED**（当前就绪等级 `PLAYTESTABLE_DRAFT`）。
 
@@ -21,6 +21,7 @@ AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌
 - 项目现状与下一步：[docs/authority/PROJECT_STATUS.md](docs/authority/PROJECT_STATUS.md)
 - 里程碑合同：[docs/milestones/M0.md](docs/milestones/M0.md) 与 [docs/milestones/MVP.md](docs/milestones/MVP.md)
 - 机器决策权威：[docs/authority/registry/decisions.json](docs/authority/registry/decisions.json)（共 454 条决策 ID）
+- 协议契约（B002）：[docs/protocol/README.md](docs/protocol/README.md) → 权威根 [schemas/protocol/v1/aipt-protocol.schema.json](schemas/protocol/v1/aipt-protocol.schema.json) 与最小确定性夹具 [testdata/protocol/v1/minimal-fixture/manifest.json](testdata/protocol/v1/minimal-fixture/manifest.json)
 - 工具链与供应链：[docs/supply-chain/README.md](docs/supply-chain/README.md) 与 [tools/toolchain.lock.json](tools/toolchain.lock.json)
 
 ## 面向读者
@@ -36,6 +37,7 @@ AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌
 | 领域 | 文档 |
 |---|---|
 | 架构 | [docs/architecture/README.md](docs/architecture/README.md) |
+| 协议 | [docs/protocol/README.md](docs/protocol/README.md) |
 | 安全 | [docs/security/README.md](docs/security/README.md) |
 | 证据与审计 | [docs/evidence/README.md](docs/evidence/README.md) |
 | 测试模型 | [docs/test-model/README.md](docs/test-model/README.md) |

@@ -18,7 +18,7 @@ import {
   PG_LINUX_AMD64_PLATFORM_DIGEST,
   PG_MULTI_ARCH_DIGEST,
   REQUIRED_SUPPLY_CHAIN_RULES,
-  TASK_ID,
+  SUPPLY_CHAIN_BASELINE_BATCH,
 } from '../lib/constants.mjs';
 import { scanTreeForHazards } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -160,7 +160,7 @@ export function run(ctx) {
   for (const key of expectedRules) {
     if (policy.rules[key] !== true) fail(`policy rule ${key} must be true`);
   }
-  if (policy.selected_by_batch !== TASK_ID) fail(`policy.json selected_by_batch must be ${TASK_ID}`);
+  if (policy.selected_by_batch !== SUPPLY_CHAIN_BASELINE_BATCH) fail(`policy.json selected_by_batch must be ${SUPPLY_CHAIN_BASELINE_BATCH}`);
   else ok('policy.json selected_by_batch = AIPT-M0-B001');
   if (policy.license_policy?.current_third_party_application_runtime_dependencies !== 0) {
     fail('policy.json must record zero third-party application runtime dependencies');
@@ -323,7 +323,7 @@ export function run(ctx) {
     if (!fs.existsSync(path.join(ctx.repo, rel))) fail(`required lock file missing: ${rel}`);
   }
   const toolchainLock = JSON.parse(read('tools/toolchain.lock.json'));
-  if (toolchainLock.selected_by_batch !== TASK_ID) fail('toolchain.lock.json selected_by_batch drifted');
+  if (toolchainLock.selected_by_batch !== SUPPLY_CHAIN_BASELINE_BATCH) fail('toolchain.lock.json selected_by_batch drifted');
   for (const [key, digest] of Object.entries({ multi_arch_digest: PG_MULTI_ARCH_DIGEST })) {
     if (toolchainLock.toolchains?.postgresql?.docker_official_image?.[key] !== digest) {
       fail(`toolchain.lock.json postgresql ${key} drifted`);

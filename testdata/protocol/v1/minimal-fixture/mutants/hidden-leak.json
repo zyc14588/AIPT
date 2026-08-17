@@ -1,0 +1,40 @@
+{
+  "markers": [
+    "NON_CANON",
+    "MUTANT"
+  ],
+  "kind": "hidden-leak",
+  "mutant_id": "hidden-leak-001",
+  "seat_id": "seat-b",
+  "leaked_field_id": "table-note",
+  "projection": {
+    "protocol_version": "1.0.0",
+    "schema_version": "1.0.0",
+    "fixture_id": "minimal-v1-arithmetic",
+    "projection_id": "projection-seat-b-leaked",
+    "seat_id": "seat-b",
+    "fields": [
+      {
+        "field_id": "turn-count",
+        "value": 0,
+        "visibility": {
+          "label": "PUBLIC",
+          "authorized_seat_ids": [
+            "seat-a",
+            "seat-b"
+          ]
+        }
+      },
+      {
+        "field_id": "table-note",
+        "value": "alpha",
+        "visibility": {
+          "label": "TABLE_HIDDEN_REMOTE_ALLOWED",
+          "authorized_seat_ids": [
+            "seat-a"
+          ]
+        }
+      }
+    ]
+  }
+}

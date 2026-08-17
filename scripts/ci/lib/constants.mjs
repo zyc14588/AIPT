@@ -13,11 +13,13 @@
 // report, and the status-transition validator all target this batch).
 export const CURRENT_BATCH = 'AIPT-M0-B002';
 
-// The batch that selected the frozen toolchain / supply-chain policy.
-// tools/*.lock.json `selected_by_batch` is an immutable B001 fact, and the
-// frozen toolchain-lock / supply-chain validators keep comparing it against
-// TASK_ID — this value must never be bumped to a later batch.
-export const TASK_ID = 'AIPT-M0-B001';
+// The historical batch that selected the frozen toolchain / supply-chain
+// policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
+// and the frozen toolchain-lock / supply-chain validators keep comparing it
+// against this constant — it must never be bumped to a later batch. The name
+// describes the role (the supply-chain baseline selector), never the current
+// task, so it cannot be confused with CURRENT_BATCH.
+export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
 // Public status date of this B002 iteration (machine + human docs).
 export const STATUS_DATE = '2026-08-17';
@@ -105,12 +107,16 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// AIPT-M0-B002 iteration 1 allowed_paths: only the public status transition
-// and the validator-baseline evolution. Later B002 iterations extend this
-// list NARROWLY with their explicitly approved contract paths (schemas/,
-// packages/, internal/protocol/, runtime/, ...) — the scope gate is never
-// disabled.
+// AIPT-M0-B002 allowed paths. The tree-integrity gate diffs the candidate
+// against the accepted batch base (the B001 merge commit), so this list is
+// the CUMULATIVE union of every B002 iteration's approved paths: the
+// iteration-1 status-transition/validator-baseline set plus this iteration's
+// protocol-schema/fixture/validator set. Runtime paths — runtime/,
+// packages/, internal/protocol/, architecture/, server/socket/worker/model/
+// PostgreSQL implementation — are forbidden for ALL B002 iterations and will
+// never appear in this list; the scope gate is never disabled.
 export const ALLOWED_PATHS = [
+  // iteration 1 (public status transition + validator baseline)
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
@@ -120,27 +126,41 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
+  // iteration 2 (canonical protocol schema, minimal fixture, validators)
+  'docs/protocol/README.md',
+  'schemas/protocol/v1/**',
+  'testdata/protocol/v1/minimal-fixture/**',
+  'scripts/ci/lib/json-schema.mjs',
+  'scripts/ci/validate/protocol-assets.mjs',
+  'scripts/ci/validate/toolchain-lock.mjs',
+  'scripts/ci/validate/supply-chain.mjs',
 ];
 
-// Forbidden prefixes for the B002 iteration: no runtime/protocol/package/
+// Forbidden prefixes for the B002 iteration: no runtime/protocol-package/
 // workspace/CI/toolchain/frozen-doc content may change under the current
-// scope (B001 historical forbidden prefixes retained).
+// scope (B001 historical forbidden prefixes retained). Runtime and package
+// paths stay forbidden for every B002 iteration — no B002 iteration may
+// approve them.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
   'migrations/',
   'deploy/',
   'packages/',
-  'schemas/',
   'internal/protocol/',
   'runtime/',
-  'testdata/',
   'tools/',
   '.github/',
+  'docs/architecture/',
   'docs/integration/',
   'docs/test-model/',
   'docs/security/',
   'docs/evidence/',
+  'LICENSE',
+  'go.mod',
+  'go.sum',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
 ];
 
 // Frozen authority registries: byte-for-byte immutability is enforced

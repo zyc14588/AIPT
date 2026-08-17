@@ -1,0 +1,29 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "state_id": "final",
+  "fields": [
+    {
+      "field_id": "turn-count",
+      "value": 1,
+      "visibility": {
+        "label": "PUBLIC",
+        "authorized_seat_ids": [
+          "seat-a",
+          "seat-b"
+        ]
+      }
+    },
+    {
+      "field_id": "table-note",
+      "value": "alpha",
+      "visibility": {
+        "label": "TABLE_HIDDEN_REMOTE_ALLOWED",
+        "authorized_seat_ids": [
+          "seat-a"
+        ]
+      }
+    }
+  ]
+}

@@ -44,6 +44,19 @@ export function run(ctx) {
     fail(`B001 candidate does not resolve to the fixed candidate commit: ${resolvedCandidate}`);
   } else ok('B001 candidate commit resolves');
 
+  // ---- Codex iteration-1 finding 3: ancestry and tree identity must be
+  // PROVEN against the fixed B001 facts, not merely self-resolved. The fixed
+  // B001 candidate must be a real ancestor of the fixed B001 merge/base
+  // commit, and the fixed merge commit must resolve to the fixed B001 tree. --
+  const ancestorProbe = git(ctx.repo, ['merge-base', '--is-ancestor', B001.candidate, BASE_COMMIT], { check: false });
+  if (ancestorProbe.status !== 0) {
+    fail(`fixed B001 candidate ${B001.candidate} is NOT an ancestor of the fixed B001 merge/base commit ${BASE_COMMIT} (merge-base --is-ancestor exit ${ancestorProbe.status})`);
+  } else ok(`fixed B001 candidate is an ancestor of the fixed B001 merge/base commit (proven via merge-base --is-ancestor)`);
+  const baseTree = git(ctx.repo, ['rev-parse', `${BASE_COMMIT}^{tree}`]).stdout.trim();
+  if (baseTree !== B001.tree) {
+    fail(`fixed B001 merge commit ${BASE_COMMIT} resolves to tree ${baseTree}, expected the fixed B001 tree ${B001.tree}`);
+  } else ok('fixed B001 merge commit resolves to the fixed B001 tree');
+
   // ---- machine status ----
   let status;
   try {

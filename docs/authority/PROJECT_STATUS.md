@@ -15,7 +15,7 @@
 - 当前里程碑：**M0**（建立可构建可验证工程基础，不实现真实桌测）。
 - `AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）。
 - `AIPT-M0-B001` = **MERGED/CLOSED**：候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`（树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`），合并后公共 CI run `31951440133` PASS；Go/pnpm 工具链骨架、无秘密公共 CI（`b000-retro` / `toolchain` / `supply-chain`）、供应链基础（`R4-Q023`：锁文件、SBOM、许可证、漏洞、来源），`DEFER-016` 已 `RESOLVED`（Go 1.26.5 / Node 24.19.0 / pnpm 11.4.0 / PostgreSQL 18.4，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）。
-- 当前批次：`AIPT-M0-B002`——Schema、JSON-RPC、Adapter SDK 与最小协议夹具合同（协议批次，`B002_IN_PROGRESS`）；本迭代仅执行公开状态迁移（B001 关闭、B002 开启）与验证器基线升级，不实现任何协议/包/工作区代码。
+- 当前批次：`AIPT-M0-B002`——Schema、JSON-RPC、Adapter SDK 与最小协议夹具合同（协议批次，`B002_IN_PROGRESS`）；迭代 1 完成公开状态迁移（B001 关闭、B002 开启）与验证器基线升级；迭代 2 新增权威协议 Schema（`schemas/protocol/v1/aipt-protocol.schema.json`）、游戏中立最小确定性夹具（`testdata/protocol/v1/minimal-fixture/`）与依赖自由的协议资产验证器（`scripts/ci/validate/protocol-assets.mjs`），未建设 Adapter SDK、Go 契约，未创建任何协议包/工作区。
 - 施工纪律：`GLOBAL_WIP = 1`（同时只有一个活跃批次）；单批次单仓库；前一批次正式关闭后才可启动下一批次。
 - 详见 [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) 与 [../milestones/M0.md](../milestones/M0.md)。
 
@@ -31,7 +31,7 @@
 - 参考环境：Ubuntu 26.04 LTS（`ENV-F001`）；Bash 启动 + 本地 Web（`ENV-F002`）。
 - 主远端模型：`deepseek-v4-pro`（`ENV-F003`），完整 Campaign 使用该模型（`R14-Q023`）。
 - 本地模型：`UNASSIGNED`；GGUF 选型与性能阈值延期（`DEFER-002`、`DEFER-003`）。
-- 以上是**设计基线**：运行时代码尚未建设（B001 仅安装工程骨架与 CI；B002 尚未开始协议施工）。
+- 以上是**设计基线**：运行时代码尚未建设（B001 仅安装工程骨架与 CI；B002 迭代 2 仅落地协议 Schema、最小确定性夹具与验证器，仍无 server/socket/worker/model/数据库运行时，无 Adapter SDK，无 Go 契约）。
 
 ## 审计状态
 
@@ -54,11 +54,12 @@
 
 1. 公开状态迁移：B001 关闭（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`、合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`、合并后公共 CI run `31951440133`），B002 开启（`IN_PROGRESS`、`current_batch = AIPT-M0-B002`），`verified_head = 8bcadc9669e7d04f589f883daa6d4f593875fc9e`，状态日期 `2026-08-17`；
 2. 验证器从 B001 候选基线升级到 B002 基线（`constants.mjs`、`status-transition`、`defer-016`、`tree-integrity`），保留全部 B000/B001 历史门禁；
-3. 本地确定性验证 + 推送候选 Commit + 公共 CI 全绿；
-4. 独立本地验收与 GPT 审计 PASS；
-5. 用户批准后合并；`AIPT-PLATFORM-INTEGRATION` 保持冻结；后续批次在 B002 正式关闭前不启动。
+3. 迭代 2 协议资产：权威协议 Schema（`schemas/protocol/v1/`）、游戏中立最小确定性夹具（`testdata/protocol/v1/minimal-fixture/`，含 `mutants/` 隐藏泄露突变）、依赖自由子集验证器（`scripts/ci/lib/json-schema.mjs`）与协议资产门禁（`scripts/ci/validate/protocol-assets.mjs`，含 9 个负向探针），`pnpm run check:protocol-assets` 并纳入 `scripts/ci/run-checks.mjs`；
+4. 本地确定性验证 + 推送候选 Commit + 公共 CI 全绿；
+5. 独立本地验收与 GPT 审计 PASS；
+6. 用户批准后合并；`AIPT-PLATFORM-INTEGRATION` 保持冻结；后续批次在 B002 正式关闭前不启动。
 
 ## 相邻文档
 
-- [README.md](README.md)（Authority Index） · [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) · [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md) · [../milestones/M0.md](../milestones/M0.md) · [../milestones/MVP.md](../milestones/MVP.md) · [../supply-chain/README.md](../supply-chain/README.md)
+- [README.md](README.md)（Authority Index） · [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) · [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md) · [../protocol/README.md](../protocol/README.md) · [../milestones/M0.md](../milestones/M0.md) · [../milestones/MVP.md](../milestones/MVP.md) · [../supply-chain/README.md](../supply-chain/README.md)
 - [返回仓库首页](../../README.md)

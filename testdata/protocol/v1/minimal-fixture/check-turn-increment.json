@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "check_id": "check-turn-increment",
+  "check_version": "1.0.0",
+  "kind": "arithmetic",
+  "operator": "add",
+  "inputs": [
+    0,
+    1
+  ],
+  "output": 1
+}

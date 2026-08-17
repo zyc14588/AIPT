@@ -13,11 +13,13 @@ import { run as runRetro } from './validate/b000-retro.mjs';
 import { run as runSupplyChain } from './validate/supply-chain.mjs';
 import { run as runSbom } from './validate/sbom.mjs';
 import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
+import { run as runProtocol } from './validate/protocol-assets.mjs';
 import { CURRENT_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
 const checks = [
   runStatus(ctx),
+  runProtocol(ctx),
   runDefer(ctx),
   runToolchain(ctx),
   runWorkflow(ctx),

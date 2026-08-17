@@ -31,7 +31,7 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
 
-  // ---- scope (changed paths vs the B002 iteration-1 allowed set) ----
+  // ---- scope (changed paths vs the B002 iteration-2 allowed set) ----
   const diff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   // Regenerable package-manager install output is not candidate source: the
   // repository carries no .gitignore (adding one is outside the B002 allowed
@@ -50,7 +50,7 @@ export function run(ctx) {
     if (FROZEN_REGISTRY_PATHS.includes(p)) fail(`frozen registry modified: ${p}`);
   }
   if (changed.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
-    ok('all changed paths within the registered B002 iteration-1 scope');
+    ok('all changed paths within the registered B002 iteration-2 scope');
   }
 
   // LICENSE untouched vs base.
