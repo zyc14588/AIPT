@@ -1,12 +1,17 @@
 // Fixture compatibility helpers: pure validation over supplied parsed
-// documents (manifest shape, digests, identity, inventory) with digest and
-// identity drift rejections.
+// documents (manifest shape, path preflight, kind->schema_ref map, digests,
+// canonical-schema instance validation, identity, inventory, mutant semantic
+// proof) with digest/identity/schema drift rejections. The canonical schema
+// document is loaded from the repository and passed in as the explicit
+// validation boundary — the helpers never read the filesystem themselves.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as sdk from '../src/index.ts';
-import { FIXTURE_DIR, loadFixtureJson } from './helpers.ts';
+import { FIXTURE_DIR, loadFixtureJson, loadSchema } from './helpers.ts';
 import fs from 'node:fs';
 import path from 'node:path';
+
+const schema = loadSchema();
 
 function loadAllDocuments(): Map<string, unknown> {
   const manifest = loadFixtureJson('manifest.json') as unknown as sdk.FixtureManifest;
@@ -25,9 +30,9 @@ test('the shared fixture manifest validates', () => {
   assert.deepEqual([...result.issues], []);
 });
 
-test('the shared fixture bundle validates (identity + digest + inventory)', () => {
+test('the shared fixture bundle validates (identity + digest + inventory + schema)', () => {
   const bundle = { manifest, documents: loadAllDocuments() };
-  const result = sdk.validateFixtureBundle(bundle);
+  const result = sdk.validateFixtureBundle(bundle, schema);
   assert.equal(result.valid, true, JSON.stringify(result.issues));
   assert.deepEqual([...result.issues], []);
 });
@@ -42,7 +47,7 @@ test('fixture digest drift is rejected with AIPT_FIXTURE_DIGEST_DRIFT', () => {
   const tampered = JSON.parse(JSON.stringify(documents.get('state.json'))) as { fields: Array<{ value: number }> };
   tampered.fields[0].value = 999;
   documents.set('state.json', tampered);
-  const result = sdk.validateFixtureBundle({ manifest, documents });
+  const result = sdk.validateFixtureBundle({ manifest, documents }, schema);
   assert.equal(result.valid, false);
   const digestIssues = result.issues.filter((issue) => issue.code === 'AIPT_FIXTURE_DIGEST_DRIFT');
   assert.equal(digestIssues.length, 1);
@@ -54,7 +59,7 @@ test('fixture identity drift is rejected with AIPT_FIXTURE_IDENTITY_MISMATCH', (
   const drifted = JSON.parse(JSON.stringify(documents.get('state.json'))) as Record<string, unknown>;
   drifted.fixture_id = 'drifted-fixture-id';
   documents.set('state.json', drifted);
-  const result = sdk.validateFixtureBundle({ manifest, documents });
+  const result = sdk.validateFixtureBundle({ manifest, documents }, schema);
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_IDENTITY_MISMATCH' && issue.path === '$/documents/state.json/fixture_id'));
 
@@ -71,7 +76,7 @@ test('mutant inner projection identity drift is rejected', () => {
   const mutant = JSON.parse(JSON.stringify(documents.get('mutants/hidden-leak.json'))) as { projection: { fixture_id: string } };
   mutant.projection.fixture_id = 'drifted-fixture-id';
   documents.set('mutants/hidden-leak.json', mutant);
-  const result = sdk.validateFixtureBundle({ manifest, documents });
+  const result = sdk.validateFixtureBundle({ manifest, documents }, schema);
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_IDENTITY_MISMATCH' && issue.path.includes('projection')));
 });
@@ -79,7 +84,7 @@ test('mutant inner projection identity drift is rejected', () => {
 test('a missing listed asset is rejected with AIPT_FIXTURE_MISSING_ASSET', () => {
   const documents = loadAllDocuments();
   documents.delete('seats.json');
-  const result = sdk.validateFixtureBundle({ manifest, documents });
+  const result = sdk.validateFixtureBundle({ manifest, documents }, schema);
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_MISSING_ASSET' && issue.path === '$/documents/seats.json'));
 });
@@ -87,7 +92,7 @@ test('a missing listed asset is rejected with AIPT_FIXTURE_MISSING_ASSET', () =>
 test('an unlisted supplied document is rejected with AIPT_FIXTURE_UNLISTED_ASSET', () => {
   const documents = loadAllDocuments();
   documents.set('sneaky-extra.json', { protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'minimal-v1-arithmetic' });
-  const result = sdk.validateFixtureBundle({ manifest, documents });
+  const result = sdk.validateFixtureBundle({ manifest, documents }, schema);
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_UNLISTED_ASSET' && issue.path === '$/documents/sneaky-extra.json'));
 });
@@ -106,7 +111,7 @@ test('a malformed manifest fails closed', () => {
     assert.ok(result.issues.length > 0);
   }
   const badBundle = { manifest: { hello: 'world' }, documents: new Map() };
-  assert.equal(sdk.validateFixtureBundle(badBundle).valid, false);
+  assert.equal(sdk.validateFixtureBundle(badBundle, schema).valid, false);
 });
 
 test('the SDK never reads the fixture filesystem: bundle validation works on supplied documents only', () => {
@@ -145,4 +150,35 @@ test('every JSON file under the fixture directory is reachable through the manif
   for (const file of files) {
     assert.ok(listed.has(file), `unlisted fixture file: ${file}`);
   }
+});
+
+test('every newly exported fixture protocol type consumes its canonical document', () => {
+  // Type-position exercises: each canonical manifest kind has a public SDK
+  // type, and the shared fixture document parses into it (schema validation
+  // is enforced separately by validateFixtureBundle).
+  const seats = loadFixtureJson('seats.json') as unknown as sdk.SeatSet;
+  assert.equal(seats.seats.length, 2);
+  const firstSeat: sdk.Seat = seats.seats[0];
+  assert.equal(typeof firstSeat.seat_id, 'string');
+  assert.equal(typeof firstSeat.name, 'string');
+
+  const check = loadFixtureJson('check-turn-increment.json') as unknown as sdk.DeterministicCheck;
+  assert.equal(check.check_version, '1.0.0');
+  assert.equal(check.kind, 'arithmetic');
+  assert.equal(check.operator, 'add');
+
+  const transition = loadFixtureJson('transition.json') as unknown as sdk.StateTransition;
+  assert.equal(transition.applied_action.action, 'advance-turn');
+
+  const assertion = loadFixtureJson('replay-assertion.json') as unknown as sdk.ReplayAssertion;
+  assert.equal(assertion.hash_algorithm, 'sha256');
+  assert.equal(assertion.final_state_ref, 'final-state.json');
+  const replay: sdk.ReplayRecord = assertion.replays[0];
+  assert.match(replay.final_state_hash, /^[0-9a-f]{64}$/);
+
+  const mutant = loadFixtureJson('mutants/hidden-leak.json') as unknown as sdk.MutantSpecimen;
+  assert.deepEqual([...mutant.markers], ['NON_CANON', 'MUTANT']);
+  assert.equal(mutant.kind, 'hidden-leak');
+  const inner: sdk.Projection = mutant.projection;
+  assert.equal(inner.seat_id, 'seat-b');
 });

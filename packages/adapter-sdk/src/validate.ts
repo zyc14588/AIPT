@@ -5,10 +5,15 @@
 // byte-for-byte to schemas/protocol/v1/aipt-protocol.schema.json. Unknown
 // versions, methods, visibility labels, fields, properties, or malformed
 // input always fail closed with stable, path-addressed diagnostics; a failed
-// validation never returns a partially trusted value.
+// validation never returns a partially trusted value. Every schema position
+// that intentionally accepts ANY JSON value (`state_field.value`,
+// `action_intent_params.proposal`) is gated by the lossless JSON-value
+// validator (AIPT_LOSSY_JSON_VALUE), and the wire error namespace is gated
+// by isAiptWireErrorCode (open canonical pattern, runtime-enforced).
 import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { failResult, issue, okResult, type ValidationIssue, type ValidationResult } from './errors.ts';
-import type { AiptErrorCode } from './types.ts';
+import { validateJsonValue } from './json-value.ts';
+import type { AiptErrorCode, AiptWireErrorCode } from './types.ts';
 
 interface Sink {
   issues: ValidationIssue[];
@@ -33,6 +38,14 @@ const SCHEMA_REF_RE = /^#\/\$defs\/[A-Za-z0-9_-]+$/u;
 
 export function isSafeIntegerId(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= D.id_integer_minimum && value <= D.id_integer_maximum;
+}
+
+// The OPEN canonical wire AIPT error namespace: every string matching
+// ^AIPT_[A-Z0-9_]{1,63}$ (runtime enforcement). A canonical-valid future
+// wire code such as AIPT_FUTURE_EXTENSION is accepted; anything else is
+// rejected. This is distinct from the finite SDK ValidationIssue.code union.
+export function isAiptWireErrorCode(value: unknown): value is AiptWireErrorCode {
+  return typeof value === 'string' && ERROR_CODE_RE.test(value);
 }
 
 export function validateRequestId(value: unknown, path = '$/id'): ValidationResult {
@@ -124,6 +137,11 @@ export function validateStateField(value: unknown, path: string, sink: Sink): vo
   }
   rejectExtraMembers(sink, value, D.state_field_required, path);
   checkIdentifier(value.field_id, `${path}/field_id`, sink, 'field_id');
+  // The schema intentionally accepts ANY JSON value here: every supplied
+  // value must pass the lossless JSON-value gate (fail closed, no coercion).
+  if (hasOwn(value, 'value')) {
+    sink.issues.push(...validateJsonValue(value.value, `${path}/value`).issues);
+  }
   if (value.visibility !== undefined) validateVisibility(value.visibility, `${path}/visibility`, sink);
 }
 
@@ -177,6 +195,12 @@ export function validateActionIntentParams(value: unknown, path: string, sink: S
   rejectExtraMembers(sink, value, [...D.action_intent_params_required, 'proposal'], path);
   checkIdentifier(value.action, `${path}/action`, sink, 'action');
   checkIdentifier(value.seat_id, `${path}/seat_id`, sink, 'seat_id');
+  // The schema intentionally accepts ANY JSON value here: the proposal must
+  // pass the lossless JSON-value gate (undefined/function/cycle/unsafe
+  // integer/etc. all fail closed).
+  if (hasOwn(value, 'proposal')) {
+    sink.issues.push(...validateJsonValue(value.proposal, `${path}/proposal`).issues);
+  }
 }
 
 export function validateApplyActionResult(value: unknown, path: string, sink: Sink): void {
@@ -219,8 +243,8 @@ export function validateErrorObject(value: unknown, path: string, sink: Sink): v
     }
     requireMember(sink, data, 'error_code', `${path}/data`);
     rejectExtraMembers(sink, data, ['error_code'], `${path}/data`);
-    if (typeof data.error_code !== 'string' || !ERROR_CODE_RE.test(data.error_code)) {
-      push(sink, `${path}/data/error_code`, 'AIPT_INVALID_VALUE', `error_code must match ${D.error_code_pattern}`);
+    if (!isAiptWireErrorCode(data.error_code)) {
+      push(sink, `${path}/data/error_code`, 'AIPT_INVALID_VALUE', `error_code must match ${D.error_code_pattern} (the open canonical AIPT wire namespace)`);
     }
   }
 }

@@ -118,3 +118,42 @@ test('authorized_seat_ids compared as a set: reordering alone is not authorizati
   assert.equal(result.valid, true, 'reordering authorized_seat_ids must not be drift');
   assert.deepEqual([...result.issues], []);
 });
+
+test('projection fixture_id drift from the source state is rejected with AIPT_FIXTURE_IDENTITY_MISMATCH', () => {
+  const known = seatIds();
+  const projection = JSON.parse(JSON.stringify(loadFixtureJson('projection-seat-a.json'))) as { fixture_id: string };
+  projection.fixture_id = 'drifted-fixture';
+  const result = sdk.validateProjectionSemantics(state, projection, known);
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.issues.map((issue) => issue.code), ['AIPT_FIXTURE_IDENTITY_MISMATCH']);
+  assert.equal(result.issues[0].path, '$/fixture_id');
+});
+
+test('known seats must be well-formed identifiers and are rejected deterministically when invalid', () => {
+  const projection = loadFixtureJson('projection-seat-a.json');
+  const invalid = sdk.validateProjectionSemantics(state, projection, ['Seat-Bad!']);
+  assert.equal(invalid.valid, false);
+  assert.ok(invalid.issues.some((issue) => issue.code === 'AIPT_INVALID_IDENTIFIER' && issue.path === '$/known_seats/0'));
+  assert.ok(invalid.issues.some((issue) => issue.code === 'AIPT_PROJECTION_UNKNOWN_SEAT'), 'the invalid seat never becomes a trusted known seat');
+
+  const nonString = sdk.validateProjectionSemantics(state, projection, ['seat-a', 42 as unknown as string]);
+  assert.equal(nonString.valid, false);
+  assert.ok(nonString.issues.some((issue) => issue.code === 'AIPT_INVALID_IDENTIFIER' && issue.path === '$/known_seats/1'));
+});
+
+test('duplicate known seats are rejected deterministically at their later occurrence', () => {
+  const projection = loadFixtureJson('projection-seat-a.json');
+  const result = sdk.validateProjectionSemantics(state, projection, ['seat-a', 'seat-b', 'seat-a']);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_INVALID_VALUE' && issue.path === '$/known_seats/2' && issue.message.includes('seat-a')));
+});
+
+test('state/projection values pass the lossless JSON-value gate before semantic comparison', () => {
+  const known = seatIds();
+  const lossyState = JSON.parse(JSON.stringify(state)) as { fields: Array<{ value: number }> };
+  lossyState.fields[0].value = Number.NaN;
+  const projection = loadFixtureJson('projection-seat-a.json');
+  const result = sdk.validateProjectionSemantics(lossyState, projection, known);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/fields/0/value'));
+});

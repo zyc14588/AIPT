@@ -1,4 +1,4 @@
-// AIPT-M0-B002 iteration 4: @aipt/adapter-sdk machine gate.
+// AIPT-M0-B002 iteration 4B: @aipt/adapter-sdk machine gate.
 //
 // Independent, fail-closed comparison of the dependency-free TypeScript
 // adapter contract SDK against the single canonical wire authority
@@ -6,12 +6,19 @@
 // minimal fixture. The SDK embeds a contract drift manifest
 // (packages/adapter-sdk/src/contract/descriptor.ts); this gate RE-DERIVES the
 // identical descriptor from the canonical schema and requires byte-identical
-// canonical JSON, so a schema edit or an SDK constant/type edit can never
-// pass silently. It then behavior-checks the SDK against the persisted wire
+// canonical JSON (including a FULL canonical-schema content fingerprint, so
+// every schema edit — even outside the projected fields — fails the gate
+// until the SDK is reviewed). It then audits the ACTUAL declared public
+// interface surface of src/types.ts against schema-derived member-shape
+// expectations (required/optional/discriminant members for every public wire
+// and fixture type), behavior-checks the SDK against the persisted wire
 // envelopes and fixture assets (digests, projections, the hidden-leak
-// mutant), runs fail-closed negative probes, audits the SDK sources for
-// ambient-capable imports / environment reads, and proves the package is a
-// zero-dependency, side-effect-free import via a clean child-process probe.
+// mutant, per-document canonical-schema validation), runs fail-closed
+// negative probes for every repaired adversarial false acceptance plus
+// in-memory drift probes that prove the audit detects previously uncovered
+// schema/type edits, audits the SDK sources for ambient-capable imports /
+// environment reads, and proves the package is a zero-dependency,
+// side-effect-free import via a clean child-process probe.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -48,6 +55,15 @@ function canonicalText(value) {
   return JSON.stringify(canonical(value));
 }
 
+// Independent SHA-256 (crypto over the gate's own canonical text): negative
+// probes compute tampered digests here, never via the SDK's own hasher, so
+// SDK validation can never validate itself into PASS.
+function sha256Hex(text) {
+  return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+const selfSha256 = (value) => sha256Hex(canonicalText(value));
+
 function get(schema, pointerPath) {
   let node = schema;
   for (const part of pointerPath) {
@@ -59,7 +75,10 @@ function get(schema, pointerPath) {
 
 // Re-derive the SDK contract descriptor from the canonical schema document.
 // This function must be kept in lockstep with the descriptor fields the SDK
-// embeds; canonical-JSON equality of the two objects is enforced below.
+// embeds; canonical-JSON equality of the two objects is enforced below. The
+// descriptor is a COMPLETE functional projection of the canonical schema for
+// the SDK contract, and canonical_schema_sha256 fingerprints the whole
+// schema document, so every canonical-schema edit forces explicit SDK review.
 function deriveDescriptor(schema) {
   const defs = schema.$defs;
   const requestId = defs.request_id;
@@ -86,8 +105,15 @@ function deriveDescriptor(schema) {
   for (const variant of ['jsonrpc_request', 'jsonrpc_response', 'jsonrpc_notification']) {
     if (defs[variant]?.additionalProperties === false) additional[variant] = false;
   }
+  // Exact kind -> canonical schema_ref map (the manifest-supplied $ref is
+  // never trusted; the canonical schema names every $defs target after its
+  // kind, and mutant_specimen is the mutant kind's canonical target).
+  const kindRefs = {};
+  for (const kind of defs.manifest_asset.properties.kind.enum) kindRefs[kind] = `#/$defs/${kind}`;
+  kindRefs[defs.manifest_mutant.properties.kind.const] = `#/$defs/${defs.manifest_mutant.properties.kind.const}`;
   return {
     canonical_schema_path: SCHEMA_PATH,
+    canonical_schema_sha256: sha256Hex(canonicalText(schema)),
     protocol_version: defs.protocol_version.const,
     schema_version: defs.schema_version.const,
     jsonrpc_version: defs.jsonrpc_version.const,
@@ -123,9 +149,19 @@ function deriveDescriptor(schema) {
     apply_action_result_accepted: defs.apply_action_result.properties.accepted.const,
     error_object_required: defs.error_object.required,
     fixture_manifest_required: defs.fixture_manifest.required,
+    fixture_manifest_expected_final_state: defs.fixture_manifest.properties.expected_final_state.const,
+    fixture_manifest_replay_assertion: defs.fixture_manifest.properties.replay_assertion.const,
     manifest_kinds: defs.manifest_asset.properties.kind.enum,
+    manifest_kind_schema_refs: kindRefs,
     mutant_kind: defs.manifest_mutant.properties.kind.const,
     mutant_expected_semantic_rejection: defs.manifest_mutant.properties.expected_semantic_rejection.const,
+    deterministic_check_check_version: defs.deterministic_check.properties.check_version.const,
+    deterministic_check_kind: defs.deterministic_check.properties.kind.const,
+    deterministic_check_operator: defs.deterministic_check.properties.operator.const,
+    replay_assertion_hash_algorithm: defs.replay_assertion.properties.hash_algorithm.const,
+    replay_assertion_final_state_ref: defs.replay_assertion.properties.final_state_ref.const,
+    mutant_specimen_markers: defs.mutant_specimen.properties.markers.const,
+    mutant_specimen_kind: defs.mutant_specimen.properties.kind.const,
   };
 }
 
@@ -140,6 +176,150 @@ function diffDescriptorKeys(derived, embedded) {
     }
   }
   return diffs;
+}
+
+// ---------------------------------------------------------------------------
+// Public type-shape audit: the ACTUAL declared interface surface of
+// src/types.ts is parsed deterministically (the file is written in a fixed,
+// single-line-member style) and compared against schema-derived
+// required/optional/discriminant member expectations. A hand-edited member
+// cannot pass silently.
+// ---------------------------------------------------------------------------
+
+function deriveTypeShapes(schema) {
+  const defs = schema.$defs;
+  const identity = ['protocol_version', 'schema_version', 'fixture_id'];
+  const fromDef = (def, inheritsIdentity) => {
+    const required = (def.required ?? []).filter((key) => !(inheritsIdentity && identity.includes(key)));
+    const props = Object.keys(def.properties ?? {}).filter((key) => !(inheritsIdentity && identity.includes(key)));
+    return { required, optional: props.filter((key) => !required.includes(key)), never: [] };
+  };
+  const shapes = {
+    ProtocolIdentity: { required: [...identity], optional: [], never: [] },
+    Seat: fromDef(defs.seat, false),
+    SeatSet: fromDef(defs.seat_set, true),
+    Visibility: fromDef(defs.visibility, false),
+    StateField: fromDef(defs.state_field, false),
+    State: fromDef(defs.state, true),
+    Projection: fromDef(defs.projection, true),
+    ActionIntentParams: fromDef(defs.action_intent_params, false),
+    ActionIntent: fromDef(defs.action_intent, true),
+    ApplyActionResult: fromDef(defs.apply_action_result, false),
+    ErrorObject: fromDef(defs.error_object, false),
+    JsonRpcRequest: fromDef(defs.jsonrpc_request, true),
+    JsonRpcNotification: fromDef(defs.jsonrpc_notification, true),
+    StateEvent: fromDef(defs.state_event, true),
+    DeterministicCheck: fromDef(defs.deterministic_check, true),
+    StateTransition: fromDef(defs.state_transition, true),
+    ReplayRecord: fromDef(defs.replay_assertion.properties.replays.items, false),
+    ReplayAssertion: fromDef(defs.replay_assertion, true),
+    MutantSpecimen: fromDef(defs.mutant_specimen, false),
+    ManifestAsset: fromDef(defs.manifest_asset, false),
+    ManifestMutant: fromDef(defs.manifest_mutant, false),
+    FixtureManifest: fromDef(defs.fixture_manifest, true),
+    FixtureBundle: { required: ['manifest', 'documents'], optional: ['schema'], never: [] },
+  };
+  const responseDef = defs.jsonrpc_response;
+  const baseRequired = (responseDef.required ?? []).filter((key) => !identity.includes(key));
+  const resultBranch = responseDef.oneOf.find((branch) => Array.isArray(branch?.required) && branch.required.includes('result'));
+  const errorBranch = responseDef.oneOf.find((branch) => Array.isArray(branch?.required) && branch.required.includes('error'));
+  shapes.JsonRpcResultResponse = {
+    required: [...baseRequired, ...(resultBranch?.required ?? ['result'])],
+    optional: [],
+    never: Array.isArray(resultBranch?.not?.required) ? resultBranch.not.required : ['error'],
+  };
+  shapes.JsonRpcErrorResponse = {
+    required: [...baseRequired, ...(errorBranch?.required ?? ['error'])],
+    optional: [],
+    never: Array.isArray(errorBranch?.not?.required) ? errorBranch.not.required : ['result'],
+  };
+  return shapes;
+}
+
+function parseInterfaces(source) {
+  const interfaces = {};
+  const ifaceRe = /export\s+interface\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+extends\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{([\s\S]*?)\n\}/g;
+  let match;
+  while ((match = ifaceRe.exec(source)) !== null) {
+    const name = match[1];
+    const members = { required: [], optional: [], never: [] };
+    // Brace-depth-aware member scan: nested object-type blocks (written
+    // multi-line in the fixed style) never contribute members.
+    let depth = 0;
+    for (const line of match[2].split('\n')) {
+      const open = (line.match(/\{/g) ?? []).length;
+      const close = (line.match(/\}/g) ?? []).length;
+      if (depth === 0) {
+        const member = /^\s*readonly\s+([A-Za-z_][A-Za-z0-9_]*)(\?)?:\s*(.*)$/.exec(line);
+        if (member) {
+          const key = member[1];
+          const optional = member[2] === '?';
+          const rest = member[3].trim();
+          if (rest === '' || rest.startsWith('{')) {
+            // Nested object-type block (fixed multi-line style): the member
+            // belongs to the enclosing interface at this depth.
+            if (optional) members.optional.push(key);
+            else members.required.push(key);
+          } else {
+            const type = rest.replace(/;$/, '').trim();
+            if (optional && type === 'never') members.never.push(key);
+            else if (optional) members.optional.push(key);
+            else members.required.push(key);
+          }
+        }
+      }
+      depth += open - close;
+    }
+    interfaces[name] = members;
+  }
+  return interfaces;
+}
+
+function auditTypeShapes(source, shapes) {
+  const problems = [];
+  const declared = parseInterfaces(source);
+  const sorted = (list) => [...list].sort().join(',');
+  for (const [name, expected] of Object.entries(shapes)) {
+    const actual = declared[name];
+    if (!actual) {
+      problems.push(`public interface ${name} is not declared in types.ts`);
+      continue;
+    }
+    if (sorted(actual.required) !== sorted(expected.required)) {
+      problems.push(`interface ${name} required members drifted: declared [${sorted(actual.required)}], schema-derived [${sorted(expected.required)}]`);
+    }
+    if (sorted(actual.optional) !== sorted(expected.optional)) {
+      problems.push(`interface ${name} optional members drifted: declared [${sorted(actual.optional)}], schema-derived [${sorted(expected.optional)}]`);
+    }
+    if (sorted(actual.never) !== sorted(expected.never)) {
+      problems.push(`interface ${name} discriminant (never) members drifted: declared [${sorted(actual.never)}], schema-derived [${sorted(expected.never)}]`);
+    }
+  }
+  for (const name of Object.keys(declared)) {
+    if (!(name in shapes)) problems.push(`public interface ${name} has no schema-derived shape expectation (unreviewed public type surface)`);
+  }
+  return problems;
+}
+
+// Wire error-code type surface: the OPEN canonical namespace type
+// (AiptWireErrorCode, branded + regex-enforced) must be used for
+// ErrorObject.data.error_code, while ValidationIssue.code and
+// ManifestMutant.expected_semantic_rejection stay the FINITE SDK union.
+function auditErrorCodeSurface(typesSource, errorsSource) {
+  const problems = [];
+  if (!/type\s+AiptWireErrorCode\s*=\s*string\s*&/.test(typesSource)) {
+    problems.push('types.ts must declare the branded open wire namespace type AiptWireErrorCode (string & brand)');
+  }
+  if (!/error_code:\s*AiptWireErrorCode/.test(typesSource)) {
+    problems.push('ErrorObject.data.error_code must be typed AiptWireErrorCode (the open canonical wire namespace, regex-enforced at runtime)');
+  }
+  if (!/expected_semantic_rejection:\s*AiptErrorCode/.test(typesSource)) {
+    problems.push('ManifestMutant.expected_semantic_rejection must stay the finite AiptErrorCode union');
+  }
+  if (!/code:\s*AiptErrorCode/.test(errorsSource)) {
+    problems.push('ValidationIssue.code must stay the finite AiptErrorCode union');
+  }
+  return problems;
 }
 
 function walkFiles(root, filter) {
@@ -167,6 +347,7 @@ const REQUIRED_EXPORTS = [
   'ID_MIN_SAFE_INTEGER', 'ID_MAX_SAFE_INTEGER', 'VISIBILITY_LABELS', 'MANIFEST_KINDS', 'AIPT_ERROR_CODES',
   'CONTRACT_DESCRIPTOR', 'ProtocolValidationError',
   'canonicalJson', 'canonicalJsonString', 'sha256Hex',
+  'validateJsonValue', 'requireJsonValue', 'isAiptWireErrorCode', 'validateSchemaInstance',
   'parseJson', 'parseExecutableRoot', 'decodeRequest', 'decodeResponse', 'decodeNotification',
   'encodeExecutableRoot', 'encodeRequest', 'encodeResponse', 'encodeNotification',
   'toExecutableRoot', 'toJsonRpcRequest', 'toJsonRpcResponse', 'toJsonRpcResultResponse', 'toJsonRpcErrorResponse', 'toJsonRpcNotification',
@@ -202,6 +383,7 @@ export async function run(ctx) {
     return { name: 'adapter-sdk', result: 'FAIL', details, negative_probes: probes };
   }
   const derived = deriveDescriptor(schema);
+  const derivedShapes = deriveTypeShapes(schema);
 
   // ---- 2. load the SDK (the subject under test) ----
   let sdk;
@@ -222,6 +404,9 @@ export async function run(ctx) {
       for (const diff of diffs.slice(0, 12)) fail(`contract drift manifest drifted from the canonical schema: ${diff}`);
       fail('CONTRACT_DESCRIPTOR canonical JSON != canonical-schema-derived descriptor (schema/type drift must not pass silently)');
     } else ok('CONTRACT_DESCRIPTOR is byte-identical (canonical JSON) to the descriptor re-derived from the canonical schema');
+    if (embedded.canonical_schema_sha256 !== sha256Hex(canonicalText(schema))) {
+      fail('canonical_schema_sha256 full-content fingerprint drifted from the canonical schema document');
+    } else ok(`canonical schema full-content fingerprint matches (${embedded.canonical_schema_sha256.slice(0, 16)}...) — every schema edit forces explicit SDK review`);
   }
 
   // ---- 4. exported runtime constants equal the descriptor ----
@@ -258,8 +443,12 @@ export async function run(ctx) {
   if (badCodes.length > 0) fail(`exported AIPT error identifiers violate the canonical wire pattern: ${badCodes.join(', ')}`);
   else if ((sdk.AIPT_ERROR_CODES ?? []).length < 20) fail('exported AIPT error identifier set looks truncated (< 20)');
   else ok(`${sdk.AIPT_ERROR_CODES.length} stable AIPT error identifiers exported, all matching ${derived.error_code_pattern}`);
-  for (const required of ['AIPT_VISIBILITY_UNAUTHORIZED_FIELD', 'AIPT_ACTION_REJECTED', 'AIPT_FIXTURE_IDENTITY_MISMATCH']) {
+  for (const required of ['AIPT_VISIBILITY_UNAUTHORIZED_FIELD', 'AIPT_ACTION_REJECTED', 'AIPT_FIXTURE_IDENTITY_MISMATCH', 'AIPT_FIXTURE_UNSAFE_PATH', 'AIPT_FIXTURE_DUPLICATE_PATH', 'AIPT_FIXTURE_SCHEMA_REF_MISMATCH', 'AIPT_FIXTURE_SCHEMA_VIOLATION', 'AIPT_FIXTURE_INVALID_SCHEMA', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT']) {
     if (!(sdk.AIPT_ERROR_CODES ?? []).includes(required)) fail(`stable error identifier ${required} missing from the exported set`);
+  }
+  if (typeof sdk.isAiptWireErrorCode !== 'function') fail('isAiptWireErrorCode must be exported (runtime gate of the open wire namespace)');
+  else if (sdk.isAiptWireErrorCode('AIPT_FUTURE_EXTENSION') !== true || sdk.isAiptWireErrorCode('AIPT_BAD!') !== false || sdk.isAiptWireErrorCode(7) !== false) {
+    fail('isAiptWireErrorCode must accept canonical-valid future AIPT_* codes and reject non-pattern values');
   }
 
   // ---- 6. source hygiene: no ambient-capable imports, no env/network ----
@@ -285,6 +474,7 @@ export async function run(ctx) {
   // The public literal unions must derive from the exported readonly
   // constants/descriptor — a hand-written literal union would silently drift.
   const typesSource = read(`${SDK_SRC_DIR}/types.ts`);
+  const errorsSource = read(`${SDK_SRC_DIR}/errors.ts`);
   for (const [needle, label] of [
     ['typeof CONTRACT_DESCRIPTOR', 'descriptor-derived literal unions'],
     ['(typeof VISIBILITY_LABELS)[number]', 'visibility label union'],
@@ -296,6 +486,17 @@ export async function run(ctx) {
     if (!typesSource.includes(needle)) fail(`public types.ts no longer derives ${label} from the exported readonly constants/descriptor`);
   }
   ok('public literal unions are derived (typeof) from the exported readonly constants/descriptor');
+
+  // ---- 6b. actual declared type surface vs schema-derived shape ----
+  const shapeProblems = auditTypeShapes(typesSource, derivedShapes);
+  if (shapeProblems.length > 0) {
+    for (const problem of shapeProblems.slice(0, 12)) fail(`public type-shape drift: ${problem}`);
+    fail('the ACTUAL declared interface surface of types.ts drifted from the schema-derived shape (required/optional/discriminant members)');
+  } else ok(`public type-shape audit: ${Object.keys(derivedShapes).length} interfaces match the schema-derived required/optional/discriminant member expectations`);
+  const errorCodeSurfaceProblems = auditErrorCodeSurface(typesSource, errorsSource);
+  if (errorCodeSurfaceProblems.length > 0) {
+    for (const problem of errorCodeSurfaceProblems) fail(`wire error-code type surface: ${problem}`);
+  } else ok('wire error-code type surface: ErrorObject.data.error_code is the open branded AiptWireErrorCode namespace; ValidationIssue.code stays the finite AiptErrorCode union');
 
   // ---- 7. zero-dependency package boundary ----
   const pkg = readJson(`${SDK_PACKAGE}/package.json`);
@@ -317,6 +518,9 @@ export async function run(ctx) {
   const fixtureReferencing = testFiles.filter((f) => fs.readFileSync(f, 'utf8').includes(FIXTURE_DIR));
   if (fixtureReferencing.length === 0) fail('SDK tests must consume the shared canonical fixture (testdata/protocol/v1/minimal-fixture)');
   else ok(`${fixtureReferencing.length} SDK test file(s) consume the shared minimal fixture`);
+  const schemaPassing = testFiles.filter((f) => fs.readFileSync(f, 'utf8').includes(SCHEMA_PATH));
+  if (schemaPassing.length === 0) fail('SDK tests must load and pass in the single canonical schema (schemas/protocol/v1/aipt-protocol.schema.json) as the bundle validation boundary');
+  else ok(`${schemaPassing.length} SDK test file(s) load the canonical schema and pass it in as the validation boundary`);
 
   // ---- 9. fixture digest behavior: SDK sha256 must equal every manifest digest ----
   const manifest = readJson(`${FIXTURE_DIR}/manifest.json`);
@@ -397,15 +601,15 @@ export async function run(ctx) {
     probes.push({ label: 'hidden-leak mutant', result: 'PASS', reason: 'AIPT_VISIBILITY_UNAUTHORIZED_FIELD' });
   }
 
-  // ---- 12. fixture bundle behavior ----
+  // ---- 12. fixture bundle behavior (canonical schema passed in explicitly) ----
   const documents = new Map();
   for (const entry of [...manifest.assets, ...manifest.mutants]) {
     documents.set(entry.path, readJson(`${FIXTURE_DIR}/${entry.path}`));
   }
-  const bundleResult = sdk.validateFixtureBundle({ manifest, documents });
+  const bundleResult = sdk.validateFixtureBundle({ manifest, documents }, schema);
   if (!bundleResult.valid) {
     fail(`SDK fixture bundle validation rejected the shared fixture: ${JSON.stringify(bundleResult.issues.slice(0, 5))}`);
-  } else ok('SDK fixture bundle validation accepts the shared manifest + documents (digest/identity/inventory)');
+  } else ok('SDK fixture bundle validation accepts the shared manifest + documents (digest/identity/inventory/schema/semantic-proof)');
   if (!sdk.validateFixtureManifest(manifest).valid) fail('SDK fixture manifest validation rejected the shared manifest');
 
   // ---- 13. fail-closed negative behavior probes ----
@@ -442,6 +646,12 @@ export async function run(ctx) {
     }
     return [];
   };
+  const tamper = (value, fn) => {
+    const copy = JSON.parse(JSON.stringify(value));
+    fn(copy);
+    return copy;
+  };
+  const identityOnlyState = { protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'minimal-v1-arithmetic' };
   const probeCases = [
     { label: 'malformed JSON', expected: ['AIPT_MALFORMED_JSON'], run: () => sdk.decodeRequest('{ nope') },
     { label: 'arbitrary root object', expected: ['AIPT_UNKNOWN_ENVELOPE'], run: () => sdk.toExecutableRoot({ hello: 'world' }) },
@@ -462,6 +672,58 @@ export async function run(ctx) {
     }) },
     { label: 'lossy canonical value (NaN)', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.canonicalJson({ x: Number.NaN }) },
     { label: 'lossy canonical value (cycle)', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => { const c = {}; c.self = c; return sdk.canonicalJson(c); } },
+    // ---- iteration 4B repair probes: every confirmed false acceptance ----
+    { label: 'request params.proposal undefined', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.toJsonRpcRequest(makeRequest({ params: { action: 'advance-turn', seat_id: 'seat-a', proposal: undefined } })) },
+    { label: 'request params.proposal function', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.toJsonRpcRequest(makeRequest({ params: { action: 'advance-turn', seat_id: 'seat-a', proposal: () => 0 } })) },
+    { label: 'response applied_fields value undefined', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.toJsonRpcResponse(makeResponse({ result: { accepted: true, transition_id: 't-1', applied_fields: [{ field_id: 'f-1', value: undefined, visibility: { label: 'PUBLIC', authorized_seat_ids: ['seat-a'] } }] } })) },
+    { label: 'parseJson unsafe integer 9007199254740993', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.parseJson('9007199254740993') },
+    { label: 'parseJson non-finite 1e400', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.parseJson('1e400') },
+    { label: 'parseJson nested unsafe integer', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.parseJson('{"n":9007199254740993}') },
+    { label: 'manifest expected_final_state drift', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.expected_final_state = 'other.json'; })) },
+    { label: 'manifest replay_assertion drift', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.replay_assertion = 'other.json'; })) },
+    { label: 'manifest kind/schema_ref mismatch (state -> projection)', expected: ['AIPT_FIXTURE_SCHEMA_REF_MISMATCH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.assets.find((a) => a.path === 'state.json').schema_ref = '#/$defs/projection'; })) },
+    { label: 'manifest kind/schema_ref mismatch (mutant_specimen -> projection)', expected: ['AIPT_FIXTURE_SCHEMA_REF_MISMATCH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.mutants[0].schema_ref = '#/$defs/projection'; })) },
+    { label: 'manifest duplicate path', expected: ['AIPT_FIXTURE_DUPLICATE_PATH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.assets.push(JSON.parse(JSON.stringify(m.assets[0]))); })) },
+    { label: 'manifest unsafe ../escape path', expected: ['AIPT_FIXTURE_UNSAFE_PATH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.assets.find((a) => a.path === 'state.json').path = '../escape.json'; })) },
+    { label: 'manifest unsafe backslash path', expected: ['AIPT_FIXTURE_UNSAFE_PATH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.assets.find((a) => a.path === 'state.json').path = 'a\\b.json'; })) },
+    { label: 'manifest unsafe absolute path', expected: ['AIPT_FIXTURE_UNSAFE_PATH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.assets.find((a) => a.path === 'state.json').path = '/etc/passwd'; })) },
+    { label: 'manifest unsafe empty segment', expected: ['AIPT_FIXTURE_UNSAFE_PATH'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.assets.find((a) => a.path === 'state.json').path = 'a//b.json'; })) },
+    { label: 'manifest mutant cardinality drift', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.mutants = [...m.mutants, JSON.parse(JSON.stringify(m.mutants[0]))]; })) },
+    { label: 'manifest mutant rejection const drift', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.validateFixtureManifest(tamper(manifest, (m) => { m.mutants[0].expected_semantic_rejection = 'AIPT_OTHER'; })) },
+    { label: 'bundle identity-only state (digest updated)', expected: ['AIPT_FIXTURE_SCHEMA_VIOLATION'], run: () => {
+      const m = tamper(manifest, (mm) => { mm.assets.find((a) => a.path === 'state.json').sha256 = selfSha256(identityOnlyState); });
+      const docs = new Map(documents);
+      docs.set('state.json', identityOnlyState);
+      return sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+    } },
+    { label: 'bundle state schema_ref -> projection', expected: ['AIPT_FIXTURE_SCHEMA_REF_MISMATCH'], run: () => {
+      const m = tamper(manifest, (mm) => { mm.assets.find((a) => a.path === 'state.json').schema_ref = '#/$defs/projection'; });
+      return sdk.validateFixtureBundle({ manifest: m, documents }, schema);
+    } },
+    { label: 'bundle duplicate manifest entry', expected: ['AIPT_FIXTURE_DUPLICATE_PATH'], run: () => {
+      const m = tamper(manifest, (mm) => { mm.assets.push(JSON.parse(JSON.stringify(mm.assets[0]))); });
+      return sdk.validateFixtureBundle({ manifest: m, documents }, schema);
+    } },
+    { label: 'bundle neutral non-rejecting mutant (digest updated)', expected: ['AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT'], run: () => {
+      const neutral = JSON.parse(JSON.stringify(documents.get('mutants/hidden-leak.json')));
+      neutral.projection = readJson(`${FIXTURE_DIR}/projection-seat-b.json`);
+      const m = tamper(manifest, (mm) => { mm.mutants[0].sha256 = selfSha256(neutral); });
+      const docs = new Map(documents);
+      docs.set('mutants/hidden-leak.json', neutral);
+      return sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+    } },
+    { label: 'bundle state path ../escape.json (map key supplied)', expected: ['AIPT_FIXTURE_UNSAFE_PATH'], run: () => {
+      const m = tamper(manifest, (mm) => { mm.assets.find((a) => a.path === 'state.json').path = '../escape.json'; });
+      const docs = new Map(documents);
+      docs.delete('state.json');
+      docs.set('../escape.json', readJson(`${FIXTURE_DIR}/state.json`));
+      return sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+    } },
+    { label: 'bundle missing canonical schema boundary', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateFixtureBundle({ manifest, documents }) },
+    { label: 'projection fixture_id mismatch', expected: ['AIPT_FIXTURE_IDENTITY_MISMATCH'], run: () => sdk.validateProjectionSemantics(state, tamper(readJson(`${FIXTURE_DIR}/projection-seat-a.json`), (p) => { p.fixture_id = 'drifted-fixture'; }), knownSeats) },
+    { label: 'known seats invalid identifier', expected: ['AIPT_INVALID_IDENTIFIER'], run: () => sdk.validateProjectionSemantics(state, readJson(`${FIXTURE_DIR}/projection-seat-a.json`), ['Seat-Bad!']) },
+    { label: 'known seats duplicate', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.validateProjectionSemantics(state, readJson(`${FIXTURE_DIR}/projection-seat-a.json`), ['seat-a', 'seat-b', 'seat-a']) },
+    { label: 'wire error_code violating the pattern', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.toJsonRpcErrorResponse({ jsonrpc: '2.0', id: 'probe-id', protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'minimal-v1-arithmetic', error: { code: -32000, message: 'boom', data: { error_code: 'NOT_AIPT' } } }) },
   ];
   let probeFailures = 0;
   for (const probe of probeCases) {
@@ -486,6 +748,130 @@ export async function run(ctx) {
     }
   }
   if (probeFailures === 0) ok(`all ${probeCases.length} fail-closed negative behavior probes rejected for the correct contract reasons`);
+
+  // ---- 13b. canonical-valid FUTURE AIPT_* wire error code (positive) ----
+  {
+    let futureCodeOk = true;
+    try {
+      const futureResponse = { jsonrpc: '2.0', id: 'probe-id', protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'minimal-v1-arithmetic', error: { code: -32000, message: 'future extension', data: { error_code: 'AIPT_FUTURE_EXTENSION' } } };
+      const decoded = sdk.decodeResponse(JSON.stringify(futureResponse));
+      if (!('error' in decoded) || decoded.error?.data?.error_code !== 'AIPT_FUTURE_EXTENSION') {
+        fail('a canonical-valid future AIPT_* wire error code must decode and be preserved verbatim');
+        futureCodeOk = false;
+      }
+      const invalid = JSON.parse(JSON.stringify(futureResponse));
+      invalid.error.data.error_code = 'AIPT_BAD!CODE';
+      try {
+        sdk.decodeResponse(JSON.stringify(invalid));
+        fail('a non-pattern wire error_code must be rejected at runtime');
+        futureCodeOk = false;
+      } catch (err) {
+        if (!Array.isArray(err?.issues) || !err.issues.some((issue) => issue.code === 'AIPT_INVALID_VALUE')) {
+          fail(`non-pattern wire error_code rejection must carry AIPT_INVALID_VALUE, got ${JSON.stringify(err?.issues)}`);
+          futureCodeOk = false;
+        }
+      }
+    } catch (err) {
+      fail(`future wire error code probe crashed: ${err.message}`);
+      futureCodeOk = false;
+    }
+    if (futureCodeOk) {
+      ok('wire error-code namespace: canonical-valid future AIPT_FUTURE_EXTENSION accepted and preserved; non-pattern codes rejected with AIPT_INVALID_VALUE');
+      probes.push({ label: 'future AIPT_* wire error code', result: 'PASS', reason: 'AIPT_FUTURE_EXTENSION accepted verbatim' });
+    } else {
+      probes.push({ label: 'future AIPT_* wire error code', result: 'FAIL', reason: 'future code not preserved or invalid code accepted' });
+    }
+  }
+
+  // ---- 13c. in-memory drift negative probes: the gate's own drift detection
+  // must actually detect previously uncovered schema/type edits ----
+  {
+    const driftCases = [
+      {
+        label: 'drift: ActionIntentParams.proposal optional -> required',
+        run: () => {
+          const mutated = typesSource.replace('readonly proposal?: JsonValue;', 'readonly proposal: JsonValue;');
+          return auditTypeShapes(mutated, derivedShapes).length > 0;
+        },
+      },
+      {
+        label: 'drift: ApplyActionResult.applied_fields renamed',
+        run: () => {
+          const mutated = typesSource.replace('readonly applied_fields: readonly StateField[];', 'readonly applied_fields_renamed: readonly StateField[];');
+          return auditTypeShapes(mutated, derivedShapes).length > 0;
+        },
+      },
+      {
+        label: 'drift: State gains an unreviewed member',
+        run: () => {
+          const mutated = typesSource.replace('export interface State extends ProtocolIdentity {\n  readonly state_id: Identifier;', 'export interface State extends ProtocolIdentity {\n  readonly state_id: Identifier;\n  readonly sneak: Identifier;');
+          return auditTypeShapes(mutated, derivedShapes).length > 0;
+        },
+      },
+      {
+        label: 'drift: ErrorObject.data.error_code widened back to the finite union',
+        run: () => {
+          const mutated = typesSource.replace('readonly error_code: AiptWireErrorCode;', 'readonly error_code: AiptErrorCode;');
+          return auditErrorCodeSurface(mutated, errorsSource).length > 0;
+        },
+      },
+      {
+        label: 'drift: schema nested required member (state_field.required + note)',
+        run: () => {
+          const mutatedSchema = JSON.parse(JSON.stringify(schema));
+          mutatedSchema.$defs.state_field.required = [...mutatedSchema.$defs.state_field.required, 'note'];
+          const diffs = diffDescriptorKeys(deriveDescriptor(mutatedSchema), embedded);
+          return diffs.some((diff) => diff.includes('state_field_required'));
+        },
+      },
+      {
+        label: 'drift: schema manifest const (expected_final_state)',
+        run: () => {
+          const mutatedSchema = JSON.parse(JSON.stringify(schema));
+          mutatedSchema.$defs.fixture_manifest.properties.expected_final_state.const = 'other.json';
+          const diffs = diffDescriptorKeys(deriveDescriptor(mutatedSchema), embedded);
+          return diffs.some((diff) => diff.includes('fixture_manifest_expected_final_state'));
+        },
+      },
+      {
+        label: 'drift: schema manifest ref map (kind enum loses state)',
+        run: () => {
+          const mutatedSchema = JSON.parse(JSON.stringify(schema));
+          mutatedSchema.$defs.manifest_asset.properties.kind.enum = mutatedSchema.$defs.manifest_asset.properties.kind.enum.filter((kind) => kind !== 'state');
+          const diffs = diffDescriptorKeys(deriveDescriptor(mutatedSchema), embedded);
+          return diffs.some((diff) => diff.includes('manifest_kinds') || diff.includes('manifest_kind_schema_refs'));
+        },
+      },
+      {
+        label: 'drift: full schema fingerprint (description-only edit)',
+        run: () => {
+          const mutatedSchema = JSON.parse(JSON.stringify(schema));
+          mutatedSchema.title = 'edited title (fingerprint drift)';
+          const diffs = diffDescriptorKeys(deriveDescriptor(mutatedSchema), embedded);
+          return diffs.some((diff) => diff.includes('canonical_schema_sha256'));
+        },
+      },
+    ];
+    let driftFailures = 0;
+    for (const driftCase of driftCases) {
+      let detected;
+      try {
+        detected = driftCase.run();
+      } catch (err) {
+        detected = false;
+        fail(`drift probe (${driftCase.label}) crashed: ${err.message}`);
+      }
+      if (detected !== true) {
+        fail(`drift probe (${driftCase.label}) was NOT detected for its drift reason`);
+        driftFailures += 1;
+        probes.push({ label: driftCase.label, result: 'FAIL', reason: 'drift not detected' });
+      } else {
+        ok(`drift-probe PASS: ${driftCase.label} detected for its drift reason`);
+        probes.push({ label: driftCase.label, result: 'PASS', reason: 'drift detected' });
+      }
+    }
+    if (driftFailures === 0) ok(`all ${driftCases.length} in-memory drift negative probes detected their drift reason (schema content, nested required members, manifest ref map, public type shapes, error-code surface)`);
+  }
 
   // ---- 14. clean import probe: no output, no ambient work, minimal env ----
   const probeScript = [
@@ -518,11 +904,12 @@ export async function run(ctx) {
     negative_probes: probes,
     summary: {
       sdk: `${pkg.name}@${pkg.version}`,
-      descriptor: `canonical schema ${derived.protocol_version} / ${derived.schema_version} / jsonrpc ${derived.jsonrpc_version}; methods ${[...derived.request_methods, ...derived.notification_methods].join(', ')}`,
+      descriptor: `canonical schema ${derived.protocol_version} / ${derived.schema_version} / jsonrpc ${derived.jsonrpc_version}; methods ${[...derived.request_methods, ...derived.notification_methods].join(', ')}; full-content fingerprint ${derived.canonical_schema_sha256.slice(0, 16)}...`,
       fixture: `${FIXTURE_DIR} (${manifest.assets.length + manifest.mutants.length} manifest entries, ${WIRE_ENVELOPES.length} wire envelopes)`,
       envelope_variants: derived.envelope_variants,
       id_bounds: [derived.id_integer_minimum, derived.id_integer_maximum],
       visibility_labels: derived.visibility_labels,
+      type_shapes_audited: Object.keys(derivedShapes).length,
     },
   };
 }

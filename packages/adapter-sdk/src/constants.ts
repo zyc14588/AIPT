@@ -5,9 +5,7 @@
 // wire authority schemas/protocol/v1/aipt-protocol.schema.json. The machine
 // gate scripts/ci/validate/adapter-sdk.mjs re-derives the same values from
 // the canonical schema at gate time, so a constants/schema/type drift fails
-// the gate instead of passing silently. AIPT_ERROR_CODES is the SDK's own
-// stable identifier set: every entry satisfies the canonical wire error-code
-// pattern ^AIPT_[A-Z0-9_]{1,63}$.
+// the gate instead of passing silently.
 import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 
 export const PROTOCOL_VERSION = D.protocol_version;
@@ -24,7 +22,12 @@ export const ID_MAX_SAFE_INTEGER = D.id_integer_maximum;
 export const VISIBILITY_LABELS = D.visibility_labels;
 export const MANIFEST_KINDS = D.manifest_kinds;
 
-// Stable AIPT error identifiers used by this contract SDK.
+// Stable AIPT validation-issue identifiers used by this contract SDK: the
+// FINITE, stable SDK code union (ValidationIssue.code). Every entry satisfies
+// the canonical wire error-code pattern ^AIPT_[A-Z0-9_]{1,63}$; the OPEN wire
+// namespace itself (every pattern-valid AIPT_* string, e.g. a future
+// AIPT_FUTURE_EXTENSION) is the separate branded type AiptWireErrorCode in
+// src/types.ts, never widened into this finite union.
 export const AIPT_ERROR_CODES = [
   'AIPT_MALFORMED_JSON',
   'AIPT_UNKNOWN_ENVELOPE',
@@ -57,6 +60,12 @@ export const AIPT_ERROR_CODES = [
   'AIPT_FIXTURE_MISSING_ASSET',
   'AIPT_FIXTURE_UNLISTED_ASSET',
   'AIPT_FIXTURE_INVALID_MANIFEST',
+  'AIPT_FIXTURE_UNSAFE_PATH',
+  'AIPT_FIXTURE_DUPLICATE_PATH',
+  'AIPT_FIXTURE_SCHEMA_REF_MISMATCH',
+  'AIPT_FIXTURE_SCHEMA_VIOLATION',
+  'AIPT_FIXTURE_INVALID_SCHEMA',
+  'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT',
   'AIPT_ACTION_REJECTED',
   'AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE',
 ] as const;

@@ -8,9 +8,20 @@
 // ordinary optional field: a field authorized to the projection seat may not
 // be omitted, and a field NOT authorized to the projection seat may not
 // appear (AIPT_VISIBILITY_UNAUTHORIZED_FIELD).
+//
+// Iteration 4B hardening: both documents must first pass the lossless
+// JSON-value gate (no undefined/function/cycle/unsafe-integer values reach
+// the semantic comparison); the projection's fixture_id must equal the
+// source state's fixture_id (AIPT_FIXTURE_IDENTITY_MISMATCH); and the known
+// seat list is validated as identifiers with deterministic rejection of
+// invalid entries and duplicates.
+import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { failResult, issue, okResult, type ValidationIssue, type ValidationResult } from './errors.ts';
+import { validateJsonValue } from './json-value.ts';
 import type { Projection, State } from './types.ts';
 import { validateProjectionShape, validateStateShape } from './validate.ts';
+
+const IDENTIFIER_RE = new RegExp(D.identifier_pattern, 'u');
 
 function jsonEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
@@ -31,7 +42,36 @@ function jsonEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
+// Validate the caller-supplied known-seat list: every entry must be a
+// well-formed seat identifier, and duplicates are rejected deterministically
+// at their later occurrence. Returns the trusted seat set plus any issues.
+function checkKnownSeats(knownSeats: readonly string[], issues: ValidationIssue[]): Set<string> {
+  const seatSet = new Set<string>();
+  const seen = new Set<string>();
+  knownSeats.forEach((seat, index) => {
+    const seatPath = `$/known_seats/${index}`;
+    if (typeof seat !== 'string' || !IDENTIFIER_RE.test(seat)) {
+      issues.push(issue(seatPath, 'AIPT_INVALID_IDENTIFIER', `known seat must match ${D.identifier_pattern}, got ${typeof seat === 'string' ? JSON.stringify(seat) : typeof seat}`));
+      return;
+    }
+    if (seen.has(seat)) {
+      issues.push(issue(seatPath, 'AIPT_INVALID_VALUE', `duplicate known seat ${JSON.stringify(seat)}`));
+    } else {
+      seen.add(seat);
+      seatSet.add(seat);
+    }
+  });
+  return seatSet;
+}
+
 export function validateProjectionSemantics(state: unknown, projection: unknown, knownSeats: readonly string[]): ValidationResult {
+  // Lossless JSON-value gates: state and projection values must be
+  // faithfully representable before any semantic comparison.
+  const stateLossy = validateJsonValue(state, '$');
+  const projectionLossy = validateJsonValue(projection, '$');
+  if (!stateLossy.valid || !projectionLossy.valid) {
+    return failResult([...stateLossy.issues, ...projectionLossy.issues]);
+  }
   const stateCheck = validateStateShape(state, '$');
   const projectionCheck = validateProjectionShape(projection, '$');
   if (!stateCheck.valid || !projectionCheck.valid) {
@@ -40,7 +80,13 @@ export function validateProjectionSemantics(state: unknown, projection: unknown,
   const issues: ValidationIssue[] = [];
   const stateDoc = state as unknown as State;
   const projectionDoc = projection as unknown as Projection;
-  const seatSet = new Set(knownSeats);
+  const seatSet = checkKnownSeats(knownSeats, issues);
+
+  // Projection identity is bound to the source state: a projection that
+  // belongs to a different fixture must never validate against this state.
+  if (stateDoc.fixture_id !== projectionDoc.fixture_id) {
+    issues.push(issue('$/fixture_id', 'AIPT_FIXTURE_IDENTITY_MISMATCH', `projection fixture_id ${JSON.stringify(projectionDoc.fixture_id)} must equal the source state fixture_id ${JSON.stringify(stateDoc.fixture_id)}`));
+  }
 
   if (!seatSet.has(projectionDoc.seat_id)) {
     issues.push(issue('$/seat_id', 'AIPT_PROJECTION_UNKNOWN_SEAT', `projection seat ${JSON.stringify(projectionDoc.seat_id)} is not a known seat`));

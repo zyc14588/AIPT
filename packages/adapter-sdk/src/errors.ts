@@ -3,7 +3,10 @@
 // Every fail-closed rejection is path-addressed: the issue carries the JSON
 // pointer-style path of the offending value, a stable AIPT error code, and a
 // deterministic human-readable message. No partially trusted value is ever
-// returned from a failed validation.
+// returned from a failed validation. ValidationIssue.code is the FINITE,
+// stable SDK validation-issue code union (AiptErrorCode from the exported
+// constants); the OPEN canonical wire namespace is the separate branded
+// AiptWireErrorCode type and is never widened into this union.
 import type { AiptErrorCode } from './types.ts';
 
 export interface ValidationIssue {

@@ -61,6 +61,28 @@ test('contract descriptor mirrors the canonical schema constants', () => {
   assert.deepEqual([...d.visibility_labels], [...sdk.VISIBILITY_LABELS]);
   assert.deepEqual([...d.manifest_kinds], [...sdk.MANIFEST_KINDS]);
   assert.equal(d.mutant_expected_semantic_rejection, 'AIPT_VISIBILITY_UNAUTHORIZED_FIELD');
+  assert.equal(d.fixture_manifest_expected_final_state, 'final-state.json');
+  assert.equal(d.fixture_manifest_replay_assertion, 'replay-assertion.json');
+  assert.match(d.canonical_schema_sha256, /^[0-9a-f]{64}$/);
+  const refs = d.manifest_kind_schema_refs as unknown as Record<string, string>;
+  for (const kind of d.manifest_kinds) {
+    assert.equal(refs[kind], `#/$defs/${kind}`, `kind ${kind} must map to its canonical $defs target`);
+  }
+  assert.equal(refs[d.mutant_kind], '#/$defs/mutant_specimen');
+  assert.equal(d.deterministic_check_check_version, '1.0.0');
+  assert.equal(d.deterministic_check_kind, 'arithmetic');
+  assert.equal(d.deterministic_check_operator, 'add');
+  assert.equal(d.replay_assertion_hash_algorithm, 'sha256');
+  assert.equal(d.replay_assertion_final_state_ref, 'final-state.json');
+  assert.deepEqual([...d.mutant_specimen_markers], ['NON_CANON', 'MUTANT']);
+  assert.equal(d.mutant_specimen_kind, 'hidden-leak');
+});
+
+test('the fixture preflight error codes are exported and pattern-valid', () => {
+  for (const code of ['AIPT_FIXTURE_UNSAFE_PATH', 'AIPT_FIXTURE_DUPLICATE_PATH', 'AIPT_FIXTURE_SCHEMA_REF_MISMATCH', 'AIPT_FIXTURE_SCHEMA_VIOLATION', 'AIPT_FIXTURE_INVALID_SCHEMA', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT']) {
+    assert.ok(sdk.AIPT_ERROR_CODES.includes(code as (typeof sdk.AIPT_ERROR_CODES)[number]), `missing ${code}`);
+    assert.match(code, /^AIPT_[A-Z0-9_]{1,63}$/);
+  }
 });
 
 test('public export surface is present and functional', () => {
@@ -71,6 +93,7 @@ test('public export surface is present and functional', () => {
     'toJsonRpcErrorResponse', 'toJsonRpcNotification',
     'buildRequest', 'buildResultResponse', 'buildErrorResponse', 'buildNotification',
     'canonicalJson', 'canonicalJsonString', 'sha256Hex',
+    'validateJsonValue', 'requireJsonValue', 'isAiptWireErrorCode', 'validateSchemaInstance',
     'validateExecutableRoot', 'validateRequestId', 'validateStateShape', 'validateProjectionShape',
     'validateProjectionSemantics', 'validateFixtureManifest', 'validateFixtureBundle',
     'checkFixtureIdentity', 'isSafeIntegerId', 'issue', 'okResult', 'failResult',

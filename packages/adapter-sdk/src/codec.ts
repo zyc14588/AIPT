@@ -2,7 +2,9 @@
 // root and the typed JSON-RPC envelopes, plus typed builders.
 //
 // - decode* parse strict JSON and validate the parsed document before any
-//   typed value is returned (fail closed, path-addressed diagnostics).
+//   typed value is returned (fail closed, path-addressed diagnostics); the
+//   parsed output also passes the lossless JSON-value gate, so values
+//   JSON.parse would silently round (e.g. 9007199254740993) are rejected.
 // - encode* validate then serialize canonically (sorted object keys, arrays
 //   in order, no insignificant whitespace), so encode(decode(text)) is
 //   deterministic.
@@ -12,6 +14,7 @@
 import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { canonicalJsonString } from './canonical-json.ts';
 import { ProtocolValidationError, issue, type ValidationResult } from './errors.ts';
+import { validateJsonValue } from './json-value.ts';
 import type {
   ActionIntentParams,
   ApplyActionResult,
@@ -48,7 +51,15 @@ export function parseJson(text: string): JsonValue {
     const detail = err instanceof Error ? err.message : 'unparseable input';
     throw new ProtocolValidationError(`malformed JSON: ${detail}`, [issue('$', 'AIPT_MALFORMED_JSON', `malformed JSON: ${detail}`)]);
   }
-  return parsed as unknown as JsonValue;
+  // Fail closed before ANY typed value is returned: JSON.parse itself can
+  // lose information silently (e.g. 9007199254740993 -> 9007199254740992,
+  // 1e400 -> Infinity), so the parsed output must pass the lossless
+  // JSON-value gate.
+  const lossless = validateJsonValue(parsed, '$');
+  if (!lossless.valid) {
+    throw new ProtocolValidationError('parsed document is not a lossless JSON value', lossless.issues);
+  }
+  return parsed as JsonValue;
 }
 
 export function toExecutableRoot(value: unknown): ExecutableRoot {

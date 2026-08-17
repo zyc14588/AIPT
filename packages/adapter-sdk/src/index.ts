@@ -3,9 +3,10 @@
 // Dependency-free (Node.js standard library only) public contract for the
 // canonical AIPT protocol: constants, types, deterministic canonical JSON /
 // SHA-256, strict JSON-RPC 2.0 request/result-response/error-response/
-// notification envelopes, semantic projection validation, and fixture
-// compatibility helpers. This is the B002 contract SDK, not the later B005
-// Harness Adapter runtime.
+// notification envelopes, lossless JSON-value gates, semantic projection
+// validation, a package-local canonical JSON Schema 2020-12 subset
+// evaluator, and pure fixture compatibility helpers. This is the B002
+// contract SDK, not the later B005 Harness Adapter runtime.
 export {
   PROTOCOL_VERSION,
   SCHEMA_VERSION,
@@ -33,6 +34,7 @@ export type {
   Method,
   VisibilityLabel,
   AiptErrorCode,
+  AiptWireErrorCode,
   FixtureKind,
   SafeIntegerId,
   RequestId,
@@ -58,6 +60,13 @@ export type {
   StateEvent,
   JsonRpcNotification,
   ExecutableRoot,
+  Seat,
+  SeatSet,
+  DeterministicCheck,
+  StateTransition,
+  ReplayRecord,
+  ReplayAssertion,
+  MutantSpecimen,
   ManifestAsset,
   ManifestMutant,
   FixtureManifest,
@@ -66,8 +75,11 @@ export type {
 export { ProtocolValidationError, issue, okResult, failResult } from './errors.ts';
 export type { ValidationIssue, ValidationResult } from './errors.ts';
 export { canonicalJson, canonicalJsonString, sha256Hex } from './canonical-json.ts';
+export { validateJsonValue, requireJsonValue } from './json-value.ts';
+export { validateSchemaInstance } from './json-schema.ts';
 export {
   isSafeIntegerId,
+  isAiptWireErrorCode,
   validateRequestId,
   validateVisibility,
   validateStateField,
