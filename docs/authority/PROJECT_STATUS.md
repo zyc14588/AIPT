@@ -1,28 +1,29 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-08-16**；权威快照 ID：`AIPT-DCA-CLOSEOUT-R0-R16-002`。
+> 状态日期：**2026-08-17**；权威快照 ID：`AIPT-DCA-CLOSEOUT-R0-R16-002`。
 
 ## 工作轨
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；施工：M0；当前批次 `AIPT-M0-B001`（`B001_IN_PROGRESS`）；`AIPT-M0-B000` 已 `MERGED/CLOSED` |
-| `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`DEFER-001`、`R0-Q011`） |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；施工：M0；当前批次 `AIPT-M0-B002`（`B002_IN_PROGRESS`）；`AIPT-M0-B000` 与 `AIPT-M0-B001` 均已 `MERGED/CLOSED` |
+| `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
 
 - 当前里程碑：**M0**（建立可构建可验证工程基础，不实现真实桌测）。
-- `AIPT-M0-B000`（权威文档、MIT 许可与机器决策登记）已合并关闭：合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`（树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`），GPT 审计 PASS。
-- 当前批次：`AIPT-M0-B001`——Go/pnpm 工具链骨架、无秘密公共 CI（`b000-retro` / `toolchain` / `supply-chain`）、供应链基础（`R4-Q023`：锁文件、SBOM、许可证、漏洞、来源），并首次用 CI 追溯验证 B000。`DEFER-016` 已 `RESOLVED`（Go 1.26.5 / Node 24.19.0 / pnpm 11.4.0 / PostgreSQL 18.4，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）。
-- `AIPT-M0-B002` 尚未授权；B001 不实现任何运行时代码。
+- `AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）。
+- `AIPT-M0-B001` = **MERGED/CLOSED**：候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`（树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`），合并后公共 CI run `31951440133` PASS；Go/pnpm 工具链骨架、无秘密公共 CI（`b000-retro` / `toolchain` / `supply-chain`）、供应链基础（`R4-Q023`：锁文件、SBOM、许可证、漏洞、来源），`DEFER-016` 已 `RESOLVED`（Go 1.26.5 / Node 24.19.0 / pnpm 11.4.0 / PostgreSQL 18.4，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）。
+- 当前批次：`AIPT-M0-B002`——Schema、JSON-RPC、Adapter SDK 与最小协议夹具合同（协议批次，`B002_IN_PROGRESS`）；本迭代仅执行公开状态迁移（B001 关闭、B002 开启）与验证器基线升级，不实现任何协议/包/工作区代码。
+- 施工纪律：`GLOBAL_WIP = 1`（同时只有一个活跃批次）；单批次单仓库；前一批次正式关闭后才可启动下一批次。
 - 详见 [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) 与 [../milestones/M0.md](../milestones/M0.md)。
 
 ## 仓库
 
 | 仓库 | 说明 |
 |---|---|
-| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；已验证接受的主线基点 `777a3f39ba78c1ef3168597890c61abf7a55d962`（B000 合并提交，`MERGED/CLOSED`）；B001 在 `task/AIPT-M0-B001` 施工 |
+| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；已验证接受的主线基点 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`（B001 合并提交，`MERGED/CLOSED`）；`AIPT-M0-B002` 在 `task/AIPT-M0-B002` 施工 |
 | 《未登记》UNREGISTERED | <https://github.com/zyc14588/UNREGISTERED>，默认分支 `main`；规划快照 `3e4a28bba1caf44828412f90bb6715b6955e3604`；就绪等级 `PLAYTESTABLE_DRAFT` |
 
 ## 运行环境与模型（设计基线）
@@ -30,7 +31,7 @@
 - 参考环境：Ubuntu 26.04 LTS（`ENV-F001`）；Bash 启动 + 本地 Web（`ENV-F002`）。
 - 主远端模型：`deepseek-v4-pro`（`ENV-F003`），完整 Campaign 使用该模型（`R14-Q023`）。
 - 本地模型：`UNASSIGNED`；GGUF 选型与性能阈值延期（`DEFER-002`、`DEFER-003`）。
-- 以上是**设计基线**：运行时代码尚未建设（B001 仅安装工程骨架与 CI，不建设运行时）。
+- 以上是**设计基线**：运行时代码尚未建设（B001 仅安装工程骨架与 CI；B002 尚未开始协议施工）。
 
 ## 审计状态
 
@@ -49,13 +50,13 @@
 
 ## 下一步
 
-当前**只允许**执行 `AIPT-M0-B001`：
+当前**只允许**执行 `AIPT-M0-B002`：
 
-1. 工具链资格（`DEFER-016` → `RESOLVED`）与 Go/pnpm Monorepo 骨架；
-2. 公共无秘密 CI（`b000-retro` / `toolchain` / `supply-chain`）与供应链基础；
+1. 公开状态迁移：B001 关闭（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`、合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`、合并后公共 CI run `31951440133`），B002 开启（`IN_PROGRESS`、`current_batch = AIPT-M0-B002`），`verified_head = 8bcadc9669e7d04f589f883daa6d4f593875fc9e`，状态日期 `2026-08-17`；
+2. 验证器从 B001 候选基线升级到 B002 基线（`constants.mjs`、`status-transition`、`defer-016`、`tree-integrity`），保留全部 B000/B001 历史门禁；
 3. 本地确定性验证 + 推送候选 Commit + 公共 CI 全绿；
 4. 独立本地验收与 GPT 审计 PASS；
-5. 用户批准后合并；`AIPT-M0-B002` 在此之前不启动，`AIPT-PLATFORM-INTEGRATION` 保持冻结。
+5. 用户批准后合并；`AIPT-PLATFORM-INTEGRATION` 保持冻结；后续批次在 B002 正式关闭前不启动。
 
 ## 相邻文档
 

@@ -2,16 +2,16 @@
 
 AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌测系统**：AI 替代 GM、玩家、Observer 等真人席位；状态、随机数、调度、日志与规则计算由确定性基础设施承担。
 
-## 当前状态（as of 2026-08-16）
+## 当前状态（as of 2026-08-17）
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`），正在 M0 施工；当前批次 `AIPT-M0-B001`（`B001_IN_PROGRESS`） |
-| `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`：冻结等待平台 M1 游戏引擎，解冻未获授权 |
+| `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`），正在 M0 施工；当前批次 `AIPT-M0-B002`（`B002_IN_PROGRESS`） |
+| `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`：冻结等待平台 M1 游戏引擎，解冻未获授权（`unfreeze_authorized = false`） |
 
-批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）。当前批次 = `AIPT-M0-B001`：Go/pnpm 工具链骨架、无秘密公共 CI、供应链基础（`R4-Q023`），并首次用 CI 追溯验证 B000。已验证接受的主线基点 = `777a3f39ba78c1ef3168597890c61abf7a55d962`。GLOBAL_WIP = 1。
+批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）；`AIPT-M0-B001` = **MERGED/CLOSED**（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`，树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`，合并后公共 CI run `31951440133` PASS）。当前批次 = `AIPT-M0-B002`：Schema、JSON-RPC、Adapter SDK 与最小协议夹具合同（协议批次）。已验证接受的主线基点 = `8bcadc9669e7d04f589f883daa6d4f593875fc9e`。GLOBAL_WIP = 1。
 
-**设计基线已冻结、运行时代码尚未建设。** B001 只建立工程骨架（工具链、CI、供应链门禁），不实现 Core、Launcher、Schema、JSON-RPC、Adapter 或 DB 业务代码；`AIPT-M0-B002` 尚未授权；`AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`。
+**设计基线已冻结、运行时代码尚未建设。** B001 已合并关闭（工具链骨架、公共 CI、供应链门禁）；B002 本迭代仅执行公开状态迁移与验证器基线升级，不实现 Core、Launcher、Schema、JSON-RPC、Adapter 或 DB 业务代码；`AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`。
 
 首个真实游戏目标为 **《未登记》UNREGISTERED**（当前就绪等级 `PLAYTESTABLE_DRAFT`）。
 
@@ -58,5 +58,5 @@ MIT 只覆盖 AIPT 本体，**不自动覆盖**游戏内容：《未登记》游
 ## 仓库与分支
 
 - 仓库：<https://github.com/zyc14588/AIPT>，权威分支 `main`。
-- 施工使用独立任务分支（如 `task/AIPT-M0-B001`）与隔离工作树；候选 Commit 推送后，经独立本地验收与 GPT 审计核验，仅由用户批准才合并到 `main`。
-- `AIPT-M0-B000` 是一次性 Bootstrap 例外：无 CI，以最终本地确定性验收 + GPT 审计关闭（已 `MERGED/CLOSED`）；`AIPT-M0-B001` 建立公共 CI 并追溯验证 B000（`b000-retro` job）。
+- 施工使用独立任务分支（如 `task/AIPT-M0-B002`）与隔离工作树；候选 Commit 推送后，经独立本地验收与 GPT 审计核验，仅由用户批准才合并到 `main`。
+- `AIPT-M0-B000` 是一次性 Bootstrap 例外：无 CI，以最终本地确定性验收 + GPT 审计关闭（已 `MERGED/CLOSED`）；`AIPT-M0-B001` 建立公共 CI 并追溯验证 B000（`b000-retro` job），已 `MERGED/CLOSED`（合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`）。

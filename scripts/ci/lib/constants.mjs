@@ -1,14 +1,54 @@
-// Shared B001 validator constants.
+// Shared B002 validator constants.
 //
-// All fixed identities are derived from the closed AIPT-M0-B000 acceptance and
-// the AIPT-M0-B001 private task package (v1.0.0). Nothing here is computed at
+// Every fixed identity below is an immutable historical fact installed by the
+// closed AIPT-M0-B000 / AIPT-M0-B001 acceptances. Nothing is computed at
 // runtime from the candidate itself, so the candidate cannot validate itself
 // into acceptance.
+//
+// BASE_* is the accepted main base the B002 candidate must diff against: the
+// AIPT-M0-B001 merge commit and its tree. B000 and B001 keep their own
+// original commit/tree identities instead of aliasing the current base.
 
+// The batch under construction for this iteration (public status, runner
+// report, and the status-transition validator all target this batch).
+export const CURRENT_BATCH = 'AIPT-M0-B002';
+
+// The batch that selected the frozen toolchain / supply-chain policy.
+// tools/*.lock.json `selected_by_batch` is an immutable B001 fact, and the
+// frozen toolchain-lock / supply-chain validators keep comparing it against
+// TASK_ID — this value must never be bumped to a later batch.
 export const TASK_ID = 'AIPT-M0-B001';
 
-export const BASE_COMMIT = '777a3f39ba78c1ef3168597890c61abf7a55d962';
-export const BASE_TREE = 'f5f845b860ba0944ef104b4679fa074ad6efecbb';
+// Public status date of this B002 iteration (machine + human docs).
+export const STATUS_DATE = '2026-08-17';
+
+// Immutable closed-batch identities — historical state, never updated by
+// later batches and never aliased to the current base.
+export const B000 = {
+  commit: '777a3f39ba78c1ef3168597890c61abf7a55d962',
+  tree: 'f5f845b860ba0944ef104b4679fa074ad6efecbb',
+  decisions: 454,
+  supersessions: 35,
+  deferred_parameters: 16,
+  markdown_documents: 17,
+  tracked_file_count: 22,
+  deferred_016_historical_status: 'DEFERRED_TO_AIPT-M0-B001',
+};
+
+// Immutable B001 acceptance identity: the merged candidate, the merge commit
+// on main (== the accepted main base for B002), its tree, and the post-merge
+// public CI run that verified the merged tree.
+export const B001 = {
+  candidate: '2e904ddc2d4f1313a99e19f6751a991d589f8336',
+  merge_commit: '8bcadc9669e7d04f589f883daa6d4f593875fc9e',
+  tree: 'fefc25f1acb523d013c2a7d8db9801ccdab37d2d',
+  post_merge_ci_run: 31951440133,
+};
+
+// Accepted main base for the current B002 iteration: the AIPT-M0-B001 merge
+// commit / tree. `verified_head` may only point here, never at a candidate.
+export const BASE_COMMIT = B001.merge_commit;
+export const BASE_TREE = B001.tree;
 
 export const TOOLCHAIN = {
   go: '1.26.5',
@@ -33,18 +73,6 @@ export const GOVULNCHECK = {
   module: 'golang.org/x/vuln',
   version: 'v1.7.0',
   source_commit: '617f44b718537dccdea1915395650e0529e3b72e',
-};
-
-// Fixed B000 expectations — historical state, never updated by later batches.
-export const B000 = {
-  commit: BASE_COMMIT,
-  tree: BASE_TREE,
-  decisions: 454,
-  supersessions: 35,
-  deferred_parameters: 16,
-  markdown_documents: 17,
-  tracked_file_count: 22,
-  deferred_016_historical_status: 'DEFERRED_TO_AIPT-M0-B001',
 };
 
 export const CI_ACTION_PINS = {
@@ -77,49 +105,52 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// AIPT-M0-B001 private task package v1.0.0 allowed_paths / forbidden_prefixes.
+// AIPT-M0-B002 iteration 1 allowed_paths: only the public status transition
+// and the validator-baseline evolution. Later B002 iterations extend this
+// list NARROWLY with their explicitly approved contract paths (schemas/,
+// packages/, internal/protocol/, runtime/, ...) — the scope gate is never
+// disabled.
 export const ALLOWED_PATHS = [
   'README.md',
-  'docs/authority/README.md',
-  'docs/authority/DECISION_MATRIX.md',
-  'docs/authority/DEFERRED_PARAMETERS.md',
   'docs/authority/PROJECT_STATUS.md',
-  'docs/authority/registry/deferred-parameters.json',
   'docs/authority/registry/project-status.json',
-  'docs/supply-chain/README.md',
-  '.github/workflows/ci.yml',
-  '.github/dependabot.yml',
-  '.go-version',
-  '.node-version',
-  'go.mod',
   'package.json',
-  'pnpm-lock.yaml',
-  'pnpm-workspace.yaml',
-  'internal/toolchainsmoke/doc.go',
-  'internal/toolchainsmoke/toolchainsmoke_test.go',
-  'scripts/ci/**',
-  'tools/toolchain.lock.json',
-  'tools/ci-actions.lock.json',
-  'tools/supply-chain/policy.json',
-  'tools/supply-chain/licenses.json',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/defer-016.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
 ];
 
+// Forbidden prefixes for the B002 iteration: no runtime/protocol/package/
+// workspace/CI/toolchain/frozen-doc content may change under the current
+// scope (B001 historical forbidden prefixes retained).
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
   'migrations/',
   'deploy/',
   'packages/',
+  'schemas/',
+  'internal/protocol/',
+  'runtime/',
   'testdata/',
+  'tools/',
+  '.github/',
   'docs/integration/',
   'docs/test-model/',
   'docs/security/',
   'docs/evidence/',
 ];
 
+// Frozen authority registries: byte-for-byte immutability is enforced
+// against the accepted main base. Deferred parameters are frozen for the
+// B002 iteration as well (DEFER-016 stays RESOLVED with the exact B001
+// toolchain qualification; the other 15 stay open).
 export const FROZEN_REGISTRY_PATHS = [
   'docs/authority/registry/decisions.json',
   'docs/authority/registry/supersessions.json',
+  'docs/authority/registry/deferred-parameters.json',
 ];
 
 export const FROZEN_DECISION_PATHS = [

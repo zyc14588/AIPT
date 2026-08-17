@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. B001 scope: Go/pnpm toolchain skeleton, public secret-free CI, and supply-chain foundation only; no runtime packages yet.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B002 (protocol scope: Schema, JSON-RPC, Adapter SDK, minimal protocol fixture contract); the B001 Go/pnpm toolchain, public secret-free CI, and supply-chain foundation are merged and closed; no runtime packages yet.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
