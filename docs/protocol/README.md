@@ -1,7 +1,7 @@
 # AIPT 协议契约（Protocol Contract, B002）
 
-> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 4C（Adapter SDK 验证缺口修复）· 状态日期 **2026-08-17**。
-> 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）、协议资产验证器与一方 TypeScript Adapter SDK。机器可读权威是
+> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 5（Go 协议契约消费者）· 状态日期 **2026-08-17**。
+> 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）、协议资产验证器、一方 TypeScript Adapter SDK 与 Go 协议契约消费者。机器可读权威是
 > [schemas/protocol/v1/aipt-protocol.schema.json](../../schemas/protocol/v1/aipt-protocol.schema.json)
 > 与 [testdata/protocol/v1/minimal-fixture/manifest.json](../../testdata/protocol/v1/minimal-fixture/manifest.json)；
 > 本文档是可读解释，不是第二份独立权威。
@@ -145,11 +145,21 @@
 - 无导入副作用：SDK 不连接模型、不 spawn 进程、不打开 socket、不访问数据库、不启动服务/worker、不读环境凭据、导入时零环境工作（测试与门禁均含干净子进程导入探针与环境访问陷阱探针）。
 - 运行：`pnpm --filter @aipt/adapter-sdk test`（`node:test`/`assert`，确定性、密封、无外部网络；**122 项测试**——迭代 4 的 53 项与迭代 4B 的 90 项全部保留并新增 17 项迭代 4C 聚焦测试与 15 项迭代 4D 求值器聚焦测试）；`pnpm run check:adapter-sdk`（机器门禁，**103 个探针**：80 个 fail-closed 行为探针（含全部已确认误接受修复探针与 18 个迭代 4D 求值器探针）+ 11 个内存漂移探针 + 6 个零调用/无文档触碰探针 + hidden-leak 突变探针 + 未来 wire 错误码探针 + 4 个正向语法探针；已并入 `pnpm run check`）。
 
-## 11. 本批次明确不建设
+## 11. Go 协议契约消费者（B002 迭代 5）
 
-B002（含本迭代）**不新增任何 server/socket/worker/model/database 运行时**；本迭代不建设 Go 协议消费者（`go.mod`/`go.sum` 不变，`internal/protocol/` 仍被机械禁止）；`.github/`、冻结工具链/action 锁、`tools/supply-chain/policy.json`、`LICENSE` 与历史权威登记（decisions/supersessions/deferred）均保持不变。运行时状态保持 `not built yet`。B002 聚焦工作流演进（如 SDK 测试接入公共 CI workflow）留待后续迭代。
+- **依赖自由、纯协议 Go 包**：[internal/protocol](../../internal/protocol/)（模块 `github.com/zyc14588/AIPT`，`go 1.26.x` / `toolchain go1.26.5`）。仅用 Go 标准库；**`go.mod`/`go.sum` 不变、零第三方依赖**。生产 API 纯函数化：无文件 I/O、无环境访问、无进程/网络/socket/数据库、无服务循环/goroutine worker/模型调用——不是 Core 运行时、规则引擎、服务、启动器或 Adapter。
+- **schema 派生的精确常量**：`protocol_version`/`schema_version` = `1.0.0`、`jsonrpc` = `2.0`、方法注册表恰为 `aipt.protocol.applyAction`（request）+ `aipt.protocol.event`（notification）、安全整数 id 闭区间 ±(2^53-1)、恰好六个冻结 R4-F002 可见性标签。测试从权威 Schema 的本地 `$defs` **独立重推导**全部常量/注册表/边界/标签并与 Go 常量逐项比对（不实现通用 JSON Schema 求值器），任何手写常量漂移都让测试失败。
+- **严格 fail-closed JSON 与信封解码**：自有严格解析器（标准库之上）拒绝空/畸形输入、尾随 JSON 值、**任意深度**的重复对象成员名（含转义键）、未知成员、缺失必填成员（含显式 null / 零值绕过）、非有限/溢出数字、跨语言安全区间外的整数（绝不静默舍入）、负零（`-0`/`-0.0`/`-0e0`）；`json.RawMessage` 承载任意 JSON 字段（`state_field.value`/`proposal`），绝不 `interface{}` + 未检查断言。`RequestID` 保留字符串 vs 数字的 **JSON 类型**与精确值并原样往返（字符串 1..128 字符、数字为闭区间内整数；拒绝空/超长字符串、null/布尔/数组/对象、非整数、负零、越界整数）；请求/响应 id 相等性按**值与类型**比较。响应解码要求 `result`/`error` 恰好其一；错误 `code` 必须是安全整数；可选 `error.data` 只允许 `^AIPT_[A-Z0-9_]{1,63}$` 的 `error_code` 且无未知成员。所有失败返回带稳定 AIPT 原因码与路径的类型化契约错误（`AIPT_JSON_MALFORMED`/`AIPT_JSON_DUPLICATE_KEY`/`AIPT_JSON_TRAILING`/`AIPT_JSON_UNSAFE_INTEGER`/`AIPT_JSON_NEGATIVE_ZERO`/`AIPT_ENVELOPE_UNKNOWN_ROOT`/`AIPT_METHOD_INVALID`/`AIPT_ID_INVALID`/…，可在测试中区分）。
+- **纯语义助手（共享契约所需的最小集合）**：身份三元组、标识符（1..64 小写机器模式）、六个可见性标签、非空/唯一授权席位、已知席位引用、state/projection 重复 `field_id`、无损字段值；`CheckProjection` 按 Node 预言机语义实现全量状态投影合同（未知席位/重复 field/未知字段/值漂移/重分类/授权集合漂移/越权 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD`/遗漏授权字段，授权集合按数学集合比较——仅顺序不同不算漂移；缺失/未知可见性绝不默认 PUBLIC）；`ValidateProjection` 额外要求投影身份与源 state 一致；hidden-leak 突变**先结构解码后语义拒绝**（`MutantSemanticRejection` 返回恰为 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD`，且包装 `seat_id` 必须等于 `projection.seat_id`、`leaked_field_id` 必须等于唯一越权字段——元数据漂移以 `AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT` 失败，漂移元数据无法冒充夹具）；`ApplyTransition` 是把声明迁移应用为纯数据变换的确定性助手（非规则引擎），`CheckArithmetic` 校验声明算术输出，`CheckWireErrorCoherence` 校验确定性 `-32000` 错误示例。
+- **确定性 canonical JSON / SHA-256**：`CanonicalJSON`/`CanonicalSHA256` 对供应字节做严格预检（重复键、尾随、不安全整数、负零、非有限数**先于哈希拒绝**）后输出递归排序键（JavaScript UTF-16 码元序）、数组保序、无多余空白、ES6 `JSON.stringify` 数字格式的紧凑表示——与 Node 协议资产预言机**逐字节一致**。
+- **跨语言共享夹具测试**：测试直接按路径消费仓库同一份权威 Schema 与共享夹具（不复制、不新建第二份 Go 真相），验证 manifest 身份/安全路径/唯一精确清单/`kind→schema_ref` 精确映射/小写 SHA-256；对**同一批共享文件**重算每个资产与突变摘要并比对 Node 预言机写入的 manifest 摘要；重算 `final-state.json` 的 canonical 哈希并要求 `replay_assertion.final_state_hash` 与两条 replay 记录都等于它；两席投影（`seat-a`/`seat-b`）、request 参数与 action-intent 参数深度相等、id 值+类型往返、错误响应一致、通知精确包裹 `event.json`、算术输出、`initial → final` 迁移与两次重放确定。突变被验证为恰 `["NON_CANON","MUTANT"]`、`kind = hidden-leak`、可结构解码，并被投影语义以**唯一** `AIPT_VISIBILITY_UNAUTHORIZED_FIELD` 拒绝。
+- **运行**：`pnpm run test:protocol-go`（`package.json` 持久脚本，恰为 `go test ./internal/protocol -count=1`）；共 **156 项测试**全绿，其中 **83 项负向用例**（畸形 jsonrpc、未知协议/模式版本、缺 params、result+error 同时/皆无、未知请求/通知方法、任意根对象、未知字段、顶层与嵌套重复键、尾随 JSON、缺失/未知/空可见性、重复字段/席位、未知席位、投影值/元数据漂移与遗漏授权字段、id 字符串/数字往返与闭区间边界、不安全/小数/null/负零 id 拒绝、错误 code/data 无效、夹具身份失配、突变元数据漂移、canonicalization 拒绝重复/尾随/不安全/负零输入）。测试密封、无副作用、不改动任何受跟踪的 schema/夹具文件。
 
-**路径准入是逐迭代的，不是永久禁令**：`packages/adapter-sdk`、`pnpm-workspace.yaml`/`pnpm-lock.yaml` 与 `tools/supply-chain/licenses.json` 已由迭代 4 的准入清单登记；`internal/protocol`（Go 契约实现）由 B002 主合同**明确要求**后续 B002 迭代建设，届时由该迭代自己的准入清单登记，本轮不预批准。
+## 12. 本批次明确不建设
+
+B002（含本迭代）**不新增任何 server/socket/worker/model/database 运行时**；`.github/`、冻结工具链/action 锁、`tools/supply-chain/policy.json`、`LICENSE` 与历史权威登记（decisions/supersessions/deferred）均保持不变。运行时状态保持 `not built yet`。B002 聚焦工作流演进（如 Go 协议测试接入公共 CI workflow）留待后续迭代。
+
+**路径准入是逐迭代的，不是永久禁令**：`packages/adapter-sdk`、`pnpm-workspace.yaml`/`pnpm-lock.yaml` 与 `tools/supply-chain/licenses.json` 已由迭代 4 的准入清单登记；`internal/protocol/**` 与 `internal/toolchainsmoke/doc.go` 已由迭代 5 的准入清单登记（`internal/protocol/` 同时移出禁止前缀列表），后续 B002 迭代的路径仍需各自的准入登记，绝不预批准。
 
 ## 相邻文档
 

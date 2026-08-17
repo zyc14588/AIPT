@@ -146,22 +146,27 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/sbom.mjs',
   'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
+  // iteration 5 (dependency-free Go protocol contract consumer and shared
+  // fixture compatibility tests, plus the narrow toolchainsmoke package
+  // comment update that retires its stale sole-Go-package claim)
+  'internal/protocol/**',
+  'internal/toolchainsmoke/doc.go',
 ];
 
 // Forbidden prefixes for the CURRENT B002 iteration (B001 historical
 // forbidden prefixes retained). Iteration 4 registers packages/adapter-sdk,
-// the workspace manifest/lockfile, and the licenses.json inventory; the
-// frozen B001 supply-chain artifacts (policy.json, toolchain/action locks)
-// stay mechanically blocked, and internal/protocol (the Go protocol
-// consumer) remains a later B002 iteration deliverable. runtime/, .github/,
-// architecture/runtime implementation, frozen documents, and dependency
-// manifests (go.mod/go.sum) remain forbidden.
+// the workspace manifest/lockfile, and the licenses.json inventory;
+// iteration 5 registers internal/protocol (the dependency-free Go protocol
+// contract consumer) and removes it from this list, while the frozen B001
+// supply-chain artifacts (policy.json, toolchain/action locks) stay
+// mechanically blocked. runtime/, .github/, architecture/runtime
+// implementation, frozen documents, and dependency manifests
+// (go.mod/go.sum) remain forbidden.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
   'migrations/',
   'deploy/',
-  'internal/protocol/',
   'runtime/',
   '.github/',
   'docs/architecture/',
