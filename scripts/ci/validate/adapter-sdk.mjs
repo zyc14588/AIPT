@@ -1,4 +1,4 @@
-// AIPT-M0-B002 iteration 4C: @aipt/adapter-sdk machine gate.
+// AIPT-M0-B002 iteration 4C/4D: @aipt/adapter-sdk machine gate.
 //
 // Independent, fail-closed comparison of the dependency-free TypeScript
 // adapter contract SDK against the single canonical wire authority
@@ -1104,6 +1104,37 @@ export async function run(ctx) {
       docs.set('manifest.json', readJson(`${FIXTURE_DIR}/manifest.json`));
       return sdk.validateFixtureBundle({ manifest, documents: docs }, schema);
     } },
+    // ---- iteration 4D repair probes: every confirmed evaluator defect ----
+    { label: 'schema grammar: same-object mutation to a malformed keyword shape after a PASS', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const mutable = { $defs: { x: { type: 'string', minLength: 1 } } };
+      const before = sdk.validateSchemaInstance(mutable, 'a', '#/$defs/x', '$');
+      if (!before.valid) return { valid: false, issues: [{ path: '$probe', code: 'PROBE_SETUP_FAILED', message: 'pre-mutation call must pass' }] };
+      mutable.$defs.x.minLength = 'not-a-number';
+      return sdk.validateSchemaInstance(mutable, 'a', '#/$defs/x', '$');
+    } },
+    { label: 'schema grammar: same-object mutation adding an unsupported keyword to an unreferenced $defs after a PASS', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const mutable = { $defs: { x: { type: 'string' }, spare: { type: 'number' } } };
+      const before = sdk.validateSchemaInstance(mutable, 'a', '#/$defs/x', '$');
+      if (!before.valid) return { valid: false, issues: [{ path: '$probe', code: 'PROBE_SETUP_FAILED', message: 'pre-mutation call must pass' }] };
+      mutable.$defs.spare.format = 'uuid';
+      return sdk.validateSchemaInstance(mutable, 'a', '#/$defs/x', '$');
+    } },
+    { label: 'schema grammar: local $ref cycle in an unused $defs child', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'object' }, a: { $ref: '#/$defs/b' }, b: { $ref: '#/$defs/a' } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: self-referential local $ref', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { $ref: '#/$defs/x' } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: duplicate required member names', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'object', required: ['a', 'a'] } } }, { a: 1 }, '#/$defs/x', '$') },
+    { label: 'schema grammar: duplicate type names', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: ['string', 'string'] } } }, 'a', '#/$defs/x', '$') },
+    { label: 'schema grammar: duplicate JSON-equal enum values', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { enum: [{ a: 1 }, { a: 1 }] } } }, { a: 1 }, '#/$defs/x', '$') },
+    { label: 'schema grammar: non-array examples annotation', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'string', examples: 'nope' } } }, 'a', '#/$defs/x', '$') },
+    { label: 'schema grammar: non-boolean deprecated annotation', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'string', deprecated: 'yes' } } }, 'a', '#/$defs/x', '$') },
+    { label: 'schema grammar: non-string title annotation', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'string', title: 7 } } }, 'a', '#/$defs/x', '$') },
+    { label: 'schema grammar: nested $schema structural keyword', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'object', $schema: 'https://json-schema.org/draft/2020-12/schema' } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: nested $id structural keyword', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'object', $id: 'urn:test:x' } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: nested $defs structural keyword', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'object', $defs: { y: { type: 'string' } } } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: root $schema must be the exact 2020-12 URI', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $schema: 'https://json-schema.org/draft-07/schema', $defs: { x: { type: 'string' } } }, 'a', '#/$defs/x', '$') },
+    { label: 'schema grammar: root $id must be a string', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $id: 7, $defs: { x: { type: 'string' } } }, 'a', '#/$defs/x', '$') },
+    { label: 'schema grammar: external $ref remains a rejection', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { $ref: 'https://example.com/schema.json' } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: unresolvable local $ref remains a rejection', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => sdk.validateSchemaInstance({ $defs: { x: { $ref: '#/$defs/ghost' } } }, {}, '#/$defs/x', '$') },
+    { label: 'schema grammar: decimal multipleOf non-multiple (0.35 against 0.1)', expected: ['AIPT_FIXTURE_SCHEMA_VIOLATION'], run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'number', multipleOf: 0.1 } } }, 0.35, '#/$defs/x', '$') },
   ];
   let probeFailures = 0;
   for (const probe of probeCases) {
@@ -1357,6 +1388,51 @@ export async function run(ctx) {
       }
     }
     if (driftFailures === 0) ok(`all ${driftCases.length} in-memory drift negative probes detected their drift reason (schema content, nested required members, manifest ref map, public type shapes, type expressions, error-code surface)`);
+  }
+
+  // ---- 13f. iteration 4D positive grammar/evaluator probes: the repaired
+  // grammar still accepts every valid declared form (empty required arrays,
+  // decimal multipleOf tolerance, acyclic shared refs/aliases, synthetic
+  // schemas without $schema) ----
+  {
+    const positiveCases = [
+      { label: 'positive: required empty array is accepted', run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'object', required: [] } } }, {}, '#/$defs/x', '$') },
+      { label: 'positive: decimal multipleOf accepts 0.3 against 0.1', run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'number', multipleOf: 0.1 } } }, 0.3, '#/$defs/x', '$') },
+      {
+        label: 'positive: acyclic shared-target refs and JS aliases are accepted',
+        run: () => {
+          const shared = { type: 'string' };
+          const dag = {
+            $defs: {
+              target: { type: 'string' },
+              a: { $ref: '#/$defs/target' },
+              b: { $ref: '#/$defs/target' },
+              props: { type: 'object', properties: { p1: shared, p2: shared } },
+            },
+          };
+          return sdk.validateSchemaInstance(dag, { p1: 'one', p2: 'two' }, '#/$defs/props', '$');
+        },
+      },
+      { label: 'positive: synthetic schema documents without $schema are accepted', run: () => sdk.validateSchemaInstance({ $defs: { x: { type: 'string' } } }, 'a', '#/$defs/x', '$') },
+    ];
+    let positiveFailures = 0;
+    for (const positive of positiveCases) {
+      let result;
+      try {
+        result = positive.run();
+      } catch (err) {
+        result = { valid: false, issues: [{ code: 'CRASHED', message: err.message }] };
+      }
+      if (!result.valid) {
+        fail(`positive grammar probe (${positive.label}) was rejected: ${JSON.stringify(result.issues)}`);
+        positiveFailures += 1;
+        probes.push({ label: positive.label, result: 'FAIL', reason: JSON.stringify(result.issues) });
+      } else {
+        ok(`positive-probe PASS: ${positive.label}`);
+        probes.push({ label: positive.label, result: 'PASS', reason: 'accepted' });
+      }
+    }
+    if (positiveFailures === 0) ok(`all ${positiveCases.length} iteration 4D positive grammar probes accepted their valid declared forms`);
   }
 
   // ---- 14. clean import probe: no output, no ambient work, minimal env ----

@@ -50,10 +50,33 @@ Adapter runtime.
   identity bound to the source state, validated known seats, lossless
   values), a package-local dependency-free **canonical JSON Schema 2020-12
   subset evaluator** (`validateSchemaInstance`) with a deterministic
-  recursive schema-grammar preflight over the whole document (malformed
-  keyword shapes/ranges, unsupported type names, unsupported keywords hidden
-  in anyOf/oneOf/not branches, and unreferenced `$defs` children all fail
-  with `AIPT_FIXTURE_INVALID_SCHEMA`; own-member `const` presence), and pure
+  recursive schema-grammar preflight that runs FRESH on every call — a
+  caller-supplied mutable schema object is a trust boundary, so a PASS is
+  never reused across calls by object identity and a later mutation of the
+  same object is observed (no cache; the input is never copied, frozen, or
+  mutated). The preflight walks the complete local-$ref graph with
+  visiting/done state, so every local `$ref` cycle fails with
+  `AIPT_FIXTURE_INVALID_SCHEMA` before instance evaluation — cycles inside
+  unused `$defs` children included — while acyclic shared-target refs and
+  repeated non-ancestral JS object aliases stay valid. The declared grammar
+  is enforced exactly: `required` is an array of unique strings (an empty
+  array is valid JSON Schema 2020-12); `type` arrays are non-empty,
+  supported, and duplicate-free; `enum` is non-empty and JSON-semantically
+  unique; `title`/`description`/`$comment` are strings, `examples` is an
+  array, `deprecated` is a boolean, `default` may be any lossless JSON
+  value; `$schema`/`$id`/`$defs` are structural ROOT-ONLY keywords
+  (`$schema`, when present, must be exactly the JSON Schema 2020-12
+  meta-schema URI; synthetic package-local schemas need no `$schema`).
+  Schema nodes are objects only (`items`/`properties`/combinator branches
+  included; boolean and array-form schemas stay outside the supported
+  dialect). Decimal `multipleOf` uses the deterministic tolerance of the
+  repository's independent standard-library oracle (q = value / multipleOf;
+  a multiple iff abs(q - round(q)) <= 1e-9), so 0.3 is a multiple of 0.1
+  while nearby non-multiples (0.35) still fail. Malformed keyword
+  shapes/ranges, unsupported type names, unsupported keywords hidden in
+  anyOf/oneOf/not branches, unreferenced `$defs` children, and
+  external/unresolvable refs all fail with `AIPT_FIXTURE_INVALID_SCHEMA`;
+  own-member `const` presence), and pure
   fixture compatibility validation over supplied documents: manifest
   preflight (canonical consts/path form/duplicate paths/exact kind→schema_ref
   map) that stops before any supplied document is read, hashed, traversed, or
@@ -96,11 +119,12 @@ const result = validateFixtureBundle({ manifest, documents }, canonicalSchema);
 ## Tests
 
 ```sh
-pnpm --filter @aipt/adapter-sdk test   # node --test test/ (hermetic, node:test/assert only; 107 tests)
+pnpm --filter @aipt/adapter-sdk test   # node --test test/ (hermetic, node:test/assert only; 122 tests)
 pnpm run check:adapter-sdk             # machine gate: descriptor + fingerprint drift, type-shape AND
                                        # type-expression audits (91 expressions), fixture behavior,
-                                       # 81 negative probes (62 behavior + 11 drift + 6 zero-invocation/
-                                       # no-document-touch + mutant + future wire code)
+                                       # 103 probes (80 behavior + 11 drift + 6 zero-invocation/
+                                       # no-document-touch + mutant + future wire code +
+                                       # 4 positive grammar)
 ```
 
 Tests consume the repository's public canonical schema/fixture under

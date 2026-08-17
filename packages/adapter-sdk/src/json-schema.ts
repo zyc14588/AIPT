@@ -1,5 +1,5 @@
 // Package-local, dependency-free evaluator for the exact supported canonical
-// JSON Schema 2020-12 subset (B002, iterations 4B/4C).
+// JSON Schema 2020-12 subset (B002, iterations 4B/4C/4D).
 //
 // The canonical schema schemas/protocol/v1/aipt-protocol.schema.json is the
 // single wire authority; it is NEVER copied into this package. Fixture
@@ -12,10 +12,31 @@
 // `items`, `minItems`, `maxItems`, `uniqueItems`, `minLength`, `maxLength`,
 // `pattern`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`,
 // `multipleOf`, `minProperties`, `maxProperties`, `oneOf`, `anyOf`,
-// `allOf`, `not` — and ignores only the annotation keywords `title`,
-// `description`, `examples`, `default`, `deprecated`, `$comment`, `$schema`,
-// `$id`, `$defs`. Any OTHER keyword, an unresolvable local `$ref`, a
-// circular `$ref` chain, or a malformed schema node fails closed with
+// `allOf`, `not` — and enforces the declared grammar truthfully:
+//
+//   - Annotations: `title`, `description`, and `$comment` are strings;
+//     `examples` is an array; `deprecated` is a boolean; `default` may be
+//     any lossless JSON value (the whole-document lossless JSON-value gate
+//     already rejects every non-JSON value, this member included).
+//   - Structural keywords: `$schema`, `$id`, and `$defs` are ROOT-ONLY in
+//     the declared repository subset — a nested occurrence is rejected, not
+//     silently ignored. At the root, `$schema` (when present) must be
+//     exactly the JSON Schema 2020-12 meta-schema URI, `$id` must be a
+//     string, and `$defs` must be an object whose children are supported
+//     schema nodes. Synthetic package-local schema documents need not carry
+//     `$schema` and stay valid without it.
+//   - `required` must be an array of UNIQUE strings (an empty array is
+//     valid JSON Schema 2020-12 and is accepted). A `type` array must be
+//     non-empty, contain only the supported type names, and contain no
+//     duplicates. An `enum` must be non-empty and contain JSON-semantically
+//     unique values (duplicate members are rejected deterministically).
+//   - Schema nodes are OBJECTS ONLY in this package-local subset: `items`,
+//     `properties`, `additionalProperties` (boolean allowed), and
+//     combinator branches never accept boolean or array-form schema nodes.
+//     This deliberate narrowness is not broadened here.
+//
+// Any OTHER keyword, an unresolvable local `$ref`, a circular local `$ref`
+// chain, or a malformed schema node fails closed with
 // AIPT_FIXTURE_INVALID_SCHEMA; instance violations are reported
 // path-addressed with AIPT_FIXTURE_SCHEMA_VIOLATION. Nothing is silently
 // ignored: an unsupported functional keyword is a rejection, never a pass.
@@ -24,21 +45,44 @@
 // recursive schema-grammar preflight validates the whole supplied schema
 // document — keyword value shapes and ranges (non-negative integer bounds
 // keywords, string pattern constraints, boolean flags, object properties,
-// non-empty unique required/combination arrays), supported type names,
+// unique required arrays, combination arrays), supported type names,
 // schema-valued children (`properties`/`items`/`additionalProperties`/
-// combinator branches/`not`/`$defs`), local refs, and annotation keyword
-// shapes. The preflight traverses the ENTIRE schema document (every $defs
-// child, every combinator branch, even branches inside `not`), so an
+// combinator branches/`not`/`$defs`), local refs, and annotation/structural
+// keyword shapes. The preflight traverses the ENTIRE schema document (every
+// $defs child, every combinator branch, even branches inside `not`), so an
 // unsupported or malformed keyword hidden in a passing anyOf/oneOf branch or
 // inside `not` is rejected BEFORE any instance is evaluated — and the
 // evaluator additionally propagates invalid-schema issues out of combinator
 // branches so they can never be converted into an ordinary branch mismatch.
 // `const` uses own-member presence (null/false/0 all apply). External and
-// unresolvable refs and ref cycles remain rejections. The schema document is
-// never copied and never mutated.
+// unresolvable refs remain rejections. The schema document is never copied
+// and never mutated.
+//
+// Iteration 4D contract:
+//   - The preflight runs FRESH on every public validation call. A
+//     caller-supplied mutable schema object is a trust boundary, so a PASS
+//     is never reused across calls by object identity (there is no
+//     preflight cache) and the caller's data is never copied, frozen, or
+//     mutated — a later mutation of the same object is observed by the next
+//     call. Each call only reads current content.
+//   - The preflight walks the complete local-$ref graph with explicit
+//     visiting/done state: every local `$ref` cycle is rejected with
+//     AIPT_FIXTURE_INVALID_SCHEMA before instance evaluation, even when the
+//     cycle lives in an unused `$defs` child that no requested ref reaches.
+//     Valid acyclic DAG/shared-target references and repeated non-ancestral
+//     JavaScript object aliases stay valid; ordinary containment traversal
+//     is never mistaken for a ref cycle (the lossless JSON-value gate
+//     already rejected cyclic container structures).
+//   - Decimal `multipleOf` uses the deterministic tolerance of the
+//     repository's independent standard-library oracle: with
+//     q = instance / multipleOf, the instance is a multiple iff
+//     abs(q - round(q)) <= 1e-9, so 0.3 is a multiple of 0.1 while nearby
+//     non-multiples (0.35) still fail.
 import { failResult, issue, okResult, type ValidationIssue, type ValidationResult } from './errors.ts';
 import { validateJsonValue } from './json-value.ts';
 
+const META_SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema';
+const MULTIPLE_OF_TOLERANCE = 1e-9;
 const ANNOTATION_KEYWORDS = new Set(['title', 'description', 'examples', 'default', 'deprecated', '$comment', '$schema', '$id', '$defs']);
 const FUNCTIONAL_KEYWORDS = new Set([
   '$ref', 'type', 'const', 'enum', 'properties', 'required', 'additionalProperties', 'items',
@@ -48,7 +92,6 @@ const FUNCTIONAL_KEYWORDS = new Set([
 ]);
 const SUPPORTED_TYPE_NAMES = new Set(['object', 'array', 'string', 'number', 'integer', 'boolean', 'null']);
 const NON_NEGATIVE_INTEGER_KEYWORDS = new Set(['minItems', 'maxItems', 'minLength', 'maxLength', 'minProperties', 'maxProperties']);
-const STRING_ANNOTATION_KEYWORDS = new Set(['$schema', '$id', '$comment', 'title', 'description']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -106,13 +149,17 @@ function matchesType(expected: string, value: unknown): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Deterministic recursive schema-grammar preflight (iteration 4C).
+// Deterministic recursive schema-grammar preflight (iterations 4C/4D).
 // ---------------------------------------------------------------------------
 
 interface PreflightContext {
   readonly root: Record<string, unknown>;
   readonly issues: ValidationIssue[];
-  readonly visited: Set<object>;
+  // Explicit three-state walk: 0 = visiting (on the current traversal
+  // stack), 1 = done (fully grammar-checked). A $ref back into a visiting
+  // node is a circular local-ref chain; re-encountering a done node is an
+  // ordinary shared acyclic target/alias and is skipped.
+  readonly state: Map<object, 0 | 1>;
 }
 
 function preflightInvalid(ctx: PreflightContext, message: string): void {
@@ -143,8 +190,18 @@ function preflightNode(node: unknown, label: string, ctx: PreflightContext): voi
     preflightInvalid(ctx, `schema node at ${label} must be a JSON object (boolean schemas are outside the supported canonical subset)`);
     return;
   }
-  if (ctx.visited.has(node)) return;
-  ctx.visited.add(node);
+  const nodeState = ctx.state.get(node);
+  if (nodeState === 1) return; // already fully checked via another path
+  if (nodeState === 0) {
+    // Re-entered through a local $ref while still on the traversal stack:
+    // a circular ref chain. Ordinary containment can never re-enter an
+    // ancestor here (the lossless JSON-value gate rejected cyclic container
+    // structures before the preflight runs).
+    preflightInvalid(ctx, `circular local $ref chain detected at ${label} (cyclic refs are rejected in this subset)`);
+    return;
+  }
+  ctx.state.set(node, 0);
+  const structural = node === ctx.root;
   for (const key of Object.keys(node).sort()) {
     const value = node[key];
     switch (key) {
@@ -158,27 +215,52 @@ function preflightNode(node: unknown, label: string, ctx: PreflightContext): voi
         else preflightNode(target, value, ctx);
         continue;
       }
-      case '$defs': {
+      case '$schema':
+        if (!structural) {
+          preflightInvalid(ctx, `schema "$schema" is structural and root-only in the supported canonical subset (nested occurrence at ${label} is rejected, never ignored)`);
+        } else if (value !== META_SCHEMA_URI) {
+          preflightInvalid(ctx, `schema "$schema" at ${label} must be exactly ${META_SCHEMA_URI} (JSON Schema 2020-12), got ${describe(value)}`);
+        }
+        continue;
+      case '$id':
+        if (!structural) {
+          preflightInvalid(ctx, `schema "$id" is structural and root-only in the supported canonical subset (nested occurrence at ${label} is rejected, never ignored)`);
+        } else if (typeof value !== 'string') {
+          preflightInvalid(ctx, `schema "$id" at ${label} must be a string, got ${describe(value)}`);
+        }
+        continue;
+      case '$defs':
+        if (!structural) {
+          preflightInvalid(ctx, `schema "$defs" is structural and root-only in the supported canonical subset (nested occurrence at ${label} is rejected, never ignored)`);
+          continue;
+        }
         if (!isRecord(value)) {
           preflightInvalid(ctx, `schema "$defs" at ${label} must be an object`);
           continue;
         }
         for (const name of Object.keys(value)) preflightNode(value[name], `${label}/$defs/${name}`, ctx);
         continue;
-      }
-      case '$schema':
-      case '$id':
       case '$comment':
       case 'title':
       case 'description':
-        if (STRING_ANNOTATION_KEYWORDS.has(key) && typeof value !== 'string') {
-          preflightInvalid(ctx, `schema annotation ${JSON.stringify(key)} at ${label} must be a string`);
+        if (typeof value !== 'string') {
+          preflightInvalid(ctx, `schema annotation ${JSON.stringify(key)} at ${label} must be a string, got ${describe(value)}`);
         }
         continue;
       case 'examples':
+        if (!Array.isArray(value)) {
+          preflightInvalid(ctx, `schema annotation "examples" at ${label} must be an array, got ${describe(value)}`);
+        }
+        continue;
       case 'default':
+        // Any lossless JSON value: the whole-document lossless JSON-value
+        // gate already rejected every non-JSON value anywhere in the schema
+        // document, this member included.
+        continue;
       case 'deprecated':
-        // Annotation values carry no validation semantics in this subset.
+        if (typeof value !== 'boolean') {
+          preflightInvalid(ctx, `schema annotation "deprecated" at ${label} must be a boolean, got ${describe(value)}`);
+        }
         continue;
       case 'type': {
         const types = Array.isArray(value) ? value : [value];
@@ -191,6 +273,9 @@ function preflightNode(node: unknown, label: string, ctx: PreflightContext): voi
             preflightInvalid(ctx, `schema "type" at ${label} contains unsupported type name ${describe(entry)} (supported: ${[...SUPPORTED_TYPE_NAMES].sort().join(', ')})`);
           }
         }
+        if (Array.isArray(value) && new Set(types).size !== types.length) {
+          preflightInvalid(ctx, `schema "type" at ${label} must not repeat type names`);
+        }
         continue;
       }
       case 'const':
@@ -201,6 +286,14 @@ function preflightNode(node: unknown, label: string, ctx: PreflightContext): voi
       case 'enum':
         if (!Array.isArray(value) || value.length === 0) {
           preflightInvalid(ctx, `schema "enum" at ${label} must be a non-empty array`);
+          continue;
+        }
+        for (let i = 0; i < value.length; i += 1) {
+          for (let j = i + 1; j < value.length; j += 1) {
+            if (deepJsonEqual(value[i], value[j])) {
+              preflightInvalid(ctx, `schema "enum" at ${label} must not repeat JSON-equal values (entries ${i} and ${j} are duplicates)`);
+            }
+          }
         }
         continue;
       case 'properties': {
@@ -212,8 +305,10 @@ function preflightNode(node: unknown, label: string, ctx: PreflightContext): voi
         continue;
       }
       case 'required':
-        if (!Array.isArray(value) || value.length === 0 || !value.every((entry) => typeof entry === 'string')) {
-          preflightInvalid(ctx, `schema "required" at ${label} must be a non-empty array of strings`);
+        // An empty array is valid JSON Schema 2020-12 and is accepted; the
+        // entries must be unique strings.
+        if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+          preflightInvalid(ctx, `schema "required" at ${label} must be an array of strings`);
           continue;
         }
         if (new Set(value).size !== value.length) {
@@ -281,22 +376,19 @@ function preflightNode(node: unknown, label: string, ctx: PreflightContext): voi
         preflightInvalid(ctx, `unsupported functional schema keyword ${JSON.stringify(key)} at ${label} (the canonical subset is explicit; nothing is silently ignored)`);
     }
   }
+  ctx.state.set(node, 1);
 }
 
-// Preflight results are cached per schema document identity: the same
-// (already gated lossless) document always yields the same deterministic
-// result, and the cache never mutates the input.
-const preflightCache = new WeakMap<object, ValidationResult>();
-
+// The preflight runs FRESH on every public validation call: a
+// caller-supplied mutable schema document is a trust boundary, so a PASS is
+// never reused across calls by object identity (there is deliberately no
+// preflight cache), and the caller's data is never copied, frozen, or
+// mutated. Each call observes the document's current content.
 function preflightSchemaDocument(schemaDocument: Record<string, unknown>): ValidationResult {
-  const cached = preflightCache.get(schemaDocument);
-  if (cached !== undefined) return cached;
   const issues: ValidationIssue[] = [];
-  const ctx: PreflightContext = { root: schemaDocument, issues, visited: new Set<object>() };
+  const ctx: PreflightContext = { root: schemaDocument, issues, state: new Map<object, 0 | 1>() };
   preflightNode(schemaDocument, '#', ctx);
-  const result = issues.length === 0 ? okResult() : failResult(issues);
-  preflightCache.set(schemaDocument, result);
-  return result;
+  return issues.length === 0 ? okResult() : failResult(issues);
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +411,9 @@ function violation(ctx: EvaluatorContext, path: string, message: string): void {
 
 // Resolve a local JSON pointer ($ref). Only `#/...` pointers exist in the
 // canonical schema; external refs, unresolvable refs, and ref cycles fail
-// closed with AIPT_FIXTURE_INVALID_SCHEMA.
+// closed with AIPT_FIXTURE_INVALID_SCHEMA. (The grammar preflight already
+// rejected every cycle in the whole document; this stack is defense in
+// depth for the requested-ref descent.)
 function resolveRef(ctx: EvaluatorContext, ref: unknown): unknown {
   if (typeof ref !== 'string' || !ref.startsWith('#/')) {
     invalidSchema(ctx, `only local JSON pointers are supported, got ${describe(ref)}`);
@@ -392,8 +486,15 @@ function evalSchema(schema: unknown, value: unknown, path: string, ctx: Evaluato
     if (typeof schema.maximum === 'number' && value > schema.maximum) violation(ctx, path, `must be <= ${schema.maximum}, got ${value}`);
     if (typeof schema.exclusiveMinimum === 'number' && value <= schema.exclusiveMinimum) violation(ctx, path, `must be > ${schema.exclusiveMinimum}, got ${value}`);
     if (typeof schema.exclusiveMaximum === 'number' && value >= schema.exclusiveMaximum) violation(ctx, path, `must be < ${schema.exclusiveMaximum}, got ${value}`);
-    if (typeof schema.multipleOf === 'number' && schema.multipleOf > 0 && value / schema.multipleOf !== Math.floor(value / schema.multipleOf)) {
-      violation(ctx, path, `must be a multiple of ${schema.multipleOf}, got ${value}`);
+    // Decimal-safe deterministic tolerance, identical to the independent
+    // standard-library oracle: q = value / multipleOf; the value is a
+    // multiple iff abs(q - round(q)) <= 1e-9. Exact binary division alone
+    // would reject 0.3 against multipleOf 0.1.
+    if (typeof schema.multipleOf === 'number' && schema.multipleOf > 0) {
+      const quotient = value / schema.multipleOf;
+      if (Math.abs(quotient - Math.round(quotient)) > MULTIPLE_OF_TOLERANCE) {
+        violation(ctx, path, `must be a multiple of ${schema.multipleOf}, got ${value}`);
+      }
     }
   }
 
@@ -538,11 +639,14 @@ function evalSchema(schema: unknown, value: unknown, path: string, ctx: Evaluato
 // schema document. Issue paths are prefixed with `path` so bundle-level
 // callers can address every violation under the asset's document path.
 //
-// Gate order (iteration 4C): the schema document and the instance document
-// must both be lossless JSON values (AIPT_LOSSY_JSON_VALUE), then the WHOLE
-// schema document must pass the deterministic schema-grammar preflight
-// (AIPT_FIXTURE_INVALID_SCHEMA) before any instance is evaluated. This API
-// remains the general package-local supported-subset evaluator: only bundle
+// Gate order (iterations 4C/4D): the schema document and the instance
+// document must both be lossless JSON values (AIPT_LOSSY_JSON_VALUE), then
+// the WHOLE schema document must pass the deterministic schema-grammar
+// preflight (AIPT_FIXTURE_INVALID_SCHEMA) — including the complete
+// local-$ref cycle check — before any instance is evaluated. The preflight
+// runs fresh on every call (no cross-call cache), so a caller mutation of
+// the same schema object is observed by the next call. This API remains the
+// general package-local supported-subset evaluator: only bundle
 // compatibility (validateFixtureBundle) additionally requires the exact
 // canonical full-content fingerprint.
 export function validateSchemaInstance(schemaDocument: unknown, document: unknown, ref: string, path = '$'): ValidationResult {
