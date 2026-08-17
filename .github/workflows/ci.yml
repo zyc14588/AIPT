@@ -114,7 +114,7 @@ jobs:
         run: go test ./...
       - name: pnpm frozen install
         run: pnpm install --frozen-lockfile
-      - name: B002 protocol assets: schema + JSON-RPC wire envelopes + shared fixture (hidden-leak mutant rejection, replay determinism)
+      - name: "B002 protocol assets: schema + JSON-RPC wire envelopes + shared fixture (hidden-leak mutant rejection, replay determinism)"
         run: pnpm run check:protocol-assets
       - name: B002 Adapter SDK contract tests (packages/adapter-sdk)
         run: pnpm run test:adapter-sdk

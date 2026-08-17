@@ -6,6 +6,13 @@
 // gates plus the aggregate `pnpm run check` alongside every retained
 // B000/B001 command and gate. Every required needle is fail-closed: a
 // recorded missing needle fails the validator, never an unconditional ok.
+//
+// This fixed workflow subset is parsed with small explicit indentation
+// helpers (no YAML dependency): block structure comes from real key lines at
+// fixed indents, so commented-out or relocated strings can never satisfy the
+// permissions, fail-fast, or matrix checks. Step `name:` scalars are checked
+// lexically: an unquoted `: ` inside a plain scalar makes the whole file
+// invalid YAML, so restoring the exact unsafe focused step name fails here.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -69,12 +76,57 @@ const RETAINED_GATES = [
   'node scripts/ci/provenance.mjs',
 ];
 
-// Extract one top-level job block (2-space indented job key until the next
-// 2-space indented job key). Job content keys live at >=4 spaces, so they
-// cannot collide with the boundary pattern.
-function jobBlock(text, jobName) {
-  const re = new RegExp(`^  ${jobName}:\\s*$([\\s\\S]*?)(?=^  [a-z0-9-]+:\\s*$)`, 'm');
-  return re.exec(text)?.[1] ?? null;
+// ---- small explicit indentation helpers for this fixed workflow subset ----
+
+// Leading-space count of one line.
+function indent(line) {
+  let n = 0;
+  while (n < line.length && line[n] === ' ') n += 1;
+  return n;
+}
+
+// True for blank and comment-only lines (they never start or end a block).
+function isBlankOrComment(line) {
+  const t = line.trimStart();
+  return t === '' || t.startsWith('#');
+}
+
+// Index of a block-style `key:` line at exactly `keyIndent` spaces,
+// searching from `from` (inclusive), or -1.
+function findKeyLine(lines, key, keyIndent, from = 0) {
+  const re = new RegExp(`^ {${keyIndent}}${key}:$`);
+  for (let i = from; i < lines.length; i += 1) {
+    if (re.test(lines[i])) return i;
+  }
+  return -1;
+}
+
+// Body lines of the block-style mapping entry whose key line is at
+// `keyLineIdx`: everything after the key line until the first non-blank,
+// non-comment line indented at `keyIndent` spaces or fewer.
+function bodyLines(lines, keyLineIdx, keyIndent) {
+  let end = lines.length;
+  for (let i = keyLineIdx + 1; i < lines.length; i += 1) {
+    if (isBlankOrComment(lines[i])) continue;
+    if (indent(lines[i]) <= keyIndent) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(keyLineIdx + 1, end);
+}
+
+// Narrow scalar cleanup for this subset: strip a trailing ` #` comment and
+// one pair of surrounding quotes.
+function scalarValue(raw) {
+  let v = raw;
+  const hash = v.indexOf(' #');
+  if (hash >= 0) v = v.slice(0, hash);
+  v = v.trim();
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    v = v.slice(1, -1);
+  }
+  return v;
 }
 
 export function run(ctx) {
@@ -86,6 +138,7 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
   const text = fs.readFileSync(path.join(ctx.repo, WORKFLOW), 'utf8');
+  const lines = text.split('\n');
 
   // ---- durable workflow identity ----
   if (/^name:\s*AIPT M0 CI\s*$/m.test(text)) ok(`durable workflow name: ${DURABLE_WORKFLOW_NAME}`);
@@ -100,20 +153,57 @@ export function run(ctx) {
   if (text.includes('cancel-in-progress: false')) ok('concurrency cancel-in-progress: false retained');
   else fail('concurrency cancel-in-progress: false removed');
 
-  // ---- permissions ----
-  const permBlock = /^permissions:\s*$([\s\S]*?)(?=^\S)/m.exec(text);
-  if (!permBlock) {
-    fail('missing top-level permissions block');
+  // ---- YAML syntax guard for step name: scalars (narrow, dependency-free) ----
+  // In this fixed subset every step name is a plain or quoted scalar on a
+  // 6-space `- name:` line. An unquoted plain scalar containing `: ` (the
+  // YAML mapping indicator) makes the entire file invalid YAML, so the exact
+  // unsafe unquoted focused step name must fail here lexically.
+  const unsafeNames = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = /^ {6}- name:\s*(.+?)\s*$/.exec(lines[i]);
+    if (!m) continue;
+    const value = m[1];
+    if (value.startsWith('"') || value.startsWith("'")) continue;
+    if (/:\s/.test(value)) unsafeNames.push({ line: i + 1, value });
+  }
+  if (unsafeNames.length === 0) ok('every step name: scalar is YAML-safe (no unquoted `: `)');
+  else {
+    for (const u of unsafeNames) {
+      fail(`step name at line ${u.line} is an unsafe unquoted scalar (YAML mapping indicator): ${u.value}`);
+    }
+  }
+
+  // ---- permissions: exactly one top-level mapping, { contents: read } ----
+  const permMappings = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (isBlankOrComment(lines[i])) continue;
+    if (/^ *permissions:/.test(lines[i])) permMappings.push({ idx: i, indent: indent(lines[i]) });
+  }
+  if (permMappings.length === 1 && permMappings[0].indent === 0) {
+    ok('exactly one permissions: mapping and it is top-level (no job-level/nested overrides)');
   } else {
-    const block = permBlock[1];
-    if (!/^\s*contents:\s*read\s*$/m.test(block)) fail('permissions must be exactly contents: read');
-    else ok('permissions: contents: read');
-    if (/write/.test(block)) fail('permissions block must grant no write access');
+    const desc = permMappings.length
+      ? permMappings.map((p) => `line ${p.idx + 1}@indent ${p.indent}`).join(', ')
+      : 'none';
+    fail(`expected exactly one top-level permissions: mapping; found ${desc}`);
+  }
+  const permKeyIdx = findKeyLine(lines, 'permissions', 0);
+  if (permKeyIdx < 0) {
+    fail('missing top-level permissions block (`permissions:` with exactly `contents: read` beneath)');
+  } else {
+    const body = bodyLines(lines, permKeyIdx, 0);
+    const entries = body.filter(
+      (l) => !isBlankOrComment(l) && indent(l) === 2 && /^[A-Za-z0-9_-]+:/.test(l.trimStart()),
+    );
+    const exactlyContentsRead =
+      entries.length === 1 && /^contents:\s*read\s*(?:#.*)?$/.test(entries[0].trimStart());
+    if (exactlyContentsRead) ok('top-level permissions mapping is exactly { contents: read }');
+    else {
+      fail(`top-level permissions mapping must contain exactly one entry, \`contents: read\`; parsed ${JSON.stringify(entries.map((l) => l.trim()))}`);
+    }
+    if (/write/.test(body.join('\n'))) fail('permissions mapping must grant no write access');
     else ok('no write permission granted');
   }
-  const permCount = (text.match(/^permissions:\s*$/gm) ?? []).length;
-  if (permCount !== 1) fail(`expected exactly one top-level permissions block, found ${permCount}`);
-  else ok('single top-level permissions block (no job-level overrides)');
 
   // ---- secret references ----
   if (text.includes('secrets.')) fail('workflow must not reference secrets.*');
@@ -172,42 +262,91 @@ export function run(ctx) {
   else fail('floating action refs present');
 
   // ---- jobs & runners ----
-  const jobNames = [...text.matchAll(/^\s{2}([a-z0-9-]+):\s*$/gm)].map((m) => m[1]);
+  const jobsKeyIdx = findKeyLine(lines, 'jobs', 0);
+  const jobsBody = jobsKeyIdx >= 0 ? bodyLines(lines, jobsKeyIdx, 0) : [];
+  const jobNames = jobsBody
+    .filter((l) => indent(l) === 2 && /^[a-z0-9-]+:$/.test(l.trimStart()))
+    .map((l) => l.trim().slice(0, -1));
   for (const required of ['b000-retro', 'toolchain', 'supply-chain']) {
-    if (!jobNames.includes(required)) fail(`required job missing: ${required}`);
-    else ok(`required job present: ${required}`);
+    if (jobNames.includes(required)) ok(`required job present: ${required}`);
+    else fail(`required job missing: ${required}`);
   }
-  if (text.includes('ubuntu-24.04') && text.includes('ubuntu-26.04')) {
-    ok('runner coverage includes ubuntu-24.04 (GA) and ubuntu-26.04 (reference)');
-  } else fail('runner coverage must include ubuntu-24.04 and ubuntu-26.04');
   if (/runs-on:\s*(macos|windows)/.test(text)) fail('CI must be GitHub-hosted Linux only');
   else ok('GitHub-hosted Linux only');
 
   // ---- toolchain job: matrix, B002 focused commands, auditable step names ----
-  const toolchain = jobBlock(text, 'toolchain');
-  if (!toolchain) {
+  const toolchainIdx = findKeyLine(jobsBody, 'toolchain', 2);
+  const toolchainBody = toolchainIdx >= 0 ? bodyLines(jobsBody, toolchainIdx, 2) : null;
+  let matrixRunners = null;
+  if (!toolchainBody) {
     fail('toolchain job block not found');
   } else {
-    const strategy = /^    strategy:([\s\S]*?)(?=^    (?:steps|runs-on|name):)/m.exec(toolchain)?.[1] ?? '';
-    if (!strategy) fail('toolchain strategy block not found');
-    else {
-      if (!/^\s{6}fail-fast:\s*false\s*$/m.test(strategy)) fail('toolchain matrix must keep fail-fast: false');
-      else ok('toolchain matrix fail-fast: false');
-      const missingRunners = MATRIX_RUNNERS.filter((r) => !strategy.includes(r));
-      if (missingRunners.length > 0) fail(`toolchain matrix missing runner(s): ${missingRunners.join(', ')}`);
-      else ok(`toolchain matrix runs on ${MATRIX_RUNNERS.join(' + ')}`);
+    const strategyIdx = findKeyLine(toolchainBody, 'strategy', 4);
+    const strategyBody = strategyIdx >= 0 ? bodyLines(toolchainBody, strategyIdx, 4) : null;
+    if (!strategyBody) {
+      fail('toolchain strategy block not found');
+    } else {
+      const failFastLines = strategyBody.filter(
+        (l) => indent(l) === 6 && /^fail-fast:/.test(l.trimStart()),
+      );
+      if (failFastLines.length === 1 && /^fail-fast:\s*false\s*(?:#.*)?$/.test(failFastLines[0].trimStart())) {
+        ok('toolchain matrix fail-fast: false (real entry at matrix indentation)');
+      } else {
+        fail('toolchain matrix must keep exactly one real fail-fast: false entry');
+      }
+
+      const matrixIdx = findKeyLine(strategyBody, 'matrix', 6);
+      const matrixBody = matrixIdx >= 0 ? bodyLines(strategyBody, matrixIdx, 6) : null;
+      if (!matrixBody) {
+        fail('toolchain strategy.matrix block not found');
+      } else {
+        const osIdx = findKeyLine(matrixBody, 'os', 8);
+        const osBody = osIdx >= 0 ? bodyLines(matrixBody, osIdx, 8) : null;
+        if (!osBody) {
+          fail('toolchain strategy.matrix.os block not found');
+        } else {
+          // Only real non-comment list entries count; runner strings in
+          // comments or in other jobs can never satisfy this check.
+          matrixRunners = osBody
+            .filter((l) => /^ {10}- /.test(l))
+            .map((l) => scalarValue(l.trim().slice(2)));
+          const expected = [...MATRIX_RUNNERS].sort();
+          const actual = [...matrixRunners].sort();
+          if (matrixRunners.length === MATRIX_RUNNERS.length && actual.every((r, i) => r === expected[i])) {
+            ok(`toolchain strategy.matrix.os parses to exactly ${MATRIX_RUNNERS.join(' + ')} (each once)`);
+          } else {
+            fail(`toolchain strategy.matrix.os must parse to exactly [${MATRIX_RUNNERS.join(', ')}]; parsed ${JSON.stringify(matrixRunners)}`);
+          }
+        }
+      }
     }
+
+    // Runner coverage is derived from the parsed matrix entries, never from
+    // raw substring presence, so comments/other jobs cannot satisfy it.
+    const covered =
+      matrixRunners !== null &&
+      matrixRunners.length === MATRIX_RUNNERS.length &&
+      MATRIX_RUNNERS.every((r) => matrixRunners.includes(r));
+    if (covered) ok('runner coverage includes ubuntu-24.04 (GA) and ubuntu-26.04 (reference)');
+    else fail('runner coverage must include ubuntu-24.04 and ubuntu-26.04 (parsed matrix entries)');
 
     // B002 focused commands must be real `run:` steps of the toolchain job —
     // not arbitrary text or comments elsewhere in the workflow.
-    const runLines = [...toolchain.matchAll(/^\s{8}run:\s*(.+?)\s*$/gm)].map((m) => m[1].trim());
+    const runLines = toolchainBody
+      .map((l) => /^ {8}run:\s*(.+?)\s*$/.exec(l)?.[1]?.trim())
+      .filter((v) => typeof v === 'string');
     for (const cmd of FOCUSED_COMMANDS) {
       if (runLines.includes(cmd)) ok(`toolchain job runs: ${cmd}`);
       else fail(`toolchain job must run ${cmd} as an explicit step`);
     }
 
     // Step names must keep the B002 coverage auditable.
-    const stepNames = [...toolchain.matchAll(/^\s{6}-\s+name:\s*(.+?)\s*$/gm)].map((m) => m[1]);
+    const stepsIdx = findKeyLine(toolchainBody, 'steps', 4);
+    const stepsBody = stepsIdx >= 0 ? bodyLines(toolchainBody, stepsIdx, 4) : [];
+    const stepNames = stepsBody
+      .map((l) => /^ {6}- name:\s*(.+?)\s*$/.exec(l)?.[1])
+      .filter(Boolean)
+      .map((v) => scalarValue(v));
     for (const needle of STEP_NAME_NEEDLES) {
       const hit = stepNames.some((n) => n.toLowerCase().includes(needle));
       if (hit) ok(`toolchain step names make ${needle} coverage auditable`);
@@ -216,11 +355,12 @@ export function run(ctx) {
   }
 
   // ---- triggers ----
-  const onBlock = /^on:\s*$([\s\S]*?)(?=^\S)/m.exec(text)?.[1] ?? '';
-  if (onBlock.includes('push') && onBlock.includes('main') && onBlock.includes('task/**') && onBlock.includes('repair/**')) {
+  const onIdx = findKeyLine(lines, 'on', 0);
+  const onBody = (onIdx >= 0 ? bodyLines(lines, onIdx, 0) : []).join('\n');
+  if (onBody.includes('push') && onBody.includes('main') && onBody.includes('task/**') && onBody.includes('repair/**')) {
     ok('push triggers: main, task/**, repair/**');
   } else fail('push triggers must include main, task/** and repair/**');
-  if (onBlock.includes('pull_request')) ok('pull_request trigger present');
+  if (onBody.includes('pull_request')) ok('pull_request trigger present');
   else fail('pull_request trigger missing');
 
   // ---- container digest pin ----
