@@ -31,6 +31,13 @@
 // single frozen-install step, under their auditable step name, exactly once
 // total in the toolchain job and never in b000-retro/supply-chain; retained
 // single-line gate commands must run exactly once in their intended job.
+// Triggers and the top-level concurrency block are parsed as real blocks too:
+// on.push/on.pull_request branches must be exactly the accepted non-comment
+// list entries and concurrency exactly the two real indent-2 entries, while
+// every action step keeps its own real `uses:` value and `with:` inputs, so
+// the required jobs must carry the exact pinned action-step inventory in
+// order with exact inputs (a version input under checkout can never satisfy
+// setup-go/setup-node, and extra uses: steps always fail).
 // Permission success details are emitted only when every permissions
 // mapping/body validated cleanly and no mapping anywhere grants write.
 import fs from 'node:fs';
@@ -82,12 +89,26 @@ const RETAINED_INLINE_GATES = {
   ],
 };
 
-// Exact setup declarations each job must carry exactly once as a real
-// `with:` entry.
-const SETUP_DECLS = {
-  'b000-retro': [`node-version: ${TOOLCHAIN.node}`],
-  toolchain: [`go-version: ${TOOLCHAIN.go}`, `node-version: ${TOOLCHAIN.node}`],
-  'supply-chain': [`go-version: ${TOOLCHAIN.go}`, `node-version: ${TOOLCHAIN.node}`],
+// Exact action-step inventory per required job: every action step (a step
+// carrying a real `uses:` value) must appear exactly once, in this order,
+// with the pinned action SHA (from CI_ACTION_PINS) and exactly these `with:`
+// inputs — a version input on any other step (e.g. checkout) can never
+// satisfy setup-go/setup-node, and extra uses: steps always fail.
+const ACTION_STEPS = {
+  'b000-retro': [
+    { repo: 'actions/checkout', with: { 'fetch-depth': '0' } },
+    { repo: 'actions/setup-node', with: { 'node-version': TOOLCHAIN.node } },
+  ],
+  toolchain: [
+    { repo: 'actions/checkout', with: { 'fetch-depth': '0' } },
+    { repo: 'actions/setup-go', with: { 'go-version': TOOLCHAIN.go, cache: 'false' } },
+    { repo: 'actions/setup-node', with: { 'node-version': TOOLCHAIN.node } },
+  ],
+  'supply-chain': [
+    { repo: 'actions/checkout', with: { 'fetch-depth': '0' } },
+    { repo: 'actions/setup-go', with: { 'go-version': TOOLCHAIN.go, cache: 'false' } },
+    { repo: 'actions/setup-node', with: { 'node-version': TOOLCHAIN.node } },
+  ],
 };
 
 // Exact block evidence: every gate is the accepted run block's exact ordered
@@ -322,13 +343,18 @@ function stepsOf(job) {
 
 // Analyze one step: collect inline `run:` commands (exact command equality is
 // the caller's job), literal/folded block run bodies (trimmed non-blank,
-// non-comment command lines), and real eight-space control metadata (`if:`,
+// non-comment command lines), real eight-space control metadata (`if:`,
 // `continue-on-error:`, `shell:` — plain or quoted keys, optional whitespace
-// before the colon). This is not a general YAML parser and never claims to
-// be one.
+// before the colon), the step's real `uses:` value, and its real `with:`
+// mapping entries (simple quoted/plain scalar values normalized via the
+// narrow scalar helper; comments ignored). This is not a general YAML parser
+// and never claims to be one.
 function analyzeStep(step) {
   const runs = [];
   const conditions = { if: [], continueOnError: [], shell: [] };
+  const uses = [];
+  const withEntries = [];
+  let inWith = false;
   for (let i = 0; i < step.lines.length; i += 1) {
     const line = step.lines[i];
     const lineNo = step.lineNo + i;
@@ -352,6 +378,23 @@ function analyzeStep(step) {
       continue;
     }
     const key = mappingKey(line, 8);
+    if (key === 'uses') {
+      const um = /^ {8}uses:\s*(.+?)\s*$/.exec(line);
+      if (um) uses.push({ value: scalarValue(um[1]), lineNo });
+      continue;
+    }
+    if (key === 'with') {
+      inWith = true;
+      continue;
+    }
+    if (inWith && indent(line) === 10) {
+      const wk = mappingKey(line, 10);
+      if (wk) {
+        const vm = /^ {10}(?:'[^']*'|"[^"]*"|[^\s:'"]+)\s*:\s*(.*)$/.exec(line);
+        withEntries.push({ key: wk, value: scalarValue(vm?.[1] ?? ''), lineNo });
+      }
+      continue;
+    }
     if (key === 'if' || key === 'continue-on-error' || key === 'shell') {
       const vm = /^ {8}(?:'[^']*'|"[^"]*"|[^\s:'"]+)\s*:\s*(.*)$/.exec(line);
       const value = (vm?.[1] ?? '').trim();
@@ -360,7 +403,7 @@ function analyzeStep(step) {
       else conditions.shell.push({ value, lineNo });
     }
   }
-  return { ...step, runs, conditions };
+  return { ...step, runs, conditions, uses, withEntries };
 }
 
 // Steps (in order) whose runs contain an inline command exactly equal to cmd.
@@ -410,26 +453,21 @@ function totalOccurrences(analyzed, cmd) {
   return n;
 }
 
-// Setup declaration hits: a real ten-space `with:` entry (the nearest
-// eight-space key line above must open a `with:` mapping), never a run block
-// body line or arbitrary text.
-function setupDeclHits(job, decl) {
-  const hits = [];
-  for (let i = 0; i < job.body.length; i += 1) {
-    const line = job.body[i];
-    if (indent(line) !== 10 || line.trim() !== decl) continue;
-    let j = i - 1;
-    for (; j >= 0; j -= 1) {
-      const l = job.body[j];
-      if (isBlankOrComment(l)) continue;
-      if (indent(l) === 10) continue; // sibling with: entry
-      break;
-    }
-    if (j >= 0 && /^ {8}with:\s*(?:#.*)?$/.test(job.body[j])) {
-      hits.push(job.bodyStart + i + 1);
-    }
-  }
-  return hits;
+// Real non-comment branch list entries of the canonical
+// `on.<trigger>.branches` block, or null when that block (or any part of it)
+// is missing. Entries living in comments, in another trigger, or at another
+// indentation never count.
+function triggerBranches(onBlock, trigger) {
+  if (!onBlock) return null;
+  const trigIdx = findKeyLineIn(onBlock.lines, trigger, 2, 0, onBlock.lines.length);
+  if (trigIdx < 0) return null;
+  const trigBody = blockAt(onBlock.lines, trigIdx, 2);
+  const branchesIdx = findKeyLineIn(trigBody.lines, 'branches', 4, 0, trigBody.lines.length);
+  if (branchesIdx < 0) return null;
+  const branchesBody = blockAt(trigBody.lines, branchesIdx, 4);
+  return branchesBody.lines
+    .filter((l) => /^ {6}- /.test(l))
+    .map((l) => scalarValue(l.trim().slice(2)));
 }
 
 export function run(ctx) {
@@ -449,12 +487,33 @@ export function run(ctx) {
   if (text.includes(STALE_WORKFLOW_NAME)) fail(`stale workflow name ${STALE_WORKFLOW_NAME} still present`);
   else ok('no stale B001 workflow name');
 
-  // ---- concurrency prefix consistency ----
-  const groupMatch = /^  group:\s*(.+?)\s*$/m.exec(text);
-  if (groupMatch?.[1] === CONCURRENCY_GROUP) ok(`concurrency group uses the durable ${CONCURRENCY_GROUP} prefix`);
-  else fail(`concurrency group must be exactly ${JSON.stringify(CONCURRENCY_GROUP)}`);
-  if (text.includes('cancel-in-progress: false')) ok('concurrency cancel-in-progress: false retained');
-  else fail('concurrency cancel-in-progress: false removed');
+  // ---- concurrency: exactly the real top-level block ----
+  // The top-level `concurrency:` mapping must carry exactly two real indent-2
+  // entries: the durable group and cancel-in-progress: false. Comment-only or
+  // nested lookalikes, duplicates, and extra entries all fail.
+  const concurrencyIdx = findKeyLineIn(lines, 'concurrency', 0, 0, lines.length);
+  const concurrencyBlock = concurrencyIdx >= 0 ? blockAt(lines, concurrencyIdx, 0) : null;
+  const concurrencyEntries = [];
+  for (const l of concurrencyBlock?.lines ?? []) {
+    if (isBlankOrComment(l)) continue;
+    if (indent(l) !== 2) continue; // nested lookalikes never count
+    const ck = mappingKey(l, 2);
+    if (!ck) continue;
+    const cm = /^ {2}(?:'[^']*'|"[^"]*"|[^\s:'"]+)\s*:\s*(.*)$/.exec(l);
+    concurrencyEntries.push([ck, scalarValue(cm?.[1] ?? '')]);
+  }
+  const expectedConcurrency = [
+    ['group', CONCURRENCY_GROUP],
+    ['cancel-in-progress', 'false'],
+  ];
+  if (
+    concurrencyEntries.length === expectedConcurrency.length &&
+    concurrencyEntries.every((e, i) => e[0] === expectedConcurrency[i][0] && e[1] === expectedConcurrency[i][1])
+  ) {
+    ok(`top-level concurrency block is exactly group: ${CONCURRENCY_GROUP} and cancel-in-progress: false`);
+  } else {
+    fail(`top-level concurrency block must contain exactly the two real entries group: ${JSON.stringify(CONCURRENCY_GROUP)} and cancel-in-progress: false; parsed ${JSON.stringify(concurrencyEntries)}`);
+  }
 
   // ---- YAML syntax guard for step name: scalars (narrow, dependency-free) ----
   // In this fixed subset every step name is a plain or quoted scalar on a
@@ -709,11 +768,46 @@ export function run(ctx) {
     const analyzed = analyzedJobs[required] ?? [];
     if (!job) continue;
 
-    // Exact setup declarations, exactly once each, as real with: entries.
-    for (const decl of SETUP_DECLS[required] ?? []) {
-      const hits = setupDeclHits(job, decl);
-      if (hits.length === 1) ok(`${required} job declares ${JSON.stringify(decl)} exactly once`);
-      else fail(`${required} job must declare ${JSON.stringify(decl)} exactly once as a real 10-space with: entry; found ${hits.length}`);
+    // Exact action-step inventory: every uses: step must be one of the
+    // expected action steps, exactly once, in the expected order, with the
+    // pinned action SHA and exactly the expected with: inputs. A version
+    // input on any other step (e.g. checkout) can never satisfy
+    // setup-go/setup-node, and extra uses: steps always fail.
+    const expectedActions = ACTION_STEPS[required] ?? [];
+    const actionSteps = analyzed
+      .map((s, i) => ({ step: s, index: i }))
+      .filter(({ step }) => step.uses.length > 0);
+    if (actionSteps.length !== expectedActions.length) {
+      fail(`${required} job must have exactly ${expectedActions.length} uses: step(s) in order ${expectedActions.map((a) => a.repo).join(', ')}; found ${actionSteps.length} action step(s)`);
+    } else {
+      let inventoryOk = true;
+      for (let k = 0; k < expectedActions.length; k += 1) {
+        const expected = expectedActions[k];
+        const { step } = actionSteps[k];
+        const expectedUses = `${expected.repo}@${CI_ACTION_PINS[expected.repo].sha}`;
+        const usesValues = step.uses.map((u) => u.value);
+        const actualWith = {};
+        let withDup = false;
+        for (const e of step.withEntries) {
+          if (e.key in actualWith) withDup = true;
+          actualWith[e.key] = e.value;
+        }
+        const expectedKeys = Object.keys(expected.with).sort();
+        const actualKeys = Object.keys(actualWith).sort();
+        const usesOk = usesValues.length === 1 && usesValues[0] === expectedUses;
+        const inputsOk =
+          !withDup &&
+          expectedKeys.length === actualKeys.length &&
+          expectedKeys.every((k2) => actualWith[k2] === expected.with[k2]);
+        if (!usesOk || !inputsOk) {
+          inventoryOk = false;
+          const label = step.name ? JSON.stringify(step.name) : `step ${actionSteps[k].index + 1}`;
+          fail(`${required} job action step ${k + 1} (${label}) must use ${expectedUses} with exactly ${JSON.stringify(expected.with)}; found uses ${JSON.stringify(usesValues)} with inputs ${JSON.stringify(actualWith)}`);
+        }
+      }
+      if (inventoryOk) {
+        ok(`${required} job action-step inventory matches exactly: ${expectedActions.map((a) => `${a.repo}@${CI_ACTION_PINS[a.repo].sha}`).join(' + ')} with exact with: inputs`);
+      }
     }
 
     // Exact block gates: the accepted run block's exact ordered non-blank,
@@ -790,14 +884,26 @@ export function run(ctx) {
     }
   }
 
-  // ---- triggers ----
+  // ---- triggers: exact on.push / on.pull_request branches ----
   const onIdx = findKeyLineIn(lines, 'on', 0, 0, lines.length);
-  const onBody = (onIdx >= 0 ? blockAt(lines, onIdx, 0).lines : []).join('\n');
-  if (onBody.includes('push') && onBody.includes('main') && onBody.includes('task/**') && onBody.includes('repair/**')) {
-    ok('push triggers: main, task/**, repair/**');
-  } else fail('push triggers must include main, task/** and repair/**');
-  if (onBody.includes('pull_request')) ok('pull_request trigger present');
-  else fail('pull_request trigger missing');
+  const onBlock = onIdx >= 0 ? blockAt(lines, onIdx, 0) : null;
+  const pushBranches = triggerBranches(onBlock, 'push');
+  const expectedPush = ['main', 'task/**', 'repair/**'];
+  if (
+    pushBranches !== null &&
+    pushBranches.length === expectedPush.length &&
+    [...pushBranches].sort().every((b, i) => b === [...expectedPush].sort()[i])
+  ) {
+    ok('on.push.branches is exactly main, task/**, repair/** (each once)');
+  } else {
+    fail(`on.push.branches must contain exactly main, task/** and repair/** as real non-comment list entries; parsed ${JSON.stringify(pushBranches)}`);
+  }
+  const prBranches = triggerBranches(onBlock, 'pull_request');
+  if (prBranches !== null && prBranches.length === 1 && prBranches[0] === 'main') {
+    ok('on.pull_request.branches is exactly main (once)');
+  } else {
+    fail(`on.pull_request.branches must contain exactly main as a real non-comment list entry; parsed ${JSON.stringify(prBranches)}`);
+  }
 
   // ---- container digest pin ----
   const pgPinned = text.includes(`postgres@${PG_MULTI_ARCH_DIGEST}`);
