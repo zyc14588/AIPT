@@ -347,17 +347,28 @@ function stepsOf(job) {
 // `continue-on-error:`, `shell:` — plain or quoted keys, optional whitespace
 // before the colon), the step's real `uses:` value, and its real `with:`
 // mapping entries (simple quoted/plain scalar values normalized via the
-// narrow scalar helper; comments ignored). This is not a general YAML parser
-// and never claims to be one.
+// narrow scalar helper; comments ignored). A `with:` collection ends at the
+// first subsequent real non-comment line at indent <= 8, so a sibling
+// `env:`/`run:`/`uses:`/`if:`/other step-level mapping can never contribute
+// indent-10 entries to withEntries, and the number of real step-level `with:`
+// mappings is tracked so split/duplicate `with:` blocks fail even when their
+// union equals the expected inputs. This is not a general YAML parser and
+// never claims to be one.
 function analyzeStep(step) {
   const runs = [];
   const conditions = { if: [], continueOnError: [], shell: [] };
   const uses = [];
   const withEntries = [];
   let inWith = false;
+  let withMappings = 0;
   for (let i = 0; i < step.lines.length; i += 1) {
     const line = step.lines[i];
     const lineNo = step.lineNo + i;
+    // The active `with:` mapping ends at the first subsequent real
+    // non-comment line at indent <= 8 (comments/blanks never end it).
+    if (inWith && !isBlankOrComment(line) && indent(line) <= 8) {
+      inWith = false;
+    }
     const blockRun = /^ {8}run:\s*[|>][-+]?\s*(?:#.*)?$/.exec(line);
     if (blockRun) {
       const body = [];
@@ -385,6 +396,7 @@ function analyzeStep(step) {
     }
     if (key === 'with') {
       inWith = true;
+      withMappings += 1;
       continue;
     }
     if (inWith && indent(line) === 10) {
@@ -403,7 +415,7 @@ function analyzeStep(step) {
       else conditions.shell.push({ value, lineNo });
     }
   }
-  return { ...step, runs, conditions, uses, withEntries };
+  return { ...step, runs, conditions, uses, withEntries, withMappings };
 }
 
 // Steps (in order) whose runs contain an inline command exactly equal to cmd.
@@ -796,13 +808,16 @@ export function run(ctx) {
         const actualKeys = Object.keys(actualWith).sort();
         const usesOk = usesValues.length === 1 && usesValues[0] === expectedUses;
         const inputsOk =
+          step.withMappings === 1 &&
           !withDup &&
           expectedKeys.length === actualKeys.length &&
           expectedKeys.every((k2) => actualWith[k2] === expected.with[k2]);
         if (!usesOk || !inputsOk) {
           inventoryOk = false;
           const label = step.name ? JSON.stringify(step.name) : `step ${actionSteps[k].index + 1}`;
-          fail(`${required} job action step ${k + 1} (${label}) must use ${expectedUses} with exactly ${JSON.stringify(expected.with)}; found uses ${JSON.stringify(usesValues)} with inputs ${JSON.stringify(actualWith)}`);
+          const withDesc =
+            step.withMappings !== 1 ? ` across ${step.withMappings} with: mapping(s)` : '';
+          fail(`${required} job action step ${k + 1} (${label}) must use ${expectedUses} with exactly ${JSON.stringify(expected.with)}; found uses ${JSON.stringify(usesValues)} with inputs ${JSON.stringify(actualWith)}${withDesc}`);
         }
       }
       if (inventoryOk) {
