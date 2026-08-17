@@ -1,4 +1,4 @@
-name: AIPT M0 B001 CI
+name: AIPT M0 CI
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: aipt-m0-b001-${{ github.workflow }}-${{ github.ref }}
+  group: aipt-m0-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -55,7 +55,9 @@ jobs:
           --expected-tree f5f845b860ba0944ef104b4679fa074ad6efecbb
 
   # ------------------------------------------------------------------
-  # Exact toolchain qualification on GA and reference runner images.
+  # Exact toolchain qualification on GA and reference runner images,
+  # plus the explicit B002 protocol contract gates on every matrix
+  # runner (pnpm run check stays the B001+B002 aggregate gate).
   # ------------------------------------------------------------------
   toolchain:
     name: toolchain (${{ matrix.os }})
@@ -112,7 +114,13 @@ jobs:
         run: go test ./...
       - name: pnpm frozen install
         run: pnpm install --frozen-lockfile
-      - name: B001 Node validators
+      - name: B002 protocol assets: schema + JSON-RPC wire envelopes + shared fixture (hidden-leak mutant rejection, replay determinism)
+        run: pnpm run check:protocol-assets
+      - name: B002 Adapter SDK contract tests (packages/adapter-sdk)
+        run: pnpm run test:adapter-sdk
+      - name: B002 Go fixture contract tests (internal/protocol; shared fixture + replay determinism)
+        run: pnpm run test:protocol-go
+      - name: B001+B002 aggregate validators (pnpm run check)
         run: pnpm run check
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |

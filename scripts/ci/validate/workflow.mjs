@@ -1,11 +1,81 @@
-// B001 workflow validator: secret-free, full-SHA action pins, digest-pinned
-// containers, correct runner coverage, and the three required jobs.
+// B002 workflow validator: the public .github/workflows/ci.yml must be the
+// durable `AIPT M0 CI` workflow — secret-free, full-SHA action pins agreed
+// with the frozen action lock, digest-pinned containers, Linux-only, the
+// three required jobs, and the toolchain matrix (ubuntu-24.04 +
+// ubuntu-26.04, fail-fast false) running the three explicit B002 contract
+// gates plus the aggregate `pnpm run check` alongside every retained
+// B000/B001 command and gate. Every required needle is fail-closed: a
+// recorded missing needle fails the validator, never an unconditional ok.
 import fs from 'node:fs';
 import path from 'node:path';
-import { CI_ACTION_PINS, PG_MULTI_ARCH_DIGEST, TOOLCHAIN, GOVULNCHECK } from '../lib/constants.mjs';
+import {
+  B000,
+  CI_ACTION_PINS,
+  PG_MULTI_ARCH_DIGEST,
+  TOOLCHAIN,
+  GOVULNCHECK,
+} from '../lib/constants.mjs';
 import { runAsMain } from '../lib/cli.mjs';
 
 const WORKFLOW = '.github/workflows/ci.yml';
+const DURABLE_WORKFLOW_NAME = 'AIPT M0 CI';
+const STALE_WORKFLOW_NAME = 'AIPT M0 B001 CI';
+const CONCURRENCY_GROUP = 'aipt-m0-${{ github.workflow }}-${{ github.ref }}';
+const MATRIX_RUNNERS = ['ubuntu-24.04', 'ubuntu-26.04'];
+
+// The three explicit B002 contract gates plus the retained aggregate
+// `pnpm run check`, each of which must be a `run:` step of the toolchain job.
+const FOCUSED_COMMANDS = [
+  'pnpm run check:protocol-assets',
+  'pnpm run test:adapter-sdk',
+  'pnpm run test:protocol-go',
+  'pnpm run check',
+];
+
+// Step-name tokens the toolchain job must carry so the B002 coverage
+// (schema / JSON-RPC / shared fixture, Adapter SDK, Go fixture, hidden-leak
+// mutant rejection, replay determinism) stays auditable.
+const STEP_NAME_NEEDLES = [
+  'schema',
+  'json-rpc',
+  'shared fixture',
+  'adapter sdk',
+  'go fixture',
+  'mutant',
+  'replay',
+];
+
+// Retained B000/B001 gates that must stay in the workflow verbatim (checked
+// against the whole file; the B002 focused commands are checked inside the
+// toolchain job separately and strictly).
+const RETAINED_GATES = [
+  `go-version: ${TOOLCHAIN.go}`,
+  `node-version: ${TOOLCHAIN.node}`,
+  `pnpm@${TOOLCHAIN.pnpm}`,
+  `@${GOVULNCHECK.version}`,
+  'gofmt',
+  'go vet ./...',
+  'go test ./...',
+  'pnpm install --frozen-lockfile',
+  'pnpm audit',
+  'go mod tidy',
+  'git diff --exit-code -- go.mod go.sum',
+  'postgres (PostgreSQL) 18.4',
+  'node scripts/ci/validate/b000-retro.mjs',
+  `--commit ${B000.commit}`,
+  `--expected-tree ${B000.tree}`,
+  'node scripts/ci/validate/supply-chain.mjs',
+  'node scripts/ci/validate/sbom.mjs',
+  'node scripts/ci/provenance.mjs',
+];
+
+// Extract one top-level job block (2-space indented job key until the next
+// 2-space indented job key). Job content keys live at >=4 spaces, so they
+// cannot collide with the boundary pattern.
+function jobBlock(text, jobName) {
+  const re = new RegExp(`^  ${jobName}:\\s*$([\\s\\S]*?)(?=^  [a-z0-9-]+:\\s*$)`, 'm');
+  return re.exec(text)?.[1] ?? null;
+}
 
 export function run(ctx) {
   const details = [];
@@ -16,6 +86,19 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
   const text = fs.readFileSync(path.join(ctx.repo, WORKFLOW), 'utf8');
+
+  // ---- durable workflow identity ----
+  if (/^name:\s*AIPT M0 CI\s*$/m.test(text)) ok(`durable workflow name: ${DURABLE_WORKFLOW_NAME}`);
+  else fail(`workflow name must be exactly ${JSON.stringify(DURABLE_WORKFLOW_NAME)}`);
+  if (text.includes(STALE_WORKFLOW_NAME)) fail(`stale workflow name ${STALE_WORKFLOW_NAME} still present`);
+  else ok('no stale B001 workflow name');
+
+  // ---- concurrency prefix consistency ----
+  const groupMatch = /^  group:\s*(.+?)\s*$/m.exec(text);
+  if (groupMatch?.[1] === CONCURRENCY_GROUP) ok(`concurrency group uses the durable ${CONCURRENCY_GROUP} prefix`);
+  else fail(`concurrency group must be exactly ${JSON.stringify(CONCURRENCY_GROUP)}`);
+  if (text.includes('cancel-in-progress: false')) ok('concurrency cancel-in-progress: false retained');
+  else fail('concurrency cancel-in-progress: false removed');
 
   // ---- permissions ----
   const permBlock = /^permissions:\s*$([\s\S]*?)(?=^\S)/m.exec(text);
@@ -100,6 +183,38 @@ export function run(ctx) {
   if (/runs-on:\s*(macos|windows)/.test(text)) fail('CI must be GitHub-hosted Linux only');
   else ok('GitHub-hosted Linux only');
 
+  // ---- toolchain job: matrix, B002 focused commands, auditable step names ----
+  const toolchain = jobBlock(text, 'toolchain');
+  if (!toolchain) {
+    fail('toolchain job block not found');
+  } else {
+    const strategy = /^    strategy:([\s\S]*?)(?=^    (?:steps|runs-on|name):)/m.exec(toolchain)?.[1] ?? '';
+    if (!strategy) fail('toolchain strategy block not found');
+    else {
+      if (!/^\s{6}fail-fast:\s*false\s*$/m.test(strategy)) fail('toolchain matrix must keep fail-fast: false');
+      else ok('toolchain matrix fail-fast: false');
+      const missingRunners = MATRIX_RUNNERS.filter((r) => !strategy.includes(r));
+      if (missingRunners.length > 0) fail(`toolchain matrix missing runner(s): ${missingRunners.join(', ')}`);
+      else ok(`toolchain matrix runs on ${MATRIX_RUNNERS.join(' + ')}`);
+    }
+
+    // B002 focused commands must be real `run:` steps of the toolchain job —
+    // not arbitrary text or comments elsewhere in the workflow.
+    const runLines = [...toolchain.matchAll(/^\s{8}run:\s*(.+?)\s*$/gm)].map((m) => m[1].trim());
+    for (const cmd of FOCUSED_COMMANDS) {
+      if (runLines.includes(cmd)) ok(`toolchain job runs: ${cmd}`);
+      else fail(`toolchain job must run ${cmd} as an explicit step`);
+    }
+
+    // Step names must keep the B002 coverage auditable.
+    const stepNames = [...toolchain.matchAll(/^\s{6}-\s+name:\s*(.+?)\s*$/gm)].map((m) => m[1]);
+    for (const needle of STEP_NAME_NEEDLES) {
+      const hit = stepNames.some((n) => n.toLowerCase().includes(needle));
+      if (hit) ok(`toolchain step names make ${needle} coverage auditable`);
+      else fail(`toolchain step names must make ${needle} coverage auditable`);
+    }
+  }
+
   // ---- triggers ----
   const onBlock = /^on:\s*$([\s\S]*?)(?=^\S)/m.exec(text)?.[1] ?? '';
   if (onBlock.includes('push') && onBlock.includes('main') && onBlock.includes('task/**') && onBlock.includes('repair/**')) {
@@ -115,21 +230,11 @@ export function run(ctx) {
   if (/postgres:18\.4/.test(text)) fail('PostgreSQL must not be referenced by bare tag (postgres:18.4)');
   else ok('no bare postgres:18.4 tag reference');
 
-  // ---- pinned versions inside the workflow ----
-  for (const needle of [
-    `go-version: ${TOOLCHAIN.go}`,
-    `node-version: ${TOOLCHAIN.node}`,
-    `pnpm@${TOOLCHAIN.pnpm}`,
-    `@${GOVULNCHECK.version}`,
-    'gofmt',
-    'go vet ./...',
-    'go test ./...',
-    'pnpm install --frozen-lockfile',
-    'pnpm audit',
-  ]) {
-    if (!text.includes(needle)) fail(`workflow missing expected step content: ${needle}`);
-  }
-  ok('workflow pins exact toolchain versions and expected commands');
+  // ---- retained B000/B001 gates (fail-closed: every missing needle fails) ----
+  const missingGates = RETAINED_GATES.filter((needle) => !text.includes(needle));
+  if (missingGates.length > 0) {
+    fail(`workflow missing retained B000/B001 gate content: ${missingGates.join(', ')}`);
+  } else ok('workflow retains exact toolchain pins, B000 retro, and every B001 command/gate');
 
   // ---- no model network config ----
   const modelHosts = ['deepseek', 'openai', 'anthropic', 'moonshot', 'openrouter', 'googleapis'];

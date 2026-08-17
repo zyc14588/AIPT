@@ -112,10 +112,11 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
 // the CUMULATIVE union of every B002 iteration's approved paths: the
 // iteration-1 status-transition/validator-baseline set, the iteration-2
 // protocol-schema/fixture/validator set, the iteration-3 bounded repair set,
-// and the iteration-4 adapter-SDK/first-party-workspace/supply-chain set.
-// Path admission is PER-ITERATION: each B002 iteration registers only the
-// paths its own accepted scope may change, and the scope gate is never
-// disabled.
+// the iteration-4 adapter-SDK/first-party-workspace/supply-chain set, the
+// iteration-5 Go protocol contract consumer set, and the iteration-6 focused
+// CI workflow evolution set. Path admission is PER-ITERATION: each B002
+// iteration registers only the paths its own accepted scope may change, and
+// the scope gate is never disabled.
 export const ALLOWED_PATHS = [
   // iteration 1 (public status transition + validator baseline)
   'README.md',
@@ -151,6 +152,12 @@ export const ALLOWED_PATHS = [
   // comment update that retires its stale sole-Go-package claim)
   'internal/protocol/**',
   'internal/toolchainsmoke/doc.go',
+  // iteration 6 (focused B002 public CI workflow evolution: the ci.yml
+  // contract gates on both qualified runners and the B002 workflow
+  // validator). These are the ONLY .github paths ever admitted — there is
+  // no .github glob, and every other .github path stays rejected.
+  '.github/workflows/ci.yml',
+  'scripts/ci/validate/workflow.mjs',
 ];
 
 // Forbidden prefixes for the CURRENT B002 iteration (B001 historical
@@ -159,16 +166,19 @@ export const ALLOWED_PATHS = [
 // iteration 5 registers internal/protocol (the dependency-free Go protocol
 // contract consumer) and removes it from this list, while the frozen B001
 // supply-chain artifacts (policy.json, toolchain/action locks) stay
-// mechanically blocked. runtime/, .github/, architecture/runtime
-// implementation, frozen documents, and dependency manifests
-// (go.mod/go.sum) remain forbidden.
+// mechanically blocked. Iteration 6 admits exactly
+// .github/workflows/ci.yml via the exact allowed-path list above, so the
+// broad .github/ forbidden prefix is retired ONLY because that exact-path
+// admission continues to reject every other .github path (no .github glob
+// was introduced and the prefix list is not loosened elsewhere).
+// runtime/, architecture/runtime implementation, frozen documents, and
+// dependency manifests (go.mod/go.sum) remain forbidden.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
   'migrations/',
   'deploy/',
   'runtime/',
-  '.github/',
   'docs/architecture/',
   'docs/integration/',
   'docs/test-model/',

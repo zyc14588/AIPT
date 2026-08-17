@@ -1,6 +1,6 @@
 # AIPT 协议契约（Protocol Contract, B002）
 
-> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 5B（Go 协议契约消费者修复）· 状态日期 **2026-08-17**。
+> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 6（聚焦 B002 CI 工作流演进）· 状态日期 **2026-08-17**。
 > 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）、协议资产验证器、一方 TypeScript Adapter SDK 与 Go 协议契约消费者。机器可读权威是
 > [schemas/protocol/v1/aipt-protocol.schema.json](../../schemas/protocol/v1/aipt-protocol.schema.json)
 > 与 [testdata/protocol/v1/minimal-fixture/manifest.json](../../testdata/protocol/v1/minimal-fixture/manifest.json)；
@@ -169,9 +169,19 @@
 
 ## 12. 本批次明确不建设
 
-B002（含本迭代）**不新增任何 server/socket/worker/model/database 运行时**；`.github/`、冻结工具链/action 锁、`tools/supply-chain/policy.json`、`LICENSE` 与历史权威登记（decisions/supersessions/deferred）均保持不变。运行时状态保持 `not built yet`。B002 聚焦工作流演进（如 Go 协议测试接入公共 CI workflow）留待后续迭代。
+B002（含本迭代）**不新增任何 server/socket/worker/model/database 运行时**；冻结工具链/action 锁、`tools/supply-chain/policy.json`、`LICENSE` 与历史权威登记（decisions/supersessions/deferred）均保持不变，`.github/` 中仅 `workflows/ci.yml` 由迭代 6 准入演进（其余 `.github` 路径仍被精确允许清单拒绝）。运行时状态保持 `not built yet`。聚焦 B002 CI 工作流演进已由迭代 6 实现（见第 13 节）。
 
-**路径准入是逐迭代的，不是永久禁令**：`packages/adapter-sdk`、`pnpm-workspace.yaml`/`pnpm-lock.yaml` 与 `tools/supply-chain/licenses.json` 已由迭代 4 的准入清单登记；`internal/protocol/**` 与 `internal/toolchainsmoke/doc.go` 已由迭代 5 的准入清单登记（`internal/protocol/` 同时移出禁止前缀列表），后续 B002 迭代的路径仍需各自的准入登记，绝不预批准。
+**路径准入是逐迭代的，不是永久禁令**：`packages/adapter-sdk`、`pnpm-workspace.yaml`/`pnpm-lock.yaml` 与 `tools/supply-chain/licenses.json` 已由迭代 4 的准入清单登记；`internal/protocol/**` 与 `internal/toolchainsmoke/doc.go` 已由迭代 5 的准入清单登记（`internal/protocol/` 同时移出禁止前缀列表）；`.github/workflows/ci.yml` 与 `scripts/ci/validate/workflow.mjs` 已由迭代 6 的准入清单登记（`.github/` 的宽泛禁止前缀因精确允许清单继续拒绝所有其它 `.github` 路径而退役，**未放开 `.github` 通配**），后续 B002 迭代的路径仍需各自的准入登记，绝不预批准。
+
+## 13. 聚焦 B002 CI 工作流演进（迭代 6）
+
+- 公共 CI 工作流 [.github/workflows/ci.yml](../../.github/workflows/ci.yml) 以耐久名称 `AIPT M0 CI` 运行（并发组前缀同步为 `aipt-m0-`），保留 `b000-retro` / `toolchain` / `supply-chain` 三个 job 与全部既有门禁：`permissions: contents: read` 唯一权限、无 secrets/OIDC/模型端点、全部 action 为 40 位十六进制完整 SHA 引脚并与 `tools/ci-actions.lock.json` 逐项一致、PostgreSQL 18.4 官方镜像精确多架构摘要校验、精确工具链（Go 1.26.5 / Node 24.19.0 / pnpm 11.4.0）、gofmt / `go vet ./...` / `go test ./...`、冻结 `pnpm install --frozen-lockfile`、B000 固定提交/树追溯验证、`go mod tidy` 整洁、govulncheck v1.7.0、`pnpm audit`、确定性 SBOM、来源元数据 provenance。
+- `toolchain` job 保持 `ubuntu-24.04` + `ubuntu-26.04` 双 runner 矩阵（`fail-fast: false`），在冻结 pnpm 安装之后于**每个** runner 上显式执行聚焦 B002 合同门禁（绝不只依赖通用 `go test ./...` 与聚合 `pnpm run check`）：
+  - `pnpm run check:protocol-assets` —— 权威 Schema + JSON-RPC wire 信封 + 共享夹具（hidden-leak 突变拒绝、重放确定性）；
+  - `pnpm run test:adapter-sdk` —— Adapter SDK 包套件（122 项测试）；
+  - `pnpm run test:protocol-go` —— Go 契约消费者共享夹具测试（`internal/protocol`，205 项测试含 116 项负向用例）；
+  - `pnpm run check` 保留为 **B001+B002 聚合验证器门禁**（内含 `check:adapter-sdk` 机器门禁 103 探针、协议资产门禁、DEFER-016、树完整性、供应链、SBOM、独立入口点回归等）。
+- 工作流验证器 [scripts/ci/validate/workflow.mjs](../../scripts/ci/validate/workflow.mjs) 升级为 **fail-closed B002 契约**：耐久工作流名称、双 runner 矩阵（fail-fast false）、三条显式聚焦命令、聚合 `pnpm run check` 与全部保留的 B001 命令/门禁任一缺失即失败；聚焦命令在 **`toolchain` job 内**核对（绝不把别处的注释或文字当作命令存在），缺失针脚后绝不无条件声称成功；权限、无秘密、action 引脚/锁集、触发器、Linux-only、摘要、工具链、审计与无模型网络校验全部保留。
 
 ## 相邻文档
 
