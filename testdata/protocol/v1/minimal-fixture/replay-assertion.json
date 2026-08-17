@@ -1,0 +1,20 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "assertion_id": "replay-assertion-minimal-v1",
+  "hash_algorithm": "sha256",
+  "canonical_json_rule": "sorted object keys recursively, arrays in order, no insignificant whitespace",
+  "final_state_ref": "final-state.json",
+  "final_state_hash": "d28310d82d4b2e76db86b6d7d78a4334249681e948c6dc49ed6a8ea193ecc047",
+  "replays": [
+    {
+      "replay_id": "replay-1",
+      "final_state_hash": "d28310d82d4b2e76db86b6d7d78a4334249681e948c6dc49ed6a8ea193ecc047"
+    },
+    {
+      "replay_id": "replay-2",
+      "final_state_hash": "d28310d82d4b2e76db86b6d7d78a4334249681e948c6dc49ed6a8ea193ecc047"
+    }
+  ]
+}

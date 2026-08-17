@@ -1,8 +1,13 @@
-// B001 tree-integrity validator: scope, Markdown links, JSON parse, and
+// B002 tree-integrity validator: scope, Markdown links, JSON parse, and
 // secret / private-path / prompt-body hygiene for the candidate tree
 // (including the executable scripts/ci sources themselves), plus a
 // temporary-fixture regression proving the hygiene scan really covers .mjs
 // files under a scripts/ci-shaped path.
+//
+// Markdown rules for B002: no brittle fixed total document count (later
+// approved B002 contract documents must not be rejected by a count) — instead
+// every Markdown document of the accepted base must still be present and
+// every current relative link must resolve.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,10 +31,10 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
 
-  // ---- scope (changed paths vs private task manifest) ----
+  // ---- scope (changed paths vs the registered B002 per-iteration allowed set) ----
   const diff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   // Regenerable package-manager install output is not candidate source: the
-  // repository carries no .gitignore (adding one is outside the B001 allowed
+  // repository carries no .gitignore (adding one is outside the B002 allowed
   // path set), so filter the generated node_modules tree here.
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
     .stdout.split('\n')
@@ -38,14 +43,14 @@ export function run(ctx) {
   if (changed.length === 0) fail('no changed paths found vs base');
   else ok(`${changed.length} changed paths vs base`);
   for (const p of changed) {
-    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B001 allowed set: ${p}`);
+    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B002 allowed set: ${p}`);
     for (const prefix of FORBIDDEN_PREFIXES) {
       if (p.startsWith(prefix)) fail(`forbidden prefix changed: ${p}`);
     }
     if (FROZEN_REGISTRY_PATHS.includes(p)) fail(`frozen registry modified: ${p}`);
   }
   if (changed.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
-    ok('all changed paths within the registered B001 scope');
+    ok('all changed paths within the registered B002 per-iteration scope');
   }
 
   // LICENSE untouched vs base.
@@ -58,15 +63,22 @@ export function run(ctx) {
   }
 
   // ---- Markdown links (no blanket scripts/ci skip: every Markdown document
-  // in the tree participates) ----
+  // in the tree participates). No fixed total count: instead, every base
+  // Markdown document must remain present, and every current relative link
+  // must resolve — a later approved B002 protocol document must not be
+  // rejected by a brittle count. ----
+  const baseFiles = git(ctx.repo, ['ls-tree', '-r', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
+  const baseMd = baseFiles.filter((f) => f.endsWith('.md'));
+  const missingBaseMd = baseMd.filter((f) => !fs.existsSync(path.join(ctx.repo, f)));
+  if (missingBaseMd.length > 0) {
+    for (const f of missingBaseMd) fail(`base Markdown document no longer present: ${f}`);
+  } else ok(`every base Markdown document remains (${baseMd.length} documents from the accepted base)`);
   const { mdCount, issues: linkIssues } = collectMarkdownLinkIssues(ctx.repo);
   if (linkIssues.length > 0) {
     for (const issue of linkIssues.slice(0, 20)) {
       fail(`broken relative link: ${issue.file} -> ${issue.target} (${issue.reason})`);
     }
-  } else ok(`${mdCount} Markdown documents, all relative links resolve`);
-  if (mdCount !== 18) fail(`expected 18 Markdown documents in the B001 tree (17 B000 + docs/supply-chain/README.md), found ${mdCount}`);
-  else ok('18 Markdown documents (B000 17 + supply-chain README)');
+  } else ok(`${mdCount} Markdown documents in the tree, all relative links resolve`);
 
   // ---- JSON parse ----
   let jsonCount = 0;

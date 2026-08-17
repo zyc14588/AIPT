@@ -13,7 +13,7 @@ import {
   PG_LINUX_AMD64_PLATFORM_DIGEST,
   PG_MULTI_ARCH_DIGEST,
   PNPM_REGISTRY_INTEGRITY,
-  TASK_ID,
+  SUPPLY_CHAIN_BASELINE_BATCH,
   TOOLCHAIN,
 } from '../lib/constants.mjs';
 import { runAsMain } from '../lib/cli.mjs';
@@ -35,8 +35,8 @@ export function run(ctx) {
     fail(`tools/toolchain.lock.json unparseable: ${err.message}`);
     return { name: 'toolchain-lock', result: 'FAIL', details };
   }
-  if (lock.selected_by_batch !== TASK_ID) {
-    fail(`selected_by_batch must be ${TASK_ID}: ${JSON.stringify(lock.selected_by_batch)}`);
+  if (lock.selected_by_batch !== SUPPLY_CHAIN_BASELINE_BATCH) {
+    fail(`selected_by_batch must be ${SUPPLY_CHAIN_BASELINE_BATCH}: ${JSON.stringify(lock.selected_by_batch)}`);
   } else ok('selected_by_batch = AIPT-M0-B001');
 
   const tc = lock.toolchains ?? {};

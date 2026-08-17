@@ -1,0 +1,15 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "seats": [
+    {
+      "seat_id": "seat-a",
+      "name": "Seat A"
+    },
+    {
+      "seat_id": "seat-b",
+      "name": "Seat B"
+    }
+  ]
+}

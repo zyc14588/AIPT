@@ -1,0 +1,950 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/protocol/v1/aipt-protocol.schema.json",
+  "title": "AIPT protocol v1 canonical schema (B002, iteration 3B)",
+  "description": "The single authoritative AIPT wire-protocol schema root (JSON Schema 2020-12). All protocol truth lives here in local $defs; no other document may duplicate wire definitions. The root is executable, not vacuous: a oneOf over the three registered wire envelopes rejects any document that is not exactly a jsonrpc_request, jsonrpc_response, or jsonrpc_notification. Written against the explicit dependency-free subset implemented by scripts/ci/lib/json-schema.mjs. B002_IMPLEMENTATION_CHOICE-001..-015 are documented in docs/protocol/README.md.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/jsonrpc_request"
+    },
+    {
+      "$ref": "#/$defs/jsonrpc_response"
+    },
+    {
+      "$ref": "#/$defs/jsonrpc_notification"
+    }
+  ],
+  "$defs": {
+    "protocol_version": {
+      "title": "Wire protocol version constant",
+      "description": "Unknown protocol versions fail closed via const equality.",
+      "const": "1.0.0"
+    },
+    "schema_version": {
+      "title": "Schema document version constant",
+      "description": "Unknown schema versions fail closed via const equality.",
+      "const": "1.0.0"
+    },
+    "jsonrpc_version": {
+      "title": "JSON-RPC transport version constant",
+      "description": "Strict JSON-RPC 2.0: the jsonrpc member must be exactly \"2.0\".",
+      "const": "2.0"
+    },
+    "message_id": {
+      "title": "Action-intent message identity",
+      "description": "Stable per-message identity carried ONLY by action-intent documents. JSON-RPC envelopes do not carry message_id: a request/response envelope is identified by its id, which round-trips between the request and the response.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "request_id": {
+      "title": "JSON-RPC request/response id",
+      "description": "The request id is a string or an integer and must round-trip verbatim into the response id (value AND JSON type); no floats, null, or absent ids. The integer alternative is constrained to the inclusive JavaScript safe-integer range [-9007199254740991, 9007199254740991] (= +-(2^53-1)): Node JSON.parse reads every JSON number as an IEEE-754 double, so an integer id outside that range could silently round to a value that differs from the one a Go int64 consumer represents; bounding it in the schema keeps the id identical across languages.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        {
+          "$ref": "#/$defs/request_id_integer"
+        }
+      ]
+    },
+    "request_id_integer": {
+      "title": "Cross-language-safe JSON-RPC integer id",
+      "description": "Inclusive JavaScript safe-integer range [-9007199254740991, 9007199254740991] via minimum/maximum. Node JSON.parse maps JSON numbers to IEEE-754 doubles; integers outside +-(2^53-1) are not exactly representable and could silently change an id that Go (int64) represents differently. Both jsonrpc_request and jsonrpc_response reference request_id, so the same bound applies to request and response ids.",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "fixture_id": {
+      "title": "Fixture identity",
+      "description": "Run/fixture identity carried by every fixture asset; must equal the manifest fixture_id.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "seat_id": {
+      "title": "Seat identity",
+      "description": "Lowercase machine identity of a table seat.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "sha256_hex": {
+      "title": "SHA-256 digest",
+      "description": "64-character lowercase hexadecimal SHA-256 digest of canonical JSON.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "seat": {
+      "title": "Seat identity record",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat_id",
+        "name"
+      ],
+      "properties": {
+        "seat_id": {
+          "$ref": "#/$defs/seat_id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    "seat_set": {
+      "title": "Seat set",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "seats"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "seats": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/seat"
+          }
+        }
+      }
+    },
+    "visibility_label": {
+      "title": "Frozen R4-F002 visibility labels (exactly six)",
+      "description": "Visibility is mandatory metadata, never an optional ordinary field. Only the six frozen R4-F002 labels exist; any other label fails closed against this enum.",
+      "enum": [
+        "PUBLIC",
+        "UNRELEASED_REMOTE_ALLOWED",
+        "TABLE_HIDDEN_REMOTE_ALLOWED",
+        "LOCAL_ONLY_SECRET",
+        "HUMAN_PRIVATE_DATA",
+        "CREDENTIAL_SECRET"
+      ]
+    },
+    "authorized_seat_ids": {
+      "title": "Authorized seats for a field",
+      "description": "Never empty: every projected/state field declares exactly which seats may receive it. Missing or empty authorization fails closed.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/seat_id"
+      }
+    },
+    "visibility": {
+      "title": "Explicit visibility / authorized projection metadata",
+      "description": "Mandatory per-field classification plus the non-empty authorized seat set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "authorized_seat_ids"
+      ],
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/visibility_label"
+        },
+        "authorized_seat_ids": {
+          "$ref": "#/$defs/authorized_seat_ids"
+        }
+      }
+    },
+    "state_field": {
+      "title": "Classified state field",
+      "description": "A named state field with an explicit visibility classification. The value is game-neutral (any JSON value).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field_id",
+        "value",
+        "visibility"
+      ],
+      "properties": {
+        "field_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "value": {},
+        "visibility": {
+          "$ref": "#/$defs/visibility"
+        }
+      }
+    },
+    "state": {
+      "title": "Deterministic game state (generic)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "state_id",
+        "fields"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/state_field"
+          }
+        }
+      }
+    },
+    "projection": {
+      "title": "Authorized seat projection of the state",
+      "description": "A per-seat view: only fields whose authorized_seat_ids include the projection seat may appear. Reclassification (a differing visibility label) and unauthorized inclusion fail closed in the protocol-assets validator with AIPT_* visibility reasons.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "projection_id",
+        "seat_id",
+        "fields"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "projection_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "seat_id": {
+          "$ref": "#/$defs/seat_id"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/state_field"
+          }
+        }
+      }
+    },
+    "action_intent_params": {
+      "title": "Generic action intent / proposal params",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "seat_id"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "seat_id": {
+          "$ref": "#/$defs/seat_id"
+        },
+        "proposal": {}
+      }
+    },
+    "action_intent": {
+      "title": "Generic action intent (fixture request-shaped document)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "message_id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "message_id": {
+          "$ref": "#/$defs/message_id"
+        },
+        "method": {
+          "const": "aipt.protocol.applyAction"
+        },
+        "params": {
+          "$ref": "#/$defs/action_intent_params"
+        }
+      }
+    },
+    "apply_action_result": {
+      "title": "applyAction response result",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted",
+        "transition_id",
+        "applied_fields"
+      ],
+      "properties": {
+        "accepted": {
+          "const": true
+        },
+        "transition_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "applied_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/state_field"
+          }
+        }
+      }
+    },
+    "error_object": {
+      "title": "Protocol error object (JSON-RPC error member)",
+      "description": "code is an unconstrained JSON-RPC integer: the schema does NOT enforce a reserved range, it only requires an integer. The single persisted deterministic example (B002_IMPLEMENTATION_CHOICE-009) uses the conventional implementation-choice server/application code -32000, the generic stable data.error_code AIPT_ACTION_REJECTED, and a deterministic message describing rejection of the referenced advance-turn request; protocol-level semantic errors carry their AIPT_* namespace code in data.error_code (B002_IMPLEMENTATION_CHOICE-007).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "error_code"
+          ],
+          "properties": {
+            "error_code": {
+              "type": "string",
+              "pattern": "^AIPT_[A-Z0-9_]{1,63}$"
+            }
+          }
+        }
+      }
+    },
+    "jsonrpc_request": {
+      "title": "Strict JSON-RPC 2.0 request",
+      "description": "jsonrpc is exactly \"2.0\"; id is a string or integer (integers bounded to the inclusive JavaScript safe-integer range via request_id_integer) and round-trips; params is mandatory; only the registered method aipt.protocol.applyAction exists (unknown methods fail closed); every persisted envelope carries protocol_version/schema_version = 1.0.0 and fixture_id = minimal-v1-arithmetic.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jsonrpc",
+        "id",
+        "method",
+        "params",
+        "protocol_version",
+        "schema_version",
+        "fixture_id"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "$ref": "#/$defs/jsonrpc_version"
+        },
+        "id": {
+          "$ref": "#/$defs/request_id"
+        },
+        "method": {
+          "const": "aipt.protocol.applyAction"
+        },
+        "params": {
+          "$ref": "#/$defs/action_intent_params"
+        },
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        }
+      }
+    },
+    "jsonrpc_notification": {
+      "title": "Strict JSON-RPC 2.0 notification",
+      "description": "Carries exactly one method: aipt.protocol.event (B002_IMPLEMENTATION_CHOICE-004); every persisted envelope carries protocol_version/schema_version/fixture_id.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jsonrpc",
+        "method",
+        "params",
+        "protocol_version",
+        "schema_version",
+        "fixture_id"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "$ref": "#/$defs/jsonrpc_version"
+        },
+        "method": {
+          "const": "aipt.protocol.event"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event"
+          ],
+          "properties": {
+            "event": {
+              "$ref": "#/$defs/state_event"
+            }
+          }
+        },
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        }
+      }
+    },
+    "jsonrpc_response": {
+      "title": "Strict JSON-RPC 2.0 response",
+      "description": "result and error are mutually exclusive (oneOf); the id round-trips the request id (value AND JSON type) and integer ids obey the same safe-integer bound as the request; every persisted envelope carries protocol_version/schema_version/fixture_id.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jsonrpc",
+        "id",
+        "protocol_version",
+        "schema_version",
+        "fixture_id"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "$ref": "#/$defs/jsonrpc_version"
+        },
+        "id": {
+          "$ref": "#/$defs/request_id"
+        },
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "result": {
+          "$ref": "#/$defs/apply_action_result"
+        },
+        "error": {
+          "$ref": "#/$defs/error_object"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "result"
+          ],
+          "not": {
+            "required": [
+              "error"
+            ]
+          }
+        },
+        {
+          "required": [
+            "error"
+          ],
+          "not": {
+            "required": [
+              "result"
+            ]
+          }
+        }
+      ]
+    },
+    "deterministic_check": {
+      "title": "Deterministic versioned check (input/output)",
+      "description": "A versioned, deterministic computation with fixed inputs and a fixed expected output. The minimal fixture uses kind=arithmetic, operator=add.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "check_id",
+        "check_version",
+        "kind",
+        "operator",
+        "inputs",
+        "output"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "check_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "check_version": {
+          "const": "1.0.0"
+        },
+        "kind": {
+          "const": "arithmetic"
+        },
+        "operator": {
+          "const": "add"
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "type": "number"
+          }
+        },
+        "output": {
+          "type": "number"
+        }
+      }
+    },
+    "state_transition": {
+      "title": "Deterministic state transition",
+      "description": "Moves a state from from_state_id to to_state_id by applying the result fields under one applied_action.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "transition_id",
+        "from_state_id",
+        "to_state_id",
+        "applied_action",
+        "result"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "transition_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "from_state_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "to_state_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "applied_action": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "seat_id"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            },
+            "seat_id": {
+              "$ref": "#/$defs/seat_id"
+            }
+          }
+        },
+        "result": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/state_field"
+          }
+        }
+      }
+    },
+    "state_event": {
+      "title": "State event (transition emission)",
+      "description": "The deterministic event emitted by a transition; carried by the aipt.protocol.event notification.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "event_id",
+        "transition_id",
+        "event_type",
+        "payload"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "transition_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "event_type": {
+          "const": "state_transition_applied"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "from_state_id",
+            "to_state_id"
+          ],
+          "properties": {
+            "from_state_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            },
+            "to_state_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            }
+          }
+        }
+      }
+    },
+    "replay_assertion": {
+      "title": "Replay assertion (identity + SHA-256 determinism)",
+      "description": "Asserts that two replays of the same transition over the same initial state yield the same final state: every final_state_hash must equal the SHA-256 of the canonical JSON of final-state.json.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "assertion_id",
+        "hash_algorithm",
+        "canonical_json_rule",
+        "final_state_ref",
+        "final_state_hash",
+        "replays"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "assertion_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "hash_algorithm": {
+          "const": "sha256"
+        },
+        "canonical_json_rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "final_state_ref": {
+          "const": "final-state.json"
+        },
+        "final_state_hash": {
+          "$ref": "#/$defs/sha256_hex"
+        },
+        "replays": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "replay_id",
+              "final_state_hash"
+            ],
+            "properties": {
+              "replay_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "final_state_hash": {
+                "$ref": "#/$defs/sha256_hex"
+              }
+            }
+          }
+        }
+      }
+    },
+    "mutant_specimen": {
+      "title": "Non-canonical mutant specimen wrapper",
+      "description": "Mutant files live ONLY under mutants/ and carry the exact markers [\"NON_CANON\",\"MUTANT\"]. The wrapped projection is schema-valid; semantic rejection (e.g. AIPT_VISIBILITY_UNAUTHORIZED_FIELD) is enforced by the protocol-assets validator.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "markers",
+        "kind",
+        "mutant_id",
+        "seat_id",
+        "leaked_field_id",
+        "projection"
+      ],
+      "properties": {
+        "markers": {
+          "const": [
+            "NON_CANON",
+            "MUTANT"
+          ]
+        },
+        "kind": {
+          "const": "hidden-leak"
+        },
+        "mutant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "seat_id": {
+          "$ref": "#/$defs/seat_id"
+        },
+        "leaked_field_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "projection": {
+          "$ref": "#/$defs/projection"
+        }
+      }
+    },
+    "manifest_asset": {
+      "title": "Fixture asset manifest entry",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "schema_ref",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "seat_set",
+            "state",
+            "projection",
+            "action_intent",
+            "deterministic_check",
+            "state_transition",
+            "state_event",
+            "replay_assertion",
+            "jsonrpc_request",
+            "jsonrpc_response",
+            "jsonrpc_notification"
+          ]
+        },
+        "schema_ref": {
+          "type": "string",
+          "pattern": "^#/\\$defs/[A-Za-z0-9_-]+$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256_hex"
+        }
+      }
+    },
+    "manifest_mutant": {
+      "title": "Fixture mutant manifest entry",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "schema_ref",
+        "sha256",
+        "expected_semantic_rejection"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "mutant_specimen"
+        },
+        "schema_ref": {
+          "type": "string",
+          "pattern": "^#/\\$defs/[A-Za-z0-9_-]+$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256_hex"
+        },
+        "expected_semantic_rejection": {
+          "const": "AIPT_VISIBILITY_UNAUTHORIZED_FIELD"
+        }
+      }
+    },
+    "fixture_manifest": {
+      "title": "Minimal fixture manifest",
+      "description": "Identifies every fixture asset, its schema $ref target, and its lowercase SHA-256 digest of canonical JSON, so unexpected asset drift fails closed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "schema_version",
+        "fixture_id",
+        "fixture_name",
+        "assets",
+        "expected_final_state",
+        "replay_assertion",
+        "mutants"
+      ],
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/protocol_version"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "fixture_id": {
+          "$ref": "#/$defs/fixture_id"
+        },
+        "fixture_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_final_state": {
+          "const": "final-state.json"
+        },
+        "replay_assertion": {
+          "const": "replay-assertion.json"
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/manifest_asset"
+          }
+        },
+        "mutants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/manifest_mutant"
+          }
+        }
+      }
+    }
+  }
+}

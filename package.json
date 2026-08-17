@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. B001 scope: Go/pnpm toolchain skeleton, public secret-free CI, and supply-chain foundation only; no runtime packages yet.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B002 (protocol scope): iterations 2/3/3B deliver the canonical JSON Schema 2020-12 protocol schema (schemas/protocol/v1/aipt-protocol.schema.json) with an executable root, the deterministic wire envelopes (testdata/protocol/v1/minimal-fixture/requests|responses|notifications), and the dependency-free protocol-assets validator; iteration 4 delivers the dependency-free first-party TypeScript Adapter SDK (packages/adapter-sdk, @aipt/adapter-sdk 1.0.0, Node 24 native erasable TypeScript, node:test) with the SDK machine gate (check:adapter-sdk) and evolves the first-party pnpm workspace and supply-chain/SBOM records; iteration 5 delivers the dependency-free Go protocol contract consumer (internal/protocol, Go standard library only) with strict fail-closed JSON-RPC 2.0 envelope decoding, deterministic canonical JSON/SHA-256, pure projection/visibility semantics, and cross-language shared-fixture and schema-drift tests (pnpm run test:protocol-go); iteration 6 delivers the focused B002 public CI workflow evolution: the durable AIPT M0 CI workflow (.github/workflows/ci.yml) runs the explicit B002 contract gates (pnpm run check:protocol-assets, pnpm run test:adapter-sdk, pnpm run test:protocol-go) on both qualified Ubuntu runners (ubuntu-24.04 + ubuntu-26.04, fail-fast false) with pnpm run check retained as the B001+B002 aggregate validator gate, and the workflow validator is evolved to the fail-closed B002 workflow contract; the B001 Go/pnpm toolchain, public secret-free CI, and supply-chain foundation are merged and closed; no runtime packages yet.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -10,6 +10,10 @@
   },
   "scripts": {
     "check": "node scripts/ci/run-checks.mjs",
+    "check:protocol-assets": "node scripts/ci/validate/protocol-assets.mjs",
+    "check:adapter-sdk": "node scripts/ci/validate/adapter-sdk.mjs",
+    "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
+    "test:protocol-go": "go test ./internal/protocol -count=1",
     "check:retro": "node scripts/ci/validate/b000-retro.mjs",
     "check:supply-chain": "node scripts/ci/validate/supply-chain.mjs",
     "check:sbom": "node scripts/ci/validate/sbom.mjs",

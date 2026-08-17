@@ -1,0 +1,21 @@
+{
+  "jsonrpc": "2.0",
+  "method": "aipt.protocol.event",
+  "params": {
+    "event": {
+      "protocol_version": "1.0.0",
+      "schema_version": "1.0.0",
+      "fixture_id": "minimal-v1-arithmetic",
+      "event_id": "event-turn-increment-0001",
+      "transition_id": "transition-turn-increment",
+      "event_type": "state_transition_applied",
+      "payload": {
+        "from_state_id": "initial",
+        "to_state_id": "final"
+      }
+    }
+  },
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic"
+}

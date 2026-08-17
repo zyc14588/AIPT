@@ -1,0 +1,14 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "message_id": "minimal-v1-arithmetic-applyAction-0001",
+  "method": "aipt.protocol.applyAction",
+  "params": {
+    "action": "advance-turn",
+    "seat_id": "seat-a",
+    "proposal": {
+      "delta": 1
+    }
+  }
+}

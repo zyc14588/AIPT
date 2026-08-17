@@ -1,14 +1,15 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-16",
+  "as_of": "2026-08-17",
   "authority_snapshot_id": "AIPT-DCA-CLOSEOUT-R0-R16-002",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "AIPT-M0-B001_IN_PROGRESS",
-      "current_batch": "AIPT-M0-B001",
+      "construction": "AIPT-M0-B002_IN_PROGRESS",
+      "current_batch": "AIPT-M0-B002",
       "batch_history": {
-        "AIPT-M0-B000": "MERGED_CLOSED"
+        "AIPT-M0-B000": "MERGED_CLOSED",
+        "AIPT-M0-B001": "MERGED_CLOSED"
       },
       "global_wip": 1
     },
@@ -21,8 +22,8 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "777a3f39ba78c1ef3168597890c61abf7a55d962",
-      "verified_state": "AIPT-M0-B000 merge commit (merged/closed); AIPT-M0-B001 in progress on task/AIPT-M0-B001"
+      "verified_head": "8bcadc9669e7d04f589f883daa6d4f593875fc9e",
+      "verified_state": "AIPT-M0-B001 merge commit 8bcadc9669e7d04f589f883daa6d4f593875fc9e merged/closed (candidate 2e904ddc2d4f1313a99e19f6751a991d589f8336, post-merge CI run 31951440133); AIPT-M0-B002 in progress on task/AIPT-M0-B002 (iteration 4: dependency-free first-party TypeScript Adapter SDK packages/adapter-sdk implemented with its machine gate and supply-chain/SBOM representation; Go protocol consumer and focused B002 workflow evolution remain pending)"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",

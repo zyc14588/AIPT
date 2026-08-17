@@ -1,0 +1,103 @@
+{
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "fixture_name": "AIPT M0 B002 minimal deterministic fixture (game-neutral arithmetic)",
+  "expected_final_state": "final-state.json",
+  "replay_assertion": "replay-assertion.json",
+  "assets": [
+    {
+      "path": "seats.json",
+      "kind": "seat_set",
+      "schema_ref": "#/$defs/seat_set",
+      "sha256": "1f7028bd8faef7df761e7d61abf0dcff598e09062287bc5b0c3ed17f293e7194"
+    },
+    {
+      "path": "state.json",
+      "kind": "state",
+      "schema_ref": "#/$defs/state",
+      "sha256": "258c88d5c8f87c795d7d80fea7c47f7491def981e0c9a270976e6c57b61e2365"
+    },
+    {
+      "path": "projection-seat-a.json",
+      "kind": "projection",
+      "schema_ref": "#/$defs/projection",
+      "sha256": "c70d9e210902d54a4b5b4d40c08d0db371652e71031cf8a7869c1ee340cb9210"
+    },
+    {
+      "path": "projection-seat-b.json",
+      "kind": "projection",
+      "schema_ref": "#/$defs/projection",
+      "sha256": "16361dad4471d098d905a5e2aa59f61bc47c8a4dcc6dc70209adaf370bb42888"
+    },
+    {
+      "path": "action-intent.json",
+      "kind": "action_intent",
+      "schema_ref": "#/$defs/action_intent",
+      "sha256": "740c5e8a2d4c4d59c75acbab5d2cca2902d28abe7b04b5ec1940235cc649dca6"
+    },
+    {
+      "path": "requests/apply-action-request.json",
+      "kind": "jsonrpc_request",
+      "schema_ref": "#/$defs/jsonrpc_request",
+      "sha256": "6a364c4ac7b7fbe020a853ff1df39fe1b0da2401cc5090cfa8bedaa87c53cb3f"
+    },
+    {
+      "path": "check-turn-increment.json",
+      "kind": "deterministic_check",
+      "schema_ref": "#/$defs/deterministic_check",
+      "sha256": "5d25579a934a1314dcaba90e5dec72ca1f36544eb77dd4375a4cc589f9093dfa"
+    },
+    {
+      "path": "transition.json",
+      "kind": "state_transition",
+      "schema_ref": "#/$defs/state_transition",
+      "sha256": "137ecde615408f08256b2bacedb6829d6a2025095ee6fe8e74b6524bb0c01568"
+    },
+    {
+      "path": "responses/apply-action-result-response.json",
+      "kind": "jsonrpc_response",
+      "schema_ref": "#/$defs/jsonrpc_response",
+      "sha256": "8a6daec0fa447beb86c98573e836d674cdd6ec33ef0479f3021b1653c7e6b4c1"
+    },
+    {
+      "path": "responses/apply-action-protocol-error-response.json",
+      "kind": "jsonrpc_response",
+      "schema_ref": "#/$defs/jsonrpc_response",
+      "sha256": "ab26a57577c7da69d33123f6395b5cf2a2c17ebf4726fe8d38bb82dfc0aac5d8"
+    },
+    {
+      "path": "event.json",
+      "kind": "state_event",
+      "schema_ref": "#/$defs/state_event",
+      "sha256": "5eadccb5f08bdee8d1ae69055f25b6379d46cc7e2288eef44562086cd85faced"
+    },
+    {
+      "path": "notifications/state-event-notification.json",
+      "kind": "jsonrpc_notification",
+      "schema_ref": "#/$defs/jsonrpc_notification",
+      "sha256": "5fbe674e35772c9d62d504d150b2b2dd329feb1e886003af39a87794c6af6892"
+    },
+    {
+      "path": "final-state.json",
+      "kind": "state",
+      "schema_ref": "#/$defs/state",
+      "sha256": "d28310d82d4b2e76db86b6d7d78a4334249681e948c6dc49ed6a8ea193ecc047"
+    },
+    {
+      "path": "replay-assertion.json",
+      "kind": "replay_assertion",
+      "schema_ref": "#/$defs/replay_assertion",
+      "sha256": "9a7330c2a5f67d2671f525dd1af547ce7c9c2c054dc52703ba5f84c86ff8eb9b"
+    }
+  ],
+  "mutants": [
+    {
+      "path": "mutants/hidden-leak.json",
+      "kind": "mutant_specimen",
+      "schema_ref": "#/$defs/mutant_specimen",
+      "sha256": "69c09b5d1d7ff8729dc92f270c74c04b1b1cc6cf2f9b365124823231a2e20d0e",
+      "expected_semantic_rejection": "AIPT_VISIBILITY_UNAUTHORIZED_FIELD"
+    }
+  ]
+}

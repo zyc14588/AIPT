@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": "minimal-v1-arithmetic-request-1",
+  "method": "aipt.protocol.applyAction",
+  "params": {
+    "action": "advance-turn",
+    "seat_id": "seat-a",
+    "proposal": {
+      "delta": 1
+    }
+  },
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic"
+}

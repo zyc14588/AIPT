@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// B001 validator suite entry (`pnpm run check`).
+// B002 validator suite entry (`pnpm run check`).
 //
-// Runs every B001 validator with the repository root as context and prints a
+// Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
 import path from 'node:path';
 import { run as runStatus } from './validate/status-transition.mjs';
@@ -13,11 +13,14 @@ import { run as runRetro } from './validate/b000-retro.mjs';
 import { run as runSupplyChain } from './validate/supply-chain.mjs';
 import { run as runSbom } from './validate/sbom.mjs';
 import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
-import { TASK_ID } from './lib/constants.mjs';
+import { run as runProtocol } from './validate/protocol-assets.mjs';
+import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
+import { CURRENT_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
-const checks = [
+const checks = await Promise.all([
   runStatus(ctx),
+  runProtocol(ctx),
   runDefer(ctx),
   runToolchain(ctx),
   runWorkflow(ctx),
@@ -26,12 +29,13 @@ const checks = [
   runSupplyChain(ctx),
   runSbom(ctx),
   runStandalone(ctx),
-];
+  runAdapterSdk(ctx),
+]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
 const report = {
-  schema: 'aipt.public.b001-validator-run/v1',
-  task_id: TASK_ID,
+  schema: 'aipt.public.b002-validator-run/v1',
+  task_id: CURRENT_BATCH,
   repo: ctx.repo,
   result,
   checks,

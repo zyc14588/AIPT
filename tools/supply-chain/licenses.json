@@ -1,11 +1,11 @@
 {
   "schema": "aipt.public.supply-chain-licenses/v1",
   "selected_by_batch": "AIPT-M0-B001",
-  "generated_at": "2026-08-16",
+  "generated_at": "2026-08-17",
   "application_dependencies": {
     "go_runtime_third_party_modules": 0,
     "pnpm_runtime_third_party_packages": 0,
-    "note": "B001 introduces no third-party application runtime dependency (go.mod has zero require entries; pnpm-lock.yaml records only the private root package). Any future dependency must first be added to records below and receive explicit approval."
+    "note": "B001 introduced no third-party application runtime dependency (go.mod has zero require entries; pnpm-lock.yaml records only the private root package). B002 iteration 4 registers the first-party dependency-free workspace package @aipt/adapter-sdk (packages/adapter-sdk, zero dependency specifiers) and keeps both third-party dependency counts at zero. Any future dependency must first be added to records below and receive explicit approval."
   },
   "records": [
     {
@@ -15,6 +15,15 @@
       "version": "M0-B001",
       "evidence": "LICENSE (Copyright (c) 2026 AIPT contributors)",
       "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "@aipt/adapter-sdk",
+      "kind": "first_party",
+      "license": "MIT",
+      "version": "1.0.0",
+      "selected_by_batch": "AIPT-M0-B002",
+      "evidence": "First-party workspace package packages/adapter-sdk (package.json license MIT, zero dependency specifiers) covered by the root MIT license (LICENSE, Copyright (c) 2026 AIPT contributors); verified in AIPT-M0-B002 iteration 4, never claimed as B001-verified",
+      "verified_at": "2026-08-17T07:15:00Z"
     },
     {
       "id": "actions/checkout",

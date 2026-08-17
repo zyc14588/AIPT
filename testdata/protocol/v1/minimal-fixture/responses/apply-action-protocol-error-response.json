@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": "minimal-v1-arithmetic-request-1",
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "error": {
+    "code": -32000,
+    "message": "advance-turn action request from seat-a was rejected (AIPT_ACTION_REJECTED)",
+    "data": {
+      "error_code": "AIPT_ACTION_REJECTED"
+    }
+  }
+}
