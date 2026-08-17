@@ -1,6 +1,6 @@
 # AIPT 协议契约（Protocol Contract, B002）
 
-> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 3 · 状态日期 **2026-08-17**。
+> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 3B 修复 · 状态日期 **2026-08-17**。
 > 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）与协议资产验证器。机器可读权威是
 > [schemas/protocol/v1/aipt-protocol.schema.json](../../schemas/protocol/v1/aipt-protocol.schema.json)
 > 与 [testdata/protocol/v1/minimal-fixture/manifest.json](../../testdata/protocol/v1/minimal-fixture/manifest.json)；
@@ -21,14 +21,15 @@
 | `schema_version` | `"1.0.0"`（const） | 同上，任何资产版本漂移即失败 |
 | `fixture_id` | `"minimal-v1-arithmetic"` | 每个持久化信封与资产携带，必须等于 manifest 的 fixture_id |
 | `jsonrpc` | `"2.0"`（const） | 严格 JSON-RPC 2.0，绝不允许 `1.0`/`2.1` |
-| `message_id` | 字符串（1–128 字符） | 意图/信封文档的消息身份 |
-| `id`（request/response） | 字符串或整数（oneOf） | 必须原样往返：响应 `id` 与请求 `id` 值、类型一致 |
+| `message_id` | 字符串（1–128 字符） | **仅动作意图文档**（action_intent）的消息身份；JSON-RPC 信封不携带 `message_id`——信封的请求/响应身份是 `id`（见下） |
+| `id`（request/response） | 字符串或整数（oneOf） | 必须原样往返：响应 `id` 与请求 `id` **值、类型**一致；整数由 `#/$defs/request_id_integer` 以 `minimum`/`maximum` 限定在 JavaScript 安全整数闭区间 `[-9007199254740991, 9007199254740991]`（±(2^53-1)），跨语言值恒等 |
 
 ## 3. 严格 JSON-RPC 2.0 与 fail-closed 规则
 
 - `request`：`required = [jsonrpc, id, method, params, protocol_version, schema_version, fixture_id]`，`additionalProperties = false`。
 - `response`：`required = [jsonrpc, id, protocol_version, schema_version, fixture_id]`；**`result` 与 `error` 互斥**（`oneOf` + `not`），两者同时出现或同时缺失都失败。
 - `notification`：`required = [jsonrpc, method, params, protocol_version, schema_version, fixture_id]`。
+- **跨语言安全整数 id**：整数 `id` 由 `#/$defs/request_id_integer` 用 `minimum = -9007199254740991`、`maximum = 9007199254740991`（±(2^53-1)，JavaScript 安全整数闭区间）限定。Node `JSON.parse` 把每个 JSON 数字读成 IEEE-754 double，区间外的整数 id 可能被静默舍入成与 Go（int64）消费者不同的值——Schema 在边界直接拒绝，保证同一 id 跨语言恒等；`jsonrpc_request` 与 `jsonrpc_response` 引用同一个 `request_id`，因此请求与响应应用完全相同的边界（整数 id 不被移除）。
 - 错误对象：`code` 是**不受限的 JSON-RPC 整数**——Schema 本身**不**强制保留区间，只要求整数；`message` 必填；可选 `data.error_code` 携带 `AIPT_*` 语义错误码（第 6 节）。持久化确定性示例使用实现选择码 `-32000`（第 6 节，`B002_IMPLEMENTATION_CHOICE-009`）。
 - 畸形信封、未知 `protocol_version`、未知 `schema_version`、未知方法、缺失必填参数一律 **fail closed**（const/enum/oneOf 直接拒绝；不降级、不猜测、不回退默认值）。
 
@@ -65,15 +66,15 @@
 
 ## 6. 错误命名空间
 
-- 传输/框架层错误沿用 JSON-RPC 约定码（如 `-32602` invalid params）；协议语义错误置于 `error.data.error_code`，命名空间 `AIPT_[A-Z0-9_]+`，例如 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD`。
-- **唯一文档化、确定性的 AIPT 协议错误示例**（`B002_IMPLEMENTATION_CHOICE-009`）：持久化文件 `responses/apply-action-protocol-error-response.json` 使用**实现选择**的服务器/应用码 `code = -32000`，`data.error_code = "AIPT_VISIBILITY_UNAUTHORIZED_FIELD"`，`message = "table-note is not authorized for seat-b (AIPT_VISIBILITY_UNAUTHORIZED_FIELD)"`。Schema 的 `code` 仍是普通整数，不声称强制保留区间。
+- 传输/框架层错误沿用 JSON-RPC 约定码（如 `-32602` invalid params）；协议语义错误置于 `error.data.error_code`，命名空间 `AIPT_[A-Z0-9_]+`，例如 `AIPT_ACTION_REJECTED`（动作拒绝）或 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD`（可见性越权）。
+- **唯一文档化、确定性的 AIPT 协议错误示例**（`B002_IMPLEMENTATION_CHOICE-009`）：持久化文件 `responses/apply-action-protocol-error-response.json` 引用持久化 `requests/apply-action-request.json`（advance-turn）的 id，使用**实现选择**的服务器/应用码 `code = -32000`、通用稳定的 `data.error_code = "AIPT_ACTION_REJECTED"`，以及确定性消息 `message = "advance-turn action request from seat-a was rejected (AIPT_ACTION_REJECTED)"`——错误描述的是它所引用的请求，而不是无关的席位/字段语义。Schema 的 `code` 仍是普通整数，不声称强制保留区间。`AIPT_VISIBILITY_UNAUTHORIZED_FIELD` **只属于** hidden-leak 突变（`mutants/hidden-leak.json` 的语义拒绝原因），任何 wire 错误都不得复用该码。
 
 ## 7. 最小确定性夹具语义（testdata/protocol/v1/minimal-fixture/）
 
 - `fixture_id = minimal-v1-arithmetic`；游戏中立、无叙事、无 Canon/Rule/Scene/NPC/Item 内容。
 - **canonical JSON 规则**：对象键递归排序、数组保序、无多余空白；所有摘要/重放哈希均为该规则的 SHA-256（64 位小写十六进制）。
 - `manifest.json` 记录**每个资产**的路径、类型、schema `$ref` 目标与 SHA-256 摘要；任何未登记文件、缺失文件或摘要漂移一律 fail closed。
-- **manifest 加固（先于任何资产读取）**：路径必须是相对、规范化、无绝对形式/`.`/`..` 段/反斜杠/NUL 的形式（任何条目都不得引发夹具目录之外的读取）；资产与突变路径不得重复；`kind -> schema_ref` 使用验证器内置的**精确映射表**校验，绝不信任 manifest 自己声明的任意 `$ref`。
+- **manifest 加固（先于任何资产读取，任一预检问题即整轮失败）**：路径必须是相对、规范化、无绝对形式/`.`/`..` 段/反斜杠/NUL 的形式（任何条目都不得引发夹具目录之外的读取）；资产与突变路径不得重复；`kind -> schema_ref` 使用验证器内置的**精确映射表**校验，绝不信任 manifest 自己声明的任意 `$ref`。**路径/重复路径/kind→ref 预检一旦有任何问题，门禁立即失败返回，任何 manifest 列出的资产都不会被解析或读取（绝不带着失败预检进入读取循环）**。对预检干净的条目，读取前依次执行：词法包含检查（解析路径必须仍在夹具目录内）→ `lstat` 只接受**常规文件**（符号链接、目录、设备及其它非常规条目一律先于读取拒绝）→ `realpath` 证明解析全部链接后的真实目标**严格位于夹具目录内**（纵深防御），然后才读取该真实路径。
 
 | 资产 | 类型 / schema_ref | 语义 |
 |---|---|---|
@@ -86,7 +87,7 @@
 | `check-turn-increment.json` | `deterministic_check` / `#/$defs/deterministic_check` | 版本化算术检查（`check_version = 1.0.0`，`add`）：固定输入 `[0, 1]` → 固定输出 `1` |
 | `transition.json` | `state_transition` / `#/$defs/state_transition` | 一个状态迁移：`initial → final`，结果仅更新 `turn-count` 为 `1` |
 | `responses/apply-action-result-response.json` | `jsonrpc_response` / `#/$defs/jsonrpc_response` | 有效结果响应：`id` 与请求 `id` **值、类型**一致；`result.transition_id` 链接 `transition.json`，`result.applied_fields` 与 `transition.json` 的 result 深度相等、并与 `final-state.json` 的值/可见性一致（交叉链接） |
-| `responses/apply-action-protocol-error-response.json` | `jsonrpc_response` / `#/$defs/jsonrpc_response` | 有效协议错误响应（已知请求 id）：`code = -32000` + `data.error_code = AIPT_VISIBILITY_UNAUTHORIZED_FIELD`（CHOICE-009 确定性示例） |
+| `responses/apply-action-protocol-error-response.json` | `jsonrpc_response` / `#/$defs/jsonrpc_response` | 有效协议错误响应（引用 advance-turn 请求的 id）：`code = -32000` + `data.error_code = AIPT_ACTION_REJECTED` + 确定性拒绝消息（CHOICE-009 确定性示例；与所引用的请求一致，不复用突变可见性码） |
 | `event.json` | `state_event` / `#/$defs/state_event` | 一个事件：`state_transition_applied`，记录 `initial → final` |
 | `notifications/state-event-notification.json` | `jsonrpc_notification` / `#/$defs/jsonrpc_notification` | 有效 `aipt.protocol.event` 通知：`params.event` 与 `event.json` **精确深度相等** |
 | `final-state.json` | `state` / `#/$defs/state` | 期望最终状态 |
@@ -98,8 +99,8 @@
 ## 8. 验证器与运行方式
 
 - 依赖自由子集验证器：[scripts/ci/lib/json-schema.mjs](../../scripts/ci/lib/json-schema.mjs)。**明确支持的关键字**：`$ref`、`type`、`const`、`enum`、`properties`、`required`、`additionalProperties`、`items`、`minItems`、`maxItems`、`uniqueItems`、`minLength`、`maxLength`、`pattern`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minProperties`、`maxProperties`、`oneOf`、`anyOf`、`allOf`、`not`；允许的注释关键字：`title`/`description`/`examples`/`default`/`deprecated`/`$comment`。**任何其它功能关键字（如 `format`、`if`/`then`/`else`、`unevaluatedProperties`、`contains`、`$dynamicRef`）一律报错拒绝，绝不静默忽略**。`$ref` 仅解析本地 `#/...` 引用；无效引用与引用环被检测并拒绝。验证器自身用内存探针证明：不支持的功能关键字被拒（`unsupported functional schema keyword`）、外部/未解析 `$ref` 被拒（`external`）、本地 `$ref` 环被拒（`cycle`）——每个原因都稳定可断言。
-- 协议资产门禁：[scripts/ci/validate/protocol-assets.mjs](../../scripts/ci/validate/protocol-assets.mjs)。覆盖：schema 文档子集合规与冻结常量、可执行根（`oneOf`）、manifest 加固（路径安全/重复路径/kind→ref 精确映射，先于任何读取）、精确清单与摘要、每个正例资产对声明 `$ref` 的校验、身份/版本一致性、持久化 wire 信封（request 与 action-intent 交叉链接；result 响应与 transition/final-state 交叉链接；错误响应 `-32000` + `AIPT_*`；通知精确包裹 `event.json`）、request/response id 值与类型往返、方法注册表、全量状态投影合同（重复 field_id、值漂移、未知席位/授权、遗漏授权字段）、检查输出、迁移结果、事件、重放哈希/确定性，以及隐藏泄露突变（先 schema 后语义）。
-- 负向探针（每个必须按**正确契约原因**被拒绝，共 23 个）：九个冻结的迭代 2 探针——`jsonrpc != 2.0`；未知 `protocol_version`；未知 `schema_version`；请求缺 `params`；响应同时携带 `result` 与 `error`；未知方法；缺失可见性；未知可见性标签；隐藏泄露突变（`AIPT_VISIBILITY_UNAUTHORIZED_FIELD`）。迭代 3 新增——任意/畸形根信封对 `#` 被拒（`oneOf`）；state 重复 `field_id`（`AIPT_STATE_DUPLICATE_FIELD_ID`）；投影重复 `field_id`（`AIPT_PROJECTION_DUPLICATE_FIELD_ID`）；投影值漂移（`AIPT_PROJECTION_VALUE_DRIFT`）；未知投影席位（`AIPT_PROJECTION_UNKNOWN_SEAT`）；state 可见性授权未知席位（`AIPT_VISIBILITY_UNKNOWN_SEAT`）；投影遗漏授权字段（`AIPT_PROJECTION_MISSING_AUTHORIZED_FIELD`）；manifest 不安全路径（dot 段 / 绝对路径）；manifest 重复路径；manifest kind/schema_ref 不匹配；helper 拒绝不支持关键字 / 外部 `$ref` / `$ref` 环。
+- 协议资产门禁：[scripts/ci/validate/protocol-assets.mjs](../../scripts/ci/validate/protocol-assets.mjs)。覆盖：schema 文档子集合规与冻结常量、可执行根（`oneOf`）、跨语言安全整数 id 边界（`minimum`/`maximum` = ±(2^53-1)，请求与响应共用同一 `request_id`）、manifest 加固（路径安全/重复路径/kind→ref 精确映射预检，**任一预检问题即在解析或读取任何列出资产之前失败返回**；预检干净条目再经词法包含 → `lstat` 仅常规文件 → `realpath` 严格包含后才读取）、精确清单与摘要、每个正例资产对声明 `$ref` 的校验、身份/版本一致性（普通资产与突变内嵌投影任一漂移即显式 FAIL，稳定原因 `AIPT_FIXTURE_IDENTITY_MISMATCH`）、持久化 wire 信封（request 与 action-intent 交叉链接；result 响应与 transition/final-state 交叉链接；错误响应 `-32000` + `AIPT_ACTION_REJECTED` + 确定性 advance-turn 拒绝消息，与所引用请求一致；通知精确包裹 `event.json`）、request/response id 值与类型往返（含安全整数边界值）、方法注册表、全量状态投影合同（重复 field_id、值漂移、未知席位/授权、遗漏授权字段）、检查输出、迁移结果、事件、重放哈希/确定性，以及隐藏泄露突变（先 schema 后语义，且是 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD` 的唯一夹具）。
+- 负向探针（每个必须按**正确契约原因**被拒绝，共 33 个）：九个冻结的迭代 2 探针——`jsonrpc != 2.0`；未知 `protocol_version`；未知 `schema_version`；请求缺 `params`；响应同时携带 `result` 与 `error`；未知方法；缺失可见性；未知可见性标签；隐藏泄露突变（`AIPT_VISIBILITY_UNAUTHORIZED_FIELD`）。迭代 3 新增——任意/畸形根信封对 `#` 被拒（`oneOf`）；state 重复 `field_id`（`AIPT_STATE_DUPLICATE_FIELD_ID`）；投影重复 `field_id`（`AIPT_PROJECTION_DUPLICATE_FIELD_ID`）；投影值漂移（`AIPT_PROJECTION_VALUE_DRIFT`）；未知投影席位（`AIPT_PROJECTION_UNKNOWN_SEAT`）；state 可见性授权未知席位（`AIPT_VISIBILITY_UNKNOWN_SEAT`）；投影遗漏授权字段（`AIPT_PROJECTION_MISSING_AUTHORIZED_FIELD`）；manifest 不安全路径（dot 段 / 绝对路径）；manifest 重复路径；manifest kind/schema_ref 不匹配；helper 拒绝不支持关键字 / 外部 `$ref` / `$ref` 环。迭代 3B 新增（10 个）——整数 id 超出安全整数上界 / 下界（`maximum` / `minimum`）；request 信封 id 超出上界 / 下界（同一边界作用于请求与响应，`oneOf` 拒绝）；response 信封 id 超出上界 / 下界；突变内嵌投影 `fixture_id` 漂移（保持 schema 合法，`AIPT_FIXTURE_IDENTITY_MISMATCH`）；普通资产 `fixture_id` 漂移（保持 schema 合法，`AIPT_FIXTURE_IDENTITY_MISMATCH`）；根内符号链接指向夹具根之外的目标（临时目录确定性探针，`lstat` 以符号链接/非常规文件原因先于读取拒绝）；wire 错误响应复用突变可见性码（`AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE`）。
 - 运行：`pnpm run check:protocol-assets`（[package.json](../../package.json) 持久脚本），并已并入 [scripts/ci/run-checks.mjs](../../scripts/ci/run-checks.mjs)（`pnpm run check` 与公共 CI 均执行）。要求 Node.js 恰为 `v24.19.0`。
 
 ## 9. B002_IMPLEMENTATION_CHOICE 清单
@@ -112,9 +113,13 @@
 - **CHOICE-006**：夹具 manifest 记录每个资产的 schema `$ref` 与 canonical-JSON SHA-256；意外资产漂移 fail closed。
 - **CHOICE-007**：协议语义错误命名空间 `AIPT_*`（置于 `error.data.error_code`）；传输层错误沿用 JSON-RPC 约定码。
 - **CHOICE-008**：mutant 政策——仅 `mutants/`、精确 `NON_CANON`/`MUTANT` 标记、先 schema 校验后语义拒绝、固定拒绝原因。
-- **CHOICE-009**：唯一确定性 AIPT 协议错误示例——`code = -32000`（服务器/应用实现选择码）+ `data.error_code = AIPT_VISIBILITY_UNAUTHORIZED_FIELD`；Schema 的 `code` 保持普通整数，不强制保留区间。
+- **CHOICE-009**：唯一确定性 AIPT 协议错误示例——`code = -32000`（服务器/应用实现选择码）+ 通用稳定的 `data.error_code = AIPT_ACTION_REJECTED` + 确定性消息 `"advance-turn action request from seat-a was rejected (AIPT_ACTION_REJECTED)"`（描述其引用的 advance-turn 请求）；Schema 的 `code` 保持普通整数，不强制保留区间；`AIPT_VISIBILITY_UNAUTHORIZED_FIELD` 只属于 hidden-leak 突变，wire 错误不得复用。
 - **CHOICE-010**：持久化 wire 信封夹具（`requests/`、`responses/`、`notifications/`）各携带 `protocol_version`/`schema_version`/`fixture_id`，验证器从磁盘加载并交叉链接到 action-intent / transition / final-state / event，绝不只在内存重造等价信封。
 - **CHOICE-011**：manifest 加固——路径安全（相对/规范化/无 dot 段/无绝对路径）、重复路径拒绝、`kind -> schema_ref` 精确映射表（不信任 manifest 自声明的 `$ref`），全部先于任何资产读取执行。
+- **CHOICE-012**（迭代 3B）：跨语言安全 JSON-RPC 整数 id——`#/$defs/request_id_integer` 以 `minimum`/`maximum` 限定 `[-9007199254740991, 9007199254740991]`（±(2^53-1)）；Node `JSON.parse` 的 IEEE-754 double 无法无损表示区间外整数，可能改变 Go 消费者看到的同一 id，因此在 Schema 边界拒绝；请求与响应共用同一 `request_id`，整数 id 保留不清除。
+- **CHOICE-013**（迭代 3B）：夹具身份显式失败门——纯函数 `checkFixtureIdentity` 对普通资产与突变包装的内嵌投影统一返回稳定原因 `AIPT_FIXTURE_IDENTITY_MISMATCH`；任何 false 聚合都是显式 FAIL，绝不静默通过。
+- **CHOICE-014**（迭代 3B）：预检失败即中止 + lstat/realpath 包含——路径/重复路径/kind→ref 预检任一问题立即失败返回，任何列出资产都不会被解析或读取；预检干净条目读取前依次 lstat（仅常规文件，符号链接/目录/设备先于读取拒绝）与 realpath（真实目标严格位于夹具目录内）。
+- **CHOICE-015**（迭代 3B）：wire 错误与所引用请求一致——持久化协议错误对 advance-turn 请求使用 `AIPT_ACTION_REJECTED` 与确定性消息；`checkWireErrorCoherence` 拒绝复用突变可见性码的 wire 错误（`AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE`）。
 
 ## 10. 本批次明确不建设
 

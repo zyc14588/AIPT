@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// B002 protocol-assets validator (iteration 3): proves the canonical protocol
-// schema, the minimal deterministic fixture (including the persisted wire
-// envelopes), and the required negative cases with a dependency-free JSON
-// Schema 2020-12 subset validator.
+// B002 protocol-assets validator (iteration 3B repair): proves the canonical
+// protocol schema, the minimal deterministic fixture (including the persisted
+// wire envelopes), and the required negative cases with a dependency-free
+// JSON Schema 2020-12 subset validator.
 //
 // Gates (all fail closed):
 //   1. Canonical schema document: parses, uses ONLY the explicit subset
@@ -13,18 +13,24 @@
 //      registered wire envelopes (jsonrpc_request | jsonrpc_response |
 //      jsonrpc_notification), never arbitrary JSON.
 //   2. Fixture manifest (hardened BEFORE any asset read): schema-valid
-//      against #/$defs/fixture_manifest; every entry path is safe
-//      (relative, normalized, no absolute path, no dot segment, no
-//      backslash) so no manifest entry can ever cause a read outside the
-//      fixture dir; no duplicate asset/mutant paths; every kind maps to its
-//      exact canonical schema_ref (the manifest-supplied $ref is never
-//      trusted); the asset inventory is EXACT (every JSON file under the
-//      fixture dir is listed and every listed file exists); every asset's
-//      lowercase SHA-256 digest over canonical JSON matches, so unexpected
-//      drift fails closed.
+//      against #/$defs/fixture_manifest. Path/duplicate-path/kind-schema_ref
+//      preflight runs first, and ANY preflight problem aborts the gate
+//      BEFORE any manifest-listed file is resolved or read — the gate never
+//      continues into the read loop after a failed preflight. For a
+//      preflight-clean entry, in order: lexical containment (relative,
+//      normalized, no absolute path, no dot segment, no backslash), lstat
+//      accepting ONLY a regular file (symbolic links, directories, devices,
+//      and other non-regular entries are rejected before any read), then
+//      realpath containment proving the real target stays strictly inside
+//      the fixture dir (defense in depth) — all before readFileSync. The
+//      asset inventory is EXACT (every JSON file under the fixture dir is
+//      listed and every listed file exists); every asset's lowercase SHA-256
+//      digest over canonical JSON matches, so unexpected drift fails closed.
 //   3. Every positive fixture asset validates against its declared $ref, and
 //      every asset's protocol_version/schema_version/fixture_id equals the
-//      frozen 1.0.0 / 1.0.0 / minimal-v1-arithmetic identity.
+//      frozen 1.0.0 / 1.0.0 / minimal-v1-arithmetic identity; any identity
+//      mismatch (ordinary asset OR the mutant wrapper's inner projection) is
+//      an explicit FAIL via the stable AIPT_FIXTURE_IDENTITY_MISMATCH reason.
 //   4. Semantics: exactly two seats (seat-a, seat-b); one PUBLIC field
 //      visible to both and one TABLE_HIDDEN_REMOTE_ALLOWED field authorized
 //      only to seat-a; the full-state projection contract (unique field ids
@@ -39,25 +45,35 @@
 //      notifications/: a valid applyAction request, its result response with
 //      the same id VALUE AND JSON TYPE, a valid protocol error response for
 //      the known request id using the documented implementation-choice
-//      -32000 code with a stable AIPT_* data.error_code, and a valid
-//      aipt.protocol.event notification embedding the exact existing
-//      event.json. Request params cross-link to action-intent.json and the
-//      result response cross-links to transition.json / final-state.json.
+//      -32000 code with the generic stable AIPT_ACTION_REJECTED
+//      data.error_code and a deterministic message describing rejection of
+//      the referenced advance-turn request, and a valid aipt.protocol.event
+//      notification embedding the exact existing event.json. Request params
+//      cross-link to action-intent.json and the result response cross-links
+//      to transition.json / final-state.json.
 //   6. The hidden-leak mutant is validated against the schema FIRST (it must
 //      be schema-valid), then semantically rejected for exactly
 //      AIPT_VISIBILITY_UNAUTHORIZED_FIELD — never for unrelated JSON/schema
-//      syntax reasons.
+//      syntax reasons. It remains the SOLE fixture carrying that code; the
+//      wire error response never reuses it.
 //   7. Negative probes, each rejected for the correct contract reason: the
 //      nine frozen iteration-2 probes (jsonrpc != 2.0, unknown protocol
 //      version, unknown schema version, missing request params,
 //      result+error together, unknown method, missing visibility, unknown
 //      visibility label, hidden-leak mutant) plus the iteration-3 root,
-//      projection, manifest, and schema-helper probes.
+//      projection, manifest, and schema-helper probes, plus the iteration-3B
+//      probes: safe-integer id boundaries (request AND response, just
+//      outside both bounds), fixture identity mismatch (mutant inner
+//      projection and an ordinary asset), the in-root symlink whose target
+//      is outside the fixture root (lstat gate fires before any read), and
+//      the wire-error coherence gate (the mutant visibility code is never a
+//      wire error code).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { runAsMain } from '../lib/cli.mjs';
-import { checkSchemaDocument, deepEqual, validateInstance, META_SCHEMA_URI } from '../lib/json-schema.mjs';
+import { checkSchemaDocument, deepEqual, resolveRef, validateInstance, META_SCHEMA_URI } from '../lib/json-schema.mjs';
 import { relOf, walkFiles } from '../lib/scan.mjs';
 
 const SCHEMA_PATH = 'schemas/protocol/v1/aipt-protocol.schema.json';
@@ -92,9 +108,27 @@ const WIRE_NOTIFICATION_PATH = 'notifications/state-event-notification.json';
 // protocol error example. The schema leaves JSON-RPC `code` an unconstrained
 // integer (it does NOT enforce a reserved range); the persisted example uses
 // the conventional implementation-choice server/application code -32000 with
-// the stable AIPT_* semantic namespace in data.error_code.
+// the generic stable AIPT_ACTION_REJECTED semantic code and a deterministic
+// message describing rejection of the advance-turn request it references.
+// The mutant visibility code is NEVER a wire error code.
 const PROTOCOL_ERROR_CODE = -32000;
-const PROTOCOL_ERROR_CODE_NAME = VISIBILITY_UNAUTHORIZED_FIELD;
+const PROTOCOL_ERROR_CODE_NAME = 'AIPT_ACTION_REJECTED';
+const PROTOCOL_ERROR_MESSAGE = 'advance-turn action request from seat-a was rejected (AIPT_ACTION_REJECTED)';
+// Cross-language-safe JSON-RPC integer ids: the inclusive JavaScript
+// safe-integer range [+-(2^53-1)]. Node JSON.parse reads every JSON number as
+// an IEEE-754 double, so integers outside this range could silently round to
+// a value a Go int64 consumer represents differently; the schema enforces the
+// bound with minimum/maximum so request and response ids round-trip exactly.
+const ID_SAFE_INTEGER_BOUND = 9007199254740991;
+// Stable fixture-identity rejection reason: any asset (ordinary or the mutant
+// wrapper's inner projection) whose identity triple drifts is an explicit
+// FAIL, never a silent pass.
+const FIXTURE_IDENTITY_MISMATCH = 'AIPT_FIXTURE_IDENTITY_MISMATCH';
+// Stable wire-error coherence rejection reason: the persisted protocol error
+// must describe the request it references (applyAction -> AIPT_ACTION_REJECTED
+// + the deterministic message); the mutant visibility code is not a wire
+// error code.
+const WIRE_ERROR_MISMATCH = 'AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE';
 
 // Canonical JSON: arrays in order, object keys sorted recursively, minimal
 // separators. Independent copy of the serializer used elsewhere so a shared
@@ -185,6 +219,44 @@ function checkManifestKindRefs(entries) {
   return problems;
 }
 
+// Preflight-clean entry resolution gate (defense in depth, in this exact
+// order, all BEFORE any read):
+//   1. lexical containment: the joined path must stay inside the fixture dir
+//      (the preflight path checks already ran, this is the belt-and-braces
+//      round);
+//   2. lstat: accept ONLY a regular file — symbolic links, directories,
+//      devices, and any other non-regular entry are rejected before read;
+//   3. realpath: the real target (every symlink component resolved) must
+//      remain strictly inside the fixture dir before read.
+// Returns { problem } on rejection or { resolvedPath } with the contained
+// real path to read. This function performs NO reads of file content.
+function safeResolveFixtureAsset(fixtureDir, relPath) {
+  const joined = path.join(fixtureDir, ...relPath.split('/'));
+  const lexicalRel = path.relative(fixtureDir, joined);
+  if (lexicalRel.startsWith('..') || path.isAbsolute(lexicalRel)) {
+    return { problem: `unsafe fixture asset: ${relPath} resolves outside the fixture dir (read refused)` };
+  }
+  let lst;
+  try {
+    lst = fs.lstatSync(joined);
+  } catch {
+    return { problem: `listed fixture asset does not exist: ${relPath}` };
+  }
+  if (lst.isSymbolicLink()) {
+    return { problem: `unsafe fixture asset: ${relPath} is a symbolic link (read refused)` };
+  }
+  if (!lst.isFile()) {
+    return { problem: `unsafe fixture asset: ${relPath} is not a regular file (read refused)` };
+  }
+  const realRoot = fs.realpathSync(fixtureDir);
+  const real = fs.realpathSync(joined);
+  const realRel = path.relative(realRoot, real);
+  if (realRel === '' || realRel.startsWith('..') || path.isAbsolute(realRel)) {
+    return { problem: `unsafe fixture asset: real target of ${relPath} is not strictly inside the fixture dir (read refused)` };
+  }
+  return { resolvedPath: real };
+}
+
 // ---------------------------------------------------------------------------
 // Projection / visibility semantics (schema validity alone is intentionally
 // insufficient; all rejections use stable AIPT_* reasons).
@@ -252,6 +324,43 @@ function checkProjection(state, projection, knownSeats) {
       reasons.push('AIPT_PROJECTION_MISSING_AUTHORIZED_FIELD');
     }
   }
+  return reasons;
+}
+
+// Pure fixture-identity checker: every asset — ordinary assets AND the mutant
+// wrapper's inner projection — must carry the frozen identity triple. Returns
+// stable AIPT_FIXTURE_IDENTITY_MISMATCH reasons; a false aggregate is an
+// explicit FAIL, never a silent pass. Used by the on-disk gate and by the
+// in-memory negative probes.
+function checkFixtureIdentity(entries) {
+  const reasons = [];
+  for (const [relPath, doc] of entries) {
+    if (relPath.startsWith('mutants/')) {
+      const inner = doc?.projection;
+      if (!(inner && inner.protocol_version === PROTOCOL_VERSION && inner.schema_version === SCHEMA_VERSION && inner.fixture_id === FIXTURE_ID)) {
+        reasons.push(FIXTURE_IDENTITY_MISMATCH);
+      }
+    } else if (!(doc && doc.protocol_version === PROTOCOL_VERSION && doc.schema_version === SCHEMA_VERSION && doc.fixture_id === FIXTURE_ID)) {
+      reasons.push(FIXTURE_IDENTITY_MISMATCH);
+    }
+  }
+  return reasons;
+}
+
+// Pure wire-error coherence checker: the persisted protocol error must
+// describe the request it references. The applyAction (advance-turn) request
+// rejects with the generic stable AIPT_ACTION_REJECTED data.error_code and
+// the deterministic message; AIPT_VISIBILITY_UNAUTHORIZED_FIELD is the
+// hidden-leak mutant's semantic rejection reason, never a wire error code.
+// Returns stable rejection reasons ([] = coherent).
+function checkWireErrorCoherence(method, errorObj) {
+  const reasons = [];
+  if (method !== METHOD_REQUEST) {
+    reasons.push(WIRE_ERROR_MISMATCH);
+    return reasons;
+  }
+  if (errorObj?.data?.error_code !== PROTOCOL_ERROR_CODE_NAME) reasons.push(WIRE_ERROR_MISMATCH);
+  if (errorObj?.message !== PROTOCOL_ERROR_MESSAGE) reasons.push(WIRE_ERROR_MISMATCH);
   return reasons;
 }
 
@@ -356,9 +465,26 @@ export function run(ctx) {
     if (!Array.isArray(constOf(schemaDoc, ['$defs', 'jsonrpc_response', 'oneOf']))) {
       fail('jsonrpc_response must enforce result/error mutual exclusion via oneOf');
     } else ok('jsonrpc_response oneOf: result and error are mutually exclusive');
-    if (!Array.isArray(constOf(schemaDoc, ['$defs', 'request_id', 'oneOf']))) {
+    const requestIdOneOf = constOf(schemaDoc, ['$defs', 'request_id', 'oneOf']);
+    if (!Array.isArray(requestIdOneOf)) {
       fail('request_id must be string or integer via oneOf');
-    } else ok('request_id oneOf: string or integer only');
+    } else {
+      ok('request_id oneOf: string or integer only');
+      const stringBranch = requestIdOneOf.find((b) => b?.type === 'string');
+      const integerBranchRef = requestIdOneOf.find((b) => typeof b?.$ref === 'string')?.$ref;
+      const integerIdDef = integerBranchRef ? resolveRef(schemaDoc, integerBranchRef) : undefined;
+      if (!stringBranch || stringBranch.minLength !== 1 || stringBranch.maxLength !== 128) {
+        fail('request_id must keep its 1..128 character string alternative unchanged');
+      } else ok('request_id string alternative unchanged (1..128 characters)');
+      if (!integerIdDef || integerIdDef.type !== 'integer' || integerIdDef.minimum !== -ID_SAFE_INTEGER_BOUND || integerIdDef.maximum !== ID_SAFE_INTEGER_BOUND) {
+        fail(`request_id integer alternative must be bounded to the inclusive safe-integer range [${-ID_SAFE_INTEGER_BOUND}, ${ID_SAFE_INTEGER_BOUND}] via minimum/maximum`);
+      } else ok(`request_id integer alternative is bounded to [${-ID_SAFE_INTEGER_BOUND}, ${ID_SAFE_INTEGER_BOUND}] (+-(2^53-1)) via minimum/maximum (cross-language safe)`);
+      for (const envelope of ['jsonrpc_request', 'jsonrpc_response']) {
+        const idRef = constOf(schemaDoc, ['$defs', envelope, 'properties', 'id', '$ref']);
+        if (idRef === '#/$defs/request_id') ok(`${envelope}.id uses #/$defs/request_id, so request and response apply the same safe-integer bound`);
+        else fail(`${envelope}.id must reference #/$defs/request_id (shared bound), got ${JSON.stringify(idRef)}`);
+      }
+    }
     const errorCodeSchema = constOf(schemaDoc, ['$defs', 'error_object', 'properties', 'code']);
     if (!errorCodeSchema || errorCodeSchema.type !== 'integer') {
       fail('error_object.code must be a plain integer (schema does NOT enforce a reserved range)');
@@ -389,19 +515,22 @@ export function run(ctx) {
 
     const manifestEntries = [...(manifest.assets ?? []), ...(manifest.mutants ?? [])];
     // Path safety, duplicate paths, and exact kind -> schema_ref mapping are
-    // enforced BEFORE any listed file is resolved or read.
+    // enforced BEFORE any listed file is resolved or read. ANY preflight
+    // problem aborts the gate right here: the read loop is never entered, so
+    // no manifest-listed asset is resolved, lstatted, realpathed, or read
+    // after a failed preflight.
     const pathProblems = checkManifestPaths(manifestEntries);
-    if (pathProblems.length > 0) {
-      for (const problem of pathProblems) fail(problem);
-    } else ok('every manifest entry path is relative, normalized, and free of absolute/dot-segment/backslash forms (checked before any read)');
     const dupProblems = checkManifestDuplicates(manifestEntries);
-    if (dupProblems.length > 0) {
-      for (const problem of dupProblems) fail(problem);
-    } else ok('no duplicate asset/mutant paths in the manifest');
     const kindRefProblems = checkManifestKindRefs(manifestEntries);
-    if (kindRefProblems.length > 0) {
-      for (const problem of kindRefProblems) fail(problem);
-    } else ok('every manifest kind maps to its exact canonical schema_ref (the manifest-supplied $ref is not trusted)');
+    const preflightProblems = [...pathProblems, ...dupProblems, ...kindRefProblems];
+    if (preflightProblems.length > 0) {
+      for (const problem of preflightProblems) fail(problem);
+      fail('manifest preflight failed: no manifest-listed asset was resolved or read (gate aborted before the read loop)');
+      return { name: 'protocol-assets', result: 'FAIL', details, negative_probes: negativeProbes };
+    }
+    ok('manifest preflight clean before any asset read: every entry path is relative, normalized, and free of absolute/dot-segment/backslash forms');
+    ok('no duplicate asset/mutant paths in the manifest');
+    ok('every manifest kind maps to its exact canonical schema_ref (the manifest-supplied $ref is not trusted)');
 
     // Exact inventory: every JSON file under the fixture dir must be listed
     // (assets + mutants + the manifest itself), and every listed file must
@@ -425,17 +554,17 @@ export function run(ctx) {
     // Per-asset digest + schema validation + identity consistency.
     const assetDocs = new Map();
     for (const entry of manifestEntries) {
-      // Defense-in-depth: even after the pre-read path checks, the resolved
-      // path must stay inside the fixture dir before any read happens.
-      const resolvedPath = path.resolve(fixtureDir, ...entry.path.split('/'));
-      if (!resolvedPath.startsWith(fixtureDir + path.sep)) {
-        fail(`manifest entry ${entry.path} resolves outside the fixture dir (read refused)`);
+      // Defense-in-depth resolution gate for a preflight-clean entry, BEFORE
+      // any read: lexical containment -> lstat regular-file-only (symlinks,
+      // directories, devices and other non-regular entries rejected) ->
+      // realpath containment (the real target stays strictly inside the
+      // fixture dir). The read uses the contained REAL path.
+      const safe = safeResolveFixtureAsset(fixtureDir, entry.path);
+      if (safe.problem !== undefined) {
+        fail(safe.problem);
         continue;
       }
-      if (!fs.existsSync(resolvedPath)) {
-        fail(`listed fixture asset does not exist: ${entry.path}`);
-        continue;
-      }
+      const resolvedPath = safe.resolvedPath;
       let doc;
       try {
         doc = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
@@ -462,14 +591,12 @@ export function run(ctx) {
         }
       }
     }
-    const identityOk = [...assetDocs.entries()].every(([p, doc]) => {
-      if (p.startsWith('mutants/')) {
-        const inner = doc?.projection;
-        return inner && inner.protocol_version === PROTOCOL_VERSION && inner.schema_version === SCHEMA_VERSION && inner.fixture_id === FIXTURE_ID;
-      }
-      return doc && doc.protocol_version === PROTOCOL_VERSION && doc.schema_version === SCHEMA_VERSION && doc.fixture_id === FIXTURE_ID;
-    });
-    if (identityOk) ok(`every fixture asset (and the mutant's inner projection) carries identity ${PROTOCOL_VERSION} / ${SCHEMA_VERSION} / ${FIXTURE_ID}`);
+    // Identity gate: any false aggregate is an explicit FAIL (never a silent
+    // pass), for ordinary assets AND the mutant wrapper's inner projection.
+    const identityReasons = checkFixtureIdentity([...assetDocs.entries()]);
+    if (identityReasons.length > 0) {
+      fail(`fixture identity mismatch (${identityReasons.filter((r) => r === FIXTURE_IDENTITY_MISMATCH).length} asset(s)): ${identityReasons.join(', ')}`);
+    } else ok(`every fixture asset (and the mutant wrapper's inner projection) carries identity ${PROTOCOL_VERSION} / ${SCHEMA_VERSION} / ${FIXTURE_ID}`);
 
     // ---------------------------------------------------------------
     // 3. Fixture semantics.
@@ -662,7 +789,7 @@ export function run(ctx) {
     }
 
     if (!errorResponse) fail(`persisted protocol error response missing: ${WIRE_ERROR_RESPONSE_PATH}`);
-    else if (!wireRequest) fail('cannot prove error-response identity: persisted request missing');
+    else if (!wireRequest) fail('cannot prove error-response coherence: persisted request missing');
     else {
       const sameId = deepEqual(errorResponse.id, wireRequest.id) && typeof errorResponse.id === typeof wireRequest.id;
       if (sameId) ok('persisted error response carries the known request id (value and JSON type)');
@@ -670,15 +797,36 @@ export function run(ctx) {
       if (errorResponse.error?.code === PROTOCOL_ERROR_CODE) {
         ok(`persisted AIPT semantic error uses the documented implementation-choice code ${PROTOCOL_ERROR_CODE} (CHOICE-009)`);
       } else fail(`persisted AIPT semantic error code must be ${PROTOCOL_ERROR_CODE}, got ${JSON.stringify(errorResponse.error?.code)}`);
-      if (errorResponse.error?.data?.error_code === PROTOCOL_ERROR_CODE_NAME) {
-        ok(`persisted AIPT semantic error carries the stable ${PROTOCOL_ERROR_CODE_NAME} in data.error_code`);
-      } else fail(`persisted AIPT semantic error data.error_code must be ${PROTOCOL_ERROR_CODE_NAME}, got ${JSON.stringify(errorResponse.error?.data?.error_code)}`);
-      if (typeof errorResponse.error?.message === 'string' && errorResponse.error.message.length > 0) {
-        ok('persisted AIPT semantic error carries a deterministic human-readable message');
-      } else fail('persisted AIPT semantic error must carry a non-empty message');
+      const errCode = errorResponse.error?.data?.error_code;
+      if (errCode === PROTOCOL_ERROR_CODE_NAME) {
+        ok(`persisted AIPT semantic error carries the generic stable ${PROTOCOL_ERROR_CODE_NAME} in data.error_code`);
+      } else fail(`persisted AIPT semantic error data.error_code must be ${PROTOCOL_ERROR_CODE_NAME}, got ${JSON.stringify(errCode)}`);
+      if (errCode === VISIBILITY_UNAUTHORIZED_FIELD) {
+        fail('persisted protocol error must NOT reuse the mutant visibility code (the hidden-leak mutant is the sole AIPT_VISIBILITY_UNAUTHORIZED_FIELD fixture)');
+      }
+      if (errorResponse.error?.message === PROTOCOL_ERROR_MESSAGE) {
+        ok(`persisted AIPT semantic error carries the exact deterministic message describing rejection of advance-turn (${PROTOCOL_ERROR_MESSAGE})`);
+      } else fail(`persisted AIPT semantic error message must be exactly ${JSON.stringify(PROTOCOL_ERROR_MESSAGE)}, got ${JSON.stringify(errorResponse.error?.message)}`);
+      const coherenceReasons = checkWireErrorCoherence(wireRequest.method, errorResponse.error);
+      if (coherenceReasons.length > 0) {
+        fail(`persisted protocol error is incoherent with the request it references: ${coherenceReasons.join(', ')}`);
+      } else ok('persisted protocol error is coherent with the request it references (applyAction/advance-turn -> AIPT_ACTION_REJECTED)');
       const rootOk = validateInstance(schemaDoc, errorResponse, { ref: '#' });
       if (rootOk.valid) ok('persisted protocol error response also validates against the executable root "#"');
       else fail(`persisted protocol error response must validate against the executable root "#": ${rootOk.errors[0]?.message}`);
+      // Sole-fixture proof: the visibility code must not be embedded in ANY
+      // fixture asset; its single on-disk mention is the mutant manifest
+      // entry's expected_semantic_rejection.
+      const visibilityMentions = [...assetDocs.entries()]
+        .filter(([, doc]) => JSON.stringify(doc).includes(VISIBILITY_UNAUTHORIZED_FIELD))
+        .map(([p]) => p);
+      if (visibilityMentions.length > 0) {
+        fail(`AIPT_VISIBILITY_UNAUTHORIZED_FIELD embedded in fixture asset(s): ${visibilityMentions.join(', ')}`);
+      } else ok('no fixture asset embeds AIPT_VISIBILITY_UNAUTHORIZED_FIELD (the mutant rejection is semantic, not embedded text)');
+      const manifestMentions = JSON.stringify(manifest).split(VISIBILITY_UNAUTHORIZED_FIELD).length - 1;
+      if (manifestMentions !== 1) {
+        fail(`AIPT_VISIBILITY_UNAUTHORIZED_FIELD must appear exactly once in the manifest (the mutant expected_semantic_rejection), got ${manifestMentions}`);
+      } else ok('AIPT_VISIBILITY_UNAUTHORIZED_FIELD appears exactly once in the manifest: the hidden-leak mutant expected_semantic_rejection (sole fixture)');
     }
 
     if (!wireNotification) fail(`persisted wire notification missing: ${WIRE_NOTIFICATION_PATH}`);
@@ -763,7 +911,8 @@ export function run(ctx) {
       ...(error !== undefined ? { error } : {}),
     });
     let roundTripOk = true;
-    for (const id of ['minimal-v1-arithmetic-request-1', 42]) {
+    const boundaryIds = [-ID_SAFE_INTEGER_BOUND, ID_SAFE_INTEGER_BOUND];
+    for (const id of ['minimal-v1-arithmetic-request-1', 42, 0, ...boundaryIds]) {
       const req = makeRequest(id);
       const reqCheck = validateInstance(schemaDoc, req, { ref: '#/$defs/jsonrpc_request' });
       const res = makeResponse(id, { result: makeResult() });
@@ -774,7 +923,10 @@ export function run(ctx) {
         fail(`request/response id round-trip failed for id ${JSON.stringify(id)} (request valid=${reqCheck.valid}, response valid=${resCheck.valid})`);
       } else ok(`request/response id ${JSON.stringify(id)} (${typeof id}) validates and round-trips verbatim`);
     }
-    if (roundTripOk) ok('request/response ids are string or integer and round-trip');
+    if (roundTripOk) {
+      ok('request/response ids are string or integer and round-trip');
+      ok(`positive boundary probes: request AND response accept the inclusive safe-integer boundaries ${-ID_SAFE_INTEGER_BOUND} and ${ID_SAFE_INTEGER_BOUND} and round-trip them by value and JSON type`);
+    }
     const eventFixture = assetDocs.get('event.json');
     const notification = {
       jsonrpc: '2.0',
@@ -788,7 +940,7 @@ export function run(ctx) {
     if (!notificationCheck.valid) fail(`registered notification (${METHOD_NOTIFICATION}) must validate: ${notificationCheck.errors[0]?.message}`);
     else ok(`registered notification method ${METHOD_NOTIFICATION} validates with the fixture event`);
     const errResponse = makeResponse('minimal-v1-arithmetic-request-1', {
-      error: { code: -32602, message: 'invalid params', data: { error_code: VISIBILITY_UNAUTHORIZED_FIELD } },
+      error: { code: -32602, message: 'invalid params', data: { error_code: PROTOCOL_ERROR_CODE_NAME } },
     });
     const errCheck = validateInstance(schemaDoc, errResponse, { ref: '#/$defs/jsonrpc_response' });
     if (!errCheck.valid) fail(`error response must validate: ${errCheck.errors[0]?.message}`);
@@ -798,7 +950,13 @@ export function run(ctx) {
     // 7. Negative probes: each must be rejected for the correct reason.
     //    The first eight are the frozen iteration-2 probes; the mutant probe
     //    was recorded above; the remainder are the iteration-3 root,
-    //    projection, manifest, and schema-helper probes.
+    //    projection, manifest, and schema-helper probes, plus the
+    //    iteration-3B probes: safe-integer id boundaries (request AND
+    //    response, just outside both bounds), fixture identity mismatch
+    //    (mutant inner projection and an ordinary asset), the in-root
+    //    symlink to an outside target (lstat gate before any read), and the
+    //    wire-error coherence gate (the mutant visibility code is never a
+    //    wire error code).
     // ---------------------------------------------------------------
     const schemaProbe = (ref) => (instance) => {
       const res = validateInstance(schemaDoc, instance, { ref });
@@ -990,6 +1148,125 @@ export function run(ctx) {
           $defs: { a: { $ref: '#/$defs/b' }, b: { $ref: '#/$defs/a' } },
         }),
       },
+      {
+        label: 'integer id above the safe-integer maximum (9007199254740992)',
+        reason: /must be <= 9007199254740991/,
+        run: () => schemaProbe('#/$defs/request_id_integer')(ID_SAFE_INTEGER_BOUND + 1),
+      },
+      {
+        label: 'integer id below the safe-integer minimum (-9007199254740992)',
+        reason: /must be >= -9007199254740991/,
+        run: () => schemaProbe('#/$defs/request_id_integer')(-ID_SAFE_INTEGER_BOUND - 1),
+      },
+      {
+        label: 'request envelope id above the safe-integer maximum',
+        reason: /\/id.*oneOf/,
+        run: () => schemaProbe('#/$defs/jsonrpc_request')(makeRequest(ID_SAFE_INTEGER_BOUND + 1)),
+      },
+      {
+        label: 'request envelope id below the safe-integer minimum',
+        reason: /\/id.*oneOf/,
+        run: () => schemaProbe('#/$defs/jsonrpc_request')(makeRequest(-ID_SAFE_INTEGER_BOUND - 1)),
+      },
+      {
+        label: 'response envelope id above the safe-integer maximum',
+        reason: /\/id.*oneOf/,
+        run: () => schemaProbe('#/$defs/jsonrpc_response')(makeResponse(ID_SAFE_INTEGER_BOUND + 1, { result: makeResult() })),
+      },
+      {
+        label: 'response envelope id below the safe-integer minimum',
+        reason: /\/id.*oneOf/,
+        run: () => schemaProbe('#/$defs/jsonrpc_response')(makeResponse(-ID_SAFE_INTEGER_BOUND - 1, { result: makeResult() })),
+      },
+      {
+        label: 'mutant wrapper inner projection fixture_id drift (schema-valid)',
+        reason: /AIPT_FIXTURE_IDENTITY_MISMATCH/,
+        run: () => {
+          if (!mutantEntry || !mutant) return { valid: false, messages: ['cannot build probe: canonical mutant missing'] };
+          const drifted = JSON.parse(JSON.stringify(mutant));
+          drifted.projection.fixture_id = 'drifted-fixture-id';
+          const inst = validateInstance(schemaDoc, drifted, { ref: '#/$defs/mutant_specimen' });
+          if (!inst.valid) {
+            return { valid: false, messages: [`probe precondition failed: drifted mutant must stay schema-valid (${inst.errors[0]?.message})`] };
+          }
+          const reasons = checkFixtureIdentity([[mutantEntry.path, drifted]]);
+          return { valid: reasons.length === 0, messages: reasons };
+        },
+      },
+      {
+        label: 'ordinary fixture asset fixture_id drift (schema-valid)',
+        reason: /AIPT_FIXTURE_IDENTITY_MISMATCH/,
+        run: () => {
+          const stateDoc = assetDocs.get('state.json');
+          if (!stateDoc) return { valid: false, messages: ['cannot build probe: state.json missing'] };
+          const drifted = JSON.parse(JSON.stringify(stateDoc));
+          drifted.fixture_id = 'drifted-fixture-id';
+          const inst = validateInstance(schemaDoc, drifted, { ref: '#/$defs/state' });
+          if (!inst.valid) {
+            return { valid: false, messages: [`probe precondition failed: drifted state must stay schema-valid (${inst.errors[0]?.message})`] };
+          }
+          const reasons = checkFixtureIdentity([['state.json', drifted]]);
+          return { valid: reasons.length === 0, messages: reasons };
+        },
+      },
+      {
+        label: 'in-root symlink whose target is outside the fixture root',
+        reason: /symbolic link|not a regular file/,
+        run: () => {
+          // Deterministic, self-contained temp-dir probe (Node standard
+          // library only): an isolated os.tmpdir() base holds BOTH the test
+          // fixture root and the outside target, so no real or sensitive
+          // local path is touched. The in-root symlink points OUT of the
+          // root; the lstat gate must reject it with the symlink/non-regular
+          // reason BEFORE any read — a read of the link would surface the
+          // outside target's content, never the symlink reason. Cleanup
+          // always runs in finally.
+          const probeBase = fs.mkdtempSync(path.join(os.tmpdir(), 'aipt-fixture-symlink-probe-'));
+          try {
+            const probeFixture = path.join(probeBase, 'fixture-root');
+            const probeOutside = path.join(probeBase, 'outside');
+            fs.mkdirSync(probeFixture, { recursive: true });
+            fs.mkdirSync(probeOutside, { recursive: true });
+            const outsideTarget = path.join(probeOutside, 'outside-target.json');
+            fs.writeFileSync(outsideTarget, '{"sentinel":"OUTSIDE the fixture root"}\n');
+            const inRootLink = path.join(probeFixture, 'escape.json');
+            fs.symlinkSync(outsideTarget, inRootLink);
+            const resolved = safeResolveFixtureAsset(probeFixture, 'escape.json');
+            const rejected = resolved.problem !== undefined && /symbolic link|not a regular file/.test(resolved.problem);
+            if (!rejected) {
+              fail('temp-dir symlink probe: the safe resolver ACCEPTED an in-root symlink to an outside target');
+              return { valid: true, messages: [] };
+            }
+            ok('temp-dir symlink probe: in-root symlink to an outside target rejected by the lstat gate with a symlink/non-regular-file reason BEFORE any read');
+            // Positive control: a regular file at the same relative depth
+            // resolves to its real path strictly inside the root.
+            const regular = path.join(probeFixture, 'plain.json');
+            fs.writeFileSync(regular, '{"ok":true}\n');
+            const regularResolved = safeResolveFixtureAsset(probeFixture, 'plain.json');
+            if (regularResolved.problem !== undefined || regularResolved.resolvedPath !== fs.realpathSync(regular)) {
+              fail(`temp-dir symlink probe control: a regular file inside the root must resolve to its real contained path (${regularResolved.problem})`);
+            } else ok('temp-dir symlink probe control: a regular file inside the root resolves to its real contained path');
+            // The outside sentinel must still carry its original content:
+            // the gate never read (or touched) the target before rejecting.
+            const sentinel = fs.readFileSync(outsideTarget, 'utf8');
+            if (!sentinel.includes('OUTSIDE the fixture root')) {
+              fail('temp-dir symlink probe: outside sentinel content changed unexpectedly');
+            }
+            return { valid: false, messages: [resolved.problem] };
+          } finally {
+            fs.rmSync(probeBase, { recursive: true, force: true });
+          }
+        },
+      },
+      {
+        label: 'wire error response must not reuse the mutant visibility code',
+        reason: /AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE/,
+        run: () => semanticProbe(() => checkWireErrorCoherence(METHOD_REQUEST, {
+          code: PROTOCOL_ERROR_CODE,
+          message: 'table-note is not authorized for seat-b (AIPT_VISIBILITY_UNAUTHORIZED_FIELD)',
+          data: { error_code: VISIBILITY_UNAUTHORIZED_FIELD },
+        })),
+      },
     ];
     for (const probe of probes) {
       let outcome;
@@ -1047,8 +1324,8 @@ export function run(ctx) {
         public_field: PUBLIC_FIELD_ID,
         hidden_field: HIDDEN_FIELD_ID,
         wire_envelopes: [WIRE_REQUEST_PATH, WIRE_RESULT_RESPONSE_PATH, WIRE_ERROR_RESPONSE_PATH, WIRE_NOTIFICATION_PATH],
-        error_example: `code ${PROTOCOL_ERROR_CODE} + data.error_code ${PROTOCOL_ERROR_CODE_NAME}`,
-        mutant: 'mutants/hidden-leak.json -> AIPT_VISIBILITY_UNAUTHORIZED_FIELD',
+        error_example: `code ${PROTOCOL_ERROR_CODE} + data.error_code ${PROTOCOL_ERROR_CODE_NAME} + deterministic advance-turn rejection message`,
+        mutant: 'mutants/hidden-leak.json -> AIPT_VISIBILITY_UNAUTHORIZED_FIELD (sole fixture carrying this code)',
         replay_hash_algorithm: 'sha256 (canonical JSON)',
       },
     },

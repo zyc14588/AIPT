@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/zyc14588/AIPT/schemas/protocol/v1/aipt-protocol.schema.json",
-  "title": "AIPT protocol v1 canonical schema (B002, iteration 3)",
-  "description": "The single authoritative AIPT wire-protocol schema root (JSON Schema 2020-12). All protocol truth lives here in local $defs; no other document may duplicate wire definitions. The root is executable, not vacuous: a oneOf over the three registered wire envelopes rejects any document that is not exactly a jsonrpc_request, jsonrpc_response, or jsonrpc_notification. Written against the explicit dependency-free subset implemented by scripts/ci/lib/json-schema.mjs. B002_IMPLEMENTATION_CHOICE-001..-011 are documented in docs/protocol/README.md.",
+  "title": "AIPT protocol v1 canonical schema (B002, iteration 3B)",
+  "description": "The single authoritative AIPT wire-protocol schema root (JSON Schema 2020-12). All protocol truth lives here in local $defs; no other document may duplicate wire definitions. The root is executable, not vacuous: a oneOf over the three registered wire envelopes rejects any document that is not exactly a jsonrpc_request, jsonrpc_response, or jsonrpc_notification. Written against the explicit dependency-free subset implemented by scripts/ci/lib/json-schema.mjs. B002_IMPLEMENTATION_CHOICE-001..-015 are documented in docs/protocol/README.md.",
   "oneOf": [
     {
       "$ref": "#/$defs/jsonrpc_request"
@@ -31,8 +31,8 @@
       "const": "2.0"
     },
     "message_id": {
-      "title": "Message identity",
-      "description": "Stable per-message identity carried by intent/envelope documents.",
+      "title": "Action-intent message identity",
+      "description": "Stable per-message identity carried ONLY by action-intent documents. JSON-RPC envelopes do not carry message_id: a request/response envelope is identified by its id, which round-trips between the request and the response.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
@@ -40,7 +40,7 @@
     },
     "request_id": {
       "title": "JSON-RPC request/response id",
-      "description": "The request id is a string or an integer and must round-trip verbatim into the response id; no floats, null, or absent ids.",
+      "description": "The request id is a string or an integer and must round-trip verbatim into the response id (value AND JSON type); no floats, null, or absent ids. The integer alternative is constrained to the inclusive JavaScript safe-integer range [-9007199254740991, 9007199254740991] (= +-(2^53-1)): Node JSON.parse reads every JSON number as an IEEE-754 double, so an integer id outside that range could silently round to a value that differs from the one a Go int64 consumer represents; bounding it in the schema keeps the id identical across languages.",
       "oneOf": [
         {
           "type": "string",
@@ -48,9 +48,16 @@
           "maxLength": 128
         },
         {
-          "type": "integer"
+          "$ref": "#/$defs/request_id_integer"
         }
       ]
+    },
+    "request_id_integer": {
+      "title": "Cross-language-safe JSON-RPC integer id",
+      "description": "Inclusive JavaScript safe-integer range [-9007199254740991, 9007199254740991] via minimum/maximum. Node JSON.parse maps JSON numbers to IEEE-754 doubles; integers outside +-(2^53-1) are not exactly representable and could silently change an id that Go (int64) represents differently. Both jsonrpc_request and jsonrpc_response reference request_id, so the same bound applies to request and response ids.",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "fixture_id": {
       "title": "Fixture identity",
@@ -346,7 +353,7 @@
     },
     "error_object": {
       "title": "Protocol error object (JSON-RPC error member)",
-      "description": "code is an unconstrained JSON-RPC integer: the schema does NOT enforce a reserved range, it only requires an integer. The single persisted deterministic example (B002_IMPLEMENTATION_CHOICE-009) uses the conventional implementation-choice server/application code -32000; protocol-level semantic errors carry their AIPT_* namespace code in data.error_code (B002_IMPLEMENTATION_CHOICE-007).",
+      "description": "code is an unconstrained JSON-RPC integer: the schema does NOT enforce a reserved range, it only requires an integer. The single persisted deterministic example (B002_IMPLEMENTATION_CHOICE-009) uses the conventional implementation-choice server/application code -32000, the generic stable data.error_code AIPT_ACTION_REJECTED, and a deterministic message describing rejection of the referenced advance-turn request; protocol-level semantic errors carry their AIPT_* namespace code in data.error_code (B002_IMPLEMENTATION_CHOICE-007).",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -378,7 +385,7 @@
     },
     "jsonrpc_request": {
       "title": "Strict JSON-RPC 2.0 request",
-      "description": "jsonrpc is exactly \"2.0\"; id is a string or integer and round-trips; params is mandatory; only the registered method aipt.protocol.applyAction exists (unknown methods fail closed); every persisted envelope carries protocol_version/schema_version = 1.0.0 and fixture_id = minimal-v1-arithmetic.",
+      "description": "jsonrpc is exactly \"2.0\"; id is a string or integer (integers bounded to the inclusive JavaScript safe-integer range via request_id_integer) and round-trips; params is mandatory; only the registered method aipt.protocol.applyAction exists (unknown methods fail closed); every persisted envelope carries protocol_version/schema_version = 1.0.0 and fixture_id = minimal-v1-arithmetic.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -459,7 +466,7 @@
     },
     "jsonrpc_response": {
       "title": "Strict JSON-RPC 2.0 response",
-      "description": "result and error are mutually exclusive (oneOf); the id round-trips the request id (value AND JSON type); every persisted envelope carries protocol_version/schema_version/fixture_id.",
+      "description": "result and error are mutually exclusive (oneOf); the id round-trips the request id (value AND JSON type) and integer ids obey the same safe-integer bound as the request; every persisted envelope carries protocol_version/schema_version/fixture_id.",
       "type": "object",
       "additionalProperties": false,
       "required": [

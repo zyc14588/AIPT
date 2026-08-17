@@ -64,7 +64,7 @@
       "path": "responses/apply-action-protocol-error-response.json",
       "kind": "jsonrpc_response",
       "schema_ref": "#/$defs/jsonrpc_response",
-      "sha256": "a6670aa1d0f39e01e081f759c1ef61fe1f71d3f5cbc1cbaf18b9dd094364540f"
+      "sha256": "ab26a57577c7da69d33123f6395b5cf2a2c17ebf4726fe8d38bb82dfc0aac5d8"
     },
     {
       "path": "event.json",

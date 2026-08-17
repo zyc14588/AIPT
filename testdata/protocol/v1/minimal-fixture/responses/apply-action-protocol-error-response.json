@@ -6,9 +6,9 @@
   "fixture_id": "minimal-v1-arithmetic",
   "error": {
     "code": -32000,
-    "message": "table-note is not authorized for seat-b (AIPT_VISIBILITY_UNAUTHORIZED_FIELD)",
+    "message": "advance-turn action request from seat-a was rejected (AIPT_ACTION_REJECTED)",
     "data": {
-      "error_code": "AIPT_VISIBILITY_UNAUTHORIZED_FIELD"
+      "error_code": "AIPT_ACTION_REJECTED"
     }
   }
 }
