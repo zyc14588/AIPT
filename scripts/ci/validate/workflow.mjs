@@ -7,12 +7,24 @@
 // B000/B001 command and gate. Every required needle is fail-closed: a
 // recorded missing needle fails the validator, never an unconditional ok.
 //
-// This fixed workflow subset is parsed with small explicit indentation
-// helpers (no YAML dependency): block structure comes from real key lines at
-// fixed indents, so commented-out or relocated strings can never satisfy the
-// permissions, fail-fast, or matrix checks. Step `name:` scalars are checked
-// lexically: an unquoted `: ` inside a plain scalar makes the whole file
-// invalid YAML, so restoring the exact unsafe focused step name fails here.
+// 6B2 hardening: executable evidence is bound to the exact required job and
+// step that must run it — never to whole-file substring matches. The fixed
+// workflow subset is parsed with small explicit indentation helpers (no YAML
+// dependency): every required job body is extracted from the real `jobs:`
+// mapping (the final job parses exactly like a job followed by another job),
+// a step starts at the real six-space `- name:` line and ends before the
+// next six-space step, step names are read with the narrow scalar helper,
+// real eight-space metadata (`if:`, `continue-on-error:`) is rejected on
+// every required job and on every step of those jobs, and run evidence comes
+// only from inline `run:` lines (exact command equality, so `|| true`, echo
+// wrappers or extra shell text can never masquerade as a gate) or
+// literal/folded block run bodies (exact non-comment command lines inside
+// one real step). Focused and aggregate commands must each run exactly once,
+// unconditionally, after the single frozen-install step, under their
+// auditable step name; retained single-line gate commands must run exactly
+// once in their intended job. Permission success details are emitted only
+// when every permissions mapping/body validated cleanly and no mapping
+// anywhere grants write.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -29,52 +41,120 @@ const DURABLE_WORKFLOW_NAME = 'AIPT M0 CI';
 const STALE_WORKFLOW_NAME = 'AIPT M0 B001 CI';
 const CONCURRENCY_GROUP = 'aipt-m0-${{ github.workflow }}-${{ github.ref }}';
 const MATRIX_RUNNERS = ['ubuntu-24.04', 'ubuntu-26.04'];
+const REQUIRED_JOBS = ['b000-retro', 'toolchain', 'supply-chain'];
 
 // The three explicit B002 contract gates plus the retained aggregate
-// `pnpm run check`, each of which must be a `run:` step of the toolchain job.
+// `pnpm run check`. Each must be exactly one real unconditional inline
+// `run:` step of the toolchain job, positioned after the single frozen
+// install step, with the auditable coverage tokens on that same step's name.
 const FOCUSED_COMMANDS = [
-  'pnpm run check:protocol-assets',
-  'pnpm run test:adapter-sdk',
-  'pnpm run test:protocol-go',
-  'pnpm run check',
+  {
+    command: 'pnpm run check:protocol-assets',
+    nameTokens: ['schema', 'json-rpc', 'shared fixture', 'mutant', 'replay'],
+  },
+  { command: 'pnpm run test:adapter-sdk', nameTokens: ['adapter sdk'] },
+  {
+    command: 'pnpm run test:protocol-go',
+    nameTokens: ['go fixture', 'shared fixture', 'replay'],
+  },
+  { command: 'pnpm run check', nameTokens: ['b001+b002', 'aggregate'] },
 ];
 
-// Step-name tokens the toolchain job must carry so the B002 coverage
-// (schema / JSON-RPC / shared fixture, Adapter SDK, Go fixture, hidden-leak
-// mutant rejection, replay determinism) stays auditable.
-const STEP_NAME_NEEDLES = [
-  'schema',
-  'json-rpc',
-  'shared fixture',
-  'adapter sdk',
-  'go fixture',
-  'mutant',
-  'replay',
-];
+// Retained single-line gate commands: each must be exactly one real inline
+// `run:` step of its intended job. A comment, a step name, another job, or a
+// duplicate can never satisfy them.
+const RETAINED_INLINE_GATES = {
+  toolchain: ['go vet ./...', 'go test ./...', 'pnpm install --frozen-lockfile'],
+  'supply-chain': [
+    'pnpm install --frozen-lockfile',
+    'node scripts/ci/validate/supply-chain.mjs',
+    'pnpm audit',
+    'node scripts/ci/validate/sbom.mjs',
+    'node scripts/ci/provenance.mjs',
+  ],
+};
 
-// Retained B000/B001 gates that must stay in the workflow verbatim (checked
-// against the whole file; the B002 focused commands are checked inside the
-// toolchain job separately and strictly).
-const RETAINED_GATES = [
-  `go-version: ${TOOLCHAIN.go}`,
-  `node-version: ${TOOLCHAIN.node}`,
-  `pnpm@${TOOLCHAIN.pnpm}`,
-  `@${GOVULNCHECK.version}`,
-  'gofmt',
-  'go vet ./...',
-  'go test ./...',
-  'pnpm install --frozen-lockfile',
-  'pnpm audit',
-  'go mod tidy',
-  'git diff --exit-code -- go.mod go.sum',
-  'postgres (PostgreSQL) 18.4',
-  'node scripts/ci/validate/b000-retro.mjs',
-  `--commit ${B000.commit}`,
-  `--expected-tree ${B000.tree}`,
-  'node scripts/ci/validate/supply-chain.mjs',
-  'node scripts/ci/validate/sbom.mjs',
-  'node scripts/ci/provenance.mjs',
-];
+// Exact setup declarations each job must carry exactly once as a real
+// `with:` entry.
+const SETUP_DECLS = {
+  'b000-retro': [`node-version: ${TOOLCHAIN.node}`],
+  toolchain: [`go-version: ${TOOLCHAIN.go}`, `node-version: ${TOOLCHAIN.node}`],
+  'supply-chain': [`go-version: ${TOOLCHAIN.go}`, `node-version: ${TOOLCHAIN.node}`],
+};
+
+// Multi-line evidence: every listed line must appear as an exact non-blank,
+// non-comment command line inside one real run block of the given job.
+const BLOCK_GATES = {
+  'b000-retro': [
+    {
+      label: 'the fixed B000 validator invocation',
+      lines: [
+        'node scripts/ci/validate/b000-retro.mjs',
+        '--repo .',
+        `--commit ${B000.commit}`,
+        `--expected-tree ${B000.tree}`,
+      ],
+    },
+    {
+      label: 'the exact Node.js version verification',
+      lines: [`test "$(node --version)" = "v${TOOLCHAIN.node}"`, 'node --version'],
+    },
+  ],
+  toolchain: [
+    {
+      label: 'the exact Node.js version verification',
+      lines: [`test "$(node --version)" = "v${TOOLCHAIN.node}"`, 'node --version'],
+    },
+    {
+      label: 'the exact Go version verification',
+      lines: [`test "$(go version)" = "go version go${TOOLCHAIN.go} linux/amd64"`, 'go version'],
+    },
+    {
+      label: 'the exact pnpm installation and version verification',
+      lines: [
+        `npm install --global --no-audit --no-fund pnpm@${TOOLCHAIN.pnpm}`,
+        `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
+      ],
+    },
+    {
+      label: 'the gofmt check',
+      lines: ['test -z "$(gofmt -l .)"'],
+    },
+    {
+      label: 'the PostgreSQL digest pull / version / repository-digest checks',
+      lines: [
+        `docker pull "postgres@${PG_MULTI_ARCH_DIGEST}"`,
+        `PG_VERSION="$(docker run --rm "postgres@${PG_MULTI_ARCH_DIGEST}" postgres --version)"`,
+        'case "${PG_VERSION}" in',
+        `"postgres (PostgreSQL) ${TOOLCHAIN.postgresql}"*) ;;`,
+        `REPO_DIGESTS="$(docker image inspect "postgres@${PG_MULTI_ARCH_DIGEST}" --format '{{join .RepoDigests ","}}')"`,
+        'case "${REPO_DIGESTS}" in',
+        `*"${PG_MULTI_ARCH_DIGEST}"*) ;;`,
+      ],
+    },
+  ],
+  'supply-chain': [
+    {
+      label: 'the exact pnpm installation and version verification',
+      lines: [
+        `npm install --global --no-audit --no-fund pnpm@${TOOLCHAIN.pnpm}`,
+        `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
+      ],
+    },
+    {
+      label: 'the go mod tidy + go.mod/go.sum diff gate',
+      lines: ['go mod tidy', 'git diff --exit-code -- go.mod go.sum'],
+    },
+    {
+      label: 'the pinned govulncheck install and execution',
+      lines: [
+        `GOBIN="\${RUNNER_TEMP}/bin" go install ${GOVULNCHECK.module}/cmd/govulncheck@${GOVULNCHECK.version}`,
+        `"\${RUNNER_TEMP}/bin/govulncheck" -version`,
+        `"\${RUNNER_TEMP}/bin/govulncheck" ./...`,
+      ],
+    },
+  ],
+};
 
 // ---- small explicit indentation helpers for this fixed workflow subset ----
 
@@ -85,26 +165,29 @@ function indent(line) {
   return n;
 }
 
-// True for blank and comment-only lines (they never start or end a block).
+// True for blank and comment-only lines (they never start or end a block and
+// are never executable evidence).
 function isBlankOrComment(line) {
   const t = line.trimStart();
   return t === '' || t.startsWith('#');
 }
 
-// Index of a block-style `key:` line at exactly `keyIndent` spaces,
-// searching from `from` (inclusive), or -1.
-function findKeyLine(lines, key, keyIndent, from = 0) {
+// Index of a block-style `key:` line at exactly `keyIndent` spaces, searching
+// `lines` in [from, to), or -1.
+function findKeyLineIn(lines, key, keyIndent, from = 0, to = lines.length) {
   const re = new RegExp(`^ {${keyIndent}}${key}:$`);
-  for (let i = from; i < lines.length; i += 1) {
+  for (let i = from; i < to; i += 1) {
     if (re.test(lines[i])) return i;
   }
   return -1;
 }
 
-// Body lines of the block-style mapping entry whose key line is at
-// `keyLineIdx`: everything after the key line until the first non-blank,
-// non-comment line indented at `keyIndent` spaces or fewer.
-function bodyLines(lines, keyLineIdx, keyIndent) {
+// Body of the block-style mapping entry whose key line is at `keyLineIdx`:
+// everything after the key line until the first non-blank, non-comment line
+// indented at `keyIndent` spaces or fewer (or the end of the array). Works
+// identically for a final mapping at end-of-file and for a mapping followed
+// by another mapping at the same indentation.
+function blockAt(lines, keyLineIdx, keyIndent) {
   let end = lines.length;
   for (let i = keyLineIdx + 1; i < lines.length; i += 1) {
     if (isBlankOrComment(lines[i])) continue;
@@ -113,7 +196,7 @@ function bodyLines(lines, keyLineIdx, keyIndent) {
       break;
     }
   }
-  return lines.slice(keyLineIdx + 1, end);
+  return { start: keyLineIdx + 1, end, lines: lines.slice(keyLineIdx + 1, end) };
 }
 
 // Narrow scalar cleanup for this subset: strip a trailing ` #` comment and
@@ -127,6 +210,130 @@ function scalarValue(raw) {
     v = v.slice(1, -1);
   }
   return v;
+}
+
+// Extract one required job's body from the parsed jobs block. `bodyStart` is
+// the absolute index of the first body line, so every body line can be
+// reported with its real 1-based file line number.
+function jobBlock(jobsBlock, name) {
+  if (!jobsBlock) return null;
+  const keyIdx = findKeyLineIn(jobsBlock.lines, name, 2, 0, jobsBlock.lines.length);
+  if (keyIdx < 0) return null;
+  const body = blockAt(jobsBlock.lines, keyIdx, 2);
+  return {
+    name,
+    body: body.lines,
+    bodyStart: jobsBlock.start + body.start,
+    keyLineNo: jobsBlock.start + keyIdx + 1,
+  };
+}
+
+// Split a job body into steps. A step starts at the real six-space
+// `- name:` line (or any six-space `- ` item, which in this subset is always
+// a step start) and ends before the next six-space step.
+function stepsOf(job) {
+  if (!job) return [];
+  const stepsIdx = findKeyLineIn(job.body, 'steps', 4, 0, job.body.length);
+  if (stepsIdx < 0) return [];
+  const body = blockAt(job.body, stepsIdx, 4);
+  const steps = [];
+  let current = null;
+  for (let i = 0; i < body.lines.length; i += 1) {
+    const line = body.lines[i];
+    if (/^ {6}- /.test(line)) {
+      if (current) steps.push(current);
+      const m = /^ {6}- name:\s*(.+?)\s*$/.exec(line);
+      current = {
+        name: m ? scalarValue(m[1]) : null,
+        lines: [line],
+        lineNo: job.bodyStart + body.start + i + 1,
+      };
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+  if (current) steps.push(current);
+  return steps;
+}
+
+// Analyze one step: collect inline `run:` commands (exact command equality is
+// the caller's job), literal/folded block run bodies (trimmed non-blank,
+// non-comment command lines), and real eight-space metadata (`if:`,
+// `continue-on-error:`). This is not a general YAML parser and never claims
+// to be one.
+function analyzeStep(step) {
+  const runs = [];
+  const conditions = { if: [], continueOnError: [] };
+  for (let i = 0; i < step.lines.length; i += 1) {
+    const line = step.lines[i];
+    const lineNo = step.lineNo + i;
+    const blockRun = /^ {8}run:\s*[|>][-+]?\s*(?:#.*)?$/.exec(line);
+    if (blockRun) {
+      const body = [];
+      let j = i + 1;
+      for (; j < step.lines.length; j += 1) {
+        const l = step.lines[j];
+        if (isBlankOrComment(l)) continue;
+        if (indent(l) <= 8) break;
+        body.push(l.trim());
+      }
+      runs.push({ kind: 'block', lines: body, lineNo });
+      i = j - 1;
+      continue;
+    }
+    const inlineRun = /^ {8}run:\s*(.+?)\s*$/.exec(line);
+    if (inlineRun) {
+      runs.push({ kind: 'inline', command: inlineRun[1].trim(), lineNo });
+      continue;
+    }
+    const ifM = /^ {8}if:\s*(.+?)\s*$/.exec(line);
+    if (ifM) conditions.if.push({ value: ifM[1].trim(), lineNo });
+    const coeM = /^ {8}continue-on-error:\s*(.+?)\s*$/.exec(line);
+    if (coeM) conditions.continueOnError.push({ value: coeM[1].trim(), lineNo });
+  }
+  return { ...step, runs, conditions };
+}
+
+// Steps (in order) whose runs contain an inline command exactly equal to cmd.
+function inlineHits(steps, cmd) {
+  const hits = [];
+  steps.forEach((s, i) => {
+    for (const r of s.runs) {
+      if (r.kind === 'inline' && r.command === cmd) hits.push({ stepIndex: i, step: s });
+    }
+  });
+  return hits;
+}
+
+// First step containing one run block with every required line as an exact
+// command line, or null.
+function blockGateHit(steps, requiredLines) {
+  return (
+    steps.find((s) => s.runs.some((r) => r.kind === 'block' && requiredLines.every((l) => r.lines.includes(l)))) ??
+    null
+  );
+}
+
+// Setup declaration hits: a real ten-space `with:` entry (the nearest
+// eight-space key line above must open a `with:` mapping), never a run block
+// body line or arbitrary text.
+function setupDeclHits(job, decl) {
+  const hits = [];
+  for (let i = 0; i < job.body.length; i += 1) {
+    const line = job.body[i];
+    if (indent(line) !== 10 || line.trim() !== decl) continue;
+    let j = i - 1;
+    for (; j >= 0; j -= 1) {
+      const l = job.body[j];
+      if (isBlankOrComment(l)) continue;
+      if (indent(l) === 10) continue; // sibling with: entry
+      break;
+    }
+    if (j >= 0 && /^ {8}with:\s*(?:#.*)?$/.test(job.body[j])) {
+      hits.push(job.bodyStart + i + 1);
+    }
+  }
+  return hits;
 }
 
 export function run(ctx) {
@@ -179,7 +386,8 @@ export function run(ctx) {
     if (isBlankOrComment(lines[i])) continue;
     if (/^ *permissions:/.test(lines[i])) permMappings.push({ idx: i, indent: indent(lines[i]) });
   }
-  if (permMappings.length === 1 && permMappings[0].indent === 0) {
+  const permMappingValid = permMappings.length === 1 && permMappings[0].indent === 0;
+  if (permMappingValid) {
     ok('exactly one permissions: mapping and it is top-level (no job-level/nested overrides)');
   } else {
     const desc = permMappings.length
@@ -187,12 +395,13 @@ export function run(ctx) {
       : 'none';
     fail(`expected exactly one top-level permissions: mapping; found ${desc}`);
   }
-  const permKeyIdx = findKeyLine(lines, 'permissions', 0);
+  const permKeyIdx = findKeyLineIn(lines, 'permissions', 0, 0, lines.length);
+  let topLevelPermValid = false;
   if (permKeyIdx < 0) {
     fail('missing top-level permissions block (`permissions:` with exactly `contents: read` beneath)');
   } else {
-    const body = bodyLines(lines, permKeyIdx, 0);
-    const entries = body.filter(
+    const body = blockAt(lines, permKeyIdx, 0);
+    const entries = body.lines.filter(
       (l) => !isBlankOrComment(l) && indent(l) === 2 && /^[A-Za-z0-9_-]+:/.test(l.trimStart()),
     );
     const exactlyContentsRead =
@@ -201,8 +410,21 @@ export function run(ctx) {
     else {
       fail(`top-level permissions mapping must contain exactly one entry, \`contents: read\`; parsed ${JSON.stringify(entries.map((l) => l.trim()))}`);
     }
-    if (/write/.test(body.join('\n'))) fail('permissions mapping must grant no write access');
-    else ok('no write permission granted');
+    if (/write/.test(body.lines.join('\n'))) fail('permissions mapping must grant no write access');
+    topLevelPermValid = exactlyContentsRead && !/write/.test(body.lines.join('\n'));
+  }
+  // Any permissions mapping or body anywhere that grants write vetoes the
+  // success detail: a rejected nested write must never report "no write
+  // permission granted".
+  const writeGranters = permMappings.filter((p) => {
+    const scope = [lines[p.idx], ...blockAt(lines, p.idx, p.indent).lines].join('\n');
+    return /write/.test(scope);
+  });
+  for (const p of writeGranters) {
+    fail(`permissions mapping at line ${p.idx + 1} grants write access`);
+  }
+  if (permMappingValid && topLevelPermValid && writeGranters.length === 0) {
+    ok('no write permission granted');
   }
 
   // ---- secret references ----
@@ -262,31 +484,66 @@ export function run(ctx) {
   else fail('floating action refs present');
 
   // ---- jobs & runners ----
-  const jobsKeyIdx = findKeyLine(lines, 'jobs', 0);
-  const jobsBody = jobsKeyIdx >= 0 ? bodyLines(lines, jobsKeyIdx, 0) : [];
-  const jobNames = jobsBody
+  const jobsKeyIdx = findKeyLineIn(lines, 'jobs', 0, 0, lines.length);
+  const jobsBlock = jobsKeyIdx >= 0 ? blockAt(lines, jobsKeyIdx, 0) : null;
+  const jobNames = (jobsBlock?.lines ?? [])
     .filter((l) => indent(l) === 2 && /^[a-z0-9-]+:$/.test(l.trimStart()))
     .map((l) => l.trim().slice(0, -1));
-  for (const required of ['b000-retro', 'toolchain', 'supply-chain']) {
+  for (const required of REQUIRED_JOBS) {
     if (jobNames.includes(required)) ok(`required job present: ${required}`);
     else fail(`required job missing: ${required}`);
   }
   if (/runs-on:\s*(macos|windows)/.test(text)) fail('CI must be GitHub-hosted Linux only');
   else ok('GitHub-hosted Linux only');
 
+  // ---- required jobs are unconditional and failure-visible ----
+  const jobs = {};
+  const analyzedJobs = {};
+  for (const required of REQUIRED_JOBS) {
+    const job = jobBlock(jobsBlock, required);
+    jobs[required] = job;
+    if (!job) continue;
+    let clean = true;
+    for (let i = 0; i < job.body.length; i += 1) {
+      const lineNo = job.bodyStart + i + 1;
+      const t = job.body[i].trimStart();
+      if (indent(job.body[i]) === 4 && t.startsWith('if:')) {
+        clean = false;
+        fail(`${required} job must not be conditionally skipped (job-level if: at line ${lineNo})`);
+      }
+      if (indent(job.body[i]) === 4 && t.startsWith('continue-on-error:')) {
+        clean = false;
+        fail(`${required} job must not mask failures (job-level continue-on-error: at line ${lineNo})`);
+      }
+    }
+    const analyzed = stepsOf(job).map(analyzeStep);
+    analyzedJobs[required] = analyzed;
+    for (const s of analyzed) {
+      const label = s.name ? JSON.stringify(s.name) : '(unnamed step)';
+      for (const c of s.conditions.if) {
+        clean = false;
+        fail(`${required} step ${label} must not be conditionally skipped (if: ${c.value} at line ${c.lineNo})`);
+      }
+      for (const c of s.conditions.continueOnError) {
+        clean = false;
+        fail(`${required} step ${label} must not mask failures (continue-on-error: ${c.value} at line ${c.lineNo})`);
+      }
+    }
+    if (clean) ok(`${required} job and every step are unconditional and failure-visible`);
+  }
+
   // ---- toolchain job: matrix, B002 focused commands, auditable step names ----
-  const toolchainIdx = findKeyLine(jobsBody, 'toolchain', 2);
-  const toolchainBody = toolchainIdx >= 0 ? bodyLines(jobsBody, toolchainIdx, 2) : null;
+  const toolchainJob = jobs.toolchain;
   let matrixRunners = null;
-  if (!toolchainBody) {
+  if (!toolchainJob) {
     fail('toolchain job block not found');
   } else {
-    const strategyIdx = findKeyLine(toolchainBody, 'strategy', 4);
-    const strategyBody = strategyIdx >= 0 ? bodyLines(toolchainBody, strategyIdx, 4) : null;
-    if (!strategyBody) {
+    const strategyIdx = findKeyLineIn(toolchainJob.body, 'strategy', 4, 0, toolchainJob.body.length);
+    const strategyBlock = strategyIdx >= 0 ? blockAt(toolchainJob.body, strategyIdx, 4) : null;
+    if (!strategyBlock) {
       fail('toolchain strategy block not found');
     } else {
-      const failFastLines = strategyBody.filter(
+      const failFastLines = strategyBlock.lines.filter(
         (l) => indent(l) === 6 && /^fail-fast:/.test(l.trimStart()),
       );
       if (failFastLines.length === 1 && /^fail-fast:\s*false\s*(?:#.*)?$/.test(failFastLines[0].trimStart())) {
@@ -295,19 +552,19 @@ export function run(ctx) {
         fail('toolchain matrix must keep exactly one real fail-fast: false entry');
       }
 
-      const matrixIdx = findKeyLine(strategyBody, 'matrix', 6);
-      const matrixBody = matrixIdx >= 0 ? bodyLines(strategyBody, matrixIdx, 6) : null;
-      if (!matrixBody) {
+      const matrixIdx = findKeyLineIn(strategyBlock.lines, 'matrix', 6, 0, strategyBlock.lines.length);
+      const matrixBlock = matrixIdx >= 0 ? blockAt(strategyBlock.lines, matrixIdx, 6) : null;
+      if (!matrixBlock) {
         fail('toolchain strategy.matrix block not found');
       } else {
-        const osIdx = findKeyLine(matrixBody, 'os', 8);
-        const osBody = osIdx >= 0 ? bodyLines(matrixBody, osIdx, 8) : null;
-        if (!osBody) {
+        const osIdx = findKeyLineIn(matrixBlock.lines, 'os', 8, 0, matrixBlock.lines.length);
+        const osBlock = osIdx >= 0 ? blockAt(matrixBlock.lines, osIdx, 8) : null;
+        if (!osBlock) {
           fail('toolchain strategy.matrix.os block not found');
         } else {
           // Only real non-comment list entries count; runner strings in
           // comments or in other jobs can never satisfy this check.
-          matrixRunners = osBody
+          matrixRunners = osBlock.lines
             .filter((l) => /^ {10}- /.test(l))
             .map((l) => scalarValue(l.trim().slice(2)));
           const expected = [...MATRIX_RUNNERS].sort();
@@ -329,34 +586,67 @@ export function run(ctx) {
       MATRIX_RUNNERS.every((r) => matrixRunners.includes(r));
     if (covered) ok('runner coverage includes ubuntu-24.04 (GA) and ubuntu-26.04 (reference)');
     else fail('runner coverage must include ubuntu-24.04 and ubuntu-26.04 (parsed matrix entries)');
+  }
 
-    // B002 focused commands must be real `run:` steps of the toolchain job —
-    // not arbitrary text or comments elsewhere in the workflow.
-    const runLines = toolchainBody
-      .map((l) => /^ {8}run:\s*(.+?)\s*$/.exec(l)?.[1]?.trim())
-      .filter((v) => typeof v === 'string');
-    for (const cmd of FOCUSED_COMMANDS) {
-      if (runLines.includes(cmd)) ok(`toolchain job runs: ${cmd}`);
-      else fail(`toolchain job must run ${cmd} as an explicit step`);
+  // ---- per-job executable gates (bound to real steps of the right job) ----
+  for (const required of REQUIRED_JOBS) {
+    const job = jobs[required];
+    const analyzed = analyzedJobs[required] ?? [];
+    if (!job) continue;
+
+    // Exact setup declarations, exactly once each, as real with: entries.
+    for (const decl of SETUP_DECLS[required] ?? []) {
+      const hits = setupDeclHits(job, decl);
+      if (hits.length === 1) ok(`${required} job declares ${JSON.stringify(decl)} exactly once`);
+      else fail(`${required} job must declare ${JSON.stringify(decl)} exactly once as a real 10-space with: entry; found ${hits.length}`);
     }
 
-    // Step names must keep the B002 coverage auditable.
-    const stepsIdx = findKeyLine(toolchainBody, 'steps', 4);
-    const stepsBody = stepsIdx >= 0 ? bodyLines(toolchainBody, stepsIdx, 4) : [];
-    const stepNames = stepsBody
-      .map((l) => /^ {6}- name:\s*(.+?)\s*$/.exec(l)?.[1])
-      .filter(Boolean)
-      .map((v) => scalarValue(v));
-    for (const needle of STEP_NAME_NEEDLES) {
-      const hit = stepNames.some((n) => n.toLowerCase().includes(needle));
-      if (hit) ok(`toolchain step names make ${needle} coverage auditable`);
-      else fail(`toolchain step names must make ${needle} coverage auditable`);
+    // Multi-line block evidence: every required command line must sit inside
+    // one real run block of this job, as an exact line (echo wrappers,
+    // `|| true` suffixes or comment placements can never satisfy it).
+    for (const gate of BLOCK_GATES[required] ?? []) {
+      const hit = blockGateHit(analyzed, gate.lines);
+      if (hit) ok(`${required} job keeps ${gate.label} in one real run step`);
+      else fail(`${required} job must keep ${gate.label} in one real run step (exact non-comment command lines: ${gate.lines.join(' | ')})`);
+    }
+
+    // Retained single-line gates: exactly one real inline run step each.
+    for (const cmd of RETAINED_INLINE_GATES[required] ?? []) {
+      const hits = inlineHits(analyzed, cmd);
+      if (hits.length === 1) ok(`${required} job runs \`${cmd}\` exactly once`);
+      else fail(`${required} job must run \`${cmd}\` exactly once as a real inline run step (comments, step names, other jobs and duplicates never count): found ${hits.length}`);
+    }
+  }
+
+  // Focused + aggregate B002 commands: exactly once in toolchain, after the
+  // single frozen-install step, under their own auditable step name.
+  const toolchainAnalyzed = analyzedJobs.toolchain ?? [];
+  const frozenHits = inlineHits(toolchainAnalyzed, 'pnpm install --frozen-lockfile');
+  const frozenIndex = frozenHits.length === 1 ? frozenHits[0].stepIndex : -1;
+  for (const focused of FOCUSED_COMMANDS) {
+    const hits = inlineHits(toolchainAnalyzed, focused.command);
+    if (hits.length !== 1) {
+      fail(`toolchain job must run \`${focused.command}\` exactly once as a real inline run step (comments, step names, other jobs and duplicates never count): found ${hits.length}`);
+      continue;
+    }
+    const { stepIndex, step } = hits[0];
+    const name = (step.name ?? '').toLowerCase();
+    const missing = focused.nameTokens.filter((t) => !name.includes(t));
+    if (missing.length > 0) {
+      fail(`toolchain step running \`${focused.command}\` must keep the auditable name tokens ${focused.nameTokens.join(' / ')}; name ${JSON.stringify(step.name)} lacks: ${missing.join(', ')}`);
+    }
+    if (frozenIndex < 0 || stepIndex <= frozenIndex) {
+      const where = frozenIndex < 0 ? 'frozen install missing' : `frozen install at step ${frozenIndex + 1}`;
+      fail(`toolchain job must run \`${focused.command}\` after the single pnpm install --frozen-lockfile step (command at step ${stepIndex + 1}, ${where})`);
+    }
+    if (missing.length === 0 && frozenIndex >= 0 && stepIndex > frozenIndex) {
+      ok(`toolchain job runs \`${focused.command}\` exactly once, unconditionally, after the frozen install, under its auditable step name`);
     }
   }
 
   // ---- triggers ----
-  const onIdx = findKeyLine(lines, 'on', 0);
-  const onBody = (onIdx >= 0 ? bodyLines(lines, onIdx, 0) : []).join('\n');
+  const onIdx = findKeyLineIn(lines, 'on', 0, 0, lines.length);
+  const onBody = (onIdx >= 0 ? blockAt(lines, onIdx, 0).lines : []).join('\n');
   if (onBody.includes('push') && onBody.includes('main') && onBody.includes('task/**') && onBody.includes('repair/**')) {
     ok('push triggers: main, task/**, repair/**');
   } else fail('push triggers must include main, task/** and repair/**');
@@ -369,12 +659,6 @@ export function run(ctx) {
   else fail(`PostgreSQL pull must use digest ${PG_MULTI_ARCH_DIGEST}`);
   if (/postgres:18\.4/.test(text)) fail('PostgreSQL must not be referenced by bare tag (postgres:18.4)');
   else ok('no bare postgres:18.4 tag reference');
-
-  // ---- retained B000/B001 gates (fail-closed: every missing needle fails) ----
-  const missingGates = RETAINED_GATES.filter((needle) => !text.includes(needle));
-  if (missingGates.length > 0) {
-    fail(`workflow missing retained B000/B001 gate content: ${missingGates.join(', ')}`);
-  } else ok('workflow retains exact toolchain pins, B000 retro, and every B001 command/gate');
 
   // ---- no model network config ----
   const modelHosts = ['deepseek', 'openai', 'anthropic', 'moonshot', 'openrouter', 'googleapis'];
