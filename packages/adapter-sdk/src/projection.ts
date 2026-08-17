@@ -65,12 +65,14 @@ function checkKnownSeats(knownSeats: readonly string[], issues: ValidationIssue[
 }
 
 export function validateProjectionSemantics(state: unknown, projection: unknown, knownSeats: readonly string[]): ValidationResult {
-  // Lossless JSON-value gates: state and projection values must be
-  // faithfully representable before any semantic comparison.
+  // Lossless JSON-value gates: state, projection, and the known-seat list
+  // must all be faithfully representable before any semantic comparison
+  // (no getter/setter is ever invoked on them).
   const stateLossy = validateJsonValue(state, '$');
   const projectionLossy = validateJsonValue(projection, '$');
-  if (!stateLossy.valid || !projectionLossy.valid) {
-    return failResult([...stateLossy.issues, ...projectionLossy.issues]);
+  const seatsLossy = validateJsonValue(knownSeats, '$/known_seats');
+  if (!stateLossy.valid || !projectionLossy.valid || !seatsLossy.valid) {
+    return failResult([...stateLossy.issues, ...projectionLossy.issues, ...seatsLossy.issues]);
   }
   const stateCheck = validateStateShape(state, '$');
   const projectionCheck = validateProjectionShape(projection, '$');
@@ -80,7 +82,7 @@ export function validateProjectionSemantics(state: unknown, projection: unknown,
   const issues: ValidationIssue[] = [];
   const stateDoc = state as unknown as State;
   const projectionDoc = projection as unknown as Projection;
-  const seatSet = checkKnownSeats(knownSeats, issues);
+  const seatSet = checkKnownSeats([...knownSeats], issues);
 
   // Projection identity is bound to the source state: a projection that
   // belongs to a different fixture must never validate against this state.

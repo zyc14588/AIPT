@@ -182,3 +182,106 @@ test('every newly exported fixture protocol type consumes its canonical document
   const inner: sdk.Projection = mutant.projection;
   assert.equal(inner.seat_id, 'seat-b');
 });
+
+// ---- iteration 4C bundle hardening ----
+
+test('a schema-valid hidden-leak projection cannot replace an ordinary projection (digest updated)', () => {
+  const documents = loadAllDocuments();
+  const leaked = JSON.parse(JSON.stringify(documents.get('mutants/hidden-leak.json'))) as { projection: unknown };
+  documents.set('projection-seat-b.json', leaked.projection);
+  const mutated = JSON.parse(JSON.stringify(manifest)) as { assets: Array<{ path: string; sha256: string }> };
+  mutated.assets.find((a) => a.path === 'projection-seat-b.json')!.sha256 = sdk.sha256Hex(leaked.projection);
+  const result = sdk.validateFixtureBundle({ manifest: mutated, documents }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'AIPT_VISIBILITY_UNAUTHORIZED_FIELD'),
+    `hidden data must never pass as an ordinary projection, got ${JSON.stringify(result.issues.map((issue) => issue.code))}`,
+  );
+});
+
+test('mutant wrapper metadata drift (seat_id / leaked_field_id, digest updated) fails the semantic proof', () => {
+  const driftedSeat = JSON.parse(JSON.stringify(loadFixtureJson('mutants/hidden-leak.json'))) as { seat_id: string };
+  driftedSeat.seat_id = 'seat-a';
+  const mutatedSeat = JSON.parse(JSON.stringify(manifest)) as { mutants: Array<{ sha256: string }> };
+  mutatedSeat.mutants[0].sha256 = sdk.sha256Hex(driftedSeat);
+  const seatDocuments = loadAllDocuments();
+  seatDocuments.set('mutants/hidden-leak.json', driftedSeat);
+  let result = sdk.validateFixtureBundle({ manifest: mutatedSeat, documents: seatDocuments }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT' && issue.path === '$/mutants/0/seat_id'),
+    `wrapper seat_id drift must fail, got ${JSON.stringify(result.issues.map((issue) => `${issue.code}@${issue.path}`))}`,
+  );
+
+  const driftedField = JSON.parse(JSON.stringify(loadFixtureJson('mutants/hidden-leak.json'))) as { leaked_field_id: string };
+  driftedField.leaked_field_id = 'turn-count';
+  const mutatedField = JSON.parse(JSON.stringify(manifest)) as { mutants: Array<{ sha256: string }> };
+  mutatedField.mutants[0].sha256 = sdk.sha256Hex(driftedField);
+  const fieldDocuments = loadAllDocuments();
+  fieldDocuments.set('mutants/hidden-leak.json', driftedField);
+  result = sdk.validateFixtureBundle({ manifest: mutatedField, documents: fieldDocuments }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT' && issue.path === '$/mutants/0/leaked_field_id'),
+    `wrapper leaked_field_id drift must fail, got ${JSON.stringify(result.issues.map((issue) => `${issue.code}@${issue.path}`))}`,
+  );
+});
+
+test('exact inventory: a supplied manifest.json documents entry is unlisted and rejected', () => {
+  const documents = loadAllDocuments();
+  documents.set('manifest.json', loadFixtureJson('manifest.json'));
+  const result = sdk.validateFixtureBundle({ manifest, documents }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_UNLISTED_ASSET' && issue.path === '$/documents/manifest.json'));
+});
+
+test('a failing manifest preflight stops before any supplied document is touched or invoked', () => {
+  let getterCalls = 0;
+  const hostileDocument = { protocol_version: '1.0.0' };
+  Object.defineProperty(hostileDocument, 'schema_version', {
+    get: () => { getterCalls += 1; return '1.0.0'; },
+    enumerable: true,
+  });
+  const documents = loadAllDocuments();
+  documents.set('state.json', hostileDocument);
+  // Rewrite the state entry path so the manifest preflight itself fails.
+  const mutated = JSON.parse(JSON.stringify(manifest)) as { assets: Array<{ path: string }> };
+  mutated.assets.find((a) => a.path === 'state.json')!.path = '../escape.json';
+  const result = sdk.validateFixtureBundle({ manifest: mutated, documents }, schema);
+  assert.equal(result.valid, false);
+  assert.equal(getterCalls, 0, 'no document getter may be invoked when the manifest preflight fails');
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_UNSAFE_PATH'));
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_DIGEST_DRIFT' || issue.code === 'AIPT_LOSSY_JSON_VALUE'),
+    `preflight failure must return before hashing/interpreting documents, got ${JSON.stringify(result.issues.map((issue) => issue.code))}`,
+  );
+});
+
+test('bundle wrapper and documents collection inspect descriptors only (no accessor invocation)', () => {
+  let wrapperCalls = 0;
+  let documentsCalls = 0;
+  const bundle: Record<string, unknown> = {
+    manifest,
+    documents: loadAllDocuments(),
+    schema,
+  };
+  Object.defineProperty(bundle, 'manifest', {
+    get: () => { wrapperCalls += 1; return manifest; },
+    enumerable: true,
+  });
+  let result = sdk.validateFixtureBundle(bundle, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_MANIFEST'));
+  assert.equal(wrapperCalls, 0, 'wrapper accessors must never be invoked');
+
+  const documentsObject: Record<string, unknown> = {};
+  for (const [key, value] of loadAllDocuments()) documentsObject[key] = value;
+  Object.defineProperty(documentsObject, 'state.json', {
+    get: () => { documentsCalls += 1; return loadFixtureJson('state.json'); },
+    enumerable: true,
+  });
+  result = sdk.validateFixtureBundle({ manifest, documents: documentsObject }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_MANIFEST'));
+  assert.equal(documentsCalls, 0, 'documents-collection accessors must never be invoked');
+});

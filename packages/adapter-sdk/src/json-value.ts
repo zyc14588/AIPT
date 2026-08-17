@@ -14,6 +14,14 @@
 // sparse-array holes, and non-index array properties. The walker is
 // iterative, never mutates its input, and treats repeated (non-ancestral)
 // shared references as ordinary values.
+//
+// Iteration 4C contract: the walker inspects OWN PROPERTY DESCRIPTORS ONLY
+// and never reads a rejected property. No getter or setter is ever invoked
+// while validating — not even once after a rejection is detected. Arrays
+// are held to the same own-descriptor discipline: only the built-in `length`
+// descriptor is exempt (and only as a data descriptor); symbol keys,
+// accessor indices, non-enumerable/non-index own properties, sparse holes,
+// and invalid index descriptors all fail closed.
 import { failResult, issue, okResult, ProtocolValidationError, type ValidationIssue, type ValidationResult } from './errors.ts';
 import type { JsonValue } from './types.ts';
 
@@ -28,7 +36,18 @@ type Frame =
 
 const ARRAY_INDEX_RE = /^(0|[1-9][0-9]*)$/u;
 
-function ownObjectProblems(value: object, path: string, issues: ValidationIssue[]): void {
+// Scan the OWN string-keyed property descriptors of a plain object WITHOUT
+// reading any rejected property. Accessor and non-enumerable properties are
+// reported from their descriptor alone; accepted enumerable data properties
+// are returned so the caller can descend into descriptor.value — reading a
+// DATA descriptor's value never invokes an accessor. Symbol-keyed properties
+// are rejected up front (JSON cannot represent symbol keys).
+function scanOwnStringDescriptors(
+  value: object,
+  path: string,
+  issues: ValidationIssue[],
+): Array<{ readonly key: string; readonly value: unknown }> {
+  const accepted: Array<{ readonly key: string; readonly value: unknown }> = [];
   if (Object.getOwnPropertySymbols(value).length > 0) {
     issues.push(issue(path, 'AIPT_LOSSY_JSON_VALUE', 'symbol-keyed property (JSON cannot represent symbol keys)'));
   }
@@ -37,17 +56,83 @@ function ownObjectProblems(value: object, path: string, issues: ValidationIssue[
     if (descriptor === undefined) continue;
     if (descriptor.get !== undefined || descriptor.set !== undefined) {
       issues.push(issue(`${path}/${key}`, 'AIPT_LOSSY_JSON_VALUE', 'accessor property (getter/setter) cannot be faithfully serialized'));
+      continue;
     }
     if (!descriptor.enumerable) {
       issues.push(issue(`${path}/${key}`, 'AIPT_LOSSY_JSON_VALUE', 'non-enumerable property would be silently dropped'));
+      continue;
+    }
+    accepted.push({ key, value: descriptor.value });
+  }
+  return accepted;
+}
+
+// Scan the OWN property descriptors of an ARRAY. Only the built-in `length`
+// descriptor is exempt from the enumerable/index rules, and only when it is
+// an ordinary data descriptor (an accessor length fails closed). Every other
+// own property must be an enumerable data property whose key is a canonical
+// array index below `length`. Returns the accepted index entries plus the
+// array length; rejected properties are reported without being read.
+function scanArrayOwnDescriptors(
+  value: unknown[],
+  path: string,
+  issues: ValidationIssue[],
+): { readonly length: number; readonly entries: Array<{ readonly key: string; readonly value: unknown }> } {
+  const entries: Array<{ readonly key: string; readonly value: unknown }> = [];
+  let length = 0;
+  let lengthSeen = false;
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    issues.push(issue(path, 'AIPT_LOSSY_JSON_VALUE', 'symbol-keyed property (JSON cannot represent symbol keys)'));
+  }
+  const names = Object.getOwnPropertyNames(value);
+  // First pass: locate the built-in `length` descriptor (property-name order
+  // lists integer indices before the string-keyed `length`, so the length
+  // must be resolved before any index is range-checked against it).
+  const lengthDescriptor = names.includes('length') ? Object.getOwnPropertyDescriptor(value, 'length') : undefined;
+  if (lengthDescriptor !== undefined) {
+    if (lengthDescriptor.get !== undefined || lengthDescriptor.set !== undefined) {
+      issues.push(issue(`${path}/length`, 'AIPT_LOSSY_JSON_VALUE', 'the array length descriptor must be the built-in data descriptor, not an accessor'));
+    } else {
+      lengthSeen = true;
+      length = Number(lengthDescriptor.value);
     }
   }
+  for (const key of names) {
+    if (key === 'length') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined) continue;
+    if (descriptor.get !== undefined || descriptor.set !== undefined) {
+      issues.push(issue(`${path}/${key}`, 'AIPT_LOSSY_JSON_VALUE', 'accessor property (getter/setter) cannot be faithfully serialized'));
+      continue;
+    }
+    if (!descriptor.enumerable) {
+      issues.push(issue(`${path}/${key}`, 'AIPT_LOSSY_JSON_VALUE', 'non-enumerable property would be silently dropped'));
+      continue;
+    }
+    if (!ARRAY_INDEX_RE.test(key)) {
+      issues.push(issue(`${path}/${key}`, 'AIPT_LOSSY_JSON_VALUE', 'non-index array property would be silently dropped'));
+      continue;
+    }
+    const index = Number(key);
+    if (index >= length) {
+      issues.push(issue(`${path}/${key}`, 'AIPT_LOSSY_JSON_VALUE', `array index ${key} is outside the array length ${length} and would be silently dropped`));
+      continue;
+    }
+    entries.push({ key, value: descriptor.value });
+  }
+  // The built-in length descriptor is always present on a real array; an
+  // exotic hostile array without one is not faithfully serializable.
+  if (!lengthSeen) {
+    issues.push(issue(`${path}/length`, 'AIPT_LOSSY_JSON_VALUE', 'the array is missing the built-in length descriptor'));
+  }
+  return { length, entries };
 }
 
 // Validate that `value` is a lossless JSON value. Returns okResult() for
 // ordinary JSON and an invalid result (valid=false, AIPT_LOSSY_JSON_VALUE
 // issues) for anything JSON cannot faithfully represent. Never mutates the
-// input and never returns a partially trusted value.
+// input, never invokes a getter/setter, and never returns a partially
+// trusted value.
 export function validateJsonValue(value: unknown, path = '$'): ValidationResult {
   const issues: ValidationIssue[] = [];
   const stack: Frame[] = [{ kind: 'value', value, path }];
@@ -90,18 +175,17 @@ export function validateJsonValue(value: unknown, path = '$'): ValidationResult 
         ancestors.add(current);
         stack.push({ kind: 'exit', value: current });
         if (Array.isArray(current)) {
-          const length = current.length;
+          const { length, entries } = scanArrayOwnDescriptors(current, currentPath, issues);
+          const present = new Set<number>();
+          for (const entry of entries) present.add(Number(entry.key));
           for (let index = 0; index < length; index += 1) {
-            if (!Object.prototype.hasOwnProperty.call(current, index)) {
+            if (!present.has(index)) {
               issues.push(issue(`${currentPath}/${index}`, 'AIPT_LOSSY_JSON_VALUE', 'sparse-array hole would serialize as null'));
-            } else {
-              stack.push({ kind: 'value', value: current[index], path: `${currentPath}/${index}` });
+              break;
             }
           }
-          for (const key of Object.keys(current)) {
-            if (!ARRAY_INDEX_RE.test(key) || Number(key) >= length) {
-              issues.push(issue(`${currentPath}/${key}`, 'AIPT_LOSSY_JSON_VALUE', 'non-index array property would be silently dropped'));
-            }
+          for (const entry of entries) {
+            stack.push({ kind: 'value', value: entry.value, path: `${currentPath}/${entry.key}` });
           }
           continue;
         }
@@ -109,9 +193,8 @@ export function validateJsonValue(value: unknown, path = '$'): ValidationResult 
           issues.push(issue(currentPath, 'AIPT_LOSSY_JSON_VALUE', 'non-plain object (foreign prototype) is not a JSON value'));
           continue;
         }
-        ownObjectProblems(current, currentPath, issues);
-        for (const key of Object.keys(current)) {
-          stack.push({ kind: 'value', value: (current as Record<string, unknown>)[key], path: `${currentPath}/${key}` });
+        for (const entry of scanOwnStringDescriptors(current, currentPath, issues)) {
+          stack.push({ kind: 'value', value: entry.value, path: `${currentPath}/${entry.key}` });
         }
         continue;
       }

@@ -15,9 +15,15 @@ Adapter runtime.
   canonical schema at gate time and fails on drift, so every schema/type edit
   — even one outside the projected fields — forces explicit SDK review. The
   gate additionally audits the ACTUAL declared interface surface of
-  `src/types.ts` (required/optional/discriminant members for all 25 public
-  wire and fixture types) against schema-derived shape expectations. The
-  canonical schema is never copied into the package.
+  `src/types.ts` — required/optional/discriminant members AND declared member
+  **type expressions** (91 schema-derived expressions including nested object
+  shapes and descriptor-derived const/discriminant literals) for all 25
+  public wire and fixture types. A hand edit such as
+  `StateField.value: JsonValue -> string`, a nested member type drift, or
+  widening `ManifestMutant.expected_semantic_rejection` back to
+  `AiptErrorCode` is detected by in-memory negative probes. The canonical
+  schema is never copied into the package; the package never imports
+  scripts/ci internals.
 - **Public surface**: canonical constants (protocol/schema/JSON-RPC
   versions, registered methods, safe-integer id bounds, the six frozen
   visibility labels, the finite stable `AIPT_*` validation-issue code
@@ -25,23 +31,43 @@ Adapter runtime.
   notification/state/projection/seat/seat-set/deterministic-check/
   state-transition/replay-assertion/replay-record/mutant-specimen/
   fixture-manifest/bundle types (literal unions derived from the exported
-  readonly constants/descriptor; no `any` is exported; the open wire error
-  namespace is the separate branded `AiptWireErrorCode` type, runtime-enforced
-  by `isAiptWireErrorCode`), deterministic canonical JSON + SHA-256 helpers,
-  a pure path-preserving **lossless JSON-value gate** (`validateJsonValue` /
-  `requireJsonValue`) applied at every trust boundary where the schema
-  accepts any JSON value (`state_field.value`, `proposal`, nested JSON
-  values, generic parse output), typed JSON-RPC parse/decode/encode helpers
+  readonly constants/descriptor; `ManifestMutant.expected_semantic_rejection`
+  is the exact descriptor-derived literal, never the broad union; no `any`
+  is exported; the open wire error namespace is the separate branded
+  `AiptWireErrorCode` type, runtime-enforced by `isAiptWireErrorCode`;
+  regex/numeric constraints TypeScript cannot express — `Identifier`,
+  safe-integer ids, the `AIPT_*` pattern — are enforced at runtime),
+  deterministic canonical JSON + SHA-256 helpers, a pure path-preserving
+  **lossless JSON-value gate** (`validateJsonValue` / `requireJsonValue`)
+  that inspects OWN PROPERTY DESCRIPTORS ONLY and never invokes a getter or
+  setter — array symbol keys, non-enumerable extras, accessor indices,
+  sparse holes, and invalid index descriptors included — and runs as a
+  whole-value gate at every public trust boundary (wire/state/projection/
+  request-id/manifest validators, `validateSchemaInstance`'s schema/document
+  inputs, `checkFixtureIdentity`, projection known seats, and the bundle
+  wrapper/documents collection), typed JSON-RPC parse/decode/encode helpers
   and builders, fail-closed semantic projection validation (projection
   identity bound to the source state, validated known seats, lossless
   values), a package-local dependency-free **canonical JSON Schema 2020-12
-  subset evaluator** (`validateSchemaInstance`), and pure fixture
-  compatibility validation over supplied documents (manifest preflight with
-  canonical consts/path form/duplicate paths/exact kind→schema_ref map;
-  per-document lossless+digest+schema+identity gates; exact inventory; and a
-  semantic proof that the manifest mutant actually produces exactly its
-  declared `AIPT_VISIBILITY_UNAUTHORIZED_FIELD` rejection against
-  bundle-supplied seat/state documents).
+  subset evaluator** (`validateSchemaInstance`) with a deterministic
+  recursive schema-grammar preflight over the whole document (malformed
+  keyword shapes/ranges, unsupported type names, unsupported keywords hidden
+  in anyOf/oneOf/not branches, and unreferenced `$defs` children all fail
+  with `AIPT_FIXTURE_INVALID_SCHEMA`; own-member `const` presence), and pure
+  fixture compatibility validation over supplied documents: manifest
+  preflight (canonical consts/path form/duplicate paths/exact kind→schema_ref
+  map) that stops before any supplied document is read, hashed, traversed, or
+  invoked; the **canonical schema SHA-256 fingerprint binding**
+  (`AIPT_FIXTURE_INVALID_SCHEMA` on any missing/lossy/drifted schema, before
+  any asset processing); per-document lossless+digest+schema+identity gates;
+  the **ordinary projection semantic gate** (every clean projection must
+  pass `validateProjectionSemantics` against a compatible supplied state
+  with the supplied known seats — hidden data never passes as an ordinary
+  projection); the mutant semantic proof with **wrapper metadata binding**
+  (`seat_id` = `projection.seat_id`, `leaked_field_id` = the single field
+  producing the declared rejection; drift fails with
+  `AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT`); and **exact inventory** with no
+  `manifest.json` exemption.
 - **No ambient work**: importing the package performs no network, process,
   socket, database, service, worker, or environment access. See
   `test/side-effects.test.ts`.
@@ -70,9 +96,11 @@ const result = validateFixtureBundle({ manifest, documents }, canonicalSchema);
 ## Tests
 
 ```sh
-pnpm --filter @aipt/adapter-sdk test   # node --test test/ (hermetic, node:test/assert only; 90 tests)
-pnpm run check:adapter-sdk             # machine gate: descriptor + fingerprint drift, type-shape audit,
-                                       # fixture behavior, 53 negative probes (43 behavior + 8 drift + mutant + wire-code)
+pnpm --filter @aipt/adapter-sdk test   # node --test test/ (hermetic, node:test/assert only; 107 tests)
+pnpm run check:adapter-sdk             # machine gate: descriptor + fingerprint drift, type-shape AND
+                                       # type-expression audits (91 expressions), fixture behavior,
+                                       # 81 negative probes (62 behavior + 11 drift + 6 zero-invocation/
+                                       # no-document-touch + mutant + future wire code)
 ```
 
 Tests consume the repository's public canonical schema/fixture under

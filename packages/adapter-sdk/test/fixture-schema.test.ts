@@ -224,10 +224,14 @@ test('the package-local evaluator implements the canonical subset deterministica
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_SCHEMA_VIOLATION' && issue.path === '$/fields/0/field_id'));
 
-  // non-JSON documents are lossy-rejected before schema evaluation in the bundle,
-  // but the evaluator itself must also never crash on them
-  result = sdk.validateSchemaInstance(schema, { fields: [{ field_id: 'f-1', value: undefined, visibility: { label: 'PUBLIC', authorized_seat_ids: ['s'] } }], protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'f-1', state_id: 's-1' }, '#/$defs/state', '$');
-  assert.equal(result.valid, true, 'the evaluator implements the schema; the lossless gate owns JSON-representability');
+  // iteration 4C: the evaluator itself owns the lossless JSON-value gate for
+  // its schema AND instance inputs — a lossy instance document fails closed
+  // with AIPT_LOSSY_JSON_VALUE before any schema evaluation (and the
+  // evaluator never crashes on it).
+  const lossyDocument = { fields: [{ field_id: 'f-1', value: undefined, visibility: { label: 'PUBLIC', authorized_seat_ids: ['s'] } }], protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'f-1', state_id: 's-1' };
+  result = sdk.validateSchemaInstance(schema, lossyDocument, '#/$defs/state', '$');
+  assert.equal(result.valid, false, 'a lossy instance document must fail the evaluator input gate');
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/fields/0/value'));
 });
 
 test('the evaluator fails closed on unsupported keywords, unresolvable refs, and ref cycles', () => {
@@ -254,4 +258,104 @@ test('the evaluator fails closed on unsupported keywords, unresolvable refs, and
   result = sdk.validateSchemaInstance(null, {}, '#/$defs/state', '$');
   assert.equal(result.valid, false);
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_SCHEMA'));
+});
+
+// ---- 5. Iteration 4C: canonical schema fingerprint binding ----
+
+test('bundle validation binds the supplied schema to the exact canonical fingerprint', () => {
+  const documents = loadAllDocuments();
+
+  // A description-only schema edit (everything else identical) must fail
+  // with AIPT_FIXTURE_INVALID_SCHEMA before any document processing.
+  const drifted = JSON.parse(JSON.stringify(schema)) as Record<string, unknown>;
+  drifted.description = `${drifted.description} (drifted)`;
+  let result = sdk.validateFixtureBundle({ manifest, documents }, drifted);
+  assert.equal(result.valid, false);
+  assert.deepEqual(
+    result.issues.map((issue) => issue.code),
+    ['AIPT_FIXTURE_INVALID_SCHEMA'],
+    'fingerprint drift must be the single stable rejection',
+  );
+  assert.ok(result.issues[0].path === '$/schema');
+
+  // A missing schema boundary fails the same way.
+  result = sdk.validateFixtureBundle({ manifest, documents });
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_SCHEMA'));
+
+  // A lossy schema document fails with AIPT_FIXTURE_INVALID_SCHEMA.
+  const cyclic: Record<string, unknown> = {};
+  cyclic.self = cyclic;
+  result = sdk.validateFixtureBundle({ manifest, documents }, cyclic);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_SCHEMA' && issue.path === '$/schema'));
+
+  // validateSchemaInstance remains the general package-local evaluator: the
+  // real schema still evaluates shared fixture documents.
+  const stateResult = sdk.validateSchemaInstance(schema, loadFixtureJson('state.json'), '#/$defs/state', '$');
+  assert.equal(stateResult.valid, true, JSON.stringify(stateResult.issues));
+});
+
+// ---- 6. Iteration 4C: deterministic schema-grammar preflight ----
+
+test('the schema-grammar preflight rejects malformed keyword shapes anywhere in the document', () => {
+  const state = loadFixtureJson('state.json');
+  const cases: Array<[string, (s: Record<string, unknown>) => void]> = [
+    ['format hidden in a passing anyOf branch', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      defs.state = { anyOf: [{ type: 'object', format: 'anything' }, { type: 'object' }] };
+    }],
+    ['format hidden inside not', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      defs.state = { type: 'object', not: { type: 'object', format: 'anything' } };
+    }],
+    ['minLength with a string value', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      defs.state = { type: 'object', properties: { state_id: { type: 'string', minLength: 'four' } } };
+    }],
+    ['properties as an array', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      defs.state = { type: 'object', properties: [{ type: 'string' }] };
+    }],
+    ['additionalProperties as a string', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      defs.state = { type: 'object', additionalProperties: 'nope' };
+    }],
+    ['unsupported type name', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      defs.state = { type: 'file' };
+    }],
+    ['malformed keyword in an unreferenced $defs child', (s) => {
+      const defs = s.$defs as Record<string, Record<string, unknown>>;
+      (defs.deterministic_check.properties as Record<string, Record<string, unknown>>).operator.type = 'file';
+    }],
+  ];
+  for (const [label, mutate] of cases) {
+    const malformed = JSON.parse(JSON.stringify(schema)) as Record<string, unknown>;
+    mutate(malformed);
+    const result = sdk.validateSchemaInstance(malformed, state, '#/$defs/state', '$');
+    assert.equal(result.valid, false, `accepted ${label}`);
+    assert.ok(
+      result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_SCHEMA'),
+      `${label} must be rejected with AIPT_FIXTURE_INVALID_SCHEMA, got ${JSON.stringify(result.issues.map((issue) => issue.code))}`,
+    );
+  }
+});
+
+test('the grammar preflight accepts the exact canonical schema and still rejects ref hazards', () => {
+  const state = loadFixtureJson('state.json');
+  const result = sdk.validateSchemaInstance(schema, state, '#/$defs/state', '$');
+  assert.equal(result.valid, true, JSON.stringify(result.issues));
+
+  // External refs, unresolvable refs, and ref cycles remain rejections.
+  const external = { $defs: { state: { $ref: 'https://example.com/schema.json' } } };
+  assert.equal(sdk.validateSchemaInstance(external, {}, '#/$defs/state', '$').valid, false);
+
+  const unresolvable = { $defs: { state: { $ref: '#/$defs/ghost' } } };
+  assert.equal(sdk.validateSchemaInstance(unresolvable, {}, '#/$defs/state', '$').valid, false);
+
+  const cyclic = { $defs: { a: { $ref: '#/$defs/b' }, b: { $ref: '#/$defs/a' } } };
+  const cyclicResult = sdk.validateSchemaInstance(cyclic, {}, '#/$defs/a', '$');
+  assert.equal(cyclicResult.valid, false);
+  assert.ok(cyclicResult.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_SCHEMA'));
 });

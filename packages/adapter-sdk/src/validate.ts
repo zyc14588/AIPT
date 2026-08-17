@@ -5,15 +5,35 @@
 // byte-for-byte to schemas/protocol/v1/aipt-protocol.schema.json. Unknown
 // versions, methods, visibility labels, fields, properties, or malformed
 // input always fail closed with stable, path-addressed diagnostics; a failed
-// validation never returns a partially trusted value. Every schema position
-// that intentionally accepts ANY JSON value (`state_field.value`,
-// `action_intent_params.proposal`) is gated by the lossless JSON-value
-// validator (AIPT_LOSSY_JSON_VALUE), and the wire error namespace is gated
-// by isAiptWireErrorCode (open canonical pattern, runtime-enforced).
+// validation never returns a partially trusted value.
+//
+// Iteration 4C contract: BEFORE any structural property access, every public
+// validator applies the whole-value lossless JSON-value gate
+// (validateJsonValue) to its input — a symbol-keyed or non-enumerable
+// member, an accessor, an explicit undefined value, -0, an unsafe integer
+// (`error.code` included), or any other lossy value fails with
+// AIPT_LOSSY_JSON_VALUE and no getter/setter is ever invoked. The same gate
+// covers every schema position that intentionally accepts ANY JSON value
+// (`state_field.value`, `action_intent_params.proposal`), and the wire error
+// namespace is gated by isAiptWireErrorCode (open canonical pattern,
+// runtime-enforced).
 import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { failResult, issue, okResult, type ValidationIssue, type ValidationResult } from './errors.ts';
 import { validateJsonValue } from './json-value.ts';
 import type { AiptErrorCode, AiptWireErrorCode } from './types.ts';
+
+// Whole-value lossless gate: run before ANY structural property access so a
+// lossy instance is rejected with AIPT_LOSSY_JSON_VALUE and no getter/setter
+// is ever invoked while validating it.
+function gateLossless(value: unknown, path: string): ValidationIssue[] {
+  return validateJsonValue(value, path).issues;
+}
+
+function gateLosslessSink(value: unknown, path: string, sink: Sink): boolean {
+  const issues = gateLossless(value, path);
+  sink.issues.push(...issues);
+  return issues.length === 0;
+}
 
 interface Sink {
   issues: ValidationIssue[];
@@ -36,6 +56,21 @@ const SHA256_RE = /^[0-9a-f]{64}$/u;
 const ERROR_CODE_RE = new RegExp(D.error_code_pattern, 'u');
 const SCHEMA_REF_RE = /^#\/\$defs\/[A-Za-z0-9_-]+$/u;
 
+// Deterministic issue de-duplication: nested validators re-run the whole-value
+// lossless gate on subvalues and report the exact same (path, code) pair the
+// parent gate already reported; only the first occurrence is kept.
+function dedupeIssues(issues: ValidationIssue[]): ValidationIssue[] {
+  const seen = new Set<string>();
+  const out: ValidationIssue[] = [];
+  for (const item of issues) {
+    const key = `${item.path}\u0000${item.code}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 export function isSafeIntegerId(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= D.id_integer_minimum && value <= D.id_integer_maximum;
 }
@@ -55,12 +90,45 @@ export function validateRequestId(value: unknown, path = '$/id'): ValidationResu
     if (length < D.id_string_min_length || length > D.id_string_max_length) {
       issues.push(issue(path, 'AIPT_INVALID_ID', `string id must be ${D.id_string_min_length}..${D.id_string_max_length} characters long, got ${length}`));
     }
+  } else if (Object.is(value, -0)) {
+    // -0 is inside the safe-integer bounds but cannot round-trip through
+    // JSON without losing its identity; reject it at the id contract.
+    issues.push(issue(path, 'AIPT_LOSSY_JSON_VALUE', '-0 serializes as 0 and would lose its identity'));
   } else if (isSafeIntegerId(value)) {
     // valid: integer within the inclusive safe-integer range.
   } else {
     issues.push(issue(path, 'AIPT_INVALID_ID', `id must be a string or a safe integer within [${D.id_integer_minimum}, ${D.id_integer_maximum}], got ${typeof value === 'number' ? JSON.stringify(value) : typeof value}`));
   }
   return issues.length === 0 ? okResult() : failResult(issues);
+}
+
+// Whole-value lossless gate for the id-bearing envelopes: the id member's
+// VALUE contract (safe-integer bounds, string length) is owned by
+// validateRequestId (AIPT_INVALID_ID), so redundant whole-gate value issues
+// for out-of-range/non-finite numeric ids are dropped. Structural issues
+// (accessors, non-enumerables) and -0 identity loss are still reported by
+// the whole-value gate. The id value is then read ONLY through its data
+// descriptor, never through a property access that could invoke an accessor.
+function envelopeWholeGate(value: unknown, path: string, idPath: string): ValidationIssue[] {
+  const issues = validateJsonValue(value, path).issues;
+  let idOutOfRangeNumber = false;
+  if (isRecord(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, 'id');
+    if (descriptor !== undefined && descriptor.get === undefined && descriptor.set === undefined && descriptor.enumerable) {
+      const id = descriptor.value;
+      idOutOfRangeNumber = typeof id === 'number' && (!Number.isFinite(id) || (Number.isInteger(id) && !Number.isSafeInteger(id)));
+    }
+  }
+  if (idOutOfRangeNumber) return issues.filter((item) => item.path !== idPath);
+  return issues;
+}
+
+function readIdDataMember(value: Record<string, unknown>): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, 'id');
+  if (descriptor !== undefined && descriptor.get === undefined && descriptor.set === undefined && descriptor.enumerable) {
+    return descriptor.value;
+  }
+  return undefined;
 }
 
 function checkIdentifier(value: unknown, path: string, sink: Sink, label: string): void {
@@ -96,6 +164,7 @@ function checkProtocolIdentity(sink: Sink, obj: Record<string, unknown>, path: s
 }
 
 export function validateVisibility(value: unknown, path: string, sink: Sink): void {
+  if (!gateLosslessSink(value, path, sink)) return;
   if (!isRecord(value)) {
     push(sink, path, 'AIPT_MISSING_VISIBILITY', 'visibility must be an object');
     return;
@@ -124,6 +193,7 @@ export function validateVisibility(value: unknown, path: string, sink: Sink): vo
 }
 
 export function validateStateField(value: unknown, path: string, sink: Sink): void {
+  if (!gateLosslessSink(value, path, sink)) return;
   if (!isRecord(value)) {
     push(sink, path, 'AIPT_INVALID_VALUE', 'state field must be an object');
     return;
@@ -137,15 +207,15 @@ export function validateStateField(value: unknown, path: string, sink: Sink): vo
   }
   rejectExtraMembers(sink, value, D.state_field_required, path);
   checkIdentifier(value.field_id, `${path}/field_id`, sink, 'field_id');
-  // The schema intentionally accepts ANY JSON value here: every supplied
-  // value must pass the lossless JSON-value gate (fail closed, no coercion).
-  if (hasOwn(value, 'value')) {
-    sink.issues.push(...validateJsonValue(value.value, `${path}/value`).issues);
-  }
+  // The schema intentionally accepts ANY JSON value here: the whole-value
+  // lossless gate above already rejected every lossy value (including the
+  // value member at `${path}/value`) with AIPT_LOSSY_JSON_VALUE.
   if (value.visibility !== undefined) validateVisibility(value.visibility, `${path}/visibility`, sink);
 }
 
 export function validateStateShape(value: unknown, path = '$'): ValidationResult {
+  const lossy = gateLossless(value, path);
+  if (lossy.length > 0) return failResult(lossy);
   const issues: ValidationIssue[] = [];
   const sink = { issues };
   if (!isRecord(value)) {
@@ -162,10 +232,12 @@ export function validateStateShape(value: unknown, path = '$'): ValidationResult
   } else {
     fields.forEach((field, index) => validateStateField(field, `${path}/fields/${index}`, sink));
   }
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(dedupeIssues(issues));
 }
 
 export function validateProjectionShape(value: unknown, path = '$'): ValidationResult {
+  const lossy = gateLossless(value, path);
+  if (lossy.length > 0) return failResult(lossy);
   const issues: ValidationIssue[] = [];
   const sink = { issues };
   if (!isRecord(value)) {
@@ -183,10 +255,11 @@ export function validateProjectionShape(value: unknown, path = '$'): ValidationR
   } else {
     fields.forEach((field, index) => validateStateField(field, `${path}/fields/${index}`, sink));
   }
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(dedupeIssues(issues));
 }
 
 export function validateActionIntentParams(value: unknown, path: string, sink: Sink): void {
+  if (!gateLosslessSink(value, path, sink)) return;
   if (!isRecord(value)) {
     push(sink, path, 'AIPT_INVALID_VALUE', 'params must be an object');
     return;
@@ -195,15 +268,13 @@ export function validateActionIntentParams(value: unknown, path: string, sink: S
   rejectExtraMembers(sink, value, [...D.action_intent_params_required, 'proposal'], path);
   checkIdentifier(value.action, `${path}/action`, sink, 'action');
   checkIdentifier(value.seat_id, `${path}/seat_id`, sink, 'seat_id');
-  // The schema intentionally accepts ANY JSON value here: the proposal must
-  // pass the lossless JSON-value gate (undefined/function/cycle/unsafe
-  // integer/etc. all fail closed).
-  if (hasOwn(value, 'proposal')) {
-    sink.issues.push(...validateJsonValue(value.proposal, `${path}/proposal`).issues);
-  }
+  // The schema intentionally accepts ANY JSON value here: the whole-value
+  // lossless gate above already rejected every lossy proposal value at
+  // `${path}/proposal` (undefined/function/cycle/unsafe integer/etc.).
 }
 
 export function validateApplyActionResult(value: unknown, path: string, sink: Sink): void {
+  if (!gateLosslessSink(value, path, sink)) return;
   if (!isRecord(value)) {
     push(sink, path, 'AIPT_INVALID_VALUE', 'result must be an object');
     return;
@@ -223,6 +294,7 @@ export function validateApplyActionResult(value: unknown, path: string, sink: Si
 }
 
 export function validateErrorObject(value: unknown, path: string, sink: Sink): void {
+  if (!gateLosslessSink(value, path, sink)) return;
   if (!isRecord(value)) {
     push(sink, path, 'AIPT_INVALID_VALUE', 'error must be an object');
     return;
@@ -250,6 +322,7 @@ export function validateErrorObject(value: unknown, path: string, sink: Sink): v
 }
 
 export function validateStateEvent(value: unknown, path: string, sink: Sink): void {
+  if (!gateLosslessSink(value, path, sink)) return;
   if (!isRecord(value)) {
     push(sink, path, 'AIPT_INVALID_VALUE', 'event must be an object');
     return;
@@ -274,6 +347,8 @@ export function validateStateEvent(value: unknown, path: string, sink: Sink): vo
 }
 
 export function validateJsonRpcRequest(value: unknown, path = '$'): ValidationResult {
+  const wholeIssues = envelopeWholeGate(value, path, `${path}/id`);
+  if (wholeIssues.length > 0) return failResult(wholeIssues);
   const issues: ValidationIssue[] = [];
   const sink = { issues };
   if (!isRecord(value)) {
@@ -287,17 +362,19 @@ export function validateJsonRpcRequest(value: unknown, path = '$'): ValidationRe
   if (hasOwn(value, 'jsonrpc') && value.jsonrpc !== D.jsonrpc_version) {
     push(sink, `${path}/jsonrpc`, 'AIPT_UNKNOWN_VERSION', `jsonrpc must be exactly ${JSON.stringify(D.jsonrpc_version)}, got ${JSON.stringify(value.jsonrpc)}`);
   }
-  const idCheck = validateRequestId(value.id, `${path}/id`);
+  const idCheck = validateRequestId(readIdDataMember(value), `${path}/id`);
   issues.push(...idCheck.issues);
   if (hasOwn(value, 'method') && value.method !== D.request_methods[0]) {
     push(sink, `${path}/method`, 'AIPT_UNKNOWN_METHOD', `unknown request method ${JSON.stringify(value.method)} (registered: ${D.request_methods.join(', ')})`);
   }
   if (value.params !== undefined) validateActionIntentParams(value.params, `${path}/params`, sink);
   checkProtocolIdentity(sink, value, path);
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(dedupeIssues(issues));
 }
 
 export function validateJsonRpcNotification(value: unknown, path = '$'): ValidationResult {
+  const lossy = gateLossless(value, path);
+  if (lossy.length > 0) return failResult(lossy);
   const issues: ValidationIssue[] = [];
   const sink = { issues };
   if (!isRecord(value)) {
@@ -325,10 +402,12 @@ export function validateJsonRpcNotification(value: unknown, path = '$'): Validat
     }
   }
   checkProtocolIdentity(sink, value, path);
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(dedupeIssues(issues));
 }
 
 export function validateJsonRpcResponse(value: unknown, path = '$'): ValidationResult {
+  const wholeIssues = envelopeWholeGate(value, path, `${path}/id`);
+  if (wholeIssues.length > 0) return failResult(wholeIssues);
   const issues: ValidationIssue[] = [];
   const sink = { issues };
   if (!isRecord(value)) {
@@ -342,7 +421,7 @@ export function validateJsonRpcResponse(value: unknown, path = '$'): ValidationR
   if (hasOwn(value, 'jsonrpc') && value.jsonrpc !== D.jsonrpc_version) {
     push(sink, `${path}/jsonrpc`, 'AIPT_UNKNOWN_VERSION', `jsonrpc must be exactly ${JSON.stringify(D.jsonrpc_version)}, got ${JSON.stringify(value.jsonrpc)}`);
   }
-  const idCheck = validateRequestId(value.id, `${path}/id`);
+  const idCheck = validateRequestId(readIdDataMember(value), `${path}/id`);
   issues.push(...idCheck.issues);
   const hasResult = hasOwn(value, 'result');
   const hasError = hasOwn(value, 'error');
@@ -358,13 +437,17 @@ export function validateJsonRpcResponse(value: unknown, path = '$'): ValidationR
     }
   }
   checkProtocolIdentity(sink, value, path);
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(dedupeIssues(issues));
 }
 
 // The executable canonical root: exactly one of the three registered wire
 // envelopes must validate. Zero or multiple matching envelopes fail closed
-// with a single stable AIPT_UNKNOWN_ENVELOPE rejection.
+// with a single stable AIPT_UNKNOWN_ENVELOPE rejection; a lossy value fails
+// closed with its AIPT_LOSSY_JSON_VALUE issues before any branch runs (the
+// id member's out-of-range integer contract stays AIPT_INVALID_ID).
 export function validateExecutableRoot(value: unknown): ValidationResult {
+  const wholeIssues = envelopeWholeGate(value, '$', '$/id');
+  if (wholeIssues.length > 0) return failResult(wholeIssues);
   if (!isRecord(value)) {
     return failResult([issue('$', 'AIPT_UNKNOWN_ENVELOPE', 'executable root must be exactly one registered JSON-RPC envelope (request | response | notification)')]);
   }

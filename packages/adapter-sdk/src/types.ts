@@ -6,9 +6,12 @@
 // independently of the runtime contract constants that the machine gate
 // compares against the canonical schema. The machine gate additionally
 // audits every public interface declared below against schema-derived
-// member-shape expectations, so a hand-edited member cannot pass silently.
-// The package exports no `any`; `unknown` appears only at validation
-// boundaries (fixture documents and validator inputs).
+// member-shape expectations AND against schema-derived member TYPE
+// EXPRESSIONS (including nested object shapes and descriptor-derived
+// const/discriminant literals), so a hand-edited member name, optionality,
+// or type expression cannot pass silently. The package exports no `any`;
+// `unknown` appears only at validation boundaries (fixture documents and
+// validator inputs).
 import { AIPT_ERROR_CODES, MANIFEST_KINDS, NOTIFICATION_METHODS, REQUEST_METHODS, VISIBILITY_LABELS } from './constants.ts';
 import { CONTRACT_DESCRIPTOR } from './contract/descriptor.ts';
 
@@ -223,7 +226,10 @@ export interface ManifestMutant {
   readonly kind: (typeof CONTRACT_DESCRIPTOR)['mutant_kind'];
   readonly schema_ref: string;
   readonly sha256: string;
-  readonly expected_semantic_rejection: AiptErrorCode;
+  // The exact canonical const, derived from the contract descriptor literal:
+  // NOT the broader finite AiptErrorCode union. A widened hand edit fails
+  // the machine gate's type-expression audit.
+  readonly expected_semantic_rejection: (typeof CONTRACT_DESCRIPTOR)['mutant_expected_semantic_rejection'];
 }
 
 export interface FixtureManifest extends ProtocolIdentity {

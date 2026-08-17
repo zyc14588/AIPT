@@ -26,6 +26,27 @@
 //     mutant fails closed (AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT).
 //  4. The exact inventory of supplied documents is enforced: every listed
 //     asset must exist and every unlisted supplied document fails closed.
+//
+// Iteration 4C contract:
+//  - The bundle wrapper and the documents collection are inspected through
+//    OWN PROPERTY DESCRIPTORS ONLY (no getter/setter invocation, no
+//    traversal) and the documents collection is never traversed before the
+//    manifest preflight succeeds.
+//  - After manifest preflight and BEFORE any asset document processing, the
+//    caller-supplied schema must be a lossless JSON document whose canonical
+//    SHA-256 equals CONTRACT_DESCRIPTOR.canonical_schema_sha256; a missing,
+//    malformed, lossy, or fingerprint-drifted schema fails with
+//    AIPT_FIXTURE_INVALID_SCHEMA.
+//  - Every clean ordinary projection asset must pass
+//    validateProjectionSemantics against at least one compatible supplied
+//    state document using the supplied known seats (schema validity alone is
+//    insufficient; hidden data never passes as an ordinary projection).
+//  - The mutant wrapper seat_id is bound to projection.seat_id and
+//    leaked_field_id to the single field producing the declared rejection;
+//    metadata drift fails with AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT.
+//  - Exact inventory means exact: a supplied documents entry named
+//    manifest.json is unlisted and rejected like every other unlisted
+//    document (no exemption).
 import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { sha256Hex } from './canonical-json.ts';
 import { failResult, issue, okResult, type ValidationIssue, type ValidationResult } from './errors.ts';
@@ -49,8 +70,11 @@ function hasOwn(value: Record<string, unknown>, key: string): boolean {
 // protocol_version/schema_version must equal the frozen constants, fixture_id
 // must be a well-formed fixture identifier, and — when an expected fixture id
 // is supplied — fixture_id must equal it (the canonical schema requires every
-// asset fixture_id to equal the manifest fixture_id).
+// asset fixture_id to equal the manifest fixture_id). The whole document must
+// first pass the lossless JSON-value gate (no getter/setter invocation).
 export function checkFixtureIdentity(document: unknown, path = '$', expectedFixtureId?: string): ValidationResult {
+  const lossy = validateJsonValue(document, path);
+  if (!lossy.valid) return failResult([...lossy.issues]);
   const issues: ValidationIssue[] = [];
   if (!isRecord(document)) {
     issues.push(issue(path, 'AIPT_FIXTURE_IDENTITY_MISMATCH', 'document is not an object (identity triple unreadable)'));
@@ -156,6 +180,8 @@ function checkMutantEntry(entry: unknown, path: string, issues: ValidationIssue[
 }
 
 export function validateFixtureManifest(input: unknown): ValidationResult {
+  const lossy = validateJsonValue(input, '$');
+  if (!lossy.valid) return failResult([...lossy.issues]);
   const issues: ValidationIssue[] = [];
   if (!isRecord(input)) {
     return failResult([issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture manifest must be a JSON object')]);
@@ -211,12 +237,47 @@ export function validateFixtureManifest(input: unknown): ValidationResult {
 }
 
 // ---------------------------------------------------------------------------
-// Bundle validation.
+// Bundle wrapper / documents collection (descriptor-only, no accessors).
 // ---------------------------------------------------------------------------
 
-// Build the trusted documents map from the caller-supplied bundle. Non-string
-// keys and symbol-keyed object members fail closed (they could never be
-// manifest paths and would otherwise be silently dropped).
+// Read the caller-supplied bundle wrapper through its OWN PROPERTY
+// DESCRIPTORS only: symbol-keyed members, accessors, and non-enumerable
+// members fail closed deterministically (AIPT_FIXTURE_INVALID_MANIFEST)
+// without ever invoking a getter/setter. Accepted enumerable data members
+// are read from their data descriptor (a descriptor read never invokes an
+// accessor).
+function readBundleWrapper(input: unknown, issues: ValidationIssue[]): Record<string, unknown> | null {
+  if (!isRecord(input)) {
+    issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle must be an object with manifest and documents'));
+    return null;
+  }
+  const members: Record<string, unknown> = {};
+  if (Object.getOwnPropertySymbols(input).length > 0) {
+    issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper must not carry symbol-keyed members'));
+  }
+  for (const key of Object.getOwnPropertyNames(input)) {
+    const descriptor = Object.getOwnPropertyDescriptor(input, key);
+    if (descriptor === undefined) continue;
+    if (descriptor.get !== undefined || descriptor.set !== undefined) {
+      issues.push(issue(`$/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `bundle wrapper member ${JSON.stringify(key)} must be an ordinary data member, not an accessor`));
+      continue;
+    }
+    if (!descriptor.enumerable) {
+      issues.push(issue(`$/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `bundle wrapper member ${JSON.stringify(key)} must be an enumerable data member`));
+      continue;
+    }
+    members[key] = descriptor.value;
+  }
+  return issues.length === 0 ? members : null;
+}
+
+// Build the trusted documents map from the caller-supplied bundle. Map keys
+// must be strings; for the object form, every own member is inspected via
+// its descriptor (symbol keys, accessors, and non-enumerable members fail
+// closed without invocation) and read from its data descriptor. The document
+// VALUES are collected by reference only — nothing is traversed here; the
+// per-entry gates (after manifest preflight and the canonical schema binding)
+// own all document interpretation.
 function collectDocuments(input: unknown, issues: ValidationIssue[]): Map<string, unknown> | null {
   const documents = new Map<string, unknown>();
   if (input instanceof Map) {
@@ -233,48 +294,96 @@ function collectDocuments(input: unknown, issues: ValidationIssue[]): Map<string
     if (Object.getOwnPropertySymbols(input).length > 0) {
       issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'documents object must not carry symbol-keyed members'));
     }
-    for (const key of Object.keys(input)) documents.set(key, input[key]);
+    for (const key of Object.getOwnPropertyNames(input)) {
+      const descriptor = Object.getOwnPropertyDescriptor(input, key);
+      if (descriptor === undefined) continue;
+      if (descriptor.get !== undefined || descriptor.set !== undefined) {
+        issues.push(issue(`$/documents/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `documents member ${JSON.stringify(key)} must be an ordinary data member, not an accessor`));
+        continue;
+      }
+      if (!descriptor.enumerable) {
+        issues.push(issue(`$/documents/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `documents member ${JSON.stringify(key)} must be an enumerable data member`));
+        continue;
+      }
+      documents.set(key, descriptor.value);
+    }
     return documents;
   }
   issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture documents must be a Map or an object keyed by manifest path'));
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Bundle validation.
+// ---------------------------------------------------------------------------
+
 // Validate a supplied fixture bundle against the caller-supplied canonical
-// schema document (explicit second argument or bundle.schema member). Every
-// listed asset must be present, lossless-JSON-representable, digest-exact,
-// canonical-schema-valid against its kind-derived $defs target, and
-// identity-consistent; the manifest mutant must produce exactly its declared
-// semantic rejection against bundle-supplied seat/state documents; unlisted
-// supplied documents fail closed. If the manifest preflight fails, bundle
-// validation stops before hashing or interpreting any supplied asset
-// document.
+// schema document (explicit second argument or bundle.schema member). Order
+// of gates (iteration 4C):
+//  1. Bundle wrapper descriptor inspection (no accessor invocation).
+//  2. Manifest preflight — on ANY failure, stop BEFORE hashing, reading,
+//     traversing, or invoking anything in supplied asset documents.
+//  3. Canonical schema binding: lossless JSON document + canonical SHA-256
+//     equality with CONTRACT_DESCRIPTOR.canonical_schema_sha256
+//     (AIPT_FIXTURE_INVALID_SCHEMA otherwise).
+//  4. Documents collection via own property descriptors (no traversal yet).
+//  5. Per listed entry: lossless gate -> digest -> canonical-schema instance
+//     -> identity; clean seat/state/projection documents are collected.
+//  6. Ordinary projection semantic gate: every clean projection asset must
+//     pass validateProjectionSemantics against at least one compatible
+//     supplied state document with the supplied known seats.
+//  7. Mutant semantic proof (exact declared rejection; wrapper seat_id bound
+//     to projection.seat_id; leaked_field_id bound to the single rejected
+//     field).
+//  8. Exact inventory: every supplied document must be listed — a supplied
+//     manifest.json entry is unlisted and rejected like every other
+//     unlisted document.
 export function validateFixtureBundle(input: unknown, schema?: unknown): ValidationResult {
-  if (!isRecord(input)) {
-    return failResult([issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle must be an object with manifest and documents')]);
-  }
-  const schemaDoc = schema !== undefined ? schema : input.schema;
-  if (!isRecord(schemaDoc)) {
+  const wrapperIssues: ValidationIssue[] = [];
+  const wrapper = readBundleWrapper(input, wrapperIssues);
+  if (wrapper === null) return failResult(wrapperIssues);
+
+  // 1. Manifest preflight first: on any failure, stop BEFORE hashing or
+  //    interpreting supplied asset documents (and before traversing the
+  //    documents collection).
+  const manifestCheck = validateFixtureManifest(wrapper.manifest);
+  if (!manifestCheck.valid) return manifestCheck;
+  const manifest = wrapper.manifest as unknown as FixtureManifest;
+
+  // 2. Canonical schema binding: after manifest preflight but before any
+  //    asset document processing, the supplied schema must be a lossless
+  //    JSON document whose canonical SHA-256 equals the full-content
+  //    fingerprint carried by the contract descriptor.
+  const schemaDoc = schema !== undefined ? schema : wrapper.schema;
+  if (schemaDoc === undefined) {
     return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', 'bundle validation requires the caller-supplied canonical schema document (explicit argument or bundle.schema member); the SDK never reads the repository filesystem')]);
   }
-  // 1. Manifest preflight first: on any failure, stop BEFORE hashing or
-  //    interpreting supplied asset documents.
-  const manifestCheck = validateFixtureManifest(input.manifest);
-  if (!manifestCheck.valid) return manifestCheck;
-  const manifest = input.manifest as unknown as FixtureManifest;
+  const schemaLossy = validateJsonValue(schemaDoc, '$/schema');
+  if (!schemaLossy.valid) {
+    const first = schemaLossy.issues[0];
+    return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', `the supplied canonical schema must be a lossless JSON document (rejected at ${first.path}: ${first.message})`)]);
+  }
+  if (!isRecord(schemaDoc)) {
+    return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', 'the supplied canonical schema document must be a JSON object')]);
+  }
+  const schemaDigest = sha256Hex(schemaDoc);
+  if (schemaDigest !== D.canonical_schema_sha256) {
+    return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', `canonical schema fingerprint drifted: got ${schemaDigest}, the contract descriptor carries ${D.canonical_schema_sha256} (only the exact canonical schema document may validate a fixture bundle)`)]);
+  }
 
-  // 2. Trusted documents map.
+  // 3. Trusted documents map (collected by reference; nothing traversed).
   const issues: ValidationIssue[] = [];
-  const documents = collectDocuments(input.documents, issues);
-  if (documents === null) return failResult(issues);
+  const documents = collectDocuments(wrapper.documents, issues);
+  if (documents === null || issues.length > 0) return failResult(issues);
 
-  // 3. Per-entry gates: lossless JSON value -> digest -> schema instance ->
-  //    identity. The seat/state documents are collected for the mutant
-  //    semantic proof.
+  // 4. Per-entry gates: lossless JSON value -> digest -> schema instance ->
+  //    identity. Clean seat/state/projection documents are collected for the
+  //    semantic gates.
   const entries = [...manifest.assets, ...manifest.mutants];
   const listed = new Set<string>();
   const knownSeats: string[] = [];
   const stateDocuments: unknown[] = [];
+  const projectionDocuments: Array<{ readonly entry: FixtureManifest['assets'][number]; readonly document: unknown; readonly docPath: string }> = [];
   let mutantEntry: FixtureManifest['mutants'][number] | undefined;
   let mutantDocument: unknown;
   let mutantDocumentClean = false;
@@ -288,7 +397,8 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
     }
     const issuesBefore = issues.length;
 
-    // Lossless JSON-value gate (cycles/undefined/unsafe integers/etc.).
+    // Lossless JSON-value gate (cycles/undefined/unsafe integers/accessors/
+    // symbol keys/etc.; no getter/setter invocation).
     const lossless = validateJsonValue(document, docPath);
     issues.push(...lossless.issues);
     if (!lossless.valid) continue;
@@ -318,42 +428,97 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
       issues.push(...checkFixtureIdentity(document, docPath, manifest.fixture_id).issues);
     }
 
-    // Game-neutral document collection for the mutant semantic proof.
-    if (entry.kind === 'seat_set' && isRecord(document) && Array.isArray(document.seats)) {
-      for (const seat of document.seats) {
-        if (isRecord(seat) && typeof seat.seat_id === 'string') knownSeats.push(seat.seat_id);
+    const entryClean = issues.length === issuesBefore;
+
+    // Game-neutral document collection for the semantic gates — only
+    // documents that passed every gate are trusted.
+    if (entryClean) {
+      if (entry.kind === 'seat_set' && isRecord(document) && Array.isArray(document.seats)) {
+        for (const seat of document.seats) {
+          if (isRecord(seat) && typeof seat.seat_id === 'string') knownSeats.push(seat.seat_id);
+        }
+      } else if (entry.kind === 'state') {
+        stateDocuments.push(document);
+      } else if (entry.kind === 'projection') {
+        projectionDocuments.push({ entry, document, docPath });
       }
-    } else if (entry.kind === 'state') {
-      stateDocuments.push(document);
     }
     if (entry.kind === D.mutant_kind) {
       mutantEntry = entry;
       mutantDocument = document;
-      mutantDocumentClean = issues.length === issuesBefore;
+      mutantDocumentClean = entryClean;
     }
   }
 
-  // 4. Mutant semantic proof: the declared semantic rejection must ACTUALLY
+  // 5. Ordinary projection semantic gate: schema validity is NOT enough for
+  //    an ordinary projection — every clean projection asset must pass
+  //    validateProjectionSemantics against at least one compatible supplied
+  //    state document using the supplied known seats. Hidden data must never
+  //    pass as an ordinary projection.
+  for (const projectionDoc of projectionDocuments) {
+    if (stateDocuments.length === 0) {
+      issues.push(issue(projectionDoc.docPath, 'AIPT_PROJECTION_INVALID', `ordinary projection ${JSON.stringify(projectionDoc.entry.path)} requires at least one clean supplied state document to prove its semantics, but no clean state document was supplied`));
+      continue;
+    }
+    let compatible = false;
+    let firstFailure: ValidationIssue[] | null = null;
+    for (const stateDocument of stateDocuments) {
+      const semantic = validateProjectionSemantics(stateDocument, projectionDoc.document, knownSeats);
+      if (semantic.valid) {
+        compatible = true;
+        break;
+      }
+      if (firstFailure === null) firstFailure = [...semantic.issues];
+    }
+    if (!compatible) {
+      if (firstFailure !== null && firstFailure.length > 0) {
+        for (const semanticIssue of firstFailure) {
+          issues.push(issue(`${projectionDoc.docPath}${semanticIssue.path.slice(1)}`, semanticIssue.code, semanticIssue.message));
+        }
+      } else {
+        issues.push(issue(projectionDoc.docPath, 'AIPT_PROJECTION_INVALID', `ordinary projection ${JSON.stringify(projectionDoc.entry.path)} does not pass the semantic projection contract against any compatible supplied state document`));
+      }
+    }
+  }
+
+  // 6. Mutant semantic proof: the declared semantic rejection must ACTUALLY
   //    be produced — with exactly that one reason — when the mutant
   //    projection is evaluated against a game-neutral state document and the
-  //    seat set supplied in this same bundle. A digest-correct neutral or
-  //    non-rejecting mutant fails closed.
+  //    seat set supplied in this same bundle. The wrapper seat_id is bound to
+  //    projection.seat_id and leaked_field_id is bound to the single field
+  //    that produces the declared rejection (metadata drift fails closed).
   if (mutantEntry !== undefined && mutantDocumentClean && isRecord(mutantDocument)) {
     const expected = D.mutant_expected_semantic_rejection;
     const projection = mutantDocument.projection;
-    const produced = stateDocuments.some((stateDocument) => {
+    let produced: { readonly semantic: ValidationResult } | null = null;
+    for (const stateDocument of stateDocuments) {
       const semantic = validateProjectionSemantics(stateDocument, projection, knownSeats);
-      return !semantic.valid && semantic.issues.length === 1 && semantic.issues[0].code === expected;
-    });
-    if (!produced) {
+      if (!semantic.valid && semantic.issues.length === 1 && semantic.issues[0].code === expected) {
+        produced = { semantic };
+        break;
+      }
+    }
+    if (produced === null) {
       issues.push(issue('$/mutants/0', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', `mutant ${JSON.stringify(mutantEntry.path)} must produce exactly its declared semantic rejection ${JSON.stringify(expected)} when evaluated against a bundle-supplied state document (with bundle-supplied seats), but no supplied state produces it`));
+    } else {
+      const projectionSeatId = isRecord(projection) ? projection.seat_id : undefined;
+      if (mutantDocument.seat_id !== projectionSeatId) {
+        issues.push(issue('$/mutants/0/seat_id', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', `mutant wrapper seat_id ${JSON.stringify(mutantDocument.seat_id)} must equal the wrapped projection.seat_id ${JSON.stringify(projectionSeatId)}`));
+      }
+      const rejectionPath = produced.semantic.issues[0].path;
+      const rejectedFieldId = rejectionPath.startsWith('$/fields/') ? rejectionPath.slice('$/fields/'.length) : null;
+      if (mutantDocument.leaked_field_id !== rejectedFieldId) {
+        issues.push(issue('$/mutants/0/leaked_field_id', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', `mutant wrapper leaked_field_id ${JSON.stringify(mutantDocument.leaked_field_id)} must equal the single field that produces ${JSON.stringify(expected)} (${JSON.stringify(rejectedFieldId)})`));
+      }
     }
   }
 
-  // 5. Exact inventory: every supplied document must be listed (the manifest
-  //    document itself is exempt from the inventory check).
+  // 7. Exact inventory: every supplied document must be listed. There is NO
+  //    exemption: a supplied documents entry named manifest.json is unlisted
+  //    (the manifest is carried by the wrapper's manifest member, never as a
+  //    listed document) and is rejected like every other unlisted document.
   for (const key of documents.keys()) {
-    if (key !== 'manifest.json' && !listed.has(key)) {
+    if (!listed.has(key)) {
       issues.push(issue(`$/documents/${key}`, 'AIPT_FIXTURE_UNLISTED_ASSET', `supplied document ${JSON.stringify(key)} is not listed in the fixture manifest`));
     }
   }

@@ -177,3 +177,155 @@ test('typed builders reject lossy params values', () => {
   const codes = lossyCodes(() => sdk.buildRequest('id-1', { action: 'advance-turn', seat_id: 'seat-a', proposal: undefined }, 'minimal-v1-arithmetic'));
   assert.deepEqual(codes, ['AIPT_LOSSY_JSON_VALUE']);
 });
+
+// ---- iteration 4C: descriptor-only inspection, zero getter/setter calls ----
+
+test('validateJsonValue rejects array symbol keys, non-enumerable extras, and accessor indices', () => {
+  const symbolKeyed: unknown[] = [1];
+  Object.defineProperty(symbolKeyed, Symbol('k'), { value: 1, enumerable: true });
+  let result = sdk.validateJsonValue(symbolKeyed);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE'));
+
+  const nonEnumerable = [1];
+  Object.defineProperty(nonEnumerable, 'extra', { value: 1, enumerable: false });
+  result = sdk.validateJsonValue(nonEnumerable);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/extra'));
+
+  let getterCalls = 0;
+  const accessorIndex = [1];
+  Object.defineProperty(accessorIndex, 1, { get: () => { getterCalls += 1; return 2; }, enumerable: true });
+  result = sdk.validateJsonValue(accessorIndex);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/1'));
+  assert.equal(getterCalls, 0, 'array index accessors must never be invoked while validating');
+
+  // The engine invariant makes an accessor `length` unrepresentable on a
+  // real array (even via a Proxy trap), so the built-in length descriptor is
+  // always a data descriptor; the walker still checks it defensively. A
+  // dense ordinary array with only the built-in length descriptor passes.
+  assert.equal(sdk.validateJsonValue([1, 2, 3]).valid, true);
+});
+
+test('validateJsonValue never invokes object getters/setters, even after detecting them', () => {
+  let getterCalls = 0;
+  let setterCalls = 0;
+  const accessor: Record<string, unknown> = {};
+  Object.defineProperty(accessor, 'x', {
+    get: () => { getterCalls += 1; return 1; },
+    set: () => { setterCalls += 1; },
+    enumerable: true,
+  });
+  const result = sdk.validateJsonValue(accessor);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/x'));
+  assert.equal(getterCalls, 0, 'the rejected accessor getter must never be invoked — not even once after detection');
+  assert.equal(setterCalls, 0, 'the rejected accessor setter must never be invoked');
+
+  // A rejected accessor nested inside an otherwise valid object.
+  let nestedCalls = 0;
+  const nested = { ok: 1, bad: 0 };
+  Object.defineProperty(nested, 'bad', { get: () => { nestedCalls += 1; return 0; }, enumerable: true });
+  const nestedResult = sdk.validateJsonValue(nested);
+  assert.equal(nestedResult.valid, false);
+  assert.equal(nestedCalls, 0, 'nested rejected accessors must never be invoked');
+});
+
+test('validateJsonValue accepts repeated non-ancestral shared references and ordinary JSON untouched', () => {
+  const shared = { n: 1 };
+  const input = { a: [1, 2], b: shared, c: shared };
+  const snapshot = JSON.stringify(input);
+  assert.equal(sdk.validateJsonValue(input).valid, true);
+  assert.equal(JSON.stringify(input), snapshot, 'the caller input must not be mutated');
+});
+
+test('whole-value lossless gates reject symbol-keyed/non-enumerable/accessor envelope members without invocation', () => {
+  const request = makeRequest({ action: 'advance-turn', seat_id: 'seat-a' });
+  const symbolKeyed = { ...request };
+  Object.defineProperty(symbolKeyed, Symbol('trace'), { value: 1, enumerable: true });
+  let codes = lossyCodes(() => sdk.toJsonRpcRequest(symbolKeyed));
+  assert.deepEqual(codes, ['AIPT_LOSSY_JSON_VALUE']);
+
+  const nonEnumerable = { ...request };
+  Object.defineProperty(nonEnumerable, 'trace', { value: 1, enumerable: false });
+  codes = lossyCodes(() => sdk.toJsonRpcRequest(nonEnumerable));
+  assert.deepEqual(codes, ['AIPT_LOSSY_JSON_VALUE']);
+
+  let getterCalls = 0;
+  const accessorMember = { ...request };
+  Object.defineProperty(accessorMember, 'params', {
+    get: () => { getterCalls += 1; return request.params; },
+    enumerable: true,
+  });
+  codes = lossyCodes(() => sdk.toJsonRpcRequest(accessorMember));
+  assert.deepEqual(codes, ['AIPT_LOSSY_JSON_VALUE']);
+  assert.equal(getterCalls, 0, 'envelope accessor members must never be invoked while validating');
+});
+
+test('required-member bypass via explicit undefined own members fails the whole-value gate', () => {
+  const request = makeRequest({ action: 'advance-turn', seat_id: 'seat-a' });
+  const bypass = { ...request, params: undefined };
+  try {
+    sdk.toJsonRpcRequest(bypass);
+    assert.fail('an explicit undefined params member must be rejected, not skipped');
+  } catch (err) {
+    assert.ok(err instanceof sdk.ProtocolValidationError);
+    assert.ok(err.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/params'), JSON.stringify(err.issues));
+  }
+
+  const result = sdk.validateExecutableRoot(bypass);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/params'), JSON.stringify(result.issues));
+});
+
+test('id = -0 and unsafe-integer error.code fail closed at their exact paths', () => {
+  const request = makeRequest({ action: 'advance-turn', seat_id: 'seat-a' });
+  try {
+    sdk.toJsonRpcRequest({ ...request, id: -0 });
+    assert.fail('-0 id must be rejected');
+  } catch (err) {
+    assert.ok(err instanceof sdk.ProtocolValidationError);
+    assert.ok(err.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/id'), JSON.stringify(err.issues));
+  }
+
+  const errorResponse = {
+    jsonrpc: '2.0',
+    id: 'probe-id',
+    protocol_version: '1.0.0',
+    schema_version: '1.0.0',
+    fixture_id: 'minimal-v1-arithmetic',
+    error: { code: Number.MAX_SAFE_INTEGER + 1, message: 'unsafe integer code' },
+  };
+  try {
+    sdk.toJsonRpcErrorResponse(errorResponse);
+    assert.fail('unsafe integer error.code must be rejected');
+  } catch (err) {
+    assert.ok(err instanceof sdk.ProtocolValidationError);
+    assert.ok(err.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/error/code'), JSON.stringify(err.issues));
+  }
+});
+
+test('validateFixtureManifest and validateSchemaInstance reject lossy inputs with AIPT_LOSSY_JSON_VALUE', () => {
+  const manifest = {
+    protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'f-1', fixture_name: 'inline',
+    expected_final_state: 'final-state.json', replay_assertion: 'replay-assertion.json',
+    assets: [], mutants: [],
+  };
+  const symbolKeyed = { ...manifest };
+  Object.defineProperty(symbolKeyed, Symbol('sneak'), { value: 1, enumerable: true });
+  let result = sdk.validateFixtureManifest(symbolKeyed);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE'));
+
+  const cyclicSchema: Record<string, unknown> = {};
+  cyclicSchema.self = cyclicSchema;
+  result = sdk.validateSchemaInstance(cyclicSchema, {}, '#/$defs/state', '$');
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE'));
+
+  const lossyDocument = { x: undefined };
+  result = sdk.validateSchemaInstance({ $defs: { state: { type: 'object' } } }, lossyDocument, '#/$defs/state', '$');
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((issue) => issue.code === 'AIPT_LOSSY_JSON_VALUE' && issue.path === '$/x'));
+});

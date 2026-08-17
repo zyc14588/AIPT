@@ -1,4 +1,4 @@
-// AIPT-M0-B002 iteration 4B: @aipt/adapter-sdk machine gate.
+// AIPT-M0-B002 iteration 4C: @aipt/adapter-sdk machine gate.
 //
 // Independent, fail-closed comparison of the dependency-free TypeScript
 // adapter contract SDK against the single canonical wire authority
@@ -10,15 +10,19 @@
 // every schema edit — even outside the projected fields — fails the gate
 // until the SDK is reviewed). It then audits the ACTUAL declared public
 // interface surface of src/types.ts against schema-derived member-shape
-// expectations (required/optional/discriminant members for every public wire
-// and fixture type), behavior-checks the SDK against the persisted wire
+// expectations AND schema-derived member TYPE EXPRESSIONS (required/optional/
+// discriminant members, declared type expressions, nested object shapes, and
+// descriptor-derived const/discriminant types for every public wire and
+// fixture interface), behavior-checks the SDK against the persisted wire
 // envelopes and fixture assets (digests, projections, the hidden-leak
-// mutant, per-document canonical-schema validation), runs fail-closed
-// negative probes for every repaired adversarial false acceptance plus
-// in-memory drift probes that prove the audit detects previously uncovered
-// schema/type edits, audits the SDK sources for ambient-capable imports /
-// environment reads, and proves the package is a zero-dependency,
-// side-effect-free import via a clean child-process probe.
+// mutant, per-document canonical-schema validation, the canonical schema
+// fingerprint binding, the ordinary-projection semantic gate, mutant wrapper
+// metadata binding, exact inventory), runs fail-closed negative probes for
+// every repaired adversarial false acceptance plus in-memory drift probes
+// that prove the audit detects previously uncovered schema/type edits,
+// audits the SDK sources for ambient-capable imports / environment reads,
+// and proves the package is a zero-dependency, side-effect-free import via a
+// clean child-process probe.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -242,13 +246,29 @@ function parseInterfaces(source) {
   let match;
   while ((match = ifaceRe.exec(source)) !== null) {
     const name = match[1];
-    const members = { required: [], optional: [], never: [] };
+    const members = { required: [], optional: [], never: [], exprs: {}, nestedOwners: new Set() };
     // Brace-depth-aware member scan: nested object-type blocks (written
-    // multi-line in the fixed style) never contribute members.
+    // multi-line in the fixed style) contribute their own members as
+    // flattened `owner.nested` entries.
     let depth = 0;
+    let nestedOwner = null;
     for (const line of match[2].split('\n')) {
       const open = (line.match(/\{/g) ?? []).length;
       const close = (line.match(/\}/g) ?? []).length;
+      if (nestedOwner !== null) {
+        const nestedMember = /^\s*readonly\s+([A-Za-z_][A-Za-z0-9_]*)(\?)?:\s*(.*?)\s*;\s*$/.exec(line);
+        if (nestedMember) {
+          members.exprs[`${nestedOwner}.${nestedMember[1]}`] = {
+            optional: nestedMember[2] === '?',
+            expression: nestedMember[3].trim(),
+          };
+        }
+        if (close > 0) {
+          depth += open - close;
+          if (depth <= 0) nestedOwner = null;
+        }
+        continue;
+      }
       if (depth === 0) {
         const member = /^\s*readonly\s+([A-Za-z_][A-Za-z0-9_]*)(\?)?:\s*(.*)$/.exec(line);
         if (member) {
@@ -260,8 +280,13 @@ function parseInterfaces(source) {
             // belongs to the enclosing interface at this depth.
             if (optional) members.optional.push(key);
             else members.required.push(key);
+            if (rest.startsWith('{')) {
+              nestedOwner = key;
+              members.nestedOwners.add(key);
+            }
           } else {
             const type = rest.replace(/;$/, '').trim();
+            members.exprs[key] = { optional, expression: type };
             if (optional && type === 'never') members.never.push(key);
             else if (optional) members.optional.push(key);
             else members.required.push(key);
@@ -273,6 +298,281 @@ function parseInterfaces(source) {
     interfaces[name] = members;
   }
   return interfaces;
+}
+
+// ---------------------------------------------------------------------------
+// Public type-EXPRESSION audit (iteration 4C): the schema-derived expected
+// member type expressions for every public wire/fixture interface, including
+// nested object shapes and descriptor-derived const/discriminant types. Each
+// expectation is re-derived from the canonical schema node it represents
+// (const equality with the already-verified descriptor projection, enum
+// equality with the exported constant tuples, identifier patterns, refs,
+// array item shapes, empty-any-value schemas, and the open error-code
+// pattern), so a hand-edited type expression cannot pass silently.
+// ---------------------------------------------------------------------------
+
+function deriveTypeExpressions(schema, derived) {
+  const defs = schema.$defs;
+  const exprs = {};
+  const problems = [];
+  const at = (...pointer) => get(schema, pointer);
+  const ok = (cond, label) => { if (!cond) problems.push(`type-expression derivation: ${label}`); };
+  const desc = (key) => `(typeof CONTRACT_DESCRIPTOR)['${key}']`;
+  const groundConst = (key, ...pointer) => {
+    const node = at(...pointer);
+    ok(node !== undefined && canonicalText(node.const) === canonicalText(derived[key]), `const ${pointer.join('/')} must equal the descriptor key ${key}`);
+    return desc(key);
+  };
+  const groundEnum = (key, ...pointer) => {
+    const node = at(...pointer);
+    ok(node !== undefined && canonicalText(node.enum) === canonicalText(derived[key]), `enum ${pointer.join('/')} must equal the descriptor key ${key}`);
+    return 'ENUM';
+  };
+  const groundIdentifierPattern = (...pointer) => {
+    const node = at(...pointer);
+    ok(node !== undefined && node.type === 'string' && node.pattern === derived.identifier_pattern, `identifier-pattern string at ${pointer.join('/')}`);
+  };
+  const groundPlainString = (...pointer) => {
+    const node = at(...pointer);
+    ok(node !== undefined && node.type === 'string', `string at ${pointer.join('/')}`);
+  };
+  const groundRef = (target, ...pointer) => {
+    const node = at(...pointer);
+    ok(node !== undefined && node.$ref === `#/$defs/${target}`, `$ref ${target} at ${pointer.join('/')}`);
+  };
+  const groundArrayOfRef = (target, ...pointer) => {
+    const node = at(...pointer);
+    ok(node !== undefined && node.type === 'array' && node.items?.$ref === `#/$defs/${target}`, `array of $ref ${target} at ${pointer.join('/')}`);
+  };
+  const set = (iface, member, expr) => { exprs[`${iface}.${member}`] = expr; };
+
+  // Identity + descriptor-derived const/version aliases.
+  groundConst('protocol_version', '$defs', 'protocol_version');
+  groundConst('schema_version', '$defs', 'schema_version');
+  groundConst('jsonrpc_version', '$defs', 'jsonrpc_version');
+  set('ProtocolIdentity', 'protocol_version', 'ProtocolVersion');
+  set('ProtocolIdentity', 'schema_version', 'SchemaVersion');
+  set('ProtocolIdentity', 'fixture_id', 'FixtureId');
+  groundIdentifierPattern('$defs', 'fixture_id');
+
+  // Visibility model.
+  groundEnum('visibility_labels', '$defs', 'visibility_label');
+  set('Visibility', 'label', 'VisibilityLabel');
+  groundArrayOfRef('seat_id', '$defs', 'authorized_seat_ids');
+  set('Visibility', 'authorized_seat_ids', 'readonly SeatId[]');
+  groundRef('seat_id', '$defs', 'seat', 'properties', 'seat_id');
+  set('Seat', 'seat_id', 'SeatId');
+  groundPlainString('$defs', 'seat', 'properties', 'name');
+  set('Seat', 'name', 'string');
+  groundArrayOfRef('seat', '$defs', 'seat_set', 'properties', 'seats');
+  set('SeatSet', 'seats', 'readonly Seat[]');
+
+  // State / projection / action intent.
+  groundIdentifierPattern('$defs', 'state_field', 'properties', 'field_id');
+  set('StateField', 'field_id', 'FieldId');
+  ok(Object.keys(at('$defs', 'state_field', 'properties', 'value') ?? {}).length === 0, 'state_field.value must be the empty any-value schema');
+  set('StateField', 'value', 'JsonValue');
+  groundRef('visibility', '$defs', 'state_field', 'properties', 'visibility');
+  set('StateField', 'visibility', 'Visibility');
+  groundIdentifierPattern('$defs', 'state', 'properties', 'state_id');
+  set('State', 'state_id', 'Identifier');
+  groundArrayOfRef('state_field', '$defs', 'state', 'properties', 'fields');
+  set('State', 'fields', 'readonly StateField[]');
+  groundIdentifierPattern('$defs', 'projection', 'properties', 'projection_id');
+  set('Projection', 'projection_id', 'Identifier');
+  groundRef('seat_id', '$defs', 'projection', 'properties', 'seat_id');
+  set('Projection', 'seat_id', 'SeatId');
+  groundArrayOfRef('state_field', '$defs', 'projection', 'properties', 'fields');
+  set('Projection', 'fields', 'readonly StateField[]');
+  groundIdentifierPattern('$defs', 'action_intent_params', 'properties', 'action');
+  set('ActionIntentParams', 'action', 'Identifier');
+  groundRef('seat_id', '$defs', 'action_intent_params', 'properties', 'seat_id');
+  set('ActionIntentParams', 'seat_id', 'SeatId');
+  ok(Object.keys(at('$defs', 'action_intent_params', 'properties', 'proposal') ?? {}).length === 0, 'action_intent_params.proposal must be the empty any-value schema');
+  set('ActionIntentParams', 'proposal', 'JsonValue');
+  groundPlainString('$defs', 'message_id');
+  set('ActionIntent', 'message_id', 'string');
+  ok(canonicalText(at('$defs', 'action_intent', 'properties', 'method')?.const) === canonicalText(derived.request_methods[0]), 'action_intent.method const must equal the request method registry');
+  set('ActionIntent', 'method', 'RequestMethod');
+  groundRef('action_intent_params', '$defs', 'action_intent', 'properties', 'params');
+  set('ActionIntent', 'params', 'ActionIntentParams');
+
+  // ApplyActionResult / ErrorObject.
+  set('ApplyActionResult', 'accepted', groundConst('apply_action_result_accepted', '$defs', 'apply_action_result', 'properties', 'accepted'));
+  groundIdentifierPattern('$defs', 'apply_action_result', 'properties', 'transition_id');
+  set('ApplyActionResult', 'transition_id', 'Identifier');
+  groundArrayOfRef('state_field', '$defs', 'apply_action_result', 'properties', 'applied_fields');
+  set('ApplyActionResult', 'applied_fields', 'readonly StateField[]');
+  ok(at('$defs', 'error_object', 'properties', 'code')?.type === 'integer', 'error_object.code must be an unconstrained JSON-RPC integer');
+  set('ErrorObject', 'code', 'number');
+  groundPlainString('$defs', 'error_object', 'properties', 'message');
+  set('ErrorObject', 'message', 'string');
+  ok(canonicalText(at('$defs', 'error_object', 'properties', 'data', 'properties', 'error_code')?.pattern) === canonicalText(derived.error_code_pattern), 'error_object.data.error_code must carry the open canonical AIPT wire pattern');
+  set('ErrorObject.data', 'error_code', 'AiptWireErrorCode');
+
+  // Wire envelopes.
+  set('JsonRpcRequest', 'jsonrpc', 'JsonRpcVersion');
+  set('JsonRpcRequest', 'id', 'RequestId');
+  ok(Array.isArray(at('$defs', 'request_id')?.oneOf) && at('$defs', 'request_id').oneOf.length === 2, 'request_id must be a two-branch oneOf');
+  set('JsonRpcRequest', 'method', 'RequestMethod');
+  ok(canonicalText(at('$defs', 'jsonrpc_request', 'properties', 'method')?.const) === canonicalText(derived.request_methods[0]), 'jsonrpc_request.method const must equal the request method registry');
+  groundRef('action_intent_params', '$defs', 'jsonrpc_request', 'properties', 'params');
+  set('JsonRpcRequest', 'params', 'ActionIntentParams');
+  set('JsonRpcResultResponse', 'jsonrpc', 'JsonRpcVersion');
+  set('JsonRpcResultResponse', 'id', 'RequestId');
+  groundRef('apply_action_result', '$defs', 'jsonrpc_response', 'properties', 'result');
+  set('JsonRpcResultResponse', 'result', 'ApplyActionResult');
+  set('JsonRpcResultResponse', 'error', 'never');
+  set('JsonRpcErrorResponse', 'jsonrpc', 'JsonRpcVersion');
+  set('JsonRpcErrorResponse', 'id', 'RequestId');
+  groundRef('error_object', '$defs', 'jsonrpc_response', 'properties', 'error');
+  set('JsonRpcErrorResponse', 'error', 'ErrorObject');
+  set('JsonRpcErrorResponse', 'result', 'never');
+  set('JsonRpcNotification', 'jsonrpc', 'JsonRpcVersion');
+  set('JsonRpcNotification', 'method', 'NotificationMethod');
+  ok(canonicalText(at('$defs', 'jsonrpc_notification', 'properties', 'method')?.const) === canonicalText(derived.notification_methods[0]), 'jsonrpc_notification.method const must equal the notification method registry');
+  groundRef('state_event', '$defs', 'jsonrpc_notification', 'properties', 'params', 'properties', 'event');
+  set('JsonRpcNotification.params', 'event', 'StateEvent');
+
+  // State event.
+  groundIdentifierPattern('$defs', 'state_event', 'properties', 'event_id');
+  set('StateEvent', 'event_id', 'Identifier');
+  groundIdentifierPattern('$defs', 'state_event', 'properties', 'transition_id');
+  set('StateEvent', 'transition_id', 'Identifier');
+  set('StateEvent', 'event_type', groundConst('state_event_event_type', '$defs', 'state_event', 'properties', 'event_type'));
+  groundIdentifierPattern('$defs', 'state_event', 'properties', 'payload', 'properties', 'from_state_id');
+  set('StateEvent.payload', 'from_state_id', 'Identifier');
+  groundIdentifierPattern('$defs', 'state_event', 'properties', 'payload', 'properties', 'to_state_id');
+  set('StateEvent.payload', 'to_state_id', 'Identifier');
+
+  // Deterministic check / state transition / replay.
+  groundIdentifierPattern('$defs', 'deterministic_check', 'properties', 'check_id');
+  set('DeterministicCheck', 'check_id', 'Identifier');
+  set('DeterministicCheck', 'check_version', groundConst('deterministic_check_check_version', '$defs', 'deterministic_check', 'properties', 'check_version'));
+  set('DeterministicCheck', 'kind', groundConst('deterministic_check_kind', '$defs', 'deterministic_check', 'properties', 'kind'));
+  set('DeterministicCheck', 'operator', groundConst('deterministic_check_operator', '$defs', 'deterministic_check', 'properties', 'operator'));
+  ok(at('$defs', 'deterministic_check', 'properties', 'inputs')?.type === 'array' && at('$defs', 'deterministic_check', 'properties', 'inputs')?.items?.type === 'number', 'deterministic_check.inputs must be an array of numbers');
+  set('DeterministicCheck', 'inputs', 'readonly number[]');
+  ok(at('$defs', 'deterministic_check', 'properties', 'output')?.type === 'number', 'deterministic_check.output must be a number');
+  set('DeterministicCheck', 'output', 'number');
+  groundIdentifierPattern('$defs', 'state_transition', 'properties', 'transition_id');
+  set('StateTransition', 'transition_id', 'Identifier');
+  groundIdentifierPattern('$defs', 'state_transition', 'properties', 'from_state_id');
+  set('StateTransition', 'from_state_id', 'Identifier');
+  groundIdentifierPattern('$defs', 'state_transition', 'properties', 'to_state_id');
+  set('StateTransition', 'to_state_id', 'Identifier');
+  groundIdentifierPattern('$defs', 'state_transition', 'properties', 'applied_action', 'properties', 'action');
+  set('StateTransition.applied_action', 'action', 'Identifier');
+  groundRef('seat_id', '$defs', 'state_transition', 'properties', 'applied_action', 'properties', 'seat_id');
+  set('StateTransition.applied_action', 'seat_id', 'SeatId');
+  groundArrayOfRef('state_field', '$defs', 'state_transition', 'properties', 'result');
+  set('StateTransition', 'result', 'readonly StateField[]');
+  groundIdentifierPattern('$defs', 'replay_assertion', 'properties', 'replays', 'items', 'properties', 'replay_id');
+  set('ReplayRecord', 'replay_id', 'Identifier');
+  groundRef('sha256_hex', '$defs', 'replay_assertion', 'properties', 'replays', 'items', 'properties', 'final_state_hash');
+  set('ReplayRecord', 'final_state_hash', 'string');
+  groundIdentifierPattern('$defs', 'replay_assertion', 'properties', 'assertion_id');
+  set('ReplayAssertion', 'assertion_id', 'Identifier');
+  set('ReplayAssertion', 'hash_algorithm', groundConst('replay_assertion_hash_algorithm', '$defs', 'replay_assertion', 'properties', 'hash_algorithm'));
+  groundPlainString('$defs', 'replay_assertion', 'properties', 'canonical_json_rule');
+  set('ReplayAssertion', 'canonical_json_rule', 'string');
+  set('ReplayAssertion', 'final_state_ref', groundConst('replay_assertion_final_state_ref', '$defs', 'replay_assertion', 'properties', 'final_state_ref'));
+  groundRef('sha256_hex', '$defs', 'replay_assertion', 'properties', 'final_state_hash');
+  set('ReplayAssertion', 'final_state_hash', 'string');
+  ok(at('$defs', 'replay_assertion', 'properties', 'replays')?.type === 'array' && at('$defs', 'replay_assertion', 'properties', 'replays')?.items?.type === 'object', 'replay_assertion.replays must be an array of inline replay records');
+  set('ReplayAssertion', 'replays', 'readonly ReplayRecord[]');
+
+  // Mutant specimen / manifest.
+  set('MutantSpecimen', 'markers', groundConst('mutant_specimen_markers', '$defs', 'mutant_specimen', 'properties', 'markers'));
+  set('MutantSpecimen', 'kind', groundConst('mutant_specimen_kind', '$defs', 'mutant_specimen', 'properties', 'kind'));
+  groundIdentifierPattern('$defs', 'mutant_specimen', 'properties', 'mutant_id');
+  set('MutantSpecimen', 'mutant_id', 'Identifier');
+  groundRef('seat_id', '$defs', 'mutant_specimen', 'properties', 'seat_id');
+  set('MutantSpecimen', 'seat_id', 'SeatId');
+  groundIdentifierPattern('$defs', 'mutant_specimen', 'properties', 'leaked_field_id');
+  set('MutantSpecimen', 'leaked_field_id', 'Identifier');
+  groundRef('projection', '$defs', 'mutant_specimen', 'properties', 'projection');
+  set('MutantSpecimen', 'projection', 'Projection');
+  groundPlainString('$defs', 'manifest_asset', 'properties', 'path');
+  set('ManifestAsset', 'path', 'string');
+  groundEnum('manifest_kinds', '$defs', 'manifest_asset', 'properties', 'kind');
+  set('ManifestAsset', 'kind', 'FixtureKind');
+  groundPlainString('$defs', 'manifest_asset', 'properties', 'schema_ref');
+  set('ManifestAsset', 'schema_ref', 'string');
+  groundRef('sha256_hex', '$defs', 'manifest_asset', 'properties', 'sha256');
+  set('ManifestAsset', 'sha256', 'string');
+  groundPlainString('$defs', 'manifest_mutant', 'properties', 'path');
+  set('ManifestMutant', 'path', 'string');
+  set('ManifestMutant', 'kind', groundConst('mutant_kind', '$defs', 'manifest_mutant', 'properties', 'kind'));
+  groundPlainString('$defs', 'manifest_mutant', 'properties', 'schema_ref');
+  set('ManifestMutant', 'schema_ref', 'string');
+  groundRef('sha256_hex', '$defs', 'manifest_mutant', 'properties', 'sha256');
+  set('ManifestMutant', 'sha256', 'string');
+  set('ManifestMutant', 'expected_semantic_rejection', groundConst('mutant_expected_semantic_rejection', '$defs', 'manifest_mutant', 'properties', 'expected_semantic_rejection'));
+  groundPlainString('$defs', 'fixture_manifest', 'properties', 'fixture_name');
+  set('FixtureManifest', 'fixture_name', 'string');
+  groundArrayOfRef('manifest_asset', '$defs', 'fixture_manifest', 'properties', 'assets');
+  set('FixtureManifest', 'assets', 'readonly ManifestAsset[]');
+  set('FixtureManifest', 'expected_final_state', groundConst('fixture_manifest_expected_final_state', '$defs', 'fixture_manifest', 'properties', 'expected_final_state'));
+  set('FixtureManifest', 'replay_assertion', groundConst('fixture_manifest_replay_assertion', '$defs', 'fixture_manifest', 'properties', 'replay_assertion'));
+  groundArrayOfRef('manifest_mutant', '$defs', 'fixture_manifest', 'properties', 'mutants');
+  set('FixtureManifest', 'mutants', 'readonly ManifestMutant[]');
+
+  // FixtureBundle (synthetic validation boundary — no schema node).
+  set('FixtureBundle', 'manifest', 'FixtureManifest');
+  set('FixtureBundle', 'documents', 'ReadonlyMap<string, unknown>');
+  set('FixtureBundle', 'schema', 'unknown');
+  return { exprs, problems };
+}
+
+function auditTypeExpressions(source, derivedExpressions) {
+  const problems = [...derivedExpressions.problems];
+  const declared = parseInterfaces(source);
+  for (const [key, expected] of Object.entries(derivedExpressions.exprs)) {
+    const dot = key.indexOf('.');
+    const iface = key.slice(0, dot);
+    const member = key.slice(dot + 1);
+    const actual = declared[iface]?.exprs?.[member];
+    if (!actual) {
+      problems.push(`member ${key} has no declared type expression in types.ts`);
+      continue;
+    }
+    if (actual.expression !== expected) {
+      problems.push(`member ${key} type expression drifted: declared ${JSON.stringify(actual.expression)}, schema-derived ${JSON.stringify(expected)}`);
+    }
+  }
+  for (const [iface, members] of Object.entries(declared)) {
+    for (const [member, info] of Object.entries(members.exprs ?? {})) {
+      if (members.nestedOwners?.has(member)) continue;
+      const key = `${iface}.${member}`;
+      if (!(key in derivedExpressions.exprs)) {
+        problems.push(`member ${key} has no schema-derived type-expression expectation (unreviewed public type surface)`);
+      }
+    }
+  }
+  return problems;
+}
+
+// Wire error-code type surface: the OPEN canonical namespace type
+// (AiptWireErrorCode, branded + regex-enforced) must be used for
+// ErrorObject.data.error_code, ValidationIssue.code stays the FINITE SDK
+// union, and ManifestMutant.expected_semantic_rejection must be the EXACT
+// descriptor-derived const literal — never the broad finite union.
+function auditErrorCodeSurface(typesSource, errorsSource) {
+  const problems = [];
+  if (!/type\s+AiptWireErrorCode\s*=\s*string\s*&/.test(typesSource)) {
+    problems.push('types.ts must declare the branded open wire namespace type AiptWireErrorCode (string & brand)');
+  }
+  if (!/error_code:\s*AiptWireErrorCode/.test(typesSource)) {
+    problems.push('ErrorObject.data.error_code must be typed AiptWireErrorCode (the open canonical wire namespace, regex-enforced at runtime)');
+  }
+  if (!/expected_semantic_rejection:\s*\(typeof\s+CONTRACT_DESCRIPTOR\)\['mutant_expected_semantic_rejection'\]/.test(typesSource)) {
+    problems.push("ManifestMutant.expected_semantic_rejection must be the exact descriptor-derived literal (typeof CONTRACT_DESCRIPTOR)['mutant_expected_semantic_rejection'], never the broad AiptErrorCode union");
+  }
+  if (!/code:\s*AiptErrorCode/.test(errorsSource)) {
+    problems.push('ValidationIssue.code must stay the finite AiptErrorCode union');
+  }
+  return problems;
 }
 
 function auditTypeShapes(source, shapes) {
@@ -297,27 +597,6 @@ function auditTypeShapes(source, shapes) {
   }
   for (const name of Object.keys(declared)) {
     if (!(name in shapes)) problems.push(`public interface ${name} has no schema-derived shape expectation (unreviewed public type surface)`);
-  }
-  return problems;
-}
-
-// Wire error-code type surface: the OPEN canonical namespace type
-// (AiptWireErrorCode, branded + regex-enforced) must be used for
-// ErrorObject.data.error_code, while ValidationIssue.code and
-// ManifestMutant.expected_semantic_rejection stay the FINITE SDK union.
-function auditErrorCodeSurface(typesSource, errorsSource) {
-  const problems = [];
-  if (!/type\s+AiptWireErrorCode\s*=\s*string\s*&/.test(typesSource)) {
-    problems.push('types.ts must declare the branded open wire namespace type AiptWireErrorCode (string & brand)');
-  }
-  if (!/error_code:\s*AiptWireErrorCode/.test(typesSource)) {
-    problems.push('ErrorObject.data.error_code must be typed AiptWireErrorCode (the open canonical wire namespace, regex-enforced at runtime)');
-  }
-  if (!/expected_semantic_rejection:\s*AiptErrorCode/.test(typesSource)) {
-    problems.push('ManifestMutant.expected_semantic_rejection must stay the finite AiptErrorCode union');
-  }
-  if (!/code:\s*AiptErrorCode/.test(errorsSource)) {
-    problems.push('ValidationIssue.code must stay the finite AiptErrorCode union');
   }
   return problems;
 }
@@ -493,10 +772,19 @@ export async function run(ctx) {
     for (const problem of shapeProblems.slice(0, 12)) fail(`public type-shape drift: ${problem}`);
     fail('the ACTUAL declared interface surface of types.ts drifted from the schema-derived shape (required/optional/discriminant members)');
   } else ok(`public type-shape audit: ${Object.keys(derivedShapes).length} interfaces match the schema-derived required/optional/discriminant member expectations`);
+
+  // ---- 6c. actual declared TYPE EXPRESSIONS vs schema-derived expressions ----
+  const derivedExpressions = deriveTypeExpressions(schema, derived);
+  const expressionProblems = auditTypeExpressions(typesSource, derivedExpressions);
+  if (expressionProblems.length > 0) {
+    for (const problem of expressionProblems.slice(0, 12)) fail(`public type-expression drift: ${problem}`);
+    fail('the ACTUAL declared member type expressions of types.ts drifted from the schema-derived expectations (member types, nested object shapes, descriptor-derived const/discriminant types)');
+  } else ok(`public type-expression audit: ${Object.keys(derivedExpressions.exprs).length} member type expressions match the schema-derived expectations (nested shapes and descriptor-derived literals included)`);
+
   const errorCodeSurfaceProblems = auditErrorCodeSurface(typesSource, errorsSource);
   if (errorCodeSurfaceProblems.length > 0) {
     for (const problem of errorCodeSurfaceProblems) fail(`wire error-code type surface: ${problem}`);
-  } else ok('wire error-code type surface: ErrorObject.data.error_code is the open branded AiptWireErrorCode namespace; ValidationIssue.code stays the finite AiptErrorCode union');
+  } else ok('wire error-code type surface: ErrorObject.data.error_code is the open branded AiptWireErrorCode namespace; ValidationIssue.code stays the finite AiptErrorCode union; ManifestMutant.expected_semantic_rejection is the exact descriptor-derived literal');
 
   // ---- 7. zero-dependency package boundary ----
   const pkg = readJson(`${SDK_PACKAGE}/package.json`);
@@ -609,8 +897,13 @@ export async function run(ctx) {
   const bundleResult = sdk.validateFixtureBundle({ manifest, documents }, schema);
   if (!bundleResult.valid) {
     fail(`SDK fixture bundle validation rejected the shared fixture: ${JSON.stringify(bundleResult.issues.slice(0, 5))}`);
-  } else ok('SDK fixture bundle validation accepts the shared manifest + documents (digest/identity/inventory/schema/semantic-proof)');
+  } else ok('SDK fixture bundle validation accepts the shared manifest + documents (digest/identity/inventory/schema-fingerprint/ordinary-projection/semantic-proof)');
   if (!sdk.validateFixtureManifest(manifest).valid) fail('SDK fixture manifest validation rejected the shared manifest');
+  // The general package-local evaluator still accepts the canonical schema
+  // and the shared documents without the bundle fingerprint binding.
+  const schemaInstanceCheck = sdk.validateSchemaInstance(schema, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+  if (!schemaInstanceCheck.valid) fail(`SDK schema evaluator rejected the shared state against the canonical schema: ${JSON.stringify(schemaInstanceCheck.issues.slice(0, 3))}`);
+  else ok('validateSchemaInstance (general supported-subset evaluator) accepts the canonical schema + shared state');
 
   // ---- 13. fail-closed negative behavior probes ----
   const makeRequest = (over) => ({
@@ -724,6 +1017,93 @@ export async function run(ctx) {
     { label: 'known seats invalid identifier', expected: ['AIPT_INVALID_IDENTIFIER'], run: () => sdk.validateProjectionSemantics(state, readJson(`${FIXTURE_DIR}/projection-seat-a.json`), ['Seat-Bad!']) },
     { label: 'known seats duplicate', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.validateProjectionSemantics(state, readJson(`${FIXTURE_DIR}/projection-seat-a.json`), ['seat-a', 'seat-b', 'seat-a']) },
     { label: 'wire error_code violating the pattern', expected: ['AIPT_INVALID_VALUE'], run: () => sdk.toJsonRpcErrorResponse({ jsonrpc: '2.0', id: 'probe-id', protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'minimal-v1-arithmetic', error: { code: -32000, message: 'boom', data: { error_code: 'NOT_AIPT' } } }) },
+    // ---- iteration 4C repair probes: every confirmed false acceptance ----
+    { label: 'request top-level symbol-keyed member', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => {
+      const r = makeRequest();
+      Object.defineProperty(r, Symbol('sneak'), { value: 1, enumerable: true });
+      return sdk.toJsonRpcRequest(r);
+    } },
+    { label: 'request top-level non-enumerable member', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => {
+      const r = makeRequest();
+      Object.defineProperty(r, 'sneak', { value: 1, enumerable: false });
+      return sdk.toJsonRpcRequest(r);
+    } },
+    { label: 'request id = -0', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.toJsonRpcRequest({ ...makeRequest(), id: -0 }) },
+    { label: 'request explicit undefined params (required-member bypass)', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.toJsonRpcRequest({ ...makeRequest(), params: undefined }) },
+    { label: 'response unsafe integer error.code', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.toJsonRpcErrorResponse({ jsonrpc: '2.0', id: 'probe-id', protocol_version: '1.0.0', schema_version: '1.0.0', fixture_id: 'minimal-v1-arithmetic', error: { code: Number.MAX_SAFE_INTEGER + 1, message: 'unsafe integer code' } }) },
+    { label: 'manifest top-level symbol-keyed member', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => {
+      const m = { ...manifest };
+      Object.defineProperty(m, Symbol('sneak'), { value: 1, enumerable: true });
+      return sdk.validateFixtureManifest(m);
+    } },
+    { label: 'validateSchemaInstance lossy instance document', expected: ['AIPT_LOSSY_JSON_VALUE'], run: () => sdk.validateSchemaInstance(schema, { x: undefined }, '#/$defs/state', '$') },
+    { label: 'bundle schema fingerprint drift (description-only edit)', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const driftedSchema = JSON.parse(JSON.stringify(schema));
+      driftedSchema.description = `${driftedSchema.description} (fingerprint drift probe)`;
+      return sdk.validateFixtureBundle({ manifest, documents }, driftedSchema);
+    } },
+    { label: 'bundle lossy schema document (cycle)', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const cyclic = {}; cyclic.self = cyclic;
+      return sdk.validateFixtureBundle({ manifest, documents }, cyclic);
+    } },
+    { label: 'schema grammar: format hidden in a passing anyOf branch', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const s = JSON.parse(JSON.stringify(schema));
+      s.$defs.state = { anyOf: [{ type: 'object', format: 'anything' }, { type: 'object' }] };
+      return sdk.validateSchemaInstance(s, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+    } },
+    { label: 'schema grammar: format inside not', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const s = JSON.parse(JSON.stringify(schema));
+      s.$defs.state = { type: 'object', not: { type: 'object', format: 'anything' } };
+      return sdk.validateSchemaInstance(s, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+    } },
+    { label: 'schema grammar: minLength with a string value', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const s = JSON.parse(JSON.stringify(schema));
+      s.$defs.state.properties.state_id = { type: 'string', minLength: 'four' };
+      return sdk.validateSchemaInstance(s, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+    } },
+    { label: 'schema grammar: properties as an array', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const s = JSON.parse(JSON.stringify(schema));
+      s.$defs.state = { type: 'object', properties: [{ type: 'string' }] };
+      return sdk.validateSchemaInstance(s, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+    } },
+    { label: 'schema grammar: additionalProperties as a string', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const s = JSON.parse(JSON.stringify(schema));
+      s.$defs.state = { type: 'object', additionalProperties: 'nope' };
+      return sdk.validateSchemaInstance(s, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+    } },
+    { label: 'schema grammar: malformed keyword in an unreferenced $defs child', expected: ['AIPT_FIXTURE_INVALID_SCHEMA'], run: () => {
+      const s = JSON.parse(JSON.stringify(schema));
+      s.$defs.deterministic_check.properties.operator.type = 'file';
+      return sdk.validateSchemaInstance(s, readJson(`${FIXTURE_DIR}/state.json`), '#/$defs/state', '$');
+    } },
+    { label: 'bundle ordinary projection replaced by the schema-valid hidden-leak projection (digest updated)', expected: ['AIPT_VISIBILITY_UNAUTHORIZED_FIELD'], run: () => {
+      const leaked = JSON.parse(JSON.stringify(documents.get('mutants/hidden-leak.json'))).projection;
+      const m = tamper(manifest, (mm) => { mm.assets.find((a) => a.path === 'projection-seat-b.json').sha256 = selfSha256(leaked); });
+      const docs = new Map(documents);
+      docs.set('projection-seat-b.json', leaked);
+      return sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+    } },
+    { label: 'bundle mutant wrapper seat_id drift (digest updated)', expected: ['AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT'], run: () => {
+      const drifted = JSON.parse(JSON.stringify(documents.get('mutants/hidden-leak.json')));
+      drifted.seat_id = 'seat-a';
+      const m = tamper(manifest, (mm) => { mm.mutants[0].sha256 = selfSha256(drifted); });
+      const docs = new Map(documents);
+      docs.set('mutants/hidden-leak.json', drifted);
+      return sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+    } },
+    { label: 'bundle mutant wrapper leaked_field_id drift (digest updated)', expected: ['AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT'], run: () => {
+      const drifted = JSON.parse(JSON.stringify(documents.get('mutants/hidden-leak.json')));
+      drifted.leaked_field_id = 'turn-count';
+      const m = tamper(manifest, (mm) => { mm.mutants[0].sha256 = selfSha256(drifted); });
+      const docs = new Map(documents);
+      docs.set('mutants/hidden-leak.json', drifted);
+      return sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+    } },
+    { label: 'bundle unlisted manifest.json documents entry (no exemption)', expected: ['AIPT_FIXTURE_UNLISTED_ASSET'], run: () => {
+      const docs = new Map(documents);
+      docs.set('manifest.json', readJson(`${FIXTURE_DIR}/manifest.json`));
+      return sdk.validateFixtureBundle({ manifest, documents: docs }, schema);
+    } },
   ];
   let probeFailures = 0;
   for (const probe of probeCases) {
@@ -748,6 +1128,88 @@ export async function run(ctx) {
     }
   }
   if (probeFailures === 0) ok(`all ${probeCases.length} fail-closed negative behavior probes rejected for the correct contract reasons`);
+
+  // ---- 13d. zero getter/setter invocation probes (iteration 4C) ----
+  {
+    const invocationCases = [];
+    const runCase = (label, fn, expectedCode, getterCalls) => {
+      let codes;
+      try {
+        codes = issueCodesOf(fn);
+      } catch (err) {
+        codes = ['CRASHED'];
+      }
+      const matched = codes.includes(expectedCode);
+      if (getterCalls !== 0) {
+        fail(`zero-invocation probe (${label}) invoked accessors ${getterCalls} time(s)`);
+        invocationCases.push({ label, result: 'FAIL', reason: `accessors invoked ${getterCalls} times` });
+      } else if (!matched) {
+        fail(`zero-invocation probe (${label}) was not rejected with ${expectedCode}, got ${JSON.stringify(codes)}`);
+        invocationCases.push({ label, result: 'FAIL', reason: JSON.stringify(codes) });
+      } else {
+        ok(`zero-invocation PASS: ${label} rejected with ${expectedCode}, zero accessor calls`);
+        invocationCases.push({ label, result: 'PASS', reason: `${expectedCode}, 0 accessor calls` });
+      }
+    };
+    {
+      let calls = 0;
+      const obj = { x: 1 };
+      Object.defineProperty(obj, 'x', { get: () => { calls += 1; return 1; }, enumerable: true });
+      runCase('validateJsonValue object accessor', () => sdk.validateJsonValue(obj), 'AIPT_LOSSY_JSON_VALUE', calls);
+    }
+    {
+      let calls = 0;
+      const arr = [1];
+      Object.defineProperty(arr, 1, { get: () => { calls += 1; return 2; }, enumerable: true });
+      runCase('validateJsonValue array index accessor', () => sdk.validateJsonValue(arr), 'AIPT_LOSSY_JSON_VALUE', calls);
+    }
+    {
+      let calls = 0;
+      const r = makeRequest();
+      const paramsValue = r.params;
+      Object.defineProperty(r, 'params', { get: () => { calls += 1; return paramsValue; }, enumerable: true });
+      runCase('toJsonRpcRequest accessor member', () => sdk.toJsonRpcRequest(r), 'AIPT_LOSSY_JSON_VALUE', calls);
+    }
+    {
+      let calls = 0;
+      const bundle = { manifest, documents, schema };
+      Object.defineProperty(bundle, 'manifest', { get: () => { calls += 1; return manifest; }, enumerable: true });
+      runCase('validateFixtureBundle wrapper accessor', () => sdk.validateFixtureBundle(bundle, schema), 'AIPT_FIXTURE_INVALID_MANIFEST', calls);
+    }
+    {
+      let calls = 0;
+      const documentsObject = {};
+      for (const [key, value] of documents) documentsObject[key] = value;
+      Object.defineProperty(documentsObject, 'state.json', { get: () => { calls += 1; return readJson(`${FIXTURE_DIR}/state.json`); }, enumerable: true });
+      runCase('validateFixtureBundle documents accessor', () => sdk.validateFixtureBundle({ manifest, documents: documentsObject }, schema), 'AIPT_FIXTURE_INVALID_MANIFEST', calls);
+    }
+    {
+      // Manifest-preflight no-document-touch ordering: a failing preflight
+      // must return before any supplied document is read, traversed, or
+      // invoked — and before any hashing.
+      let calls = 0;
+      const hostileDocument = { protocol_version: '1.0.0' };
+      Object.defineProperty(hostileDocument, 'schema_version', { get: () => { calls += 1; return '1.0.0'; }, enumerable: true });
+      const docs = new Map(documents);
+      docs.set('state.json', hostileDocument);
+      const m = tamper(manifest, (mm) => { mm.assets.find((a) => a.path === 'state.json').path = '../escape.json'; });
+      const result = sdk.validateFixtureBundle({ manifest: m, documents: docs }, schema);
+      const codes = result.issues.map((issue) => issue.code);
+      const preflightOnly = codes.length > 0 && codes.every((code) => ['AIPT_FIXTURE_UNSAFE_PATH', 'AIPT_FIXTURE_DUPLICATE_PATH', 'AIPT_FIXTURE_SCHEMA_REF_MISMATCH', 'AIPT_INVALID_VALUE', 'AIPT_MISSING_REQUIRED', 'AIPT_UNKNOWN_FIELD', 'AIPT_LOSSY_JSON_VALUE', 'AIPT_UNKNOWN_VERSION', 'AIPT_FIXTURE_IDENTITY_MISMATCH', 'AIPT_FIXTURE_INVALID_MANIFEST'].includes(code)) && !codes.includes('AIPT_FIXTURE_DIGEST_DRIFT');
+      if (calls !== 0) {
+        fail(`no-document-touch probe invoked document accessors ${calls} time(s)`);
+        invocationCases.push({ label: 'manifest preflight no-document-touch', result: 'FAIL', reason: `document accessors invoked ${calls} times` });
+      } else if (!preflightOnly) {
+        fail(`no-document-touch probe returned non-preflight codes ${JSON.stringify(codes)}`);
+        invocationCases.push({ label: 'manifest preflight no-document-touch', result: 'FAIL', reason: JSON.stringify(codes) });
+      } else {
+        ok('zero-invocation PASS: failing manifest preflight returns before any document touch/hash (preflight-only codes)');
+        invocationCases.push({ label: 'manifest preflight no-document-touch', result: 'PASS', reason: `preflight-only: ${codes.join('|')}, 0 accessor calls` });
+      }
+    }
+    probes.push(...invocationCases);
+    if (invocationCases.every((p) => p.result === 'PASS')) ok(`all ${invocationCases.length} zero-invocation / no-document-touch probes passed with zero accessor calls`);
+  }
 
   // ---- 13b. canonical-valid FUTURE AIPT_* wire error code (positive) ----
   {
@@ -851,6 +1313,30 @@ export async function run(ctx) {
           return diffs.some((diff) => diff.includes('canonical_schema_sha256'));
         },
       },
+      // ---- iteration 4C type-EXPRESSION drift probes: member type edits,
+      // nested shapes, and descriptor-literal widening cannot pass silently ----
+      {
+        label: 'drift: StateField.value narrowed from JsonValue to string',
+        run: () => {
+          const mutated = typesSource.replace('readonly value: JsonValue;', 'readonly value: string;');
+          return auditTypeExpressions(mutated, derivedExpressions).some((p) => p.includes('StateField.value'));
+        },
+      },
+      {
+        label: 'drift: nested member type (StateEvent.payload.from_state_id -> string)',
+        run: () => {
+          const mutated = typesSource.replace('readonly from_state_id: Identifier;', 'readonly from_state_id: string;');
+          return auditTypeExpressions(mutated, derivedExpressions).some((p) => p.includes('StateEvent.payload.from_state_id'));
+        },
+      },
+      {
+        label: 'drift: ManifestMutant.expected_semantic_rejection widened to AiptErrorCode',
+        run: () => {
+          const mutated = typesSource.replace("(typeof CONTRACT_DESCRIPTOR)['mutant_expected_semantic_rejection']", 'AiptErrorCode');
+          return auditTypeExpressions(mutated, derivedExpressions).some((p) => p.includes('ManifestMutant.expected_semantic_rejection'))
+            && auditErrorCodeSurface(mutated, errorsSource).length > 0;
+        },
+      },
     ];
     let driftFailures = 0;
     for (const driftCase of driftCases) {
@@ -870,7 +1356,7 @@ export async function run(ctx) {
         probes.push({ label: driftCase.label, result: 'PASS', reason: 'drift detected' });
       }
     }
-    if (driftFailures === 0) ok(`all ${driftCases.length} in-memory drift negative probes detected their drift reason (schema content, nested required members, manifest ref map, public type shapes, error-code surface)`);
+    if (driftFailures === 0) ok(`all ${driftCases.length} in-memory drift negative probes detected their drift reason (schema content, nested required members, manifest ref map, public type shapes, type expressions, error-code surface)`);
   }
 
   // ---- 14. clean import probe: no output, no ambient work, minimal env ----
@@ -910,6 +1396,7 @@ export async function run(ctx) {
       id_bounds: [derived.id_integer_minimum, derived.id_integer_maximum],
       visibility_labels: derived.visibility_labels,
       type_shapes_audited: Object.keys(derivedShapes).length,
+      type_expressions_audited: Object.keys(derivedExpressions.exprs).length,
     },
   };
 }

@@ -8,9 +8,13 @@
 // independently of the SDK's own serializer.
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { test } from 'node:test';
 import * as sdk from '../src/index.ts';
 import { loadSchema } from './helpers.ts';
+
+const TYPES_SOURCE_PATH = path.resolve(import.meta.dirname, '../src/types.ts');
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -143,4 +147,53 @@ test('the full-content canonical-schema fingerprint covers every schema edit (dr
     canonicalText((sdk.CONTRACT_DESCRIPTOR as unknown as Record<string, unknown>).state_field_required),
     'a nested required-member schema edit must drift the descriptor projection',
   );
+});
+
+// ---- iteration 4C: public type-expression audit (independent mini-audit) ----
+
+function auditTypeExpressions(source: string): string[] {
+  const problems: string[] = [];
+  const interfaceBlock = (name: string): string => {
+    const match = new RegExp(`export\\s+interface\\s+${name}(?:\\s+extends\\s+[A-Za-z_][A-Za-z0-9_]*)?\\s*\\{([\\s\\S]*?)\\n\\}`).exec(source);
+    return match?.[1] ?? '';
+  };
+  const stateField = interfaceBlock('StateField');
+  if (!/readonly\s+value:\s*JsonValue;/.test(stateField)) {
+    problems.push('StateField.value is not the schema-any-value JsonValue type');
+  }
+  const stateEvent = interfaceBlock('StateEvent');
+  if (!/readonly\s+from_state_id:\s*Identifier;/.test(stateEvent)) {
+    problems.push('StateEvent.payload.from_state_id nested member type drifted from Identifier');
+  }
+  const manifestMutant = interfaceBlock('ManifestMutant');
+  if (!/readonly\s+expected_semantic_rejection:\s*\(typeof\s+CONTRACT_DESCRIPTOR\)\['mutant_expected_semantic_rejection'\];/.test(manifestMutant)) {
+    problems.push("ManifestMutant.expected_semantic_rejection is not the descriptor-derived literal (typeof CONTRACT_DESCRIPTOR)['mutant_expected_semantic_rejection']");
+  }
+  return problems;
+}
+
+test('ManifestMutant.expected_semantic_rejection is the exact descriptor-derived literal', () => {
+  const declared: sdk.ManifestMutant['expected_semantic_rejection'] = sdk.CONTRACT_DESCRIPTOR.mutant_expected_semantic_rejection;
+  assert.equal(declared, 'AIPT_VISIBILITY_UNAUTHORIZED_FIELD');
+  const source = fs.readFileSync(TYPES_SOURCE_PATH, 'utf8');
+  assert.match(source, /readonly\s+expected_semantic_rejection:\s*\(typeof\s+CONTRACT_DESCRIPTOR\)\['mutant_expected_semantic_rejection'\];/);
+});
+
+test('the declared public type expressions pass the independent audit, and type edits cannot pass silently', () => {
+  const source = fs.readFileSync(TYPES_SOURCE_PATH, 'utf8');
+  assert.deepEqual(auditTypeExpressions(source), [], 'shipped types.ts must pass the independent type-expression audit');
+
+  // (a) StateField.value narrowed from JsonValue to string must be detected.
+  const narrowed = source.replace('readonly value: JsonValue;', 'readonly value: string;');
+  assert.ok(auditTypeExpressions(narrowed).some((p) => p.includes('StateField.value')), 'StateField.value narrowing to string must be detected');
+
+  // (b) a nested member type drift (StateEvent.payload.from_state_id
+  //     Identifier -> string) must be detected.
+  const nestedDrift = source.replace('readonly from_state_id: Identifier;', 'readonly from_state_id: string;');
+  assert.ok(auditTypeExpressions(nestedDrift).some((p) => p.includes('from_state_id')), 'nested member type drift must be detected');
+
+  // (c) ManifestMutant.expected_semantic_rejection widened away from the
+  //     descriptor literal must be detected.
+  const widened = source.replace("(typeof CONTRACT_DESCRIPTOR)['mutant_expected_semantic_rejection']", 'AiptErrorCode');
+  assert.ok(auditTypeExpressions(widened).some((p) => p.includes('descriptor-derived literal')), 'widening the mutant literal to AiptErrorCode must be detected');
 });
