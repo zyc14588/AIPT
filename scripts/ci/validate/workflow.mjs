@@ -21,13 +21,18 @@
 // six-space `- name:` form, and run evidence comes
 // only from inline `run:` lines (exact command equality, so `|| true`, echo
 // wrappers or extra shell text can never masquerade as a gate) or
-// literal/folded block run bodies (exact non-comment command lines inside
-// one real step). Focused and aggregate commands must each run exactly once,
-// unconditionally, after the single frozen-install step, under their
-// auditable step name; retained single-line gate commands must run exactly
-// once in their intended job. Permission success details are emitted only
-// when every permissions mapping/body validated cleanly and no mapping
-// anywhere grants write.
+// literal/folded block run bodies that equal the accepted run block's exact
+// ordered non-blank/non-comment command lines in exactly one real step.
+// Every block gate carries a unique anchor command that must occur exactly
+// once across every run form of its job, and every gate command's total
+// executable occurrences across inline and block run forms are counted, so a
+// mutated or extra block can never hide beside one valid block. Focused and
+// aggregate commands must each run exactly once, unconditionally, after the
+// single frozen-install step, under their auditable step name, exactly once
+// total in the toolchain job and never in b000-retro/supply-chain; retained
+// single-line gate commands must run exactly once in their intended job.
+// Permission success details are emitted only when every permissions
+// mapping/body validated cleanly and no mapping anywhere grants write.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -85,12 +90,23 @@ const SETUP_DECLS = {
   'supply-chain': [`go-version: ${TOOLCHAIN.go}`, `node-version: ${TOOLCHAIN.node}`],
 };
 
-// Multi-line evidence: every listed line must appear as an exact non-blank,
-// non-comment command line inside one real run block of the given job.
+// Exact block evidence: every gate is the accepted run block's exact ordered
+// non-blank, non-comment command lines — a matching block must equal them
+// element for element, in order, inside exactly one real run step of the
+// given job (echo wrappers, `|| true` suffixes, extra, missing or reordered
+// lines never satisfy it). `anchor` is a command unique to that gate which
+// must occur exactly once across every run form of the job (inline or
+// block), so an additional mutated/extra gate block can never hide beside
+// one valid block. The PostgreSQL gate carries both failure arms and the
+// surrounding case/esac, echo, pull and inspect lines; the pnpm gates keep
+// their real final `pnpm --version` line only where the accepted block has
+// one; the non-gate environment-recording `grep ... || true` lines stay
+// ungated.
 const BLOCK_GATES = {
   'b000-retro': [
     {
       label: 'the fixed B000 validator invocation',
+      anchor: 'node scripts/ci/validate/b000-retro.mjs',
       lines: [
         'node scripts/ci/validate/b000-retro.mjs',
         '--repo .',
@@ -100,45 +116,62 @@ const BLOCK_GATES = {
     },
     {
       label: 'the exact Node.js version verification',
+      anchor: `test "$(node --version)" = "v${TOOLCHAIN.node}"`,
       lines: [`test "$(node --version)" = "v${TOOLCHAIN.node}"`, 'node --version'],
     },
   ],
   toolchain: [
     {
       label: 'the exact Node.js version verification',
+      anchor: `test "$(node --version)" = "v${TOOLCHAIN.node}"`,
       lines: [`test "$(node --version)" = "v${TOOLCHAIN.node}"`, 'node --version'],
     },
     {
       label: 'the exact Go version verification',
-      lines: [`test "$(go version)" = "go version go${TOOLCHAIN.go} linux/amd64"`, 'go version'],
+      anchor: `test "$(go version)" = "go version go${TOOLCHAIN.go} linux/amd64"`,
+      lines: [
+        `test "$(go version)" = "go version go${TOOLCHAIN.go} linux/amd64"`,
+        'go version',
+      ],
     },
     {
       label: 'the exact pnpm installation and version verification',
+      anchor: `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
       lines: [
         `npm install --global --no-audit --no-fund pnpm@${TOOLCHAIN.pnpm}`,
         `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
+        'pnpm --version',
       ],
     },
     {
       label: 'the gofmt check',
-      lines: ['test -z "$(gofmt -l .)"'],
+      anchor: 'test -z "$(gofmt -l .)"',
+      lines: ['test -z "$(gofmt -l .)"', 'echo "gofmt clean"'],
     },
     {
       label: 'the PostgreSQL digest pull / version / repository-digest checks',
+      anchor: `docker pull "postgres@${PG_MULTI_ARCH_DIGEST}"`,
       lines: [
         `docker pull "postgres@${PG_MULTI_ARCH_DIGEST}"`,
         `PG_VERSION="$(docker run --rm "postgres@${PG_MULTI_ARCH_DIGEST}" postgres --version)"`,
+        'echo "postgres --version => ${PG_VERSION}"',
         'case "${PG_VERSION}" in',
         `"postgres (PostgreSQL) ${TOOLCHAIN.postgresql}"*) ;;`,
+        '*) echo "unexpected postgres version: ${PG_VERSION}"; exit 1 ;;',
+        'esac',
         `REPO_DIGESTS="$(docker image inspect "postgres@${PG_MULTI_ARCH_DIGEST}" --format '{{join .RepoDigests ","}}')"`,
+        'echo "RepoDigests: ${REPO_DIGESTS}"',
         'case "${REPO_DIGESTS}" in',
         `*"${PG_MULTI_ARCH_DIGEST}"*) ;;`,
+        '*) echo "pinned multi-arch digest not reported in RepoDigests"; exit 1 ;;',
+        'esac',
       ],
     },
   ],
   'supply-chain': [
     {
       label: 'the exact pnpm installation and version verification',
+      anchor: `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
       lines: [
         `npm install --global --no-audit --no-fund pnpm@${TOOLCHAIN.pnpm}`,
         `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
@@ -146,10 +179,16 @@ const BLOCK_GATES = {
     },
     {
       label: 'the go mod tidy + go.mod/go.sum diff gate',
-      lines: ['go mod tidy', 'git diff --exit-code -- go.mod go.sum'],
+      anchor: 'go mod tidy',
+      lines: [
+        'go mod tidy',
+        'git diff --exit-code -- go.mod go.sum',
+        'echo "go.mod / go.sum tidy-clean"',
+      ],
     },
     {
       label: 'the pinned govulncheck install and execution',
+      anchor: `GOBIN="\${RUNNER_TEMP}/bin" go install ${GOVULNCHECK.module}/cmd/govulncheck@${GOVULNCHECK.version}`,
       lines: [
         `GOBIN="\${RUNNER_TEMP}/bin" go install ${GOVULNCHECK.module}/cmd/govulncheck@${GOVULNCHECK.version}`,
         `"\${RUNNER_TEMP}/bin/govulncheck" -version`,
@@ -335,13 +374,40 @@ function inlineHits(steps, cmd) {
   return hits;
 }
 
-// First step containing one run block with every required line as an exact
-// command line, or null.
-function blockGateHit(steps, requiredLines) {
-  return (
-    steps.find((s) => s.runs.some((r) => r.kind === 'block' && requiredLines.every((l) => r.lines.includes(l)))) ??
-    null
-  );
+// True when two command-line arrays are element-for-element identical.
+function arraysEqual(a, b) {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+// Every step (in order) whose runs contain a block whose trimmed non-blank,
+// non-comment command lines equal `requiredLines` exactly, in order.
+function exactBlockGateHits(analyzed, requiredLines) {
+  const hits = [];
+  analyzed.forEach((s, stepIndex) => {
+    for (const r of s.runs) {
+      if (r.kind === 'block' && arraysEqual(r.lines, requiredLines)) {
+        hits.push({ stepIndex, step: s });
+      }
+    }
+  });
+  return hits;
+}
+
+// Total executable occurrences of `cmd` across every run form (inline `run:`
+// commands and block command lines) of the analyzed steps. Comments, step
+// names, `with:` entries and any other YAML text never count.
+function totalOccurrences(analyzed, cmd) {
+  let n = 0;
+  for (const s of analyzed) {
+    for (const r of s.runs) {
+      if (r.kind === 'inline') {
+        if (r.command === cmd) n += 1;
+      } else {
+        for (const l of r.lines) if (l === cmd) n += 1;
+      }
+    }
+  }
+  return n;
 }
 
 // Setup declaration hits: a real ten-space `with:` entry (the nearest
@@ -650,33 +716,64 @@ export function run(ctx) {
       else fail(`${required} job must declare ${JSON.stringify(decl)} exactly once as a real 10-space with: entry; found ${hits.length}`);
     }
 
-    // Multi-line block evidence: every required command line must sit inside
-    // one real run block of this job, as an exact line (echo wrappers,
-    // `|| true` suffixes or comment placements can never satisfy it).
+    // Exact block gates: the accepted run block's exact ordered non-blank,
+    // non-comment command lines must sit in exactly one real run step of this
+    // job, and the gate's unique anchor command must occur exactly once
+    // across every run form — so an extra or mutated gate block can never
+    // hide beside one valid block (echo wrappers, `|| true` suffixes, comment
+    // placements or reordered lines never satisfy it).
     for (const gate of BLOCK_GATES[required] ?? []) {
-      const hit = blockGateHit(analyzed, gate.lines);
-      if (hit) ok(`${required} job keeps ${gate.label} in one real run step`);
-      else fail(`${required} job must keep ${gate.label} in one real run step (exact non-comment command lines: ${gate.lines.join(' | ')})`);
+      const hits = exactBlockGateHits(analyzed, gate.lines);
+      const anchorCount = totalOccurrences(analyzed, gate.anchor);
+      if (hits.length === 1 && anchorCount === 1) {
+        ok(`${required} job keeps ${gate.label} as exactly one exact run block (anchor \`${gate.anchor}\` unique in the job)`);
+      } else {
+        if (hits.length !== 1) {
+          fail(`${required} job must keep ${gate.label} as exactly one run block whose exact ordered command lines are: ${gate.lines.join(' | ')}; found ${hits.length}`);
+        }
+        if (anchorCount !== 1) {
+          fail(`${required} job anchor \`${gate.anchor}\` (${gate.label}) must occur exactly once across all run forms of the job; found ${anchorCount}`);
+        }
+      }
     }
 
-    // Retained single-line gates: exactly one real inline run step each.
+    // Retained single-line gates: exactly one real inline run step each, and
+    // exactly one executable occurrence total across inline and block run
+    // forms (a block-run duplicate of the same command can never satisfy it).
     for (const cmd of RETAINED_INLINE_GATES[required] ?? []) {
       const hits = inlineHits(analyzed, cmd);
-      if (hits.length === 1) ok(`${required} job runs \`${cmd}\` exactly once`);
-      else fail(`${required} job must run \`${cmd}\` exactly once as a real inline run step (comments, step names, other jobs and duplicates never count): found ${hits.length}`);
+      const total = totalOccurrences(analyzed, cmd);
+      if (hits.length === 1 && total === 1) {
+        ok(`${required} job runs \`${cmd}\` exactly once (single real inline run step, no block duplicate)`);
+      } else {
+        fail(`${required} job must run \`${cmd}\` exactly once as a real inline run step and exactly once total across all run forms (comments, step names, other jobs, block duplicates and inline duplicates never count): inline ${hits.length}, total ${total}`);
+      }
     }
   }
 
   // Focused + aggregate B002 commands: exactly once in toolchain, after the
-  // single frozen-install step, under their own auditable step name.
+  // single frozen-install step, under their own auditable step name, and
+  // exactly once total across inline and block run forms — a block-run
+  // duplicate can never satisfy them. They must not appear in the other
+  // required jobs at all.
   const toolchainAnalyzed = analyzedJobs.toolchain ?? [];
   const frozenHits = inlineHits(toolchainAnalyzed, 'pnpm install --frozen-lockfile');
   const frozenIndex = frozenHits.length === 1 ? frozenHits[0].stepIndex : -1;
   for (const focused of FOCUSED_COMMANDS) {
     const hits = inlineHits(toolchainAnalyzed, focused.command);
+    const total = totalOccurrences(toolchainAnalyzed, focused.command);
+    for (const other of ['b000-retro', 'supply-chain']) {
+      const otherTotal = totalOccurrences(analyzedJobs[other] ?? [], focused.command);
+      if (otherTotal > 0) {
+        fail(`${other} job must not run \`${focused.command}\` (focused/aggregate commands belong only to the toolchain job): found ${otherTotal} executable occurrence(s)`);
+      }
+    }
     if (hits.length !== 1) {
       fail(`toolchain job must run \`${focused.command}\` exactly once as a real inline run step (comments, step names, other jobs and duplicates never count): found ${hits.length}`);
       continue;
+    }
+    if (total !== 1) {
+      fail(`toolchain job must run \`${focused.command}\` exactly once total across all run forms (a block-run duplicate can never satisfy it): found ${total}`);
     }
     const { stepIndex, step } = hits[0];
     const name = (step.name ?? '').toLowerCase();
@@ -688,7 +785,7 @@ export function run(ctx) {
       const where = frozenIndex < 0 ? 'frozen install missing' : `frozen install at step ${frozenIndex + 1}`;
       fail(`toolchain job must run \`${focused.command}\` after the single pnpm install --frozen-lockfile step (command at step ${stepIndex + 1}, ${where})`);
     }
-    if (missing.length === 0 && frozenIndex >= 0 && stepIndex > frozenIndex) {
+    if (missing.length === 0 && frozenIndex >= 0 && stepIndex > frozenIndex && total === 1) {
       ok(`toolchain job runs \`${focused.command}\` exactly once, unconditionally, after the frozen install, under its auditable step name`);
     }
   }
