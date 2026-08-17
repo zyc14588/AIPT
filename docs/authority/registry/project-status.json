@@ -23,7 +23,7 @@
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
       "verified_head": "8bcadc9669e7d04f589f883daa6d4f593875fc9e",
-      "verified_state": "AIPT-M0-B001 merge commit 8bcadc9669e7d04f589f883daa6d4f593875fc9e merged/closed (candidate 2e904ddc2d4f1313a99e19f6751a991d589f8336, post-merge CI run 31951440133); AIPT-M0-B002 in progress on task/AIPT-M0-B002"
+      "verified_state": "AIPT-M0-B001 merge commit 8bcadc9669e7d04f589f883daa6d4f593875fc9e merged/closed (candidate 2e904ddc2d4f1313a99e19f6751a991d589f8336, post-merge CI run 31951440133); AIPT-M0-B002 in progress on task/AIPT-M0-B002 (iteration 4: dependency-free first-party TypeScript Adapter SDK packages/adapter-sdk implemented with its machine gate and supply-chain/SBOM representation; Go protocol consumer and focused B002 workflow evolution remain pending)"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",

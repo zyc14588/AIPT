@@ -1,16 +1,29 @@
-// B001 supply-chain foundation validator (R6): lock presence/integrity,
-// action SHA pins, container digest pin, dependency inventory/license
-// coverage (with the machine license values checked against the expected
-// B001 SPDX license values — the three-layer PostgreSQL model: main
-// software = PostgreSQL, docker-library/postgres packaging source = MIT,
-// composite Docker Official Image = NOASSERTION, with both frozen digests
-// on the image record), a hardened licenses.json baseline (records must be
-// a non-empty array with unique ids and all 11 expected identities present;
-// duplicate ids fail; future explicit records with new ids remain allowed),
-// negative license-inventory regressions on mutated in-memory copies (a
-// missing key identity never crashes a probe — the probe records an
-// explicit FAIL and is safely skipped), deterministic SBOM inputs, and the
-// secret-free / no-real-model-config rules.
+// AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4).
+//
+// Gates: lock presence/integrity, action SHA pins, container digest pin,
+// dependency inventory/license coverage (machine SPDX license values —
+// three-layer PostgreSQL model: main software = PostgreSQL, packaging source
+// = MIT, composite Docker Official Image = NOASSERTION with both frozen
+// digests), a hardened licenses.json baseline, the first-party pnpm workspace
+// model (exact importer set {root, packages/adapter-sdk}, zero dependency
+// specifiers, zero third-party packages), negative regressions on mutated
+// in-memory copies, deterministic SBOM inputs, and the secret-free /
+// no-real-model-config rules.
+//
+// B002 iteration 4 evolution (explicit model):
+//   - exact expected first-party set = {AIPT root, @aipt/adapter-sdk} (both
+//     kind first_party, MIT, with the SDK record carrying its own truthful
+//     B002 metadata — never claimed as B001-verified);
+//   - exact approved tooling/CI/infrastructure set preserved from B001
+//     (actions/*, go, node, pnpm, postgresql, docker-library/postgres,
+//     postgresql-docker-official-image, golang.org/x/vuln) with their exact
+//     SPDX license values and frozen pins;
+//   - zero unrecorded third-party Go/pnpm packages: go.mod has no requires,
+//     pnpm-lock.yaml has no `packages:` section, and any license record id
+//     outside the exact 12-identity set is rejected.
+// The B001 "root importer only" snapshot is superseded by the exact two-
+// importer workspace model; the exact-set validation is kept and extended,
+// never deleted.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -24,7 +37,7 @@ import { scanTreeForHazards } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 
 // Expected SPDX license values for the machine `license` fields of the
-// current B001 license inventory. Three-layer PostgreSQL model (R6):
+// license inventory. Three-layer PostgreSQL model (R6):
 //   - postgresql (18.4 main software): SPDX short identifier PostgreSQL —
 //     the human full name "PostgreSQL License" may only appear in the
 //     human-readable evidence text, never as the machine license value;
@@ -32,8 +45,10 @@ import { git, runAsMain } from '../lib/cli.mjs';
 //   - postgresql-docker-official-image (composite container of multiple
 //     sources/components): NOASSERTION — PostgreSQL or MIT for the whole
 //     image is rejected.
+// B002 iteration 4 adds the first-party @aipt/adapter-sdk record (MIT).
 const EXPECTED_SPDX_LICENSES = {
   AIPT: 'MIT',
+  '@aipt/adapter-sdk': 'MIT',
   'actions/checkout': 'MIT',
   'actions/setup-go': 'MIT',
   'actions/setup-node': 'MIT',
@@ -46,13 +61,42 @@ const EXPECTED_SPDX_LICENSES = {
   'golang.org/x/vuln': 'BSD-3-Clause',
 };
 
+// Exact expected record kinds for the current inventory: the exact
+// first-party set {AIPT, @aipt/adapter-sdk} plus the exact approved
+// tooling/CI/infrastructure set preserved from B001.
+const EXPECTED_RECORD_KINDS = {
+  AIPT: 'first_party',
+  '@aipt/adapter-sdk': 'first_party',
+  'actions/checkout': 'ci_action',
+  'actions/setup-go': 'ci_action',
+  'actions/setup-node': 'ci_action',
+  go: 'toolchain',
+  node: 'toolchain',
+  pnpm: 'toolchain',
+  postgresql: 'infrastructure_image_component',
+  'docker-library/postgres': 'infrastructure_image_component',
+  'postgresql-docker-official-image': 'infrastructure_image',
+  'golang.org/x/vuln': 'supply_chain_tooling',
+};
+
+const EXPECTED_FIRST_PARTY_IDS = ['AIPT', '@aipt/adapter-sdk'];
+
+// Truthful B002 metadata the SDK inventory record must carry: the SDK was
+// verified in AIPT-M0-B002 iteration 4, never in B001.
+const SDK_RECORD = {
+  id: '@aipt/adapter-sdk',
+  version: '1.0.0',
+  selected_by_batch: 'AIPT-M0-B002',
+  verified_at: '2026-08-17T07:15:00Z',
+};
+
 // Pure machine check over a parsed licenses.json inventory: record sanity
-// (records must be a non-empty array with unique ids), the exact expected
-// SPDX license value for every current B001 identity (all 11), the frozen
-// PostgreSQL digests on the composite-image record, and the zero
-// third-party dependency invariant. Future explicit records with new ids
-// are allowed; duplicate ids fail. Negative probes feed mutated in-memory
-// inventories; the on-disk file is never modified.
+// (records must be a non-empty array with unique ids), the exact 12-identity
+// record set (exact first-party set + exact B001 tooling/CI/infrastructure
+// set), exact SPDX license values, exact record kinds, the truthful SDK
+// record metadata, the frozen PostgreSQL digests on the composite-image
+// record, and the zero third-party dependency invariant. Negative probes
+// feed mutated in-memory inventories; the on-disk file is never modified.
 function checkLicenseInventory(licenses) {
   const details = [];
   let pass = true;
@@ -76,8 +120,7 @@ function checkLicenseInventory(licenses) {
   if (records.length > 0 && records.every((r) => r?.id && r.license && r.license !== 'UNKNOWN')) {
     ok(`${records.length} license records, none UNKNOWN`);
   }
-  // Id uniqueness: duplicate ids fail now; future explicit records with new
-  // ids are allowed.
+  // Id uniqueness: duplicate ids fail now and forever.
   const seenIds = new Set();
   const duplicateIds = new Set();
   for (const rec of records) {
@@ -91,25 +134,52 @@ function checkLicenseInventory(licenses) {
   const aiptRec = records.find((r) => r?.id === 'AIPT');
   if (aiptRec?.license !== 'MIT') fail('AIPT license record must be MIT');
   else ok('AIPT = MIT (root LICENSE)');
-  // Machine-check every current B001 inventory record against its expected
-  // SPDX license value — all 11 expected identities must exist and match
-  // exactly (postgresql = PostgreSQL; docker-library/postgres = MIT;
-  // composite image = NOASSERTION).
-  let spdxLicenseOk = true;
+  // Machine-check every expected inventory record against its expected SPDX
+  // license value and kind — all 12 expected identities must exist and match
+  // exactly.
+  let identityOk = true;
   for (const [id, expected] of Object.entries(EXPECTED_SPDX_LICENSES)) {
     const rec = records.find((r) => r?.id === id);
     if (!rec) {
       fail(`licenses.json missing record ${id}`);
-      spdxLicenseOk = false;
+      identityOk = false;
       continue;
     }
     if (rec.license !== expected) {
       fail(`licenses.json record ${id} machine license must be ${JSON.stringify(expected)}, got ${JSON.stringify(rec.license)}`);
-      spdxLicenseOk = false;
+      identityOk = false;
+    }
+    const kind = EXPECTED_RECORD_KINDS[id];
+    if (rec.kind !== kind) {
+      fail(`licenses.json record ${id} kind must be ${JSON.stringify(kind)}, got ${JSON.stringify(rec.kind)}`);
+      identityOk = false;
     }
   }
-  if (spdxLicenseOk) {
-    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} B001 license records carry the expected SPDX license values (postgresql = PostgreSQL; docker-library/postgres = MIT; composite image = NOASSERTION)`);
+  if (identityOk) {
+    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (exact first-party set + exact B001 tooling/CI/infrastructure set)`);
+  }
+  // Exact-set model: no unrecorded third-party identity may exist.
+  const known = new Set(Object.keys(EXPECTED_SPDX_LICENSES));
+  const unrecorded = records.filter((r) => typeof r?.id === 'string' && r.id !== '' && !known.has(r.id));
+  if (unrecorded.length > 0) {
+    fail(`unrecorded license record ids (zero unrecorded third-party Go/pnpm packages): ${unrecorded.map((r) => r.id).join(', ')}`);
+  } else if (records.length > 0 && records.length === known.size) {
+    ok(`license record set is exactly the ${known.size} expected identities (zero unrecorded third-party packages)`);
+  }
+  // Exact first-party set: exactly AIPT + @aipt/adapter-sdk.
+  const firstParty = records.filter((r) => r?.kind === 'first_party').map((r) => r?.id).sort();
+  if (JSON.stringify(firstParty) !== JSON.stringify([...EXPECTED_FIRST_PARTY_IDS].sort())) {
+    fail(`first-party set must be exactly ${EXPECTED_FIRST_PARTY_IDS.join(' + ')}, got ${JSON.stringify(firstParty)}`);
+  } else ok(`exact first-party set: ${EXPECTED_FIRST_PARTY_IDS.join(' + ')}`);
+  // Truthful SDK record metadata (B002-verified, never B001).
+  const sdkRec = records.find((r) => r?.id === SDK_RECORD.id);
+  if (sdkRec) {
+    if (sdkRec.version !== SDK_RECORD.version) fail(`@aipt/adapter-sdk license record version must be ${SDK_RECORD.version}, got ${JSON.stringify(sdkRec.version)}`);
+    if (sdkRec.selected_by_batch !== SDK_RECORD.selected_by_batch) fail(`@aipt/adapter-sdk license record selected_by_batch must be ${SDK_RECORD.selected_by_batch} (truthful B002 metadata)`);
+    if (sdkRec.verified_at !== SDK_RECORD.verified_at) fail(`@aipt/adapter-sdk license record verified_at must be ${SDK_RECORD.verified_at} (verified in B002, never B001)`);
+    if (typeof sdkRec.evidence !== 'string' || !sdkRec.evidence.includes('packages/adapter-sdk') || !sdkRec.evidence.includes('LICENSE')) {
+      fail('@aipt/adapter-sdk license record evidence must reference packages/adapter-sdk and the root LICENSE');
+    } else ok('@aipt/adapter-sdk license record carries truthful B002 metadata (version 1.0.0, B002 selection, B002 verification, root LICENSE evidence)');
   }
   // The composite-image record must pin both frozen digests exactly.
   const imageRec = records.find((r) => r?.id === 'postgresql-docker-official-image');
@@ -128,9 +198,96 @@ function checkLicenseInventory(licenses) {
   }
   const appDeps = src.application_dependencies && typeof src.application_dependencies === 'object' ? src.application_dependencies : {};
   if (appDeps.go_runtime_third_party_modules !== 0 || appDeps.pnpm_runtime_third_party_packages !== 0) {
-    fail('licenses.json application_dependencies must both be 0 at B001');
+    fail('licenses.json application_dependencies must both be 0');
   } else ok('licenses.json application dependency inventory = 0 / 0');
 
+  return { result: pass ? 'PASS' : 'FAIL', details };
+}
+
+// Pure machine check of the first-party pnpm workspace model.
+//   - exact importer set: '.' plus exactly the registered workspace package
+//     directories (B002 iteration 4: packages/adapter-sdk);
+//   - every importer carries zero dependency specifiers;
+//   - zero third-party packages (no `packages:` section);
+//   - pnpm-workspace.yaml declares packages/* and its prose names the SDK.
+function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
+  const details = [];
+  let pass = true;
+  const ok = (msg) => details.push(`ok: ${msg}`);
+  const fail = (msg) => {
+    pass = false;
+    details.push(`FAIL: ${msg}`);
+  };
+  const text = typeof lockText === 'string' ? lockText : '';
+  if (!text.includes('lockfileVersion')) fail('pnpm-lock.yaml missing lockfileVersion');
+  if (/^packages:\s*$/m.test(text)) fail('pnpm-lock.yaml carries third-party packages (zero unrecorded third-party Go/pnpm packages required)');
+  else ok('pnpm-lock.yaml: zero third-party packages section');
+
+  const allLines = text.split('\n');
+  const importerStart = allLines.findIndex((line) => line.trim() === 'importers:');
+  const section = [];
+  if (importerStart !== -1) {
+    for (let index = importerStart + 1; index < allLines.length; index += 1) {
+      if (/^\S/.test(allLines[index])) break; // next top-level key ends the section
+      section.push(allLines[index]);
+    }
+  }
+  const importers = new Map(); // key -> { inline: string, content: string[] }
+  let current = null;
+  for (const line of section) {
+    const keyMatch = /^  ([^\s:]+):(.*)$/.exec(line);
+    if (keyMatch) {
+      current = { key: keyMatch[1], inline: keyMatch[2].trim(), content: [] };
+      importers.set(current.key, current);
+    } else if (current && line.trim() !== '') {
+      current.content.push(line);
+    }
+  }
+  const expectedKeys = ['.', ...importerDirs].sort();
+  const actualKeys = [...importers.keys()].sort();
+  if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+    fail(`pnpm-lock importers must be exactly the registered workspace importers [${expectedKeys.join(', ')}], got [${actualKeys.join(', ')}] (unregistered workspace importer/package rejected)`);
+  } else ok(`pnpm-lock importers = exactly [${expectedKeys.join(', ')}]`);
+  let specifierFree = true;
+  for (const [key, importer] of importers) {
+    if (!(importer.inline === '{}' && importer.content.length === 0)) {
+      fail(`pnpm-lock importer ${JSON.stringify(key)} carries dependency specifiers (importer entry must be exactly <key>: {})`);
+      specifierFree = false;
+    }
+  }
+  if (specifierFree) ok('every pnpm-lock importer carries zero dependency specifiers');
+  if (typeof workspaceYaml === 'string') {
+    if (!workspaceYaml.includes('"packages/*"')) fail('pnpm-workspace.yaml must keep the packages/* workspace glob');
+    else if (!workspaceYaml.includes('packages/adapter-sdk')) fail('pnpm-workspace.yaml prose must name the registered first-party package packages/adapter-sdk');
+    else ok('pnpm-workspace.yaml declares packages/* and names packages/adapter-sdk');
+  }
+  return { result: pass ? 'PASS' : 'FAIL', details };
+}
+
+// Pure machine check that every registered workspace package directory has a
+// matching first-party license record (id == package name, version ==
+// package version, MIT == package license) and zero dependency specifiers.
+function checkWorkspaceFirstParty(packageEntries, licenses) {
+  const details = [];
+  let pass = true;
+  const ok = (msg) => details.push(`ok: ${msg}`);
+  const fail = (msg) => {
+    pass = false;
+    details.push(`FAIL: ${msg}`);
+  };
+  const records = Array.isArray(licenses?.records) ? licenses.records : [];
+  for (const entry of packageEntries) {
+    const record = records.find((r) => r?.id === entry.name);
+    if (!record) {
+      fail(`workspace package ${JSON.stringify(entry.dir)} (${entry.name}) has no first-party license record`);
+      continue;
+    }
+    if (record.kind !== 'first_party') fail(`workspace package ${entry.name} license record must be kind first_party`);
+    if (record.license !== entry.license || entry.license !== 'MIT') fail(`workspace package ${entry.name} license record must be MIT (package says ${JSON.stringify(entry.license)})`);
+    if (record.version !== entry.version) fail(`workspace package ${entry.name} license record version ${JSON.stringify(record.version)} must equal package.json version ${JSON.stringify(entry.version)}`);
+    if (entry.hasDeps) fail(`workspace package ${entry.name} carries dependency specifiers (first-party packages must stay dependency-free)`);
+    else ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, dependency-free, license-covered`);
+  }
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
@@ -161,13 +318,13 @@ export function run(ctx) {
     if (policy.rules[key] !== true) fail(`policy rule ${key} must be true`);
   }
   if (policy.selected_by_batch !== SUPPLY_CHAIN_BASELINE_BATCH) fail(`policy.json selected_by_batch must be ${SUPPLY_CHAIN_BASELINE_BATCH}`);
-  else ok('policy.json selected_by_batch = AIPT-M0-B001');
+  else ok('policy.json selected_by_batch = AIPT-M0-B001 (historical baseline selector, unchanged)');
   if (policy.license_policy?.current_third_party_application_runtime_dependencies !== 0) {
     fail('policy.json must record zero third-party application runtime dependencies');
   } else ok('policy.json records zero third-party application runtime dependencies');
 
-  // ---- licenses.json: machine-checked three-layer inventory + negative
-  // regressions over mutated in-memory copies (the file is never written) --
+  // ---- licenses.json: machine-checked inventory + negative regressions over
+  // mutated in-memory copies (the file is never written) ----
   let licenses;
   try {
     licenses = JSON.parse(read('tools/supply-chain/licenses.json'));
@@ -247,6 +404,55 @@ export function run(ctx) {
         recs.splice(recs.findIndex((r) => r.id === 'postgresql'), 1);
       },
     },
+    {
+      label: 'adapter SDK inventory record deleted',
+      targetId: SDK_RECORD.id,
+      reason: /missing record @aipt\/adapter-sdk/,
+      mutate: (recs) => {
+        recs.splice(recs.findIndex((r) => r.id === SDK_RECORD.id), 1);
+      },
+    },
+    {
+      label: 'adapter SDK inventory record wrongly licensed',
+      targetId: SDK_RECORD.id,
+      reason: /MIT/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === SDK_RECORD.id).license = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'adapter SDK inventory record kind not first-party',
+      targetId: SDK_RECORD.id,
+      reason: /first_party/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === SDK_RECORD.id).kind = 'dev_tool';
+      },
+    },
+    {
+      label: 'adapter SDK inventory record pretends B001 verification',
+      targetId: SDK_RECORD.id,
+      reason: /selected_by_batch|verified_at/,
+      mutate: (recs) => {
+        const rec = recs.find((r) => r.id === SDK_RECORD.id);
+        rec.selected_by_batch = 'AIPT-M0-B001';
+        rec.verified_at = '2026-08-16T06:51:41Z';
+      },
+    },
+    {
+      label: 'unrecorded third-party license identity injected',
+      targetId: 'AIPT',
+      reason: /unrecorded license record ids/,
+      mutate: (recs) => {
+        recs.push({
+          id: 'rogue-third-party-lib',
+          kind: 'third_party',
+          license: 'MIT',
+          version: '1.2.3',
+          evidence: 'probe',
+          verified_at: '2026-08-17T00:00:00Z',
+        });
+      },
+    },
   ];
   let licenseProbesOk = true;
   for (const probe of licenseProbes) {
@@ -282,6 +488,95 @@ export function run(ctx) {
     }
   }
   if (licenseProbesOk) ok(`all ${licenseProbes.length} license-inventory negative probes rejected as expected`);
+
+  // ---- first-party pnpm workspace model (B002 iteration 4) ----
+  const workspaceYaml = read('pnpm-workspace.yaml');
+  const pnpmLockText = read('pnpm-lock.yaml');
+  const packagesRoot = path.join(ctx.repo, 'packages');
+  const importerDirs = [];
+  const packageEntries = [];
+  for (const entry of fs.readdirSync(packagesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const pkgPath = path.join(packagesRoot, entry.name, 'package.json');
+    if (!fs.existsSync(pkgPath)) continue;
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    importerDirs.push(`packages/${entry.name}`);
+    packageEntries.push({
+      dir: `packages/${entry.name}`,
+      name: pkg.name,
+      version: pkg.version,
+      license: pkg.license,
+      hasDeps: Boolean(pkg.dependencies || pkg.devDependencies || pkg.peerDependencies || pkg.optionalDependencies),
+    });
+  }
+  if (importerDirs.length === 0) fail('no workspace packages found under packages/ (packages/adapter-sdk missing)');
+  const workspaceModel = checkPnpmWorkspaceModel({ lockText: pnpmLockText, importerDirs, workspaceYaml });
+  details.push(...workspaceModel.details);
+  if (workspaceModel.result !== 'PASS') fail('first-party pnpm workspace model FAIL');
+  else ok('first-party pnpm workspace model PASS: exact importer set, zero specifiers, zero third-party packages');
+  const workspaceFirstParty = checkWorkspaceFirstParty(packageEntries, licenses);
+  details.push(...workspaceFirstParty.details);
+  if (workspaceFirstParty.result !== 'PASS') fail('workspace first-party license coverage FAIL');
+  else ok('every workspace package is license-covered as first-party');
+  // Negative workspace probes over mutated in-memory inputs.
+  const workspaceProbes = [
+    {
+      label: 'unregistered workspace importer injected into the lock',
+      reason: /unregistered workspace importer|importers must be exactly/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText.replace('  packages/adapter-sdk: {}', '  packages/adapter-sdk: {}\n\n  packages/rogue-pkg: {}'),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'registered SDK importer missing from the lock',
+      reason: /importers must be exactly/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText.replace(/  packages\/adapter-sdk: \{\}\n/, ''),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'dependency specifier smuggled into an importer',
+      reason: /dependency specifiers/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText.replace('  packages/adapter-sdk: {}', '  packages/adapter-sdk:\n    dependencies:\n      is-odd:\n        specifier: ^3.0.0\n        version: 3.0.2'),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'third-party package smuggled into the packages section',
+      reason: /third-party packages/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: `${pnpmLockText}\npackages:\n\n  is-odd@3.0.2:\n    resolution: {integrity: sha512-probe}\n`,
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+  ];
+  let workspaceProbesOk = true;
+  for (const probe of workspaceProbes) {
+    let result;
+    try {
+      result = probe.mutate();
+    } catch (err) {
+      fail(`negative workspace probe (${probe.label}) crashed: ${err.message}`);
+      workspaceProbesOk = false;
+      continue;
+    }
+    if (result.result !== 'FAIL') {
+      fail(`negative workspace probe (${probe.label}) was NOT rejected`);
+      workspaceProbesOk = false;
+    } else {
+      const rightReason = result.details.filter((d) => d.startsWith('FAIL')).some((d) => probe.reason.test(d));
+      if (!rightReason) fail(`negative workspace probe (${probe.label}) failed for an unexpected reason`);
+      else ok(`negative-probe PASS: workspace model rejects ${probe.label}`);
+    }
+  }
+  if (workspaceProbesOk) ok(`all ${workspaceProbes.length} workspace-model negative probes rejected as expected`);
 
   // ---- ci-actions.lock.json ----
   let actionsLock;
@@ -358,20 +653,9 @@ export function run(ctx) {
 
   // ---- dependency inventory: zero third-party runtime deps ----
   const goMod = read('go.mod');
-  if (/^require\b/m.test(goMod)) fail('go.mod has runtime requires (forbidden at B001)');
+  if (/^require\b/m.test(goMod)) fail('go.mod has runtime requires (forbidden)');
   else ok('go.mod: zero module requirements (no third-party runtime dependency)');
-  const pnpmLock = read('pnpm-lock.yaml');
-  if (/^packages:\s*$/m.test(pnpmLock)) fail('pnpm-lock.yaml carries third-party packages');
-  else ok('pnpm-lock.yaml: zero third-party packages (root importer only)');
-  if (!pnpmLock.includes('lockfileVersion')) fail('pnpm-lock.yaml missing lockfileVersion');
-  const importers = /^importers:\s*\n((?:(?!^\S)[\s\S])*)/m.exec(pnpmLock)?.[1] ?? '';
-  const importerKeys = [...importers.matchAll(/^\s{2}['"]?([^'"\s:]+)['"]?:/gm)].map((m) => m[1]);
-  if (importerKeys.length !== 1 || importerKeys[0] !== '.') {
-    fail(`pnpm-lock importers must be exactly the root package: ${JSON.stringify(importerKeys)}`);
-  } else ok('pnpm-lock importers = root package only');
-  if (importers.includes('specifiers:')) {
-    fail('pnpm-lock root importer carries specifiers (unexpected dependencies)');
-  } else ok('pnpm-lock root importer has no dependency specifiers');
+  ok('pnpm-lock.yaml: zero third-party packages (exact workspace importer set checked above)');
 
   // ---- provenance inputs ----
   const head = git(ctx.repo, ['rev-parse', 'HEAD']).stdout.trim();

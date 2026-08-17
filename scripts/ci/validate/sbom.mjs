@@ -1,13 +1,15 @@
-// SBOM validator (AIPT-M0-B001-REPAIR-R6): the gate enforces deterministic
-// output AND SPDX 2.3 / component semantics — including the three-layer
-// PostgreSQL license model — plus negative probes proving invalid documents
-// are rejected:
+// SBOM validator (AIPT-M0-B001-REPAIR-R6 foundation, evolved by B002
+// iteration 4): the gate enforces deterministic output AND SPDX 2.3 /
+// component semantics — including the three-layer PostgreSQL license model,
+// the first-party @aipt/adapter-sdk package model (own SPDX 2.3 package,
+// MIT, version 1.0.0, npm purl, PACKAGE_OF AIPT — never DEV_TOOL_OF) — plus
+// negative probes proving invalid documents are rejected:
 //   - an invalid SRI-style checksum;
 //   - the human full license name "PostgreSQL License" in place of the SPDX
 //     short identifier PostgreSQL (on the main-software package);
 //   - a version-defining mutation that retains the original namespace
 //     (content-addressed namespace binding);
-//   - the legacy static pre-R5 documentNamespace;
+//   - the legacy static pre-R5 B001 documentNamespace;
 //   - the composite image mislabeled as PostgreSQL or as MIT;
 //   - the PostgreSQL main software moved away from PostgreSQL;
 //   - the docker-library/postgres packaging source moved away from MIT;
@@ -17,18 +19,25 @@
 //     deleted or retyped;
 //   - the image GENERATED_FROM docker-library/postgres packaging source
 //     composition relationship deleted or retyped (treating the packaging
-//     source as image content — e.g. CONTAINS — is rejected).
+//     source as image content — e.g. CONTAINS — is rejected);
+//   - B002 iteration 4: the @aipt/adapter-sdk package deleted from or
+//     wrongly licensed in the SBOM, its npm purl missing/drifted, its
+//     PACKAGE_OF first-party relationship deleted or retyped to DEV_TOOL_OF
+//     (each rejected by its own semantic check, never merely by the
+//     content-addressed namespace mismatch).
 //
 // `node scripts/ci/validate/sbom.mjs` reports PASS only when:
 //   1. semantic validation passes (SPDX-2.3, CC0-1.0, version-unique
 //      content-addressed documentNamespace — SHA-256 of the canonical
-//      version-defining payload — with the legacy static namespace
-//      explicitly rejected, unique package SPDXIDs, the exact B001 required
-//      package set, SPDX license values for every current package (the
-//      three-layer PostgreSQL model: main software = PostgreSQL, packaging
-//      source = MIT, composite image = NOASSERTION), the exact composition
-//      relationships (image CONTAINS main software, image GENERATED_FROM
-//      packaging source — never CONTAINS the packaging source),
+//      version-defining payload — with the legacy static B001 namespace
+//      explicitly rejected, unique package SPDXIDs, the exact B002 required
+//      package set (all 11 B001 identities preserved plus the first-party
+//      @aipt/adapter-sdk package), SPDX license values for every current
+//      package (the three-layer PostgreSQL model: main software =
+//      PostgreSQL, packaging source = MIT, composite image = NOASSERTION),
+//      the exact composition relationships (image CONTAINS main software,
+//      image GENERATED_FROM packaging source — never CONTAINS the packaging
+//      source; adapter-sdk PACKAGE_OF AIPT — never DEV_TOOL_OF),
 //      toolchain/action versions matching the lock files, resolvable
 //      relationships with SPDX 2.3-valid types, lowercase-hex checksums of
 //      algorithm-appropriate length, pnpm SHA512 hex decoded from the pinned
@@ -56,9 +65,11 @@ const SPDX_VERSION = 'SPDX-2.3';
 const DATA_LICENSE = 'CC0-1.0';
 const DOCUMENT_SPDXID = 'SPDXRef-DOCUMENT';
 const AIPT_SPDXID = 'SPDXRef-AIPT';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
-// The static namespace reused by distinct R3/R4 documents; forbidden after R5.
-const LEGACY_NAMESPACE = NAMESPACE_BASE;
+const SDK_SPDXID = 'SPDXRef-adapter-sdk';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b002';
+// The static pre-R5 B001 namespace reused by distinct R3/R4 documents; still
+// forbidden — a B002 document must never fall back to it.
+const LEGACY_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
 
 // SPDX 2.3 specification relationship types.
 const SPDX23_RELATIONSHIP_TYPES = new Set([
@@ -76,11 +87,13 @@ const SPDX23_RELATIONSHIP_TYPES = new Set([
   'TEST_TOOL_OF', 'VARIANT_OF',
 ]);
 
-// The exact B001 required package identities (B001 has zero third-party
-// application runtime dependencies, so the SBOM package set must be exactly
-// this set — no GoDep/PnpmDep packages).
+// The exact required package identities (B001's 11 identities preserved,
+// plus the first-party B002 workspace package @aipt/adapter-sdk). B002 has
+// zero third-party application runtime dependencies, so the SBOM package set
+// must be exactly this set — no GoDep/PnpmDep packages.
 const REQUIRED_PACKAGES = [
   { name: 'AIPT', spdxId: AIPT_SPDXID },
+  { name: '@aipt/adapter-sdk', spdxId: SDK_SPDXID },
   { name: 'Go toolchain', spdxId: 'SPDXRef-Toolchain-Go' },
   { name: 'Node.js', spdxId: 'SPDXRef-Toolchain-Node' },
   { name: 'pnpm', spdxId: 'SPDXRef-Toolchain-pnpm' },
@@ -95,16 +108,18 @@ const REQUIRED_PACKAGES = [
 
 const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
 
-// Expected SPDX license values for every current B001 SBOM package (keyed
-// by package name). Three-layer PostgreSQL model:
+// Expected SPDX license values for every current SBOM package (keyed by
+// package name). Three-layer PostgreSQL model:
 //   - PostgreSQL (18.4 main software) carries the SPDX identifier
 //     `PostgreSQL`; the human full name "PostgreSQL License" is NOT accepted;
 //   - docker-library/postgres (packaging source) carries `MIT`;
 //   - PostgreSQL Docker Official Image (composite container of multiple
 //     sources/components) carries `NOASSERTION` for BOTH fields — asserting
 //     `PostgreSQL` or `MIT` for the whole image is rejected.
+// B002 iteration 4 adds the first-party @aipt/adapter-sdk package: MIT.
 const EXPECTED_PACKAGE_LICENSES = {
   AIPT: 'MIT',
+  '@aipt/adapter-sdk': 'MIT',
   'Go toolchain': 'BSD-3-Clause',
   'Node.js': 'MIT',
   pnpm: 'MIT',
@@ -116,6 +131,9 @@ const EXPECTED_PACKAGE_LICENSES = {
   'actions/setup-go': 'MIT',
   'actions/setup-node': 'MIT',
 };
+
+// The exact npm purl of the first-party SDK package (percent-encoded scope).
+const SDK_NPM_PURL = 'pkg:npm/%40aipt/adapter-sdk@1.0.0';
 
 // Canonical JSON: arrays in order, object keys sorted recursively. Mirrors
 // the generator's serializer (independent copy, so a generator defect cannot
@@ -205,7 +223,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   if (ids.includes(DOCUMENT_SPDXID)) fail('a package reuses the document SPDXID');
   else ok('no package reuses the document SPDXID');
 
-  // ---- exact required B001 package set (zero third-party deps) ----
+  // ---- exact required package set (zero third-party deps) ----
   const byName = new Map(doc.packages.map((p) => [p.name, p]));
   let requiredOk = true;
   for (const req of REQUIRED_PACKAGES) {
@@ -218,14 +236,43 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       requiredOk = false;
     }
   }
-  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required B001 package identities present with expected SPDXIDs`);
+  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (11 B001 identities preserved + @aipt/adapter-sdk)`);
   const unknown = doc.packages.filter((p) => !byName.has(p.name) || !REQUIRED_PACKAGES.some((r) => r.name === p.name));
   if (doc.packages.length !== REQUIRED_PACKAGES.length || unknown.length > 0) {
-    fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required B001 packages (third-party dependency count must remain 0), got ${doc.packages.length}`);
-  } else ok('SBOM package set is exactly the required B001 set: third-party application dependency count = 0');
+    fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required packages (third-party dependency count must remain 0), got ${doc.packages.length}`);
+  } else ok('SBOM package set is exactly the required set: third-party application dependency count = 0');
   const depIds = ids.filter((id) => id.startsWith('SPDXRef-GoDep-') || id.startsWith('SPDXRef-PnpmDep-'));
   if (depIds.length > 0) fail(`SBOM carries dependency packages: ${depIds.join(', ')}`);
   else ok('no GoDep/PnpmDep dependency packages in the SBOM');
+
+  // ---- first-party @aipt/adapter-sdk package model (B002 iteration 4) ----
+  const sdkPkg = byName.get('@aipt/adapter-sdk');
+  if (sdkPkg) {
+    if (sdkPkg.versionInfo !== '1.0.0') {
+      fail(`@aipt/adapter-sdk versionInfo must be 1.0.0, got ${JSON.stringify(sdkPkg.versionInfo)}`);
+    } else ok('@aipt/adapter-sdk versionInfo = 1.0.0');
+    const sdkPurl = (sdkPkg.externalRefs ?? []).find((r) => r?.referenceType === 'purl');
+    if (!sdkPurl || sdkPurl.referenceLocator !== SDK_NPM_PURL) {
+      fail(`@aipt/adapter-sdk npm purl referenceLocator must be exactly ${SDK_NPM_PURL}, got ${JSON.stringify(sdkPurl?.referenceLocator)}`);
+    } else ok('@aipt/adapter-sdk carries the exact npm purl (pkg:npm/%40aipt/adapter-sdk@1.0.0)');
+    if ((sdkPkg.comment ?? '').includes('classified as a DEV_TOOL_OF dependency')) {
+      fail('@aipt/adapter-sdk comment must not classify the package as a DEV_TOOL_OF dependency');
+    } else if (!(sdkPkg.comment ?? '').includes('PACKAGE_OF')) {
+      fail('@aipt/adapter-sdk comment must document its first-party PACKAGE_OF relationship to AIPT');
+    } else ok('@aipt/adapter-sdk comment documents the first-party PACKAGE_OF model (never DEV_TOOL_OF)');
+  }
+  const sdkFirstPartyRel = doc.relationships.some(
+    (r) => r.spdxElementId === SDK_SPDXID && r.relationshipType === 'PACKAGE_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+  );
+  if (!sdkFirstPartyRel) {
+    fail(`missing first-party relationship: ${SDK_SPDXID} PACKAGE_OF ${AIPT_SPDXID} (the SDK is part of the AIPT repository, never a dev tool)`);
+  } else ok('first-party relationship present: SPDXRef-adapter-sdk PACKAGE_OF SPDXRef-AIPT');
+  const sdkDevToolRel = doc.relationships.some(
+    (r) => r.spdxElementId === SDK_SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+  );
+  if (sdkDevToolRel) {
+    fail(`${SDK_SPDXID} must NOT be classified as a DEV_TOOL_OF dependency of AIPT (it is a first-party workspace package)`);
+  } else ok('@aipt/adapter-sdk is never classified as DEV_TOOL_OF');
 
   // ---- SPDX license values for every current package ----
   // Exact-match against the expected B001 SPDX license value; arbitrary
@@ -246,7 +293,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       }
     }
   }
-  if (licenseOk) ok('every package licenseConcluded/licenseDeclared matches the expected B001 SPDX license value (PostgreSQL main software = PostgreSQL, docker-library/postgres = MIT, composite image = NOASSERTION)');
+  if (licenseOk) ok('every package licenseConcluded/licenseDeclared matches the expected SPDX license value (PostgreSQL main software = PostgreSQL, docker-library/postgres = MIT, composite image = NOASSERTION, @aipt/adapter-sdk = MIT)');
 
   // ---- app-level zero-dependency invariants (go.mod / pnpm-lock) ----
   const goMod = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
@@ -429,12 +476,12 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   );
   if (!describes) fail(`missing ${DOCUMENT_SPDXID} DESCRIBES ${AIPT_SPDXID} relationship`);
   else ok(`document DESCRIBES ${AIPT_SPDXID}`);
-  const nonAipt = doc.packages.filter((p) => p.SPDXID !== AIPT_SPDXID);
+  const nonAipt = doc.packages.filter((p) => p.SPDXID !== AIPT_SPDXID && p.SPDXID !== SDK_SPDXID);
   const missingDevTool = nonAipt.filter(
     (p) => !doc.relationships.some((r) => r.spdxElementId === p.SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID),
   );
   if (missingDevTool.length > 0) fail(`packages missing DEV_TOOL_OF relationship to AIPT: ${missingDevTool.map((p) => p.SPDXID).join(', ')}`);
-  else ok('every non-AIPT package has a DEV_TOOL_OF relationship to AIPT');
+  else ok('every tooling/CI/infrastructure package has a DEV_TOOL_OF relationship to AIPT (the first-party SDK is excluded: it is PACKAGE_OF AIPT)');
 
   // ---- three-layer PostgreSQL composition: the composite image CONTAINS
   // the main software (a component inside the container) and GENERATED_FROM
@@ -460,9 +507,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail('documentDescribes missing');
   } else if (!doc.documentDescribes.includes(AIPT_SPDXID)) {
     fail('documentDescribes must include SPDXRef-AIPT');
+  } else if (!doc.documentDescribes.includes(SDK_SPDXID)) {
+    fail(`documentDescribes must include the first-party ${SDK_SPDXID}`);
   } else if (doc.documentDescribes.some((id) => !knownIds.has(id))) {
     fail('documentDescribes references an unresolved SPDXID');
-  } else ok('documentDescribes resolves and includes SPDXRef-AIPT');
+  } else ok('documentDescribes resolves and includes SPDXRef-AIPT and SPDXRef-adapter-sdk');
 
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
@@ -744,6 +793,73 @@ export function run(ctx) {
       if (!rightReason) {
         fail(`negative ${def.label} probe failed for an unexpected reason (composition relationship check did not fire)`);
       } else ok(`negative-probe PASS: ${def.label} rejected by the composition relationship check`);
+    }
+  }
+
+  // 15-19. Negative probes (B002 iteration 4): the first-party adapter-sdk
+  // package model must be enforced — each rejection must come from the
+  // package/relationship checks themselves, not merely from the
+  // content-addressed namespace mismatch that any mutation causes.
+  const sdkPackageProbes = [
+    {
+      label: 'adapter-sdk package deleted from the SBOM',
+      reason: /required package missing: @aipt\/adapter-sdk/,
+      mutate: (probeDoc) => {
+        probeDoc.packages = probeDoc.packages.filter((p) => p.SPDXID !== SDK_SPDXID);
+      },
+    },
+    {
+      label: 'adapter-sdk package wrongly licensed',
+      reason: /MIT/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === SDK_SPDXID);
+        p.licenseConcluded = 'Apache-2.0';
+        p.licenseDeclared = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'adapter-sdk npm purl deleted/drifted',
+      reason: /npm purl/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === SDK_SPDXID);
+        p.externalRefs = (p.externalRefs ?? []).filter((r) => r.referenceType !== 'purl');
+      },
+    },
+    {
+      label: 'adapter-sdk PACKAGE_OF relationship deleted',
+      reason: /first-party relationship: SPDXRef-adapter-sdk PACKAGE_OF SPDXRef-AIPT/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(r.spdxElementId === SDK_SPDXID && r.relationshipType === 'PACKAGE_OF' && r.relatedSpdxElement === AIPT_SPDXID),
+        );
+      },
+    },
+    {
+      label: 'adapter-sdk PACKAGE_OF relationship retyped to DEV_TOOL_OF',
+      reason: /first-party relationship: SPDXRef-adapter-sdk PACKAGE_OF SPDXRef-AIPT|DEV_TOOL_OF/,
+      mutate: (probeDoc) => {
+        const rel = probeDoc.relationships.find(
+          (r) => r.spdxElementId === SDK_SPDXID && r.relationshipType === 'PACKAGE_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+        );
+        rel.relationshipType = 'DEV_TOOL_OF';
+      },
+    },
+  ];
+  for (const def of sdkPackageProbes) {
+    const probeDoc = JSON.parse(JSON.stringify(doc));
+    const probeSdk = probeDoc.packages.find((x) => x.SPDXID === SDK_SPDXID);
+    if (!probeSdk) {
+      fail(`negative ${def.label} probe could not run: adapter-sdk package missing from generated SBOM`);
+      continue;
+    }
+    def.mutate(probeDoc);
+    const probeResult = validateSbomSemantics(probeDoc, { repo: ctx.repo, toolchainLock, actionsLock });
+    if (probeResult.result !== 'FAIL') {
+      fail(`negative ${def.label} probe was NOT rejected`);
+    } else {
+      const rightReason = probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d));
+      if (!rightReason) fail(`negative ${def.label} probe failed for an unexpected reason`);
+      else ok(`negative-probe PASS: ${def.label} rejected by the first-party package model checks`);
     }
   }
 

@@ -14,10 +14,11 @@ import { run as runSupplyChain } from './validate/supply-chain.mjs';
 import { run as runSbom } from './validate/sbom.mjs';
 import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
 import { run as runProtocol } from './validate/protocol-assets.mjs';
+import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
 import { CURRENT_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
-const checks = [
+const checks = await Promise.all([
   runStatus(ctx),
   runProtocol(ctx),
   runDefer(ctx),
@@ -28,7 +29,8 @@ const checks = [
   runSupplyChain(ctx),
   runSbom(ctx),
   runStandalone(ctx),
-];
+  runAdapterSdk(ctx),
+]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
 const report = {

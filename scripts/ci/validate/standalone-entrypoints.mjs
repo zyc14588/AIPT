@@ -97,6 +97,7 @@ export function run(ctx) {
     { name: 'supply-chain', label: 'supply-chain', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'sbom', label: 'sbom', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'status-transition', label: 'status-transition', args: ['--repo', ctx.repo], result: 'PASS' },
+    { name: 'adapter-sdk', label: 'adapter-sdk', args: ['--repo', ctx.repo], result: 'PASS' },
   ];
   for (const c of positives) {
     const cp = spawnEntrypoint(c.name, c.args, ctx.repo);

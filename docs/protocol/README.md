@@ -1,7 +1,7 @@
 # AIPT 协议契约（Protocol Contract, B002）
 
-> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 3B 修复 · 状态日期 **2026-08-17**。
-> 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）与协议资产验证器。机器可读权威是
+> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 4（Adapter SDK）· 状态日期 **2026-08-17**。
+> 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）、协议资产验证器与一方 TypeScript Adapter SDK。机器可读权威是
 > [schemas/protocol/v1/aipt-protocol.schema.json](../../schemas/protocol/v1/aipt-protocol.schema.json)
 > 与 [testdata/protocol/v1/minimal-fixture/manifest.json](../../testdata/protocol/v1/minimal-fixture/manifest.json)；
 > 本文档是可读解释，不是第二份独立权威。
@@ -102,6 +102,7 @@
 - 协议资产门禁：[scripts/ci/validate/protocol-assets.mjs](../../scripts/ci/validate/protocol-assets.mjs)。覆盖：schema 文档子集合规与冻结常量、可执行根（`oneOf`）、跨语言安全整数 id 边界（`minimum`/`maximum` = ±(2^53-1)，请求与响应共用同一 `request_id`）、manifest 加固（路径安全/重复路径/kind→ref 精确映射预检，**任一预检问题即在解析或读取任何列出资产之前失败返回**；预检干净条目再经词法包含 → `lstat` 仅常规文件 → `realpath` 严格包含后才读取）、精确清单与摘要、每个正例资产对声明 `$ref` 的校验、身份/版本一致性（普通资产与突变内嵌投影任一漂移即显式 FAIL，稳定原因 `AIPT_FIXTURE_IDENTITY_MISMATCH`）、持久化 wire 信封（request 与 action-intent 交叉链接；result 响应与 transition/final-state 交叉链接；错误响应 `-32000` + `AIPT_ACTION_REJECTED` + 确定性 advance-turn 拒绝消息，与所引用请求一致；通知精确包裹 `event.json`）、request/response id 值与类型往返（含安全整数边界值）、方法注册表、全量状态投影合同（重复 field_id、值漂移、未知席位/授权、遗漏授权字段）、检查输出、迁移结果、事件、重放哈希/确定性，以及隐藏泄露突变（先 schema 后语义，且是 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD` 的唯一夹具）。
 - 负向探针（每个必须按**正确契约原因**被拒绝，共 33 个）：九个冻结的迭代 2 探针——`jsonrpc != 2.0`；未知 `protocol_version`；未知 `schema_version`；请求缺 `params`；响应同时携带 `result` 与 `error`；未知方法；缺失可见性；未知可见性标签；隐藏泄露突变（`AIPT_VISIBILITY_UNAUTHORIZED_FIELD`）。迭代 3 新增——任意/畸形根信封对 `#` 被拒（`oneOf`）；state 重复 `field_id`（`AIPT_STATE_DUPLICATE_FIELD_ID`）；投影重复 `field_id`（`AIPT_PROJECTION_DUPLICATE_FIELD_ID`）；投影值漂移（`AIPT_PROJECTION_VALUE_DRIFT`）；未知投影席位（`AIPT_PROJECTION_UNKNOWN_SEAT`）；state 可见性授权未知席位（`AIPT_VISIBILITY_UNKNOWN_SEAT`）；投影遗漏授权字段（`AIPT_PROJECTION_MISSING_AUTHORIZED_FIELD`）；manifest 不安全路径（dot 段 / 绝对路径）；manifest 重复路径；manifest kind/schema_ref 不匹配；helper 拒绝不支持关键字 / 外部 `$ref` / `$ref` 环。迭代 3B 新增（10 个）——整数 id 超出安全整数上界 / 下界（`maximum` / `minimum`）；request 信封 id 超出上界 / 下界（同一边界作用于请求与响应，`oneOf` 拒绝）；response 信封 id 超出上界 / 下界；突变内嵌投影 `fixture_id` 漂移（保持 schema 合法，`AIPT_FIXTURE_IDENTITY_MISMATCH`）；普通资产 `fixture_id` 漂移（保持 schema 合法，`AIPT_FIXTURE_IDENTITY_MISMATCH`）；根内符号链接指向夹具根之外的目标（临时目录确定性探针，`lstat` 以符号链接/非常规文件原因先于读取拒绝）；wire 错误响应复用突变可见性码（`AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE`）。
 - 运行：`pnpm run check:protocol-assets`（[package.json](../../package.json) 持久脚本），并已并入 [scripts/ci/run-checks.mjs](../../scripts/ci/run-checks.mjs)（`pnpm run check` 与公共 CI 均执行）。要求 Node.js 恰为 `v24.19.0`。
+- Adapter SDK 机器门禁（迭代 4）：`pnpm run check:adapter-sdk`（[scripts/ci/validate/adapter-sdk.mjs](../../scripts/ci/validate/adapter-sdk.mjs)），同样并入 `pnpm run check`；独立依赖自由的协议资产验证器保持为**独立预言机**，SDK 门禁绝不削弱、删除或别名其检查。
 
 ## 9. B002_IMPLEMENTATION_CHOICE 清单
 
@@ -121,11 +122,19 @@
 - **CHOICE-014**（迭代 3B）：预检失败即中止 + lstat/realpath 包含——路径/重复路径/kind→ref 预检任一问题立即失败返回，任何列出资产都不会被解析或读取；预检干净条目读取前依次 lstat（仅常规文件，符号链接/目录/设备先于读取拒绝）与 realpath（真实目标严格位于夹具目录内）。
 - **CHOICE-015**（迭代 3B）：wire 错误与所引用请求一致——持久化协议错误对 advance-turn 请求使用 `AIPT_ACTION_REJECTED` 与确定性消息；`checkWireErrorCoherence` 拒绝复用突变可见性码的 wire 错误（`AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE`）。
 
-## 10. 本批次明确不建设
+## 10. Adapter SDK（B002 迭代 4）
 
-B002（含本迭代）**不新增任何 server/socket/worker/model/database 运行时**；本迭代不建设 Adapter SDK；本迭代不建设 Go 契约（`go.mod`/`go.sum` 不变）；本迭代不创建 `packages/` 与 `internal/protocol/`；`.github/`、`tools/`、`LICENSE` 与历史权威登记（decisions/supersessions/deferred）均保持不变。运行时状态保持 `not built yet`。
+- 一方 TypeScript 契约 SDK：[packages/adapter-sdk](../../packages/adapter-sdk/)（`@aipt/adapter-sdk@1.0.0`，MIT）。**零第三方依赖**：仅 Node.js 24 标准库（`node:crypto`、`node:test`），原生可擦除 TypeScript 语法（无编译器/框架/代码生成器/网络产物）。
+- **权威单一来源**：权威 wire 真相仍是 `schemas/protocol/v1/aipt-protocol.schema.json`，Schema **不被复制进包内**。SDK 内嵌 fail-closed 契约漂移清单 `src/contract/descriptor.ts`（协议/模式/JSON-RPC 版本、方法注册表、信封变体与必填字段、安全整数 id 边界、六个可见性标签、错误码模式等的确定性投影）；机器门禁在 CI 时刻从权威 Schema **独立重推导**同一清单并要求 canonical JSON 逐字节相等——Schema 或 SDK 常量/类型的任何漂移都无法静默通过。生产包代码不深导入 `scripts/ci` 内部实现。
+- 公开契约：规范常量与派生字面量联合类型（无 `any` 导出，`unknown` 仅限验证边界）；确定性 canonical JSON（递归键排序）与 SHA-256（对循环/undefined/函数/symbol/bigint/非有限数/非安全整数/非普通对象等有损输入**显式拒绝**，绝不静默强转）；可执行根的确定性 parse/decode/encode 与四类信封的类型化 builder（request id 按值**与 JSON 类型**往返，整数限定 ±(2^53-1) 闭区间）；语义投影验证（缺失/未知可见性与未授权隐藏字段 fail closed，隐藏数据绝不当作普通可选字段，`AIPT_VISIBILITY_UNAUTHORIZED_FIELD` 等稳定原因）；纯夹具兼容验证（只对**调用方提供的**解析文档/资产做 manifest 形状、canonical SHA-256、身份三元组与清单完整性校验——包不复制夹具、不制造第二份夹具真相）。SDK 不硬编码任何夹具专属 seat id / field id / 动作名 / 迁移 id / 游戏内容；测试消费仓库公共的权威 Schema 与共享最小夹具。
+- 无导入副作用：SDK 不连接模型、不 spawn 进程、不打开 socket、不访问数据库、不启动服务/worker、不读环境凭据、导入时零环境工作（测试与门禁均含干净子进程导入探针与环境访问陷阱探针）。
+- 运行：`pnpm --filter @aipt/adapter-sdk test`（`node:test`/`assert`，确定性、密封、无外部网络）；`pnpm run check:adapter-sdk`（机器门禁，已并入 `pnpm run check`）。
 
-**路径准入是逐迭代的，不是永久禁令**：`packages/` 与 `internal/protocol/` 在本迭代被机械禁止，但 B002 主合同**明确要求**后续 B002 迭代建设 `packages/adapter-sdk`（TypeScript Adapter SDK）与 `internal/protocol`（Go 契约实现）；届时由该迭代自己的准入清单登记，本轮不预批准。
+## 11. 本批次明确不建设
+
+B002（含本迭代）**不新增任何 server/socket/worker/model/database 运行时**；本迭代不建设 Go 协议消费者（`go.mod`/`go.sum` 不变，`internal/protocol/` 仍被机械禁止）；`.github/`、冻结工具链/action 锁、`tools/supply-chain/policy.json`、`LICENSE` 与历史权威登记（decisions/supersessions/deferred）均保持不变。运行时状态保持 `not built yet`。B002 聚焦工作流演进（如 SDK 测试接入公共 CI workflow）留待后续迭代。
+
+**路径准入是逐迭代的，不是永久禁令**：`packages/adapter-sdk`、`pnpm-workspace.yaml`/`pnpm-lock.yaml` 与 `tools/supply-chain/licenses.json` 已由迭代 4 的准入清单登记；`internal/protocol`（Go 契约实现）由 B002 主合同**明确要求**后续 B002 迭代建设，届时由该迭代自己的准入清单登记，本轮不预批准。
 
 ## 相邻文档
 

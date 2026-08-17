@@ -1,0 +1,19 @@
+{
+  "name": "@aipt/adapter-sdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AIPT-M0-B002 TypeScript adapter contract SDK: dependency-free canonical JSON / strict JSON-RPC 2.0 envelope / visibility projection / fixture compatibility contract for Node 24 (erasable TypeScript syntax, zero third-party dependencies). This is the B002 contract SDK, not the later B005 Harness Adapter runtime.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

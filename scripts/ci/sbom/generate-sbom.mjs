@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B001.
+// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B002.
 //
 // Node.js standard library only (no third-party dependency). The same inputs
 // produce byte-identical output: fixed timestamps, sorted arrays, no
@@ -10,11 +10,13 @@
 // payload (the whole document minus documentNamespace) is canonically
 // serialized (sorted object keys) and SHA-256 hashed, and the 64 lowercase
 // hex characters become the namespace suffix under
-// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001/. Any change to a
+// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b002/. Any change to a
 // version-defining field therefore yields a different, version-unique
-// namespace; the static pre-R5 namespace is never reused.
+// namespace; the historical static pre-R5 B001 namespace is never reused.
 //
-// Coverage: AIPT root package, Go module direct/transitive deps, pnpm
+// Coverage: AIPT root package, the first-party workspace package
+// @aipt/adapter-sdk (B002 iteration 4, PACKAGE_OF AIPT — never a
+// DEV_TOOL_OF dependency), Go module direct/transitive deps, pnpm
 // direct/transitive deps, CI action fixed commits, supply-chain ephemeral
 // scanner/tool identities, toolchain versions, and the three-layer
 // PostgreSQL model (AIPT-M0-B001-R6):
@@ -38,8 +40,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CREATED = '2026-08-16T00:00:00Z';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
+const CREATED = '2026-08-17T00:00:00Z';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b002';
+const SDK_SPDXID = 'SPDXRef-adapter-sdk';
 
 // Canonical JSON: arrays in order, object keys sorted recursively, so the
 // serialized version-defining payload is independent of insertion order.
@@ -129,19 +132,36 @@ export function buildSbom(repoRoot) {
       name: 'AIPT',
       SPDXID: 'SPDXRef-AIPT',
       downloadLocation: 'https://github.com/zyc14588/AIPT',
-      versionInfo: 'M0-B001',
+      versionInfo: 'M0-B002',
       licenseConcluded: 'MIT',
       licenseDeclared: 'MIT',
       copyrightText: 'Copyright (c) 2026 AIPT contributors',
       filesAnalyzed: false,
       comment:
-        'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.5) and private npm root package aipt@0.0.0. ' +
-        `B001 third-party runtime dependencies: go=${goRequires.length}, pnpm=${pnpmPackages.length} ` +
+        'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.5), private npm root package aipt@0.0.0, ' +
+        `and the first-party workspace package @aipt/adapter-sdk@1.0.0 (packages/adapter-sdk, PACKAGE_OF AIPT). ` +
+        `B002 third-party runtime dependencies: go=${goRequires.length}, pnpm=${pnpmPackages.length} ` +
         '(both expected to be 0; any future dependency must first enter tools/supply-chain/licenses.json).',
       externalRefs: [
         purl('golang', 'github.com/zyc14588/AIPT'),
         purl('npm', 'aipt@0.0.0'),
       ],
+    },
+    {
+      name: '@aipt/adapter-sdk',
+      SPDXID: SDK_SPDXID,
+      downloadLocation: 'NOASSERTION',
+      versionInfo: '1.0.0',
+      licenseConcluded: 'MIT',
+      licenseDeclared: 'MIT',
+      copyrightText: 'Copyright (c) 2026 AIPT contributors',
+      filesAnalyzed: false,
+      comment:
+        'First-party dependency-free TypeScript adapter contract SDK (packages/adapter-sdk, zero dependency ' +
+        'specifiers; Node 24 native erasable TypeScript). Part of the AIPT repository: SPDXRef-adapter-sdk ' +
+        'PACKAGE_OF SPDXRef-AIPT — first-party, never a DEV_TOOL_OF dependency. MIT, covered by the root LICENSE ' +
+        '(recorded in the B002 license inventory).',
+      externalRefs: [purl('npm', '%40aipt/adapter-sdk@1.0.0')],
     },
     {
       name: 'Go toolchain',
@@ -303,6 +323,13 @@ export function buildSbom(repoRoot) {
       relatedSpdxElement: 'SPDXRef-AIPT',
     },
     {
+      // First-party workspace package: part of the AIPT repository itself,
+      // never a build/dev tool dependency of it.
+      spdxElementId: SDK_SPDXID,
+      relationshipType: 'PACKAGE_OF',
+      relatedSpdxElement: 'SPDXRef-AIPT',
+    },
+    {
       spdxElementId: 'SPDXRef-PostgreSQL-Image',
       relationshipType: 'CONTAINS',
       relatedSpdxElement: 'SPDXRef-PostgreSQL',
@@ -315,7 +342,7 @@ export function buildSbom(repoRoot) {
       relatedSpdxElement: 'SPDXRef-docker-library-postgres',
     },
     ...packages
-      .filter((p) => p.SPDXID !== 'SPDXRef-AIPT')
+      .filter((p) => p.SPDXID !== 'SPDXRef-AIPT' && p.SPDXID !== SDK_SPDXID)
       .map((p) => ({
         spdxElementId: p.SPDXID,
         relationshipType: 'DEV_TOOL_OF',
@@ -327,17 +354,18 @@ export function buildSbom(repoRoot) {
     spdxVersion: 'SPDX-2.3',
     dataLicense: 'CC0-1.0',
     SPDXID: 'SPDXRef-DOCUMENT',
-    name: 'AIPT-M0-B001-supply-chain-sbom',
+    name: 'AIPT-M0-B002-supply-chain-sbom',
     creationInfo: {
       created: CREATED,
-      creators: ['Tool: AIPT-M0-B001 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
+      creators: ['Tool: AIPT-M0-B002 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
       comment:
         'Deterministic SBOM: identical inputs produce byte-identical output (CI generates twice and compares). ' +
+        'The first-party workspace package @aipt/adapter-sdk is modeled as PACKAGE_OF AIPT (never DEV_TOOL_OF). ' +
         'Dynamic source provenance is attached separately via scripts/ci/provenance.mjs.',
     },
     packages,
     relationships,
-    documentDescribes: ['SPDXRef-AIPT'],
+    documentDescribes: ['SPDXRef-AIPT', SDK_SPDXID],
   };
 
   // Version-unique, content-addressed namespace: the hash is computed over

@@ -111,9 +111,10 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
 // against the accepted batch base (the B001 merge commit), so this list is
 // the CUMULATIVE union of every B002 iteration's approved paths: the
 // iteration-1 status-transition/validator-baseline set, the iteration-2
-// protocol-schema/fixture/validator set, and this iteration-3 bounded repair
-// set. Path admission is PER-ITERATION: each B002 iteration registers only
-// the paths its own accepted scope may change, and the scope gate is never
+// protocol-schema/fixture/validator set, the iteration-3 bounded repair set,
+// and the iteration-4 adapter-SDK/first-party-workspace/supply-chain set.
+// Path admission is PER-ITERATION: each B002 iteration registers only the
+// paths its own accepted scope may change, and the scope gate is never
 // disabled.
 export const ALLOWED_PATHS = [
   // iteration 1 (public status transition + validator baseline)
@@ -134,26 +135,34 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/protocol-assets.mjs',
   'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/validate/supply-chain.mjs',
+  // iteration 4 (dependency-free TypeScript Adapter SDK, first-party pnpm
+  // workspace, supply-chain/SBOM evolution, SDK machine gate)
+  'pnpm-workspace.yaml',
+  'pnpm-lock.yaml',
+  'packages/adapter-sdk/**',
+  'tools/supply-chain/licenses.json',
+  'docs/supply-chain/README.md',
+  'scripts/ci/validate/adapter-sdk.mjs',
+  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/validate/standalone-entrypoints.mjs',
+  'scripts/ci/sbom/generate-sbom.mjs',
 ];
 
-// Forbidden prefixes for the CURRENT B002 repair iteration (B001 historical
-// forbidden prefixes retained). The prefixes below are mechanically blocked
-// in this iteration, but they are NOT a permanent B002 verdict: the B002
-// master contract explicitly requires a later B002 iteration to build
-// packages/adapter-sdk and internal/protocol (the Adapter SDK and the Go
-// protocol consumer). When a later B002 iteration is scoped to those
-// deliverables, its own accepted per-iteration path admission will register
-// them; runtime/, tools/, .github/, architecture/runtime implementation,
-// frozen documents, and dependency manifests remain forbidden.
+// Forbidden prefixes for the CURRENT B002 iteration (B001 historical
+// forbidden prefixes retained). Iteration 4 registers packages/adapter-sdk,
+// the workspace manifest/lockfile, and the licenses.json inventory; the
+// frozen B001 supply-chain artifacts (policy.json, toolchain/action locks)
+// stay mechanically blocked, and internal/protocol (the Go protocol
+// consumer) remains a later B002 iteration deliverable. runtime/, .github/,
+// architecture/runtime implementation, frozen documents, and dependency
+// manifests (go.mod/go.sum) remain forbidden.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
   'migrations/',
   'deploy/',
-  'packages/',
   'internal/protocol/',
   'runtime/',
-  'tools/',
   '.github/',
   'docs/architecture/',
   'docs/integration/',
@@ -163,8 +172,9 @@ export const FORBIDDEN_PREFIXES = [
   'LICENSE',
   'go.mod',
   'go.sum',
-  'pnpm-lock.yaml',
-  'pnpm-workspace.yaml',
+  'tools/supply-chain/policy.json',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
 ];
 
 // Frozen authority registries: byte-for-byte immutability is enforced
