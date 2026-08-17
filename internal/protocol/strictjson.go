@@ -95,6 +95,23 @@ func unitsToGoString(u []uint16) string {
 	return string(utf16.Decode(u))
 }
 
+// unitsCharCount counts the characters of a UTF-16 code-unit sequence the
+// way JavaScript does ([...jsString].length): a valid surrogate pair is ONE
+// character, and every lone unit (surrogate or not) is one character. This
+// is the 1..128 "characters" contract of string request ids, matching the
+// accepted TypeScript validator ([...value].length) for BMP scalars, astral
+// pairs, and lone surrogate units alike.
+func unitsCharCount(u []uint16) int {
+	count := 0
+	for i := 0; i < len(u); i++ {
+		count++
+		if u[i] >= 0xD800 && u[i] <= 0xDBFF && i+1 < len(u) && u[i+1] >= 0xDC00 && u[i+1] <= 0xDFFF {
+			i++
+		}
+	}
+	return count
+}
+
 // unitsKeyString maps a UTF-16 code-unit sequence injectively to a Go map
 // key: each code unit is encoded as the 3-byte UTF-8 form of its code point
 // (surrogates included). Distinct code-unit sequences never collide, so

@@ -130,12 +130,13 @@ func KnownSeats(seats *SeatSet) map[string]bool {
 }
 
 // CheckStateMetadata validates state field identity + authorization metadata
-// against the known seats: duplicate field_id values and visibility entries
-// authorizing unknown seats are rejected with the stable oracle reasons.
-// A valid state returns no reasons.
+// against the known seats: missing fields (nil or an empty fields slice —
+// the canonical state schema requires fields.minItems = 1), duplicate
+// field_id values, and visibility entries authorizing unknown seats are
+// rejected with the stable oracle reasons. A valid state returns no reasons.
 func CheckStateMetadata(state *State, knownSeats map[string]bool) []string {
 	reasons := []string{}
-	if state == nil || state.Fields == nil {
+	if state == nil || len(state.Fields) == 0 {
 		return []string{ReasonStateMissingFields}
 	}
 	seen := make(map[string]bool, len(state.Fields))
@@ -155,7 +156,13 @@ func CheckStateMetadata(state *State, knownSeats map[string]bool) []string {
 }
 
 // CheckProjection runs the full-state projection gate over a projection and
-// its source state (exact oracle semantics):
+// its source state (exact oracle semantics). Source-state metadata is gated
+// FIRST and deterministically (iteration 5C): missing fields
+// (AIPT_STATE_MISSING_FIELDS), duplicate source field ids
+// (AIPT_STATE_DUPLICATE_FIELD_ID), and source visibility references to
+// unknown seats (AIPT_VISIBILITY_UNKNOWN_SEAT) can never be masked by a
+// projection copied from the same defective state. The projection itself is
+// then gated with the projection-specific reasons:
 //   - the projection seat must be a known seat
 //     (AIPT_PROJECTION_UNKNOWN_SEAT);
 //   - no duplicate field_id in the projection
@@ -173,14 +180,15 @@ func CheckStateMetadata(state *State, knownSeats map[string]bool) []string {
 //   - no field authorized to the projection seat may be omitted
 //     (AIPT_PROJECTION_MISSING_AUTHORIZED_FIELD).
 //
-// A valid projection returns no reasons. A nil state or nil projection
-// returns exactly [AIPT_PROJECTION_INVALID] deterministically — caller-
-// controlled nil inputs never panic.
+// A valid projection over a valid state returns no reasons. A nil state or
+// nil projection returns exactly [AIPT_PROJECTION_INVALID] deterministically
+// — caller-controlled nil inputs never panic.
 func CheckProjection(state *State, projection *Projection, knownSeats map[string]bool) []string {
 	reasons := []string{}
 	if state == nil || projection == nil {
 		return []string{ReasonProjectionInvalid}
 	}
+	reasons = append(reasons, CheckStateMetadata(state, knownSeats)...)
 	if !knownSeats[projection.SeatID] {
 		reasons = append(reasons, ReasonProjectionUnknownSeat)
 	}
@@ -230,8 +238,9 @@ func CheckProjection(state *State, projection *Projection, knownSeats map[string
 
 // ValidateProjection is the pure projection validator: identity must match
 // the source state, the projection seat must be known, and the full-state
-// projection gate must pass. It returns nil for a valid projection and a
-// typed contract error carrying the first stable rejection reason otherwise.
+// projection gate must pass (source-state metadata reasons come first). It
+// returns nil for a valid projection and a typed contract error carrying the
+// first stable rejection reason otherwise.
 func ValidateProjection(state *State, projection *Projection, knownSeats map[string]bool) error {
 	if state == nil || projection == nil {
 		return newContractError(ReasonProjectionInvalid, "$", "state and projection are required")

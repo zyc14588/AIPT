@@ -122,13 +122,6 @@ func compareUnits(a, b []uint16) int {
 	return 0
 }
 
-// quoteJSONString renders a Go string as a JSON string exactly like Node's
-// JSON.stringify: control characters use the \b \f \n \r \t short escapes,
-// other controls use lowercase \u00xx, and no HTML escaping is applied.
-func quoteJSONString(s string) string {
-	return quoteJSONUnits(stringToUnits(s))
-}
-
 // quoteJSONUnits renders a UTF-16 code-unit sequence as a JSON string
 // exactly like Node's JSON.stringify: control characters use the
 // \b \f \n \r \t short escapes, other controls use lowercase \u00xx, valid
