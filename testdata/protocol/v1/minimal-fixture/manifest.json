@@ -37,6 +37,12 @@
       "sha256": "740c5e8a2d4c4d59c75acbab5d2cca2902d28abe7b04b5ec1940235cc649dca6"
     },
     {
+      "path": "requests/apply-action-request.json",
+      "kind": "jsonrpc_request",
+      "schema_ref": "#/$defs/jsonrpc_request",
+      "sha256": "6a364c4ac7b7fbe020a853ff1df39fe1b0da2401cc5090cfa8bedaa87c53cb3f"
+    },
+    {
       "path": "check-turn-increment.json",
       "kind": "deterministic_check",
       "schema_ref": "#/$defs/deterministic_check",
@@ -49,10 +55,28 @@
       "sha256": "137ecde615408f08256b2bacedb6829d6a2025095ee6fe8e74b6524bb0c01568"
     },
     {
+      "path": "responses/apply-action-result-response.json",
+      "kind": "jsonrpc_response",
+      "schema_ref": "#/$defs/jsonrpc_response",
+      "sha256": "8a6daec0fa447beb86c98573e836d674cdd6ec33ef0479f3021b1653c7e6b4c1"
+    },
+    {
+      "path": "responses/apply-action-protocol-error-response.json",
+      "kind": "jsonrpc_response",
+      "schema_ref": "#/$defs/jsonrpc_response",
+      "sha256": "a6670aa1d0f39e01e081f759c1ef61fe1f71d3f5cbc1cbaf18b9dd094364540f"
+    },
+    {
       "path": "event.json",
       "kind": "state_event",
       "schema_ref": "#/$defs/state_event",
       "sha256": "5eadccb5f08bdee8d1ae69055f25b6379d46cc7e2288eef44562086cd85faced"
+    },
+    {
+      "path": "notifications/state-event-notification.json",
+      "kind": "jsonrpc_notification",
+      "schema_ref": "#/$defs/jsonrpc_notification",
+      "sha256": "5fbe674e35772c9d62d504d150b2b2dd329feb1e886003af39a87794c6af6892"
     },
     {
       "path": "final-state.json",

@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B002 (protocol scope): iteration 2 adds the canonical JSON Schema 2020-12 protocol schema (schemas/protocol/v1/aipt-protocol.schema.json), the original game-neutral minimal deterministic fixture (testdata/protocol/v1/minimal-fixture/), and the dependency-free protocol-assets validator; the Adapter SDK and Go contract are not built yet; the B001 Go/pnpm toolchain, public secret-free CI, and supply-chain foundation are merged and closed; no runtime packages yet.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B002 (protocol scope): iteration 3 hardens the canonical JSON Schema 2020-12 protocol schema (schemas/protocol/v1/aipt-protocol.schema.json) with an executable root, persists the deterministic wire envelopes (testdata/protocol/v1/minimal-fixture/requests|responses|notifications), and strengthens projection/manifest/schema-helper fail-closed validation in the dependency-free protocol-assets validator; the Adapter SDK and Go contract are not built yet; the B001 Go/pnpm toolchain, public secret-free CI, and supply-chain foundation are merged and closed; no runtime packages yet.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {

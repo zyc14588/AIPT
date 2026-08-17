@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": "minimal-v1-arithmetic-request-1",
+  "protocol_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "fixture_id": "minimal-v1-arithmetic",
+  "error": {
+    "code": -32000,
+    "message": "table-note is not authorized for seat-b (AIPT_VISIBILITY_UNAUTHORIZED_FIELD)",
+    "data": {
+      "error_code": "AIPT_VISIBILITY_UNAUTHORIZED_FIELD"
+    }
+  }
+}

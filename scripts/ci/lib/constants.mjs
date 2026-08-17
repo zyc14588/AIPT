@@ -110,11 +110,11 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
 // AIPT-M0-B002 allowed paths. The tree-integrity gate diffs the candidate
 // against the accepted batch base (the B001 merge commit), so this list is
 // the CUMULATIVE union of every B002 iteration's approved paths: the
-// iteration-1 status-transition/validator-baseline set plus this iteration's
-// protocol-schema/fixture/validator set. Runtime paths — runtime/,
-// packages/, internal/protocol/, architecture/, server/socket/worker/model/
-// PostgreSQL implementation — are forbidden for ALL B002 iterations and will
-// never appear in this list; the scope gate is never disabled.
+// iteration-1 status-transition/validator-baseline set, the iteration-2
+// protocol-schema/fixture/validator set, and this iteration-3 bounded repair
+// set. Path admission is PER-ITERATION: each B002 iteration registers only
+// the paths its own accepted scope may change, and the scope gate is never
+// disabled.
 export const ALLOWED_PATHS = [
   // iteration 1 (public status transition + validator baseline)
   'README.md',
@@ -136,11 +136,15 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/supply-chain.mjs',
 ];
 
-// Forbidden prefixes for the B002 iteration: no runtime/protocol-package/
-// workspace/CI/toolchain/frozen-doc content may change under the current
-// scope (B001 historical forbidden prefixes retained). Runtime and package
-// paths stay forbidden for every B002 iteration — no B002 iteration may
-// approve them.
+// Forbidden prefixes for the CURRENT B002 repair iteration (B001 historical
+// forbidden prefixes retained). The prefixes below are mechanically blocked
+// in this iteration, but they are NOT a permanent B002 verdict: the B002
+// master contract explicitly requires a later B002 iteration to build
+// packages/adapter-sdk and internal/protocol (the Adapter SDK and the Go
+// protocol consumer). When a later B002 iteration is scoped to those
+// deliverables, its own accepted per-iteration path admission will register
+// them; runtime/, tools/, .github/, architecture/runtime implementation,
+// frozen documents, and dependency manifests remain forbidden.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
