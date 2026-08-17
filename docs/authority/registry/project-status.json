@@ -1,17 +1,22 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-17",
+  "as_of": "2026-08-18",
   "authority_snapshot_id": "AIPT-DCA-CLOSEOUT-R0-R16-002",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "AIPT-M0-B002_IN_PROGRESS",
-      "current_batch": "AIPT-M0-B002",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
+      "next_serial_batch": "UNREGISTERED-AIPT-P0-B000",
+      "next_batch_state": "AUTHORIZED_TO_PREPARE",
+      "next_batch_authorized": true,
+      "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
-        "AIPT-M0-B001": "MERGED_CLOSED"
+        "AIPT-M0-B001": "MERGED_CLOSED",
+        "AIPT-M0-B002": "MERGED_CLOSED"
       },
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -22,8 +27,8 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "8bcadc9669e7d04f589f883daa6d4f593875fc9e",
-      "verified_state": "AIPT-M0-B001 merge commit 8bcadc9669e7d04f589f883daa6d4f593875fc9e merged/closed (candidate 2e904ddc2d4f1313a99e19f6751a991d589f8336, post-merge CI run 31951440133); AIPT-M0-B002 in progress on task/AIPT-M0-B002 (iteration 4: dependency-free first-party TypeScript Adapter SDK packages/adapter-sdk implemented with its machine gate and supply-chain/SBOM representation; Go protocol consumer and focused B002 workflow evolution remain pending)"
+      "verified_head": "fccfb595c23feab38397506505a3e996fe7b9e9c",
+      "verified_state": "AIPT-M0-B002 MERGED_CLOSED: candidate 9968cbc89c09640e3fc2feb8d851220eae98b9b9; implementation merge commit fccfb595c23feab38397506505a3e996fe7b9e9c; implementation tree f99570bc3c4307244ca926cec62e82a07ef5aee8; post-merge CI run 31985644832 success; no active implementation batch; next serial batch UNREGISTERED-AIPT-P0-B000 is AUTHORIZED_TO_PREPARE and not started"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",
