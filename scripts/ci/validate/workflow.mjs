@@ -14,8 +14,11 @@
 // mapping (the final job parses exactly like a job followed by another job),
 // a step starts at the real six-space `- name:` line and ends before the
 // next six-space step, step names are read with the narrow scalar helper,
-// real eight-space metadata (`if:`, `continue-on-error:`) is rejected on
-// every required job and on every step of those jobs, and run evidence comes
+// disguised control keys normalize through a small mapping-key helper (`if`,
+// `continue-on-error`, `shell` on every step of those jobs; `if`,
+// `continue-on-error`, `defaults`, `shell` on every required job;
+// `permissions` at any scope) and every step must start with the canonical
+// six-space `- name:` form, and run evidence comes
 // only from inline `run:` lines (exact command equality, so `|| true`, echo
 // wrappers or extra shell text can never masquerade as a gate) or
 // literal/folded block run bodies (exact non-comment command lines inside
@@ -212,6 +215,19 @@ function scalarValue(raw) {
   return v;
 }
 
+// Normalized mapping key of a line whose key starts at exactly `keyIndent`
+// leading spaces: a plain key token (no whitespace, quote or colon) or a
+// single/double-quoted key token, followed by `:` with optional whitespace
+// before it and an optional value after it. `if:`, `if :`, `'if':` and
+// `"if":` all normalize to `if`. Returns the unquoted key, or null when the
+// line is not such a mapping entry at that exact indentation.
+function mappingKey(line, keyIndent) {
+  if (indent(line) !== keyIndent) return null;
+  const m = /^(?:'([^']*)'|"([^"]*)"|([^\s:'"]+))\s*:/.exec(line.slice(keyIndent));
+  if (!m) return null;
+  return m[1] ?? m[2] ?? m[3];
+}
+
 // Extract one required job's body from the parsed jobs block. `bodyStart` is
 // the absolute index of the first body line, so every body line can be
 // reported with its real 1-based file line number.
@@ -228,42 +244,52 @@ function jobBlock(jobsBlock, name) {
   };
 }
 
-// Split a job body into steps. A step starts at the real six-space
-// `- name:` line (or any six-space `- ` item, which in this subset is always
-// a step start) and ends before the next six-space step.
+// Split a job body into steps and record every noncanonical step start. A
+// step starts at the real six-space `- name:` line — the canonical form this
+// workflow subset uses — and ends before the next six-space step. Any other
+// six-space `- ` item (`- run:`, `- uses:`, ...) is a disguised shorthand
+// step: it is recorded in `badStarts` (and never analyzed as an empty step)
+// so the validator fails on it explicitly instead of silently passing it.
 function stepsOf(job) {
-  if (!job) return [];
+  if (!job) return { steps: [], badStarts: [] };
   const stepsIdx = findKeyLineIn(job.body, 'steps', 4, 0, job.body.length);
-  if (stepsIdx < 0) return [];
+  if (stepsIdx < 0) return { steps: [], badStarts: [] };
   const body = blockAt(job.body, stepsIdx, 4);
   const steps = [];
+  const badStarts = [];
   let current = null;
   for (let i = 0; i < body.lines.length; i += 1) {
     const line = body.lines[i];
     if (/^ {6}- /.test(line)) {
       if (current) steps.push(current);
       const m = /^ {6}- name:\s*(.+?)\s*$/.exec(line);
-      current = {
-        name: m ? scalarValue(m[1]) : null,
-        lines: [line],
-        lineNo: job.bodyStart + body.start + i + 1,
-      };
+      if (m) {
+        current = {
+          name: scalarValue(m[1]),
+          lines: [line],
+          lineNo: job.bodyStart + body.start + i + 1,
+        };
+      } else {
+        badStarts.push({ raw: line.trim(), lineNo: job.bodyStart + body.start + i + 1 });
+        current = null;
+      }
     } else if (current) {
       current.lines.push(line);
     }
   }
   if (current) steps.push(current);
-  return steps;
+  return { steps, badStarts };
 }
 
 // Analyze one step: collect inline `run:` commands (exact command equality is
 // the caller's job), literal/folded block run bodies (trimmed non-blank,
-// non-comment command lines), and real eight-space metadata (`if:`,
-// `continue-on-error:`). This is not a general YAML parser and never claims
-// to be one.
+// non-comment command lines), and real eight-space control metadata (`if:`,
+// `continue-on-error:`, `shell:` — plain or quoted keys, optional whitespace
+// before the colon). This is not a general YAML parser and never claims to
+// be one.
 function analyzeStep(step) {
   const runs = [];
-  const conditions = { if: [], continueOnError: [] };
+  const conditions = { if: [], continueOnError: [], shell: [] };
   for (let i = 0; i < step.lines.length; i += 1) {
     const line = step.lines[i];
     const lineNo = step.lineNo + i;
@@ -286,10 +312,14 @@ function analyzeStep(step) {
       runs.push({ kind: 'inline', command: inlineRun[1].trim(), lineNo });
       continue;
     }
-    const ifM = /^ {8}if:\s*(.+?)\s*$/.exec(line);
-    if (ifM) conditions.if.push({ value: ifM[1].trim(), lineNo });
-    const coeM = /^ {8}continue-on-error:\s*(.+?)\s*$/.exec(line);
-    if (coeM) conditions.continueOnError.push({ value: coeM[1].trim(), lineNo });
+    const key = mappingKey(line, 8);
+    if (key === 'if' || key === 'continue-on-error' || key === 'shell') {
+      const vm = /^ {8}(?:'[^']*'|"[^"]*"|[^\s:'"]+)\s*:\s*(.*)$/.exec(line);
+      const value = (vm?.[1] ?? '').trim();
+      if (key === 'if') conditions.if.push({ value, lineNo });
+      else if (key === 'continue-on-error') conditions.continueOnError.push({ value, lineNo });
+      else conditions.shell.push({ value, lineNo });
+    }
   }
   return { ...step, runs, conditions };
 }
@@ -381,10 +411,14 @@ export function run(ctx) {
   }
 
   // ---- permissions: exactly one top-level mapping, { contents: read } ----
+  // Disguised keys count too: `permissions :`, `'permissions':` and
+  // `"permissions":` at job/nested scope are detected as extra overrides.
   const permMappings = [];
   for (let i = 0; i < lines.length; i += 1) {
     if (isBlankOrComment(lines[i])) continue;
-    if (/^ *permissions:/.test(lines[i])) permMappings.push({ idx: i, indent: indent(lines[i]) });
+    if (mappingKey(lines[i], indent(lines[i])) === 'permissions') {
+      permMappings.push({ idx: i, indent: indent(lines[i]) });
+    }
   }
   const permMappingValid = permMappings.length === 1 && permMappings[0].indent === 0;
   if (permMappingValid) {
@@ -506,18 +540,29 @@ export function run(ctx) {
     let clean = true;
     for (let i = 0; i < job.body.length; i += 1) {
       const lineNo = job.bodyStart + i + 1;
-      const t = job.body[i].trimStart();
-      if (indent(job.body[i]) === 4 && t.startsWith('if:')) {
+      // Normalized keys: `if :`, `'if':` and `"if":` are rejected too.
+      const key = mappingKey(job.body[i], 4);
+      if (key === 'if') {
         clean = false;
         fail(`${required} job must not be conditionally skipped (job-level if: at line ${lineNo})`);
-      }
-      if (indent(job.body[i]) === 4 && t.startsWith('continue-on-error:')) {
+      } else if (key === 'continue-on-error') {
         clean = false;
         fail(`${required} job must not mask failures (job-level continue-on-error: at line ${lineNo})`);
+      } else if (key === 'defaults') {
+        clean = false;
+        fail(`${required} job must not carry job-level defaults: (line ${lineNo})`);
+      } else if (key === 'shell') {
+        clean = false;
+        fail(`${required} job must not carry job-level shell: (line ${lineNo})`);
       }
     }
-    const analyzed = stepsOf(job).map(analyzeStep);
+    const { steps: jobSteps, badStarts } = stepsOf(job);
+    const analyzed = jobSteps.map(analyzeStep);
     analyzedJobs[required] = analyzed;
+    for (const b of badStarts) {
+      clean = false;
+      fail(`${required} job must start every step with the canonical "      - name: ..." form; noncanonical step start ${JSON.stringify(b.raw)} at line ${b.lineNo}`);
+    }
     for (const s of analyzed) {
       const label = s.name ? JSON.stringify(s.name) : '(unnamed step)';
       for (const c of s.conditions.if) {
@@ -527,6 +572,10 @@ export function run(ctx) {
       for (const c of s.conditions.continueOnError) {
         clean = false;
         fail(`${required} step ${label} must not mask failures (continue-on-error: ${c.value} at line ${c.lineNo})`);
+      }
+      for (const c of s.conditions.shell) {
+        clean = false;
+        fail(`${required} step ${label} must not set a custom shell (shell: ${c.value} at line ${c.lineNo})`);
       }
     }
     if (clean) ok(`${required} job and every step are unconditional and failure-visible`);
