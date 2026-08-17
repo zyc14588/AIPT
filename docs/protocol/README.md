@@ -1,6 +1,6 @@
 # AIPT 协议契约（Protocol Contract, B002）
 
-> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 5（Go 协议契约消费者）· 状态日期 **2026-08-17**。
+> 批次：`AIPT-M0-B002`（`B002_IN_PROGRESS`）· 迭代 5B（Go 协议契约消费者修复）· 状态日期 **2026-08-17**。
 > 本页解释权威协议 Schema、最小确定性夹具（含持久化 wire 信封）、协议资产验证器、一方 TypeScript Adapter SDK 与 Go 协议契约消费者。机器可读权威是
 > [schemas/protocol/v1/aipt-protocol.schema.json](../../schemas/protocol/v1/aipt-protocol.schema.json)
 > 与 [testdata/protocol/v1/minimal-fixture/manifest.json](../../testdata/protocol/v1/minimal-fixture/manifest.json)；
@@ -145,7 +145,7 @@
 - 无导入副作用：SDK 不连接模型、不 spawn 进程、不打开 socket、不访问数据库、不启动服务/worker、不读环境凭据、导入时零环境工作（测试与门禁均含干净子进程导入探针与环境访问陷阱探针）。
 - 运行：`pnpm --filter @aipt/adapter-sdk test`（`node:test`/`assert`，确定性、密封、无外部网络；**122 项测试**——迭代 4 的 53 项与迭代 4B 的 90 项全部保留并新增 17 项迭代 4C 聚焦测试与 15 项迭代 4D 求值器聚焦测试）；`pnpm run check:adapter-sdk`（机器门禁，**103 个探针**：80 个 fail-closed 行为探针（含全部已确认误接受修复探针与 18 个迭代 4D 求值器探针）+ 11 个内存漂移探针 + 6 个零调用/无文档触碰探针 + hidden-leak 突变探针 + 未来 wire 错误码探针 + 4 个正向语法探针；已并入 `pnpm run check`）。
 
-## 11. Go 协议契约消费者（B002 迭代 5）
+## 11. Go 协议契约消费者（B002 迭代 5/5B）
 
 - **依赖自由、纯协议 Go 包**：[internal/protocol](../../internal/protocol/)（模块 `github.com/zyc14588/AIPT`，`go 1.26.x` / `toolchain go1.26.5`）。仅用 Go 标准库；**`go.mod`/`go.sum` 不变、零第三方依赖**。生产 API 纯函数化：无文件 I/O、无环境访问、无进程/网络/socket/数据库、无服务循环/goroutine worker/模型调用——不是 Core 运行时、规则引擎、服务、启动器或 Adapter。
 - **schema 派生的精确常量**：`protocol_version`/`schema_version` = `1.0.0`、`jsonrpc` = `2.0`、方法注册表恰为 `aipt.protocol.applyAction`（request）+ `aipt.protocol.event`（notification）、安全整数 id 闭区间 ±(2^53-1)、恰好六个冻结 R4-F002 可见性标签。测试从权威 Schema 的本地 `$defs` **独立重推导**全部常量/注册表/边界/标签并与 Go 常量逐项比对（不实现通用 JSON Schema 求值器），任何手写常量漂移都让测试失败。
@@ -153,7 +153,14 @@
 - **纯语义助手（共享契约所需的最小集合）**：身份三元组、标识符（1..64 小写机器模式）、六个可见性标签、非空/唯一授权席位、已知席位引用、state/projection 重复 `field_id`、无损字段值；`CheckProjection` 按 Node 预言机语义实现全量状态投影合同（未知席位/重复 field/未知字段/值漂移/重分类/授权集合漂移/越权 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD`/遗漏授权字段，授权集合按数学集合比较——仅顺序不同不算漂移；缺失/未知可见性绝不默认 PUBLIC）；`ValidateProjection` 额外要求投影身份与源 state 一致；hidden-leak 突变**先结构解码后语义拒绝**（`MutantSemanticRejection` 返回恰为 `AIPT_VISIBILITY_UNAUTHORIZED_FIELD`，且包装 `seat_id` 必须等于 `projection.seat_id`、`leaked_field_id` 必须等于唯一越权字段——元数据漂移以 `AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT` 失败，漂移元数据无法冒充夹具）；`ApplyTransition` 是把声明迁移应用为纯数据变换的确定性助手（非规则引擎），`CheckArithmetic` 校验声明算术输出，`CheckWireErrorCoherence` 校验确定性 `-32000` 错误示例。
 - **确定性 canonical JSON / SHA-256**：`CanonicalJSON`/`CanonicalSHA256` 对供应字节做严格预检（重复键、尾随、不安全整数、负零、非有限数**先于哈希拒绝**）后输出递归排序键（JavaScript UTF-16 码元序）、数组保序、无多余空白、ES6 `JSON.stringify` 数字格式的紧凑表示——与 Node 协议资产预言机**逐字节一致**。
 - **跨语言共享夹具测试**：测试直接按路径消费仓库同一份权威 Schema 与共享夹具（不复制、不新建第二份 Go 真相），验证 manifest 身份/安全路径/唯一精确清单/`kind→schema_ref` 精确映射/小写 SHA-256；对**同一批共享文件**重算每个资产与突变摘要并比对 Node 预言机写入的 manifest 摘要；重算 `final-state.json` 的 canonical 哈希并要求 `replay_assertion.final_state_hash` 与两条 replay 记录都等于它；两席投影（`seat-a`/`seat-b`）、request 参数与 action-intent 参数深度相等、id 值+类型往返、错误响应一致、通知精确包裹 `event.json`、算术输出、`initial → final` 迁移与两次重放确定。突变被验证为恰 `["NON_CANON","MUTANT"]`、`kind = hidden-leak`、可结构解码，并被投影语义以**唯一** `AIPT_VISIBILITY_UNAUTHORIZED_FIELD` 拒绝。
-- **运行**：`pnpm run test:protocol-go`（`package.json` 持久脚本，恰为 `go test ./internal/protocol -count=1`）；共 **156 项测试**全绿，其中 **83 项负向用例**（畸形 jsonrpc、未知协议/模式版本、缺 params、result+error 同时/皆无、未知请求/通知方法、任意根对象、未知字段、顶层与嵌套重复键、尾随 JSON、缺失/未知/空可见性、重复字段/席位、未知席位、投影值/元数据漂移与遗漏授权字段、id 字符串/数字往返与闭区间边界、不安全/小数/null/负零 id 拒绝、错误 code/data 无效、夹具身份失配、突变元数据漂移、canonicalization 拒绝重复/尾随/不安全/负零输入）。测试密封、无副作用、不改动任何受跟踪的 schema/夹具文件。
+- **运行**：`pnpm run test:protocol-go`（`package.json` 持久脚本，恰为 `go test ./internal/protocol -count=1`）；共 **183 项测试**全绿，其中 **101 项负向用例**（畸形 jsonrpc、未知协议/模式版本、缺 params、result+error 同时/皆无、未知请求/通知方法、任意根对象、未知字段、顶层与嵌套重复键、尾随 JSON、缺失/未知/空可见性、重复字段/席位、未知席位、投影值/元数据漂移与遗漏授权字段、id 字符串/数字往返与闭区间边界、不安全/小数/null/负零 id 拒绝、错误 code/data 无效、夹具身份失配、突变元数据漂移、canonicalization 拒绝重复/尾随/不安全/负零输入，以及迭代 5B 新增的整数值不安全拼写/孤立代理混同/数值 wire 错误码/突变身份漂移/语义 nil 输入/manifest 预检与登记表快照 18 项聚焦负向用例）。测试密封、无副作用、不改动任何受跟踪的 schema/夹具文件。
+- **迭代 5B 修复（Codex 独立对抗评审复现的六个 fail-open 缺口，全部以聚焦回归测试关闭）**：
+  1. **整数值不安全的小数/指数拼写**：`ValidateJSON`/`CanonicalJSON`/`CanonicalSHA256` 对 `9007199254740993.0`、`9007199254740992e0`、`-9007199254740993.0`、`1e20`、`-1e20`、`1e308` 等以 `AIPT_JSON_UNSAFE_INTEGER` fail closed（顶层与嵌套路径、任何 RawMessage 信任与 canonical 哈希之前）；有限解析后每个整数值数字必须满足 ±(2^53-1) 安全区间，与已接受 TS 无损门禁一致；边界正例 `±9007199254740991.0`/`±9007199254740991e0` 与有限非整数（`1.5e0`/`5e-324`/`1e-999`）继续接受，负零含 `-1e-999` 继续以 `AIPT_JSON_NEGATIVE_ZERO` 拒绝。
+  2. **Node 24 逐字节兼容的孤立 UTF-16 代理**：解析器把 JSON 字符串保存为 UTF-16 码元序列（真实的 JavaScript 字符串值）——孤立高/低代理保持为独立码元并序列化为 Node 的小写 `\uXXXX` 转义（绝不输出 U+FFFD 替换符），合法代理对继续重组为对应 Unicode 标量，对象键按 JavaScript UTF-16 码元序排序（`D800 < D83D < DC00 < E000` 等，与 Node 实测一致），重复键检测与 `JSONEqual` 按码元序列比较——`"\ud800"` 与 `"\ufffd"` 绝不混同，而 `"\ud83d\ude00"` 与字面标量仍互为重复键/相等值；Node 预言机接受的字符串一律不拒绝。
+  3. **确定性 wire 错误数值码门禁**：`CheckWireErrorCoherence` 现在除方法/消息/数据外还要求 `errObj.Code == WireErrorExampleCode(-32000)`；方法、数值码、消息、数据任一字段独立漂移都返回稳定原因 `AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE`，nil 错误对象同样 fail closed。
+  4. **突变身份漂移不可冒充**：`MutantSemanticRejection` 在接受语义拒绝前要求内嵌投影身份等于供应源 state 身份（漂移以 `AIPT_FIXTURE_IDENTITY_MISMATCH` 失败）；nil/missing specimen、state 或投影输入一律返回类型化 fail-closed 错误、绝不 panic；包装 `seat_id` 与 `leaked_field_id` 绑定检查保留。
+  5. **语义助手 nil 安全**：`CheckProjection(nil, …)`/`CheckProjection(…, nil, …)` 确定性返回 `[AIPT_PROJECTION_INVALID]`；`KnownSeats(nil)` 返回空已知席位集（不 panic，授权查找全部 fail closed）；`ValidateProjection`/`MutantSemanticRejection` 对调用方可控 nil 输入全部类型化失败，行为保持窄且纯。
+  6. **manifest 解码期语义预检 + 不可变登记表**：`DecodeManifest` 在解码期（零文件 I/O）对每个资产/突变路径运行 `ManifestPathProblem`、要求资产+突变路径唯一、要求突变路径位于 `mutants/`、要求每个 kind 的 `schema_ref` 等于可信精确映射，违规在冒犯路径返回类型化 manifest/路径契约错误（`AIPT_MANIFEST_PATH_UNSAFE`/`AIPT_MANIFEST_INVALID`）。kind→schema_ref 登记表改为**非导出权威**（解码器决策只读非导出映射），导出视图只有 `ManifestKindSchemaRefFor`（查询）与 `ManifestKindSchemaRefSnapshot`（返回副本）；测试证明突变返回的快照绝不改变后续解码或登记表查询。
 
 ## 12. 本批次明确不建设
 

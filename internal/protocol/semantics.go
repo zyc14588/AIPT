@@ -115,9 +115,14 @@ func ValidateSeatSet(seats *SeatSet) error {
 	return nil
 }
 
-// KnownSeats returns the known-seat set of a decoded seat set.
+// KnownSeats returns the known-seat set of a decoded seat set. A nil seat
+// set yields an empty set (never panics), which fails every authorization
+// lookup closed.
 func KnownSeats(seats *SeatSet) map[string]bool {
-	known := make(map[string]bool, len(seats.Seats))
+	known := make(map[string]bool)
+	if seats == nil {
+		return known
+	}
 	for _, s := range seats.Seats {
 		known[s.SeatID] = true
 	}
@@ -168,10 +173,12 @@ func CheckStateMetadata(state *State, knownSeats map[string]bool) []string {
 //   - no field authorized to the projection seat may be omitted
 //     (AIPT_PROJECTION_MISSING_AUTHORIZED_FIELD).
 //
-// A valid projection returns no reasons.
+// A valid projection returns no reasons. A nil state or nil projection
+// returns exactly [AIPT_PROJECTION_INVALID] deterministically — caller-
+// controlled nil inputs never panic.
 func CheckProjection(state *State, projection *Projection, knownSeats map[string]bool) []string {
 	reasons := []string{}
-	if projection == nil {
+	if state == nil || projection == nil {
 		return []string{ReasonProjectionInvalid}
 	}
 	if !knownSeats[projection.SeatID] {
@@ -287,7 +294,7 @@ func jsonNodesEqual(a, b *jsonNode) bool {
 	case kindBool:
 		return a.boolVal == b.boolVal
 	case kindString:
-		return a.str == b.str
+		return unitsEqual(a.units, b.units)
 	case kindNumber:
 		return a.float64Value() == b.float64Value()
 	case kindArray:
@@ -306,10 +313,10 @@ func jsonNodesEqual(a, b *jsonNode) bool {
 		}
 		byKey := make(map[string]*jsonNode, len(b.members))
 		for _, m := range b.members {
-			byKey[m.key] = m.val
+			byKey[unitsKeyString(m.key)] = m.val
 		}
 		for _, m := range a.members {
-			other, ok := byKey[m.key]
+			other, ok := byKey[unitsKeyString(m.key)]
 			if !ok || !jsonNodesEqual(m.val, other) {
 				return false
 			}
@@ -387,7 +394,8 @@ func CheckArithmetic(check *DeterministicCheck) error {
 
 // CheckWireErrorCoherence validates the documented deterministic protocol
 // error against the request it references: an applyAction rejection must
-// carry the generic stable AIPT_ACTION_REJECTED data.error_code and the
+// carry the deterministic numeric code -32000 (WireErrorExampleCode), the
+// generic stable AIPT_ACTION_REJECTED data.error_code, and the
 // deterministic rejection message. The mutant visibility code is never a
 // wire error code. Returns [] when coherent, else the stable mismatch
 // reason(s).
@@ -395,6 +403,9 @@ func CheckWireErrorCoherence(method string, errObj *ErrorObject) []string {
 	reasons := []string{}
 	if method != MethodRequest {
 		return []string{ReasonProtocolErrorMismatchedCode}
+	}
+	if errObj == nil || errObj.Code != WireErrorExampleCode {
+		reasons = append(reasons, ReasonProtocolErrorMismatchedCode)
 	}
 	if errObj == nil || errObj.Data == nil || errObj.Data.ErrorCode != WireErrorExampleDataCode {
 		reasons = append(reasons, ReasonProtocolErrorMismatchedCode)
@@ -406,18 +417,30 @@ func CheckWireErrorCoherence(method string, errObj *ErrorObject) []string {
 }
 
 // MutantSemanticRejection proves the semantic rejection of a schema-valid
-// hidden-leak mutant: the wrapper seat_id must equal projection.seat_id, the
-// leaked_field_id must be exactly the single field producing the
-// authorization rejection, and the projection gate must produce exactly one
-// reason — AIPT_VISIBILITY_UNAUTHORIZED_FIELD. Metadata drift (a wrapper
-// whose seat_id/leaked_field_id does not bind to the actual offending field,
-// or any other reason set) fails with
-// ReasonFixtureMutantSemanticDrift, so drifted metadata can never masquerade
-// as the canonical fixture. On success it returns the stable rejection
-// reason and nil.
+// hidden-leak mutant: the wrapped projection identity must equal the
+// supplied source-state identity, the wrapper seat_id must equal
+// projection.seat_id, the leaked_field_id must be exactly the single field
+// producing the authorization rejection, and the projection gate must
+// produce exactly one reason — AIPT_VISIBILITY_UNAUTHORIZED_FIELD. Metadata
+// drift (a wrapper whose seat_id/leaked_field_id does not bind to the actual
+// offending field, or any other reason set) fails with
+// ReasonFixtureMutantSemanticDrift; inner projection identity drift fails
+// with ReasonFixtureIdentityMismatch, so drifted identity can never
+// masquerade as the canonical fixture. Nil/missing specimen, state, or
+// projection inputs return a typed fail-closed error and never panic. On
+// success it returns the stable rejection reason and nil.
 func MutantSemanticRejection(m *MutantSpecimen, state *State, knownSeats map[string]bool) (string, error) {
 	if m == nil {
 		return "", newContractError(ReasonFixtureMutantSemanticDrift, "$", "mutant specimen is required")
+	}
+	if state == nil {
+		return "", newContractError(ReasonFixtureMutantSemanticDrift, "$", "source state is required")
+	}
+	if state.Identity() != m.Projection.Identity() {
+		return "", newContractError(ReasonFixtureIdentityMismatch, "$/projection",
+			fmt.Sprintf("mutant projection identity %q / %q / %q must equal the supplied source-state identity %q / %q / %q",
+				m.Projection.ProtocolVersion, m.Projection.SchemaVersion, m.Projection.FixtureID,
+				state.ProtocolVersion, state.SchemaVersion, state.FixtureID))
 	}
 	if m.SeatID != m.Projection.SeatID {
 		return "", newContractError(ReasonFixtureMutantSemanticDrift, "$/seat_id",

@@ -250,8 +250,9 @@ func TestSchemaDerivesManifestKindRegistry(t *testing.T) {
 	// The mutant entry adds exactly mutant_specimen on top of the asset enum.
 	schemaKinds = append(schemaKinds, protocol.KindMutantSpecimen)
 	sort.Strings(schemaKinds)
-	goKinds := make([]string, 0, len(protocol.ManifestKindSchemaRef))
-	for k := range protocol.ManifestKindSchemaRef {
+	goRegistry := protocol.ManifestKindSchemaRefSnapshot()
+	goKinds := make([]string, 0, len(goRegistry))
+	for k := range goRegistry {
 		goKinds = append(goKinds, k)
 	}
 	sort.Strings(goKinds)

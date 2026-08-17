@@ -144,7 +144,11 @@ const (
 
 // Manifest fixture kinds and the exact kind -> schema_ref registry. The
 // manifest-supplied $ref is never trusted: only this table decides which
-// subschema a kind targets.
+// subschema a kind targets. The registry is an unexported authority —
+// decoding decisions read only manifestKindSchemaRef, and callers can never
+// mutate it. The safe query API (ManifestKindSchemaRefFor) and the snapshot
+// API (ManifestKindSchemaRefSnapshot, which returns a fresh copy) are the
+// only exported views.
 const (
 	KindSeatSet             = "seat_set"
 	KindState               = "state"
@@ -160,9 +164,10 @@ const (
 	KindJSONRPCNotification = "jsonrpc_notification"
 )
 
-// ManifestKindSchemaRef is the exact kind -> canonical schema_ref mapping
-// (the manifest-supplied schema_ref must equal this, never vice versa).
-var ManifestKindSchemaRef = map[string]string{
+// manifestKindSchemaRef is the unexported exact kind -> canonical
+// schema_ref authority (the manifest-supplied schema_ref must equal this,
+// never vice versa).
+var manifestKindSchemaRef = map[string]string{
 	KindSeatSet:             "#/$defs/seat_set",
 	KindState:               "#/$defs/state",
 	KindProjection:          "#/$defs/projection",
@@ -175,6 +180,25 @@ var ManifestKindSchemaRef = map[string]string{
 	KindJSONRPCRequest:      "#/$defs/jsonrpc_request",
 	KindJSONRPCResponse:     "#/$defs/jsonrpc_response",
 	KindJSONRPCNotification: "#/$defs/jsonrpc_notification",
+}
+
+// ManifestKindSchemaRefFor returns the canonical schema_ref registered for
+// kind, and whether kind is a registered manifest kind. The query reads the
+// unexported authority; callers cannot mutate decoding decisions.
+func ManifestKindSchemaRefFor(kind string) (string, bool) {
+	ref, ok := manifestKindSchemaRef[kind]
+	return ref, ok
+}
+
+// ManifestKindSchemaRefSnapshot returns a COPY of the kind -> canonical
+// schema_ref registry. Mutating the returned map cannot change subsequent
+// decoding or registry queries.
+func ManifestKindSchemaRefSnapshot() map[string]string {
+	out := make(map[string]string, len(manifestKindSchemaRef))
+	for kind, ref := range manifestKindSchemaRef {
+		out[kind] = ref
+	}
+	return out
 }
 
 // FixtureIDMinimalArithmetic is the frozen fixture identity carried by every

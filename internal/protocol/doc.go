@@ -1,5 +1,5 @@
 // Package protocol is the dependency-free Go consumer of the canonical AIPT
-// wire contract (AIPT-M0-B002, iteration 5).
+// wire contract (AIPT-M0-B002, iteration 5B).
 //
 // It is a bounded, pure protocol package: it decodes and validates documents
 // against the canonical schema at

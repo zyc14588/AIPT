@@ -9,8 +9,9 @@ package protocol
 //     (encoding/json silently keeps the last occurrence);
 //   - integer values outside the cross-language safe range
 //     [-9007199254740991, 9007199254740991] are rejected instead of
-//     silently rounded;
-//   - negative zero (-0, -0.0, -0e0) is rejected;
+//     silently rounded — regardless of lexical spelling (integer, fraction,
+//     or exponent forms like 9007199254740993.0 and 1e20 all fail closed);
+//   - negative zero (-0, -0.0, -0e0, -1e-999) is rejected;
 //   - non-finite / overflowing numbers (1e999) are rejected instead of
 //     decoded as +Inf;
 //   - trailing values after the top-level document are rejected;
@@ -20,13 +21,15 @@ package protocol
 //
 // The parser follows RFC 8259 exactly: whitespace is only space/tab/CR/LF,
 // strings carry only the JSON escapes, and invalid UTF-8 is rejected.
+// Decoded strings are kept as UTF-16 code-unit sequences (the exact
+// JavaScript string value): lone surrogates stay distinct and are never
+// conflated with U+FFFD, matching Node's JSON.parse/JSON.stringify.
 
 import (
 	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -42,15 +45,17 @@ const (
 	kindObject
 )
 
-// jsonNode is one parsed JSON value. For strings, str holds the decoded
-// value; for numbers, isInt/ival hold exact safe integers and fval holds the
+// jsonNode is one parsed JSON value. For strings, units holds the decoded
+// UTF-16 code-unit sequence (the exact JavaScript string value: lone
+// surrogates stay distinct code units and are never conflated with U+FFFD);
+// for numbers, isInt/ival hold exact safe integers and fval holds the
 // float64 view of non-integer numbers. start/end span the raw text in data.
 type jsonNode struct {
 	kind    jsonKind
 	start   int
 	end     int
 	data    []byte
-	str     string
+	units   []uint16
 	boolVal bool
 	isInt   bool
 	ival    int64
@@ -60,8 +65,54 @@ type jsonNode struct {
 }
 
 type jsonMember struct {
-	key string
+	key []uint16
 	val *jsonNode
+}
+
+// stringToUnits converts a Go string to its UTF-16 code-unit sequence.
+func stringToUnits(s string) []uint16 {
+	return utf16.Encode([]rune(s))
+}
+
+// unitsEqual compares two UTF-16 code-unit sequences exactly.
+func unitsEqual(a, b []uint16) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// unitsToGoString converts a UTF-16 code-unit sequence to a Go string.
+// Valid surrogate pairs decode to their scalar; lone surrogates decode to
+// U+FFFD exactly like encoding/json. Typed decoders (identifiers, messages,
+// error paths) use this view, which matches the previous parser behavior.
+func unitsToGoString(u []uint16) string {
+	return string(utf16.Decode(u))
+}
+
+// unitsKeyString maps a UTF-16 code-unit sequence injectively to a Go map
+// key: each code unit is encoded as the 3-byte UTF-8 form of its code point
+// (surrogates included). Distinct code-unit sequences never collide, so
+// duplicate-key detection compares the actual JavaScript string value —
+// "\ud800" and "\ufffd" stay distinct, while "\ud83d\ude00" and the literal
+// U+1F600 scalar collide exactly like JavaScript object keys.
+func unitsKeyString(u []uint16) string {
+	b := make([]byte, 0, len(u)*3)
+	for _, c := range u {
+		b = append(b, 0xE0|byte(c>>12), 0x80|byte(c>>6)&0x3F, 0x80|byte(c)&0x3F)
+	}
+	return string(b)
+}
+
+// stringValue returns the decoded Go string view of a string node (lone
+// surrogates decode to U+FFFD), for typed member decoding.
+func (n *jsonNode) stringValue() string {
+	return unitsToGoString(n.units)
 }
 
 // raw returns the exact raw JSON text of the node as a fresh json.RawMessage.
@@ -82,8 +133,9 @@ func (n *jsonNode) hasMember(key string) bool {
 	if n.kind != kindObject {
 		return false
 	}
+	want := stringToUnits(key)
 	for _, m := range n.members {
-		if m.key == key {
+		if unitsEqual(m.key, want) {
 			return true
 		}
 	}
@@ -95,8 +147,9 @@ func (n *jsonNode) member(key string) *jsonNode {
 	if n.kind != kindObject {
 		return nil
 	}
+	want := stringToUnits(key)
 	for _, m := range n.members {
-		if m.key == key {
+		if unitsEqual(m.key, want) {
 			return m.val
 		}
 	}
@@ -240,12 +293,12 @@ func (p *strictJSONParser) parseString(path string) (*jsonNode, error) {
 			if !utf8.Valid(content) {
 				return nil, newContractError(ReasonJSONMalformed, path, "string carries invalid UTF-8")
 			}
-			decoded, err := unescapeJSONString(content)
+			units, err := unescapeJSONString(content)
 			if err != nil {
 				return nil, newContractError(ReasonJSONMalformed, path, err.Error())
 			}
 			p.pos++
-			return &jsonNode{kind: kindString, start: start, end: p.pos, data: p.data, str: decoded}, nil
+			return &jsonNode{kind: kindString, start: start, end: p.pos, data: p.data, units: units}, nil
 		}
 		if c == '\\' {
 			if p.pos+1 >= len(p.data) {
@@ -300,73 +353,73 @@ func hex4(b []byte) rune {
 }
 
 // unescapeJSONString decodes the raw content of a JSON string (without the
-// surrounding quotes). Escapes are validated by the caller's scan; this
-// function handles surrogate pairs exactly like encoding/json (lone
-// surrogates decode to U+FFFD).
-func unescapeJSONString(raw []byte) (string, error) {
-	var b strings.Builder
+// surrounding quotes) into its UTF-16 code-unit sequence — the exact
+// JavaScript string value. Escapes are validated by the caller's scan; this
+// function preserves lone surrogates as distinct code units (Node 24
+// JSON.parse semantics) and keeps valid surrogate pairs as a two-unit
+// sequence that the canonical writer recombines into the scalar.
+func unescapeJSONString(raw []byte) ([]uint16, error) {
+	units := make([]uint16, 0, len(raw))
 	i := 0
 	for i < len(raw) {
 		c := raw[i]
 		if c != '\\' {
-			b.WriteByte(c)
-			i++
+			r, size := utf8.DecodeRune(raw[i:])
+			units = append(units, utf16.Encode([]rune{r})...)
+			i += size
 			continue
 		}
 		esc := raw[i+1]
 		switch esc {
 		case '"':
-			b.WriteByte('"')
+			units = append(units, '"')
 		case '\\':
-			b.WriteByte('\\')
+			units = append(units, '\\')
 		case '/':
-			b.WriteByte('/')
+			units = append(units, '/')
 		case 'b':
-			b.WriteByte('\b')
+			units = append(units, '\b')
 		case 'f':
-			b.WriteByte('\f')
+			units = append(units, '\f')
 		case 'n':
-			b.WriteByte('\n')
+			units = append(units, '\n')
 		case 'r':
-			b.WriteByte('\r')
+			units = append(units, '\r')
 		case 't':
-			b.WriteByte('\t')
+			units = append(units, '\t')
 		case 'u':
 			r1 := hex4(raw[i+2 : i+6])
 			i += 6
-			if r1 >= 0xD800 && r1 <= 0xDBFF {
-				// High surrogate: pair with a following \uXXXX low surrogate.
-				if i+6 <= len(raw) && raw[i] == '\\' && raw[i+1] == 'u' {
-					r2 := hex4(raw[i+2 : i+6])
-					if r2 >= 0xDC00 && r2 <= 0xDFFF {
-						b.WriteRune(utf16.DecodeRune(r1, r2))
-						i += 6
-						continue
-					}
+			if r1 >= 0xD800 && r1 <= 0xDBFF && i+6 <= len(raw) && raw[i] == '\\' && raw[i+1] == 'u' {
+				r2 := hex4(raw[i+2 : i+6])
+				if r2 >= 0xDC00 && r2 <= 0xDFFF {
+					// Valid surrogate pair: keep both code units.
+					units = append(units, uint16(r1), uint16(r2))
+					i += 6
+					continue
 				}
-				b.WriteRune(utf8.RuneError)
-				continue
 			}
-			if r1 >= 0xDC00 && r1 <= 0xDFFF {
-				// Lone low surrogate.
-				b.WriteRune(utf8.RuneError)
-				continue
-			}
-			b.WriteRune(r1)
+			// Lone high/low surrogate or high followed by a non-low:
+			// preserved exactly, like Node's JSON.parse.
+			units = append(units, uint16(r1))
 			continue
 		default:
-			return "", fmt.Errorf("invalid string escape \\%c", esc)
+			return nil, fmt.Errorf("invalid string escape \\%c", esc)
 		}
 		i += 2
 	}
-	return b.String(), nil
+	return units, nil
 }
 
 // parseNumber parses a JSON number with the exact RFC 8259 grammar and
-// enforces cross-language safety: integer literals must lie inside
+// enforces cross-language safety: every numeric value that is integral
+// (integer literals AND fraction/exponent spellings that parse to a
+// mathematical integer, like 9007199254740992e0 or 1e20) must lie inside
 // [SafeIntegerMin, SafeIntegerMax], negative zero is rejected, and
 // non-integer literals must parse to a finite float64 (underflow to zero is
-// accepted, overflow to infinity is rejected).
+// accepted, overflow to infinity is rejected). This mirrors the accepted
+// TypeScript lossless gate: any parsed integral Number that is not a
+// JavaScript safe integer fails closed regardless of lexical spelling.
 func (p *strictJSONParser) parseNumber(path string) (*jsonNode, error) {
 	start := p.pos
 	if p.data[p.pos] == '-' {
@@ -454,7 +507,11 @@ func (p *strictJSONParser) parseNumber(path string) (*jsonNode, error) {
 				"number overflows the IEEE-754 double range")
 		}
 		if f == 0 {
-			// Underflow to zero: identical to Node's JSON.parse behavior.
+			// Underflow to zero: identical to Node's JSON.parse behavior,
+			// but a negative sign still produces negative zero.
+			if neg {
+				return nil, newContractError(ReasonJSONNegativeZero, path, "negative zero is not a canonical JSON value")
+			}
 			return &jsonNode{kind: kindNumber, start: start, end: p.pos, data: p.data, fval: 0}, nil
 		}
 		return nil, newContractError(ReasonJSONMalformed, path, "malformed number")
@@ -465,6 +522,14 @@ func (p *strictJSONParser) parseNumber(path string) (*jsonNode, error) {
 	}
 	if f == 0 && math.Signbit(f) {
 		return nil, newContractError(ReasonJSONNegativeZero, path, "negative zero is not a canonical JSON value")
+	}
+	if math.Trunc(f) == f && (f < float64(SafeIntegerMin) || f > float64(SafeIntegerMax)) {
+		// The parsed value is a mathematical integer outside the
+		// cross-language safe range even though the lexical spelling used
+		// a fraction/exponent form (e.g. 9007199254740993.0, 1e20). Node
+		// would silently round such values; fail closed instead.
+		return nil, newContractError(ReasonJSONUnsafeInteger, path,
+			"integer value outside the cross-language safe range [-9007199254740991, 9007199254740991]")
 	}
 	return &jsonNode{kind: kindNumber, start: start, end: p.pos, data: p.data, fval: f}, nil
 }
@@ -493,20 +558,21 @@ func (p *strictJSONParser) parseObject(depth int, path string) (*jsonNode, error
 		if err != nil {
 			return nil, err
 		}
-		key := keyNode.str
-		if seen[key] {
-			return nil, newContractError(ReasonJSONDuplicateKey, path+"/"+key,
-				fmt.Sprintf("duplicate object member %q", key))
+		key := keyNode.units
+		keyIdentity := unitsKeyString(key)
+		if seen[keyIdentity] {
+			return nil, newContractError(ReasonJSONDuplicateKey, path+"/"+unitsToGoString(key),
+				fmt.Sprintf("duplicate object member %q", unitsToGoString(key)))
 		}
-		seen[key] = true
+		seen[keyIdentity] = true
 		p.skipWS()
 		if p.pos >= len(p.data) || p.data[p.pos] != ':' {
 			return nil, newContractError(ReasonJSONMalformed, path,
-				fmt.Sprintf("expected ':' after object member %q", key))
+				fmt.Sprintf("expected ':' after object member %q", unitsToGoString(key)))
 		}
 		p.pos++
 		p.skipWS()
-		val, err := p.parseValue(depth+1, path+"/"+key)
+		val, err := p.parseValue(depth+1, path+"/"+unitsToGoString(key))
 		if err != nil {
 			return nil, err
 		}

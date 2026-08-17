@@ -123,14 +123,15 @@ func (id *RequestID) UnmarshalJSON(data []byte) error {
 func requestIDFromNode(n *jsonNode, path string) (RequestID, error) {
 	switch n.kind {
 	case kindString:
-		if n.str == "" {
+		value := n.stringValue()
+		if value == "" {
 			return RequestID{}, newContractError(ReasonIDInvalid, path, "request id string must not be empty")
 		}
-		if len([]rune(n.str)) > MaxRequestIDStringLength {
+		if len([]rune(value)) > MaxRequestIDStringLength {
 			return RequestID{}, newContractError(ReasonIDInvalid, path,
 				"request id string exceeds 128 characters")
 		}
-		return RequestID{kind: IDString, str: n.str}, nil
+		return RequestID{kind: IDString, str: value}, nil
 	case kindNumber:
 		var v int64
 		if n.isInt {

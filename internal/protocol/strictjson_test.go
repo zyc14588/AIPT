@@ -12,7 +12,7 @@ import (
 func TestValidateJSONAcceptsLosslessValues(t *testing.T) {
 	docs := []string{
 		`null`, `true`, `false`, `0`, `-1`, `9007199254740991`, `-9007199254740991`,
-		`3.14`, `1e-7`, `1e21`, `""`, `"a\tb\n\"c\" \u00e9"`, `[]`, `{}`,
+		`3.14`, `1e-7`, `""`, `"a\tb\n\"c\" \u00e9"`, `[]`, `{}`,
 		`[1,2,{"a":null}]`, `{"a":{"b":[true,false]}}`,
 	}
 	for _, doc := range docs {
@@ -147,22 +147,21 @@ func TestCanonicalJSONIsDeterministicAcrossInsertionOrder(t *testing.T) {
 }
 
 func TestCanonicalJSONNumberFormattingMatchesNode(t *testing.T) {
-	// Spot checks against Node's JSON.stringify(number) output.
+	// Spot checks against Node's JSON.stringify(number) output. Integer-
+	// valued spellings beyond the cross-language safe range (1e20, 1e21,
+	// 1e308, 1.2345678901234568e20) are rejected by the lossless gate and
+	// covered by the unsafe-integer tests instead.
 	cases := map[string]string{
-		`0.0000001`:             `1e-7`,
-		`1e-7`:                  `1e-7`,
-		`0.000001`:              `0.000001`,
-		`1e20`:                  `100000000000000000000`,
-		`1e21`:                  `1e+21`,
-		`0.1`:                   `0.1`,
-		`0.30000000000000004`:   `0.30000000000000004`,
-		`1e308`:                 `1e+308`,
-		`5e-324`:                `5e-324`,
-		`1.2345678901234568e20`: `123456789012345680000`,
-		`1.0`:                   `1`,
-		`100.0`:                 `100`,
-		`-2.5e-8`:               `-2.5e-8`,
-		`9007199254740991`:      `9007199254740991`,
+		`0.0000001`:           `1e-7`,
+		`1e-7`:                `1e-7`,
+		`0.000001`:            `0.000001`,
+		`0.1`:                 `0.1`,
+		`0.30000000000000004`: `0.30000000000000004`,
+		`5e-324`:              `5e-324`,
+		`1.0`:                 `1`,
+		`100.0`:               `100`,
+		`-2.5e-8`:             `-2.5e-8`,
+		`9007199254740991`:    `9007199254740991`,
 	}
 	for in, want := range cases {
 		got, err := protocol.CanonicalJSON([]byte(in))

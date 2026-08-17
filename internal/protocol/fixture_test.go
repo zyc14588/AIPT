@@ -98,7 +98,7 @@ func stringsHasPrefix(s, prefix string) bool {
 func TestFixtureManifestExactKindSchemaRefMapping(t *testing.T) {
 	manifest := mustDecodeManifest(t, readFixture(t, "manifest.json"))
 	for _, asset := range manifest.Assets {
-		want, ok := protocol.ManifestKindSchemaRef[asset.Kind]
+		want, ok := protocol.ManifestKindSchemaRefFor(asset.Kind)
 		if !ok {
 			t.Fatalf("manifest kind %q has no canonical schema_ref mapping", asset.Kind)
 		}
@@ -110,8 +110,9 @@ func TestFixtureManifestExactKindSchemaRefMapping(t *testing.T) {
 		if mutant.Kind != protocol.KindMutantSpecimen {
 			t.Fatalf("mutant kind drifted: %q", mutant.Kind)
 		}
-		if mutant.SchemaRef != protocol.ManifestKindSchemaRef[protocol.KindMutantSpecimen] {
-			t.Fatalf("mutant schema_ref drifted: %q", mutant.SchemaRef)
+		want, ok := protocol.ManifestKindSchemaRefFor(protocol.KindMutantSpecimen)
+		if !ok || mutant.SchemaRef != want {
+			t.Fatalf("mutant schema_ref drifted: %q (want %q)", mutant.SchemaRef, want)
 		}
 		if mutant.ExpectedSemanticRejection != protocol.ReasonVisibilityUnauthorizedField {
 			t.Fatalf("mutant expected_semantic_rejection drifted: %q", mutant.ExpectedSemanticRejection)

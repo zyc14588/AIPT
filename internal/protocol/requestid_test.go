@@ -80,16 +80,18 @@ func TestRequestIDAcceptsBothInclusiveSafeIntegerBoundaries(t *testing.T) {
 
 func TestRequestIDRejectsIntegersOutsideBounds(t *testing.T) {
 	// Integer literals outside the inclusive bound are rejected at the strict
-	// JSON layer (never silently rounded); float-form literals whose value
-	// escapes the bound are rejected at the id gate.
+	// JSON layer (never silently rounded); float/exponent-form literals
+	// whose VALUE escapes the bound are rejected by the same lossless gate
+	// (iteration 5B: every integral value must be a safe integer regardless
+	// of lexical spelling).
 	for _, n := range []int64{protocol.SafeIntegerMin - 1, protocol.SafeIntegerMax + 1} {
 		var id protocol.RequestID
 		err := json.Unmarshal([]byte(int64ToString(n)), &id)
 		wantReason(t, err, protocol.ReasonJSONUnsafeInteger)
 	}
 	var id protocol.RequestID
-	wantReason(t, json.Unmarshal([]byte(`9.007199254740992e15`), &id), protocol.ReasonIDInvalid)
-	wantReason(t, json.Unmarshal([]byte(`-9.007199254740992e15`), &id), protocol.ReasonIDInvalid)
+	wantReason(t, json.Unmarshal([]byte(`9.007199254740992e15`), &id), protocol.ReasonJSONUnsafeInteger)
+	wantReason(t, json.Unmarshal([]byte(`-9.007199254740992e15`), &id), protocol.ReasonJSONUnsafeInteger)
 }
 
 func TestRequestIDRejectsEmptyString(t *testing.T) {
@@ -182,12 +184,12 @@ func TestRequestIDUnmarshalRejectsDuplicateKeys(t *testing.T) {
 
 func TestRequestIDUnsafeNumberLiteralNeverRounds(t *testing.T) {
 	// 9007199254740993 as a float literal rounds to ...992 in a double; the
-	// parser must reject the integer literal with the unsafe-integer reason
-	// and the float form at the id gate — never silently accept a rounded
-	// value.
+	// parser must reject the integer literal AND the integer-valued
+	// fraction spelling with the unsafe-integer reason — never silently
+	// accept a rounded value.
 	var id protocol.RequestID
 	wantReason(t, json.Unmarshal([]byte(`9007199254740993`), &id), protocol.ReasonJSONUnsafeInteger)
-	wantReason(t, json.Unmarshal([]byte(`9007199254740993.0`), &id), protocol.ReasonIDInvalid)
+	wantReason(t, json.Unmarshal([]byte(`9007199254740993.0`), &id), protocol.ReasonJSONUnsafeInteger)
 }
 
 func TestNewStringIDAndNewNumberIDValidation(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strings"
 )
 
 var (
@@ -45,11 +46,12 @@ func newMemberSet(n *jsonNode, path string, allowed ...string) (*memberSet, erro
 	}
 	ms := &memberSet{n: n, path: path, present: make(map[string]*jsonNode, len(n.members))}
 	for _, m := range n.members {
-		if !allowedSet[m.key] {
-			return nil, newContractError(ReasonJSONUnknownMember, path+"/"+m.key,
-				fmt.Sprintf("unknown member %q", m.key))
+		key := unitsToGoString(m.key)
+		if !allowedSet[key] {
+			return nil, newContractError(ReasonJSONUnknownMember, path+"/"+key,
+				fmt.Sprintf("unknown member %q", key))
 		}
-		ms.present[m.key] = m.val
+		ms.present[key] = m.val
 	}
 	return ms, nil
 }
@@ -98,7 +100,7 @@ func (ms *memberSet) requiredString(key string, validators ...stringValidator) (
 		return "", newContractError(ReasonJSONInvalidType, ms.path+"/"+key,
 			fmt.Sprintf("member %q must be a string", key))
 	}
-	return ms.applyValidators(key, v.str, validators...)
+	return ms.applyValidators(key, v.stringValue(), validators...)
 }
 
 func (ms *memberSet) applyValidators(key, value string, validators ...stringValidator) (string, error) {
@@ -264,7 +266,7 @@ func decodeVisibility(n *jsonNode, path string) (Visibility, error) {
 			return Visibility{}, newContractError(ReasonJSONInvalidType,
 				fmt.Sprintf("%s/authorized_seat_ids/%d", path, i), "authorized seat id must be a string")
 		}
-		ids = append(ids, item.str)
+		ids = append(ids, item.stringValue())
 	}
 	if err := validateAuthorizedSeatIDs(ids, path+"/authorized_seat_ids"); err != nil {
 		return Visibility{}, err
@@ -751,7 +753,12 @@ func DecodeReplayAssertion(data []byte) (*ReplayAssertion, error) {
 }
 
 // DecodeManifest strictly decodes a fixture manifest document
-// ($defs/fixture_manifest).
+// ($defs/fixture_manifest). During decoding it also performs the required
+// semantic preflight (no file I/O): every asset and mutant path must pass
+// ManifestPathProblem, paths must be unique across assets and mutants, the
+// mutant path must live under mutants/, and every kind's schema_ref must
+// equal the trusted unexported kind->schema_ref mapping. Any violation
+// returns a typed manifest/path contract error at the offending path.
 func DecodeManifest(data []byte) (*Manifest, error) {
 	root, err := parseStrictJSON(data)
 	if err != nil {
@@ -790,8 +797,10 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 		return nil, newContractError(ReasonManifestInvalid, "$/assets", "assets must not be empty")
 	}
 	assets := make([]ManifestAsset, 0, len(assetsNode.arr))
+	seenPaths := make(map[string]string, len(assetsNode.arr)+1)
 	for i, item := range assetsNode.arr {
-		ams, err := newMemberSet(item, fmt.Sprintf("$/assets/%d", i), "path", "kind", "schema_ref", "sha256")
+		pathIdx := fmt.Sprintf("$/assets/%d", i)
+		ams, err := newMemberSet(item, pathIdx, "path", "kind", "schema_ref", "sha256")
 		if err != nil {
 			return nil, err
 		}
@@ -799,6 +808,14 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 		if err != nil {
 			return nil, err
 		}
+		if problem := ManifestPathProblem(p); problem != "" {
+			return nil, newContractError(ReasonManifestPathUnsafe, pathIdx+"/path", problem)
+		}
+		if firstPath, dup := seenPaths[p]; dup {
+			return nil, newContractError(ReasonManifestInvalid, pathIdx+"/path",
+				fmt.Sprintf("duplicate manifest path %q (already declared at %s)", p, firstPath))
+		}
+		seenPaths[p] = pathIdx + "/path"
 		kind, err := ams.requiredString("kind", validateManifestKind)
 		if err != nil {
 			return nil, err
@@ -807,6 +824,11 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 			makePatternValidator(reSchemaRef, ReasonManifestInvalid, "schema_ref"))
 		if err != nil {
 			return nil, err
+		}
+		wantRef := manifestKindSchemaRef[kind]
+		if schemaRef != wantRef {
+			return nil, newContractError(ReasonManifestInvalid, pathIdx+"/schema_ref",
+				fmt.Sprintf("kind %q must map to exactly %q, got %q", kind, wantRef, schemaRef))
 		}
 		sha, err := ams.requiredString("sha256",
 			makePatternValidator(reSHA256Hex, ReasonManifestInvalid, "sha256"))
@@ -835,6 +857,18 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
+	if problem := ManifestPathProblem(mPath); problem != "" {
+		return nil, newContractError(ReasonManifestPathUnsafe, "$/mutants/0/path", problem)
+	}
+	if firstPath, dup := seenPaths[mPath]; dup {
+		return nil, newContractError(ReasonManifestInvalid, "$/mutants/0/path",
+			fmt.Sprintf("duplicate manifest path %q (already declared at %s)", mPath, firstPath))
+	}
+	seenPaths[mPath] = "$/mutants/0/path"
+	if !strings.HasPrefix(mPath, "mutants/") {
+		return nil, newContractError(ReasonManifestInvalid, "$/mutants/0/path",
+			fmt.Sprintf("mutant path %q must live under mutants/", mPath))
+	}
 	mKind, err := mms.requiredString("kind", validateExact(KindMutantSpecimen, ReasonManifestInvalid))
 	if err != nil {
 		return nil, err
@@ -843,6 +877,11 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 		makePatternValidator(reSchemaRef, ReasonManifestInvalid, "schema_ref"))
 	if err != nil {
 		return nil, err
+	}
+	if mSchemaRef != manifestKindSchemaRef[KindMutantSpecimen] {
+		return nil, newContractError(ReasonManifestInvalid, "$/mutants/0/schema_ref",
+			fmt.Sprintf("kind %q must map to exactly %q, got %q", KindMutantSpecimen,
+				manifestKindSchemaRef[KindMutantSpecimen], mSchemaRef))
 	}
 	mSHA, err := mms.requiredString("sha256",
 		makePatternValidator(reSHA256Hex, ReasonManifestInvalid, "sha256"))
@@ -872,8 +911,10 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 	}, nil
 }
 
+// validateManifestKind requires kind to be a registered manifest kind in the
+// unexported kind->schema_ref authority (never caller-mutable).
 func validateManifestKind(value, path string) error {
-	if _, ok := ManifestKindSchemaRef[value]; !ok {
+	if _, ok := manifestKindSchemaRef[value]; !ok {
 		return newContractError(ReasonManifestInvalid, path,
 			fmt.Sprintf("unknown manifest kind %q", value))
 	}
@@ -896,8 +937,8 @@ func DecodeMutantSpecimen(data []byte) (*MutantSpecimen, error) {
 		return nil, err
 	}
 	if markersNode.kind != kindArray || len(markersNode.arr) != 2 ||
-		markersNode.arr[0].kind != kindString || markersNode.arr[0].str != MutantMarkerNonCanon ||
-		markersNode.arr[1].kind != kindString || markersNode.arr[1].str != MutantMarkerMutant {
+		markersNode.arr[0].kind != kindString || markersNode.arr[0].stringValue() != MutantMarkerNonCanon ||
+		markersNode.arr[1].kind != kindString || markersNode.arr[1].stringValue() != MutantMarkerMutant {
 		return nil, newContractError(ReasonMutantSpecimenInvalid, "$/markers",
 			`markers must be exactly ["NON_CANON", "MUTANT"]`)
 	}
@@ -1271,7 +1312,7 @@ func DecodeEnvelope(data []byte) (*Envelope, error) {
 		if methodNode.kind != kindString {
 			return nil, newContractError(ReasonMethodInvalid, "$/method", "method must be a string")
 		}
-		switch methodNode.str {
+		switch methodNode.stringValue() {
 		case MethodRequest:
 			req, err := decodeRequestFromNode(root)
 			if err != nil {
@@ -1286,7 +1327,7 @@ func DecodeEnvelope(data []byte) (*Envelope, error) {
 			return &Envelope{Kind: EnvelopeNotification, Notification: notif}, nil
 		default:
 			return nil, newContractError(ReasonMethodInvalid, "$/method",
-				fmt.Sprintf("unknown method %q (registry: %q, %q)", methodNode.str, MethodRequest, MethodNotification))
+				fmt.Sprintf("unknown method %q (registry: %q, %q)", methodNode.stringValue(), MethodRequest, MethodNotification))
 		}
 	}
 	if root.hasMember("id") {

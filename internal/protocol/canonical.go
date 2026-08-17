@@ -62,7 +62,7 @@ func writeCanonical(b *strings.Builder, n *jsonNode) {
 			b.WriteString("false")
 		}
 	case kindString:
-		b.WriteString(quoteJSONString(n.str))
+		b.WriteString(quoteJSONUnits(n.units))
 	case kindNumber:
 		if n.isInt {
 			b.WriteString(strconv.FormatInt(n.ival, 10))
@@ -86,14 +86,14 @@ func writeCanonical(b *strings.Builder, n *jsonNode) {
 		members := make([]jsonMember, len(n.members))
 		copy(members, n.members)
 		sort.SliceStable(members, func(i, j int) bool {
-			return compareUTF16(members[i].key, members[j].key) < 0
+			return compareUnits(members[i].key, members[j].key) < 0
 		})
 		b.WriteByte('{')
 		for i, m := range members {
 			if i > 0 {
 				b.WriteByte(',')
 			}
-			b.WriteString(quoteJSONString(m.key))
+			b.WriteString(quoteJSONUnits(m.key))
 			b.WriteByte(':')
 			writeCanonical(b, m.val)
 		}
@@ -101,15 +101,11 @@ func writeCanonical(b *strings.Builder, n *jsonNode) {
 	}
 }
 
-// compareUTF16 compares two strings by their UTF-16 code unit sequences,
-// matching JavaScript's default Array.prototype.sort() order.
-func compareUTF16(a, b string) int {
-	ascii := true
+// compareUnits compares two UTF-16 code-unit sequences lexicographically,
+// matching JavaScript's default Array.prototype.sort() order (lone
+// surrogates included, exactly like the JS strings they represent).
+func compareUnits(a, b []uint16) int {
 	for i := 0; i < len(a) && i < len(b); i++ {
-		if a[i] >= 0x80 || b[i] >= 0x80 {
-			ascii = false
-			break
-		}
 		if a[i] != b[i] {
 			if a[i] < b[i] {
 				return -1
@@ -117,42 +113,35 @@ func compareUTF16(a, b string) int {
 			return 1
 		}
 	}
-	if ascii {
-		switch {
-		case len(a) < len(b):
-			return -1
-		case len(a) > len(b):
-			return 1
-		}
-		return 0
-	}
-	ua := utf16.Encode([]rune(a))
-	ub := utf16.Encode([]rune(b))
-	for i := 0; i < len(ua) && i < len(ub); i++ {
-		if ua[i] != ub[i] {
-			if ua[i] < ub[i] {
-				return -1
-			}
-			return 1
-		}
-	}
 	switch {
-	case len(ua) < len(ub):
+	case len(a) < len(b):
 		return -1
-	case len(ua) > len(ub):
+	case len(a) > len(b):
 		return 1
 	}
 	return 0
 }
 
-// quoteJSONString renders s as a JSON string exactly like Node's
+// quoteJSONString renders a Go string as a JSON string exactly like Node's
 // JSON.stringify: control characters use the \b \f \n \r \t short escapes,
 // other controls use lowercase \u00xx, and no HTML escaping is applied.
 func quoteJSONString(s string) string {
+	return quoteJSONUnits(stringToUnits(s))
+}
+
+// quoteJSONUnits renders a UTF-16 code-unit sequence as a JSON string
+// exactly like Node's JSON.stringify: control characters use the
+// \b \f \n \r \t short escapes, other controls use lowercase \u00xx, valid
+// surrogate pairs recombine into their Unicode scalar, and lone high/low
+// surrogates serialize as Node's lowercase \uXXXX escape (never as U+FFFD).
+// No HTML escaping is applied.
+func quoteJSONUnits(u []uint16) string {
+	const hexDigits = "0123456789abcdef"
 	var b strings.Builder
 	b.WriteByte('"')
-	for _, r := range s {
-		switch r {
+	for i := 0; i < len(u); i++ {
+		c := u[i]
+		switch c {
 		case '"':
 			b.WriteString(`\"`)
 		case '\\':
@@ -168,13 +157,25 @@ func quoteJSONString(s string) string {
 		case '\t':
 			b.WriteString(`\t`)
 		default:
-			if r < 0x20 {
+			switch {
+			case c < 0x20:
 				b.WriteString(`\u00`)
-				const hexDigits = "0123456789abcdef"
-				b.WriteByte(hexDigits[byte(r)>>4])
-				b.WriteByte(hexDigits[byte(r)&0xf])
-			} else {
-				b.WriteRune(r)
+				b.WriteByte(hexDigits[c>>4])
+				b.WriteByte(hexDigits[c&0xf])
+			case c >= 0xD800 && c <= 0xDBFF && i+1 < len(u) && u[i+1] >= 0xDC00 && u[i+1] <= 0xDFFF:
+				// Valid surrogate pair: recombine into the scalar.
+				b.WriteRune(utf16.DecodeRune(rune(c), rune(u[i+1])))
+				i++
+			case c >= 0xD800 && c <= 0xDFFF:
+				// Lone surrogate: Node serializes the lowercase \uXXXX
+				// escape and never a replacement character.
+				b.WriteString(`\u`)
+				b.WriteByte(hexDigits[c>>12])
+				b.WriteByte(hexDigits[(c>>8)&0xf])
+				b.WriteByte(hexDigits[(c>>4)&0xf])
+				b.WriteByte(hexDigits[c&0xf])
+			default:
+				b.WriteRune(rune(c))
 			}
 		}
 	}
