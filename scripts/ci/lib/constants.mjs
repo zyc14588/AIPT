@@ -1,17 +1,17 @@
-// Shared B002 validator constants.
+// Shared B003 validator constants.
 //
 // Every fixed identity below is an immutable historical fact installed by the
-// closed AIPT-M0-B000 / AIPT-M0-B001 acceptances. Nothing is computed at
-// runtime from the candidate itself, so the candidate cannot validate itself
-// into acceptance.
+// closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 acceptances. Nothing is
+// computed at runtime from the candidate itself, so the candidate cannot
+// validate itself into acceptance.
 //
-// BASE_* is the accepted main base the B002 candidate must diff against: the
-// AIPT-M0-B001 merge commit and its tree. B000 and B001 keep their own
-// original commit/tree identities instead of aliasing the current base.
+// BASE_* is the accepted main base the B003 candidate must diff against: the
+// AIPT-M0-B002 closeout commit and its tree. B000, B001, and B002 keep their
+// own original commit/tree identities instead of aliasing the current base.
 
 // The batch under construction for this iteration (public status, runner
 // report, and the status-transition validator all target this batch).
-export const CURRENT_BATCH = 'AIPT-M0-B002';
+export const CURRENT_BATCH = 'AIPT-M0-B003';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -21,8 +21,8 @@ export const CURRENT_BATCH = 'AIPT-M0-B002';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of this B002 iteration (machine + human docs).
-export const STATUS_DATE = '2026-08-17';
+// Public status date of this B003 iteration (machine + human docs).
+export const STATUS_DATE = '2026-08-19';
 
 // Immutable closed-batch identities — historical state, never updated by
 // later batches and never aliased to the current base.
@@ -38,8 +38,8 @@ export const B000 = {
 };
 
 // Immutable B001 acceptance identity: the merged candidate, the merge commit
-// on main (== the accepted main base for B002), its tree, and the post-merge
-// public CI run that verified the merged tree.
+// on main, its tree, and the post-merge public CI run that verified the
+// merged tree. B001 was the accepted main base for the closed B002 batch.
 export const B001 = {
   candidate: '2e904ddc2d4f1313a99e19f6751a991d589f8336',
   merge_commit: '8bcadc9669e7d04f589f883daa6d4f593875fc9e',
@@ -47,10 +47,42 @@ export const B001 = {
   post_merge_ci_run: 31951440133,
 };
 
-// Accepted main base for the current B002 iteration: the AIPT-M0-B001 merge
-// commit / tree. `verified_head` may only point here, never at a candidate.
-export const BASE_COMMIT = B001.merge_commit;
-export const BASE_TREE = B001.tree;
+// Immutable B002 acceptance identity: the merged candidate, the merge commit
+// on main, its tree, and the post-merge public CI run that verified the
+// merged tree. B002 is the accepted predecessor of the current B003 batch.
+export const B002 = {
+  candidate: '9968cbc89c09640e3fc2feb8d851220eae98b9b9',
+  merge_commit: 'fccfb595c23feab38397506505a3e996fe7b9e9c',
+  tree: 'f99570bc3c4307244ca926cec62e82a07ef5aee8',
+  post_merge_ci_run: 31985644832,
+  post_merge_ci_conclusion: 'success',
+};
+
+// Immutable B002 closeout: the fixup commit on main that closed AIPT-M0-B002
+// after its implementation merge. Its tree is the accepted B003 base tree and
+// its single parent is the B002 merge commit.
+export const B002_CLOSEOUT = {
+  commit: '45a96087d75a61f2910cb5ce99134e3ca777bca8',
+  tree: '8b16b599c261879406f0435e80c878e092683a50',
+  parent: 'fccfb595c23feab38397506505a3e996fe7b9e9c',
+};
+
+// External serial predecessor of the current batch: the unregistered serial
+// batch that ran and merged/closed before B003 construction began. Its
+// closeout commit and post-closeout public CI run are immutable facts.
+export const EXTERNAL_SERIAL_PREDECESSOR = {
+  batch: 'UNREGISTERED-AIPT-P0-B001',
+  status: 'MERGED_CLOSED',
+  closeout_commit: 'a37b284bf5ec35895f436abe71d22599edb6da53',
+  closeout_ci_run: 32194224161,
+  closeout_ci_conclusion: 'success',
+};
+
+// Accepted main base for the current B003 iteration: the AIPT-M0-B002
+// closeout commit / tree. `verified_head` may only point here, never at a
+// candidate.
+export const BASE_COMMIT = B002_CLOSEOUT.commit;
+export const BASE_TREE = B002_CLOSEOUT.tree;
 
 export const TOOLCHAIN = {
   go: '1.26.5',
@@ -107,86 +139,63 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// AIPT-M0-B002 allowed paths. The tree-integrity gate diffs the candidate
-// against the accepted batch base (the B001 merge commit), so this list is
-// the CUMULATIVE union of every B002 iteration's approved paths: the
-// iteration-1 status-transition/validator-baseline set, the iteration-2
-// protocol-schema/fixture/validator set, the iteration-3 bounded repair set,
-// the iteration-4 adapter-SDK/first-party-workspace/supply-chain set, the
-// iteration-5 Go protocol contract consumer set, and the iteration-6 focused
-// CI workflow evolution set. Path admission is PER-ITERATION: each B002
-// iteration registers only the paths its own accepted scope may change, and
-// the scope gate is never disabled.
+// AIPT-M0-B003 allowed paths. The tree-integrity gate diffs the candidate
+// against the accepted batch base (the AIPT-M0-B002 closeout commit), so this
+// list is exactly the full approved B003 scope: the storage iteration admits
+// the PostgreSQL storage implementation and its docs, the dependency
+// manifests (go.mod/go.sum) that the new storage module requires, and the
+// retained public-status / validator / supply-chain / SBOM / CI-workflow
+// paths that B003 iterations may evolve. Path admission is PER-ITERATION:
+// each B003 iteration registers only the paths its own accepted scope may
+// change, and the scope gate is never disabled.
 export const ALLOWED_PATHS = [
-  // iteration 1 (public status transition + validator baseline)
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
+  'docs/storage/**',
   'package.json',
+  'go.mod',
+  'go.sum',
+  'internal/storage/postgres/**',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
-  // iteration 2 (canonical protocol schema, minimal fixture, validators)
-  'docs/protocol/README.md',
-  'schemas/protocol/v1/**',
-  'testdata/protocol/v1/minimal-fixture/**',
-  'scripts/ci/lib/json-schema.mjs',
-  'scripts/ci/validate/protocol-assets.mjs',
-  'scripts/ci/validate/toolchain-lock.mjs',
+  'scripts/ci/validate/workflow.mjs',
+  'scripts/ci/validate/storage.mjs',
   'scripts/ci/validate/supply-chain.mjs',
-  // iteration 4 (dependency-free TypeScript Adapter SDK, first-party pnpm
-  // workspace, supply-chain/SBOM evolution, SDK machine gate)
-  'pnpm-workspace.yaml',
-  'pnpm-lock.yaml',
-  'packages/adapter-sdk/**',
+  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
   'docs/supply-chain/README.md',
-  'scripts/ci/validate/adapter-sdk.mjs',
-  'scripts/ci/validate/sbom.mjs',
-  'scripts/ci/validate/standalone-entrypoints.mjs',
-  'scripts/ci/sbom/generate-sbom.mjs',
-  // iteration 5 (dependency-free Go protocol contract consumer and shared
-  // fixture compatibility tests, plus the narrow toolchainsmoke package
-  // comment update that retires its stale sole-Go-package claim)
-  'internal/protocol/**',
-  'internal/toolchainsmoke/doc.go',
-  // iteration 6 (focused B002 public CI workflow evolution: the ci.yml
-  // contract gates on both qualified runners and the B002 workflow
-  // validator). These are the ONLY .github paths ever admitted — there is
-  // no .github glob, and every other .github path stays rejected.
   '.github/workflows/ci.yml',
-  'scripts/ci/validate/workflow.mjs',
 ];
 
-// Forbidden prefixes for the CURRENT B002 iteration (B001 historical
-// forbidden prefixes retained). Iteration 4 registers packages/adapter-sdk,
-// the workspace manifest/lockfile, and the licenses.json inventory;
-// iteration 5 registers internal/protocol (the dependency-free Go protocol
-// contract consumer) and removes it from this list, while the frozen B001
-// supply-chain artifacts (policy.json, toolchain/action locks) stay
-// mechanically blocked. Iteration 6 admits exactly
-// .github/workflows/ci.yml via the exact allowed-path list above, so the
-// broad .github/ forbidden prefix is retired ONLY because that exact-path
-// admission continues to reject every other .github path (no .github glob
-// was introduced and the prefix list is not loosened elsewhere).
-// runtime/, architecture/runtime implementation, frozen documents, and
-// dependency manifests (go.mod/go.sum) remain forbidden.
+// Forbidden prefixes for the CURRENT B003 iteration (non-conflicting
+// historical frozen paths retained). B003 admits go.mod/go.sum and the
+// storage paths via the exact allowed-path list above, so go.mod/go.sum are
+// NOT forbidden; the frozen B001 supply-chain artifacts (policy.json,
+// toolchain/action locks) stay mechanically blocked. The B002-era
+// adapter/protocol paths are read-only for B003 and are blocked by exact
+// prefix: packages/, schemas/protocol/, testdata/protocol/, internal/
+// protocol/, plus the prohibited cmd/, runtime/, api/ implementations and
+// the frozen docs/architecture|security|evidence|integration/ documents.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
   'migrations/',
   'deploy/',
   'runtime/',
+  'packages/',
+  'schemas/protocol/',
+  'testdata/protocol/',
   'docs/architecture/',
   'docs/integration/',
   'docs/test-model/',
   'docs/security/',
   'docs/evidence/',
+  'internal/protocol/',
   'LICENSE',
-  'go.mod',
-  'go.sum',
   'tools/supply-chain/policy.json',
   'tools/toolchain.lock.json',
   'tools/ci-actions.lock.json',
@@ -194,7 +203,7 @@ export const FORBIDDEN_PREFIXES = [
 
 // Frozen authority registries: byte-for-byte immutability is enforced
 // against the accepted main base. Deferred parameters are frozen for the
-// B002 iteration as well (DEFER-016 stays RESOLVED with the exact B001
+// B003 iteration as well (DEFER-016 stays RESOLVED with the exact B001
 // toolchain qualification; the other 15 stay open).
 export const FROZEN_REGISTRY_PATHS = [
   'docs/authority/registry/decisions.json',
