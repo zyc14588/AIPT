@@ -233,6 +233,55 @@ export function run(ctx) {
     fs.rmSync(probeDir, { recursive: true, force: true });
   }
 
+  // ---- index mode scan (fail-closed) ----
+  // Every tracked index entry must be a regular file (or executable): mode
+  // 120000 (symlink) and mode 160000 (gitlink) are rejected. Metadata is
+  // parsed only up to the first TAB; the entire remainder is the path, so
+  // ordinary spaces in paths are preserved. Malformed output is a failure,
+  // and a nonzero git exit status is a failure.
+  const indexProbe = git(ctx.repo, ['ls-files', '--stage'], { check: false });
+  let entryCount = 0;
+  let parseErrors = 0;
+  const unsafeEntries = [];
+  if (indexProbe.status !== 0) {
+    fail(`git ls-files --stage failed with status ${indexProbe.status}: ${(indexProbe.stderr || '').trim()}`);
+  } else {
+    for (const line of indexProbe.stdout.split('\n')) {
+      if (line === '') continue;
+      entryCount += 1;
+      const tab = line.indexOf('\t');
+      if (tab === -1) {
+        parseErrors += 1;
+        fail(`malformed index entry (no tab separating metadata from path): ${JSON.stringify(line)}`);
+        continue;
+      }
+      const metadata = line.slice(0, tab);
+      const filePath = line.slice(tab + 1);
+      if (filePath === '') {
+        parseErrors += 1;
+        fail(`malformed index entry (empty path after metadata): ${JSON.stringify(line)}`);
+        continue;
+      }
+      // Metadata must be exactly '<mode> <object> <stage>' with six octal
+      // mode digits, an object id of exactly 40 or 64 lowercase hex digits,
+      // and a stage of exactly one digit 0..3.
+      const metaMatch = /^([0-7]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-3])$/.exec(metadata);
+      if (!metaMatch) {
+        parseErrors += 1;
+        fail(`malformed index entry metadata (expected six octal mode digits, 40/64 lowercase hex object id, one stage digit 0..3): ${JSON.stringify(metadata)}`);
+        continue;
+      }
+      const [, mode] = metaMatch;
+      if (mode === '120000' || mode === '160000') {
+        unsafeEntries.push({ mode, filePath });
+        fail(`unsafe index entry: mode ${mode} (${mode === '120000' ? 'symlink' : 'gitlink'}) at ${filePath}`);
+      }
+    }
+  }
+  if (indexProbe.status === 0 && parseErrors === 0 && unsafeEntries.length === 0) {
+    ok(`all ${entryCount} tracked index entries are regular files (no 120000 symlink / 160000 gitlink modes)`);
+  }
+
   return { name: 'tree-integrity', result: pass ? 'PASS' : 'FAIL', details };
 }
 
