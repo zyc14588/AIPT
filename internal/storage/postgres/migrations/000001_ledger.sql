@@ -111,7 +111,7 @@ CREATE TABLE aipt.ledger_events (
     payload_canonical text        NOT NULL CHECK (payload_canonical <> ''),
     payload_sha256    bytea       NOT NULL CONSTRAINT ledger_events_payload_sha256_length_check CHECK (octet_length(payload_sha256) = 32),
     prev_event_hash   bytea       CHECK (prev_event_hash IS NULL OR octet_length(prev_event_hash) = 32),
-    event_hash        bytea       NOT NULL CHECK (octet_length(event_hash) = 32),
+    event_hash        bytea       NOT NULL CONSTRAINT ledger_events_event_hash_length_check CHECK (octet_length(event_hash) = 32),
     committed_at      timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ledger_events_pkey PRIMARY KEY (stream_id, sequence),
     CONSTRAINT ledger_events_event_id_key UNIQUE (event_id),

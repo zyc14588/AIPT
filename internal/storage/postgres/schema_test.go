@@ -14,7 +14,7 @@ import (
 // ledgerMigrationChecksumHex is the pinned SHA-256 of the exact bytes of
 // migrations/000001_ledger.sql as embedded in the binary. Any accepted change
 // to the frozen migration file must update this constant in the same change.
-const ledgerMigrationChecksumHex = "17fad756a51203ba7ebf5ae8185afc371271e62d931d91f8753d708ef2f9f662"
+const ledgerMigrationChecksumHex = "cbab234c8d6a265397dcc553bd9bdb17006712f77ec482b0ef8332f050c9f591"
 
 // ---- embedded migration inventory and checksum ----
 
@@ -197,7 +197,7 @@ func TestSchemaMigrationNormalizedStructure(t *testing.T) {
 		"payload_canonical text not null check ( payload_canonical <> '' )",
 		"payload_sha256 bytea not null constraint ledger_events_payload_sha256_length_check check ( octet_length ( payload_sha256 ) = 32 )",
 		"prev_event_hash bytea check ( prev_event_hash is null or octet_length ( prev_event_hash ) = 32 )",
-		"event_hash bytea not null check ( octet_length ( event_hash ) = 32 )",
+		"event_hash bytea not null constraint ledger_events_event_hash_length_check check ( octet_length ( event_hash ) = 32 )",
 		"committed_at timestamptz not null default now ( )",
 		// --- ledger_events constraints ---
 		"constraint ledger_events_pkey primary key ( stream_id , sequence )",
