@@ -69,7 +69,9 @@ function sameStrings(actual, expected) {
 // Pure, deterministic critical-machine gate over the parsed live status. Reads
 // only candidateStatus.tracks['AIPT-STANDALONE'] and reports a descriptive
 // problem per strict mismatch of exactly the seven standalone current/WIP/
-// next-B004 fields. Side-effect-free: never touches ctx, git, or fs.
+// next-B004 fields plus the external serial predecessor binding (its exact
+// five-key set and the five immutable values against EXTERNAL_SERIAL_PREDECESSOR).
+// Side-effect-free: never touches ctx, git, or fs.
 export function criticalMachineProblems(candidateStatus) {
   const problems = [];
   const standalone = candidateStatus?.tracks?.['AIPT-STANDALONE'];
@@ -93,6 +95,19 @@ export function criticalMachineProblems(candidateStatus) {
   }
   if (standalone?.next_batch_started !== false) {
     problems.push(`next_batch_started must be false: ${JSON.stringify(standalone?.next_batch_started)}`);
+  }
+  const predecessor = standalone?.external_serial_predecessor ?? {};
+  const expectedPredecessorKeys = ['id', 'status', 'closeout_commit', 'closeout_ci_run', 'closeout_ci_conclusion'];
+  if (!sameStrings(Object.keys(predecessor), expectedPredecessorKeys)) {
+    problems.push(`external_serial_predecessor keys must be exactly ${JSON.stringify(expectedPredecessorKeys)}: ${JSON.stringify(predecessor)}`);
+  } else if (
+    predecessor.id !== EXTERNAL_SERIAL_PREDECESSOR.batch ||
+    predecessor.status !== EXTERNAL_SERIAL_PREDECESSOR.status ||
+    predecessor.closeout_commit !== EXTERNAL_SERIAL_PREDECESSOR.closeout_commit ||
+    predecessor.closeout_ci_run !== EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_run ||
+    predecessor.closeout_ci_conclusion !== EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_conclusion
+  ) {
+    problems.push(`external_serial_predecessor values drifted: ${JSON.stringify(predecessor)}`);
   }
   return problems;
 }
