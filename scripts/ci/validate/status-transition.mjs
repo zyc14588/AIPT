@@ -7,16 +7,23 @@
 // AIPT-M0-B003-CONSTRUCTION-001 snapshot, and proves the frozen authority
 // registries are byte-identical to the base.
 //
-// Deliberately out of scope here: negative mutation self-probes, and any
-// constraint on runtime.status. The human-document section covers the minimal
-// current B003 / next B004 relationship plus positive same-line closed-history
+// The machine-status section also runs seven in-memory standalone/B004
+// mutation probes (construction, current_batch, global_wip,
+// next_serial_batch, next_batch_state, next_batch_authorized,
+// next_batch_started) against a structuredClone of the parsed status: each
+// mutates exactly one field and must be rejected by the critical gate. The
+// live status object is never mutated and no file is written. Mutation probes
+// for the external predecessor, the frozen platform, and the verified source
+// remain pending, and runtime.status stays deliberately unconstrained. The
+// human-document section covers the minimal current B003 / next B004
+// relationship plus positive same-line closed-history
 // (B000/B001/B002 = MERGED/CLOSED), external-predecessor, accepted-source
 // (commit -> tree), and frozen-platform (FROZEN_WAITING_M1_ENGINE ->
 // unfreeze_authorized = false) bindings, and two focused
 // forbidden-contradiction predicates (B003 must not be bound to
 // MERGED/CLOSED; B004 must not be bound to IN_PROGRESS or MERGED/CLOSED, both
-// within a bounded same-line gap); mutation and runtime.status checks remain
-// out of scope.
+// within a bounded same-line gap); those human checks remain non-mutating and
+// runtime.status stays unconstrained.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -264,6 +271,30 @@ export function run(ctx) {
     fail(`critical machine: ${problem}`);
   }
 
+  // ---- standalone/B004 mutation probes (in-memory only) ----
+  // Each probe clones the parsed live status, mutates exactly one field of
+  // tracks['AIPT-STANDALONE'] on the clone, and requires the critical gate to
+  // report a problem containing that field's specific fragment. The live
+  // status object is never changed and nothing is written to disk.
+  const proveCriticalMutation = (label, expectedProblemFragment, mutate) => {
+    const clone = structuredClone(status);
+    mutate(clone);
+    const problems = criticalMachineProblems(clone);
+    if (!problems.some((p) => p.includes(expectedProblemFragment))) {
+      fail(`mutation probe ${label}: expected a problem containing ${JSON.stringify(expectedProblemFragment)}, got ${JSON.stringify(problems)}`);
+    } else {
+      ok(`mutation probe ${label}: rejected with ${JSON.stringify(expectedProblemFragment)}`);
+    }
+  };
+
+  proveCriticalMutation('construction', 'construction must be IN_PROGRESS', (s) => { s.tracks['AIPT-STANDALONE'].construction = 'NOT_STARTED'; });
+  proveCriticalMutation('current_batch', 'current_batch must be AIPT-M0-B003', (s) => { s.tracks['AIPT-STANDALONE'].current_batch = 'AIPT-M0-B099'; });
+  proveCriticalMutation('global_wip', 'global_wip must be 1', (s) => { s.tracks['AIPT-STANDALONE'].global_wip = 0; });
+  proveCriticalMutation('next_serial_batch', 'next_serial_batch must be AIPT-M0-B004', (s) => { s.tracks['AIPT-STANDALONE'].next_serial_batch = 'AIPT-M0-B099'; });
+  proveCriticalMutation('next_batch_state', 'next_batch_state must be NOT_AUTHORIZED', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_state = 'AUTHORIZED'; });
+  proveCriticalMutation('next_batch_authorized', 'next_batch_authorized must be false', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_authorized = true; });
+  proveCriticalMutation('next_batch_started', 'next_batch_started must be false', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_started = true; });
+
   const standalone = status.tracks?.['AIPT-STANDALONE'];
   const platform = status.tracks?.['AIPT-PLATFORM-INTEGRATION'];
   const aipt = status.repositories?.AIPT;
@@ -367,8 +398,9 @@ export function run(ctx) {
   // here: AIPT-M0-B003 must not be bound to MERGED/CLOSED (either order, 0..40
   // same-line character gap), and AIPT-M0-B004 must not be bound to
   // IN_PROGRESS or MERGED/CLOSED (either order, 0..80 same-line character
-  // gap). Machine mutation probes and runtime.status checks remain out of
-  // scope.
+  // gap). The standalone/B004 machine mutation probes are covered in-memory
+  // above; predecessor/platform/verified-source mutation probes remain
+  // pending, and runtime.status remains unconstrained.
   const HUMAN_DOCS = ['README.md', 'docs/authority/PROJECT_STATUS.md'];
   const HUMAN_CHECKS = [
     { re: /2026-08-19/, fact: 'contains status date 2026-08-19' },
