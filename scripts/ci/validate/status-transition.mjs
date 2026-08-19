@@ -7,23 +7,24 @@
 // AIPT-M0-B003-CONSTRUCTION-001 snapshot, and proves the frozen authority
 // registries are byte-identical to the base.
 //
-// The machine-status section also runs seven in-memory standalone/B004
-// mutation probes (construction, current_batch, global_wip,
-// next_serial_batch, next_batch_state, next_batch_authorized,
-// next_batch_started) against a structuredClone of the parsed status: each
-// mutates exactly one field and must be rejected by the critical gate. The
-// live status object is never mutated and no file is written. Mutation probes
-// for the external predecessor, the frozen platform, and the verified source
-// remain pending, and runtime.status stays deliberately unconstrained. The
-// human-document section covers the minimal current B003 / next B004
-// relationship plus positive same-line closed-history
-// (B000/B001/B002 = MERGED/CLOSED), external-predecessor, accepted-source
-// (commit -> tree), and frozen-platform (FROZEN_WAITING_M1_ENGINE ->
-// unfreeze_authorized = false) bindings, and two focused
-// forbidden-contradiction predicates (B003 must not be bound to
-// MERGED/CLOSED; B004 must not be bound to IN_PROGRESS or MERGED/CLOSED, both
-// within a bounded same-line gap); those human checks remain non-mutating and
-// runtime.status stays unconstrained.
+// The machine-status section also runs fourteen in-memory mutation probes
+// against a structuredClone of the parsed status: each mutates exactly one
+// field (or removes one key) and must be rejected by the critical gate. The
+// probes give all-seven-field coverage for standalone/B004, exact-key-set
+// plus representative closeout_ci_run value coverage for the external
+// predecessor, both-field coverage for the frozen platform, and
+// all-three-field coverage for the verified source/state; every critical
+// binding group therefore has in-memory negative coverage. The live status
+// object is never mutated and no file is written. runtime.status stays
+// deliberately unconstrained. The human-document section covers the minimal
+// current B003 / next B004 relationship plus positive same-line
+// closed-history (B000/B001/B002 = MERGED/CLOSED), external-predecessor,
+// accepted-source (commit -> tree), and frozen-platform
+// (FROZEN_WAITING_M1_ENGINE -> unfreeze_authorized = false) bindings, and
+// two focused forbidden-contradiction predicates (B003 must not be bound to
+// MERGED/CLOSED; B004 must not be bound to IN_PROGRESS or MERGED/CLOSED,
+// both within a bounded same-line gap); those human checks remain
+// non-mutating and runtime.status stays unconstrained.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -271,11 +272,11 @@ export function run(ctx) {
     fail(`critical machine: ${problem}`);
   }
 
-  // ---- standalone/B004 mutation probes (in-memory only) ----
-  // Each probe clones the parsed live status, mutates exactly one field of
-  // tracks['AIPT-STANDALONE'] on the clone, and requires the critical gate to
-  // report a problem containing that field's specific fragment. The live
-  // status object is never changed and nothing is written to disk.
+  // ---- machine-status mutation probes (in-memory only) ----
+  // Each probe clones the parsed live status, mutates exactly one field (or
+  // removes one key) on the clone, and requires the critical gate to report a
+  // problem containing that field's specific fragment. The live status
+  // object is never changed and nothing is written to disk.
   const proveCriticalMutation = (label, expectedProblemFragment, mutate) => {
     const clone = structuredClone(status);
     mutate(clone);
@@ -294,6 +295,13 @@ export function run(ctx) {
   proveCriticalMutation('next_batch_state', 'next_batch_state must be NOT_AUTHORIZED', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_state = 'AUTHORIZED'; });
   proveCriticalMutation('next_batch_authorized', 'next_batch_authorized must be false', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_authorized = true; });
   proveCriticalMutation('next_batch_started', 'next_batch_started must be false', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_started = true; });
+  proveCriticalMutation('predecessor closeout_commit key deletion', 'external_serial_predecessor keys must be exactly', (s) => { delete s.tracks['AIPT-STANDALONE'].external_serial_predecessor.closeout_commit; });
+  proveCriticalMutation('predecessor closeout_ci_run value drift', 'external_serial_predecessor values drifted', (s) => { s.tracks['AIPT-STANDALONE'].external_serial_predecessor.closeout_ci_run = 0; });
+  proveCriticalMutation('platform status drift', 'platform status must be FROZEN_WAITING_M1_ENGINE', (s) => { s.tracks['AIPT-PLATFORM-INTEGRATION'].status = 'UNFROZEN'; });
+  proveCriticalMutation('platform unfreeze_authorized = true', 'platform unfreeze_authorized must be false', (s) => { s.tracks['AIPT-PLATFORM-INTEGRATION'].unfreeze_authorized = true; });
+  proveCriticalMutation('repositories.AIPT verified_head drift', 'repositories.AIPT.verified_head must be accepted base', (s) => { s.repositories.AIPT.verified_head = '0'.repeat(40); });
+  proveCriticalMutation('verified_tree drift', 'repositories.AIPT.verified_tree must be accepted base tree', (s) => { s.repositories.AIPT.verified_tree = '0'.repeat(40); });
+  proveCriticalMutation('verified_state drift', 'repositories.AIPT.verified_state must exactly describe', (s) => { s.repositories.AIPT.verified_state = 'drifted'; });
 
   const standalone = status.tracks?.['AIPT-STANDALONE'];
   const platform = status.tracks?.['AIPT-PLATFORM-INTEGRATION'];
@@ -398,9 +406,8 @@ export function run(ctx) {
   // here: AIPT-M0-B003 must not be bound to MERGED/CLOSED (either order, 0..40
   // same-line character gap), and AIPT-M0-B004 must not be bound to
   // IN_PROGRESS or MERGED/CLOSED (either order, 0..80 same-line character
-  // gap). The standalone/B004 machine mutation probes are covered in-memory
-  // above; predecessor/platform/verified-source mutation probes remain
-  // pending, and runtime.status remains unconstrained.
+  // gap). All machine-status mutation probes are covered in-memory above;
+  // runtime.status remains unconstrained.
   const HUMAN_DOCS = ['README.md', 'docs/authority/PROJECT_STATUS.md'];
   const HUMAN_CHECKS = [
     { re: /2026-08-19/, fact: 'contains status date 2026-08-19' },
