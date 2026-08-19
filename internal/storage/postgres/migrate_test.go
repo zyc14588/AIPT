@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestLoadMigrationsValidOutOfOrder(t *testing.T) {
@@ -251,5 +254,184 @@ func TestMigrationChecksumDriftError(t *testing.T) {
 
 	if got := ErrMigrationChecksumDrift.Error(); got != "AIPT_MIGRATION_CHECKSUM_DRIFT" {
 		t.Errorf("sentinel text = %q, want the code itself", got)
+	}
+}
+
+// ---- migrateUpFS: nil pool rejection (DB-free, fails before any access) ----
+
+func TestMigrateUpFSNilPool(t *testing.T) {
+	fsys := fstest.MapFS{
+		"migrations/000001_create_users.sql": &fstest.MapFile{Data: []byte("SELECT 1;\n")},
+	}
+	var pool *pgxpool.Pool // nil: rejected before any database access
+	err := migrateUpFS(context.Background(), pool, fsys)
+	if err == nil {
+		t.Fatal("nil *pgxpool.Pool must be rejected before any database access")
+	}
+	if !strings.Contains(err.Error(), "nil *pgxpool.Pool") {
+		t.Errorf("error = %q, want it to mention the nil pool", err)
+	}
+}
+
+// ---- pure helper: validateAppliedPrefix ----
+
+// mustLocalMigrations builds local migration definitions in the given order,
+// computing each checksum over its SQL exactly as loadMigrations does.
+func mustLocalMigrations(t *testing.T, versions []int64, names []string, sqls []string) []migration {
+	t.Helper()
+	if len(versions) != len(names) || len(names) != len(sqls) {
+		t.Fatalf("mismatched helper inputs: %d versions, %d names, %d sqls", len(versions), len(names), len(sqls))
+	}
+	migs := make([]migration, len(versions))
+	for i := range versions {
+		migs[i] = migration{
+			version:  versions[i],
+			filename: fmt.Sprintf("%06d_%s.sql", versions[i], names[i]),
+			name:     names[i],
+			sql:      []byte(sqls[i]),
+			checksum: sha256.Sum256([]byte(sqls[i])),
+		}
+	}
+	return migs
+}
+
+func appliedRow(version int64, name string, checksum []byte) appliedMigration {
+	return appliedMigration{version: version, name: name, checksum: checksum}
+}
+
+func TestValidateAppliedPrefixEmpty(t *testing.T) {
+	local := mustLocalMigrations(t, []int64{1, 2, 3}, []string{"a", "b", "c"}, []string{"s1", "s2", "s3"})
+	if err := validateAppliedPrefix(local, nil); err != nil {
+		t.Fatalf("empty applied prefix must be valid (everything pending), got %v", err)
+	}
+}
+
+func TestValidateAppliedPrefixPartial(t *testing.T) {
+	local := mustLocalMigrations(t, []int64{1, 2, 3}, []string{"a", "b", "c"}, []string{"s1", "s2", "s3"})
+	applied := []appliedMigration{
+		appliedRow(1, "a", local[0].checksum[:]),
+		appliedRow(2, "b", local[1].checksum[:]),
+	}
+	if err := validateAppliedPrefix(local, applied); err != nil {
+		t.Fatalf("partial applied prefix must be valid, got %v", err)
+	}
+}
+
+func TestValidateAppliedPrefixFull(t *testing.T) {
+	local := mustLocalMigrations(t, []int64{1, 2, 3}, []string{"a", "b", "c"}, []string{"s1", "s2", "s3"})
+	applied := []appliedMigration{
+		appliedRow(1, "a", local[0].checksum[:]),
+		appliedRow(2, "b", local[1].checksum[:]),
+		appliedRow(3, "c", local[2].checksum[:]),
+	}
+	if err := validateAppliedPrefix(local, applied); err != nil {
+		t.Fatalf("full applied prefix must be valid (second run is a no-op), got %v", err)
+	}
+}
+
+func TestValidateAppliedPrefixUnknownVersion(t *testing.T) {
+	// The database recorded version 3 but the local set stops at version 2.
+	local := mustLocalMigrations(t, []int64{1, 2}, []string{"a", "b"}, []string{"s1", "s2"})
+	applied := []appliedMigration{
+		appliedRow(1, "a", local[0].checksum[:]),
+		appliedRow(2, "b", local[1].checksum[:]),
+		appliedRow(3, "c", local[1].checksum[:]),
+	}
+	err := validateAppliedPrefix(local, applied)
+	if err == nil {
+		t.Fatal("an applied version with no local definition must be rejected")
+	}
+	if !strings.Contains(err.Error(), "has no local migration definition") {
+		t.Errorf("error = %q, want it to mention the missing local definition", err)
+	}
+}
+
+func TestValidateAppliedPrefixGap(t *testing.T) {
+	// Version 2 was never applied: applied rows are [1,3] but local is [1,2,3].
+	local := mustLocalMigrations(t, []int64{1, 2, 3}, []string{"a", "b", "c"}, []string{"s1", "s2", "s3"})
+	applied := []appliedMigration{
+		appliedRow(1, "a", local[0].checksum[:]),
+		appliedRow(3, "c", local[2].checksum[:]),
+	}
+	err := validateAppliedPrefix(local, applied)
+	if err == nil {
+		t.Fatal("a gap in the applied versions must be rejected")
+	}
+	if !strings.Contains(err.Error(), "must be an exact prefix") {
+		t.Errorf("error = %q, want it to mention the exact-prefix requirement", err)
+	}
+}
+
+func TestValidateAppliedPrefixOrder(t *testing.T) {
+	// Defensive: rows come from ORDER BY version, but the helper must still
+	// fail closed on duplicate/non-increasing versions.
+	local := mustLocalMigrations(t, []int64{1, 2, 3}, []string{"a", "b", "c"}, []string{"s1", "s2", "s3"})
+	applied := []appliedMigration{
+		appliedRow(1, "a", local[0].checksum[:]),
+		appliedRow(1, "a", local[0].checksum[:]),
+	}
+	err := validateAppliedPrefix(local, applied)
+	if err == nil {
+		t.Fatal("non-strictly-increasing applied versions must be rejected")
+	}
+	if !strings.Contains(err.Error(), "strictly increasing") {
+		t.Errorf("error = %q, want it to mention strictly increasing versions", err)
+	}
+}
+
+func TestValidateAppliedPrefixNameDrift(t *testing.T) {
+	local := mustLocalMigrations(t, []int64{1}, []string{"create_users"}, []string{"s1"})
+	applied := []appliedMigration{
+		appliedRow(1, "rename_users", local[0].checksum[:]),
+	}
+	err := validateAppliedPrefix(local, applied)
+	if err == nil {
+		t.Fatal("a recorded name differing from the local name must be rejected")
+	}
+	if !strings.Contains(err.Error(), "has name") {
+		t.Errorf("error = %q, want it to report the name mismatch", err)
+	}
+}
+
+func TestValidateAppliedPrefixChecksumLength(t *testing.T) {
+	local := mustLocalMigrations(t, []int64{1}, []string{"a"}, []string{"s1"})
+	applied := []appliedMigration{
+		appliedRow(1, "a", []byte("too-short")),
+	}
+	err := validateAppliedPrefix(local, applied)
+	if err == nil {
+		t.Fatal("a recorded checksum that is not 32 bytes must be rejected")
+	}
+	if !strings.Contains(err.Error(), "checksum has length") {
+		t.Errorf("error = %q, want it to report the checksum length", err)
+	}
+}
+
+func TestValidateAppliedPrefixChecksumDrift(t *testing.T) {
+	local := mustLocalMigrations(t, []int64{1}, []string{"a"}, []string{"s1"})
+	var recorded [32]byte
+	recorded[0] = 0xAB // recorded database checksum differs from the local file checksum
+
+	err := validateAppliedPrefix(local, []appliedMigration{
+		appliedRow(1, "a", recorded[:]),
+	})
+	if err == nil {
+		t.Fatal("checksum drift must be rejected")
+	}
+	if !errors.Is(err, ErrMigrationChecksumDrift) {
+		t.Fatalf("checksum drift must match ErrMigrationChecksumDrift via errors.Is, got %v", err)
+	}
+	var typed *MigrationChecksumDriftError
+	if !errors.As(err, &typed) {
+		t.Fatalf("checksum drift must be recoverable via errors.As, got %v", err)
+	}
+	if typed.Version != 1 {
+		t.Errorf("typed.Version = %d, want 1", typed.Version)
+	}
+	if typed.Expected != recorded {
+		t.Errorf("typed.Expected = %x, want the recorded database checksum %x", typed.Expected, recorded)
+	}
+	if typed.Actual != local[0].checksum {
+		t.Errorf("typed.Actual = %x, want the local file checksum %x", typed.Actual, local[0].checksum)
 	}
 }
