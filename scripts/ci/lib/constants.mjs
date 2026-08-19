@@ -256,7 +256,7 @@ export function normalizeText(text) {
 export function pathMatchesAllowed(p) {
   for (const pattern of ALLOWED_PATHS) {
     if (pattern.endsWith('/**')) {
-      if (p.startsWith(pattern.slice(0, -3))) return true;
+      if (p.startsWith(pattern.slice(0, -2))) return true;
     } else if (p === pattern) {
       return true;
     }
