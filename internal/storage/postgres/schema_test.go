@@ -14,7 +14,7 @@ import (
 // ledgerMigrationChecksumHex is the pinned SHA-256 of the exact bytes of
 // migrations/000001_ledger.sql as embedded in the binary. Any accepted change
 // to the frozen migration file must update this constant in the same change.
-const ledgerMigrationChecksumHex = "b050cbce44a6f38f02390cf2728f32d7c094bb4a1a03dc640e42c4c360149fb6"
+const ledgerMigrationChecksumHex = "bf160e9c56ee9662c5138fe8f6a51070cb7bad311d6cb628353034851625e927"
 
 // ---- embedded migration inventory and checksum ----
 
@@ -194,7 +194,7 @@ func TestSchemaMigrationNormalizedStructure(t *testing.T) {
 		"sequence bigint not null check ( sequence > 0 )",
 		"event_id text not null check ( event_id <> '' )",
 		"event_type text not null check ( event_type <> '' )",
-		"payload_canonical bytea not null check ( octet_length ( payload_canonical ) > 0 )",
+		"payload_canonical text not null check ( payload_canonical <> '' )",
 		"payload_sha256 bytea not null check ( octet_length ( payload_sha256 ) = 32 )",
 		"prev_event_hash bytea check ( prev_event_hash is null or octet_length ( prev_event_hash ) = 32 )",
 		"event_hash bytea not null check ( octet_length ( event_hash ) = 32 )",
@@ -204,7 +204,7 @@ func TestSchemaMigrationNormalizedStructure(t *testing.T) {
 		"constraint ledger_events_event_id_key unique ( event_id )",
 		"constraint ledger_events_stream_fkey foreign key ( stream_id ) references aipt.ledger_streams ( stream_id ) on delete restrict on update restrict",
 		"constraint ledger_events_chain_invariant check ( ( sequence = 1 and prev_event_hash is null ) or ( sequence > 1 and prev_event_hash is not null ) )",
-		"constraint ledger_events_payload_sha256_check check ( payload_sha256 = sha256 ( payload_canonical ) )",
+		"constraint ledger_events_payload_sha256_check check ( payload_sha256 = sha256 ( convert_to ( payload_canonical , 'utf8' ) ) )",
 		"constraint ledger_events_event_hash_check check ( event_hash = aipt.ledger_event_hash_v1 ( stream_id , sequence , event_id , event_type , payload_sha256 , prev_event_hash ) )",
 		// --- versioned hash function ---
 		"create function aipt.ledger_event_hash_v1 ( p_stream_id text , p_sequence bigint , p_event_id text , p_event_type text , p_payload_sha256 bytea , p_prev_event_hash bytea ) returns bytea",
@@ -310,6 +310,9 @@ func TestSchemaMigrationAbsenceOfForbiddenMachinery(t *testing.T) {
 		"greatest",
 		// No send-function encodings and no extension (no pgcrypto digest).
 		"int4send", "int8send", "create extension", "pgcrypto", "digest(",
+		// No obsolete bytea payload digest expression: payload_sha256 must be
+		// the UTF8 convert_to hash over the canonical TEXT.
+		"sha256 ( payload_canonical )",
 		// No DML anywhere: the migration only defines objects.
 		"insert into aipt.ledger_streams", "insert into aipt.ledger_events",
 		"update aipt.ledger_streams", "update ledger_streams",
@@ -335,6 +338,23 @@ func TestSchemaMigrationCommentsUseSignedInt64Semantics(t *testing.T) {
 	} {
 		if !strings.Contains(raw, want) {
 			t.Errorf("migration comments must describe the cursor fields with %q semantics", want)
+		}
+	}
+}
+
+// TestSchemaMigrationCommentsDescribeCanonicalJSONFlow pins that the comments
+// describe the payload flow: Append receives raw JSON, canonicalizes it with
+// the existing internal/protocol.CanonicalJSON before any database access,
+// stores the canonical TEXT, and never duplicates canonical JSON logic.
+func TestSchemaMigrationCommentsDescribeCanonicalJSONFlow(t *testing.T) {
+	raw := mustEmbeddedMigrationSQL(t)
+	for _, want := range []string{
+		"internal/protocol.CanonicalJSON",
+		"canonical JSON as TEXT",
+		"never duplicates canonical JSON logic",
+	} {
+		if !strings.Contains(raw, want) {
+			t.Errorf("migration comments must state the payload flow with %q", want)
 		}
 	}
 }

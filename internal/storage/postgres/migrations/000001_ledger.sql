@@ -89,18 +89,26 @@ CREATE TABLE aipt.ledger_streams (
 -- permitted operation; every UPDATE, DELETE, and TRUNCATE is rejected at the
 -- statement level, even when it matches zero rows.
 --
+-- Payload flow: Append receives the raw JSON payload, canonicalizes it with
+-- the existing internal/protocol.CanonicalJSON before any database access, and
+-- stores the canonical JSON as TEXT in payload_canonical. This migration
+-- never duplicates canonical JSON logic: it stores the canonical TEXT as-is
+-- and only verifies the digest.
+--
 -- Chain invariant: the genesis event has sequence = 1 (a positive signed
 -- BIGINT) and a NULL prev_event_hash; every later event has sequence > 1 and a
 -- non-NULL 32-byte prev_event_hash equal to the previous event's event_hash.
--- payload_sha256 must equal the core built-in sha256(payload_canonical), and
--- event_hash must equal aipt.ledger_event_hash_v1(...), so the database
--- itself enforces the hash-chain contract.
+-- payload_sha256 must equal the core built-in sha256(convert_to(
+-- payload_canonical, 'UTF8')), so the digest bytes exactly match Go SHA-256
+-- over the canonical JSON's UTF-8 output and stay independent of the database
+-- encoding, and event_hash must equal aipt.ledger_event_hash_v1(...), so the
+-- database itself enforces the hash-chain contract.
 CREATE TABLE aipt.ledger_events (
     stream_id         text        NOT NULL CHECK (stream_id <> ''),
     sequence          bigint      NOT NULL CHECK (sequence > 0),
     event_id          text        NOT NULL CHECK (event_id <> ''),
     event_type        text        NOT NULL CHECK (event_type <> ''),
-    payload_canonical bytea       NOT NULL CHECK (octet_length(payload_canonical) > 0),
+    payload_canonical text        NOT NULL CHECK (payload_canonical <> ''),
     payload_sha256    bytea       NOT NULL CHECK (octet_length(payload_sha256) = 32),
     prev_event_hash   bytea       CHECK (prev_event_hash IS NULL OR octet_length(prev_event_hash) = 32),
     event_hash        bytea       NOT NULL CHECK (octet_length(event_hash) = 32),
@@ -116,7 +124,7 @@ CREATE TABLE aipt.ledger_events (
         OR (sequence > 1 AND prev_event_hash IS NOT NULL)
     ),
     CONSTRAINT ledger_events_payload_sha256_check CHECK (
-        payload_sha256 = sha256(payload_canonical)
+        payload_sha256 = sha256(convert_to(payload_canonical, 'UTF8'))
     ),
     CONSTRAINT ledger_events_event_hash_check CHECK (
         event_hash = aipt.ledger_event_hash_v1(
