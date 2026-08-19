@@ -3,7 +3,9 @@
 // parse, and secret / private-path / prompt-body hygiene for the candidate
 // tree (including the executable scripts/ci sources themselves), plus a
 // temporary-fixture regression proving the hygiene scan really covers .mjs
-// files under a scripts/ci-shaped path.
+// files under a scripts/ci-shaped path. The imported pathMatchesAllowed is
+// additionally regression-probed in-process (47 pure string probes) against
+// the hard-coded scope literals.
 //
 // Markdown rules for B003: no brittle fixed total document count (later
 // approved documents of the accepted base must not be rejected by a count) —
@@ -75,6 +77,37 @@ const FORBIDDEN_PREFIXES_LITERAL = [
   'tools/ci-actions.lock.json',
 ];
 
+// Independent ordered literal for the frozen authority registries, hard-coded
+// here and compared against the imported FROZEN_REGISTRY_PATHS before probes.
+const FROZEN_REGISTRY_PATHS_LITERAL = [
+  'docs/authority/registry/decisions.json',
+  'docs/authority/registry/supersessions.json',
+  'docs/authority/registry/deferred-parameters.json',
+];
+
+// One representative path per FORBIDDEN_PREFIXES_LITERAL entry (directory
+// prefixes get a child path; exact-file prefixes get the file itself).
+const FORBIDDEN_PREFIX_REPRESENTATIVES = [
+  'api/server.js',
+  'cmd/tool/main.go',
+  'migrations/0001_init.sql',
+  'deploy/k8s.yaml',
+  'runtime/engine.js',
+  'packages/core/index.js',
+  'schemas/protocol/request.json',
+  'testdata/protocol/case.json',
+  'docs/architecture/overview.md',
+  'docs/integration/guide.md',
+  'docs/test-model/model.md',
+  'docs/security/notes.md',
+  'docs/evidence/audit.md',
+  'internal/protocol/types.go',
+  'LICENSE',
+  'tools/supply-chain/policy.json',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
+];
+
 export function run(ctx) {
   const details = [];
   let pass = true;
@@ -103,6 +136,43 @@ export function run(ctx) {
   verifyAnchor('BASE_TREE', BASE_TREE, '8b16b599c261879406f0435e80c878e092683a50');
   verifyAnchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
   verifyAnchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
+  verifyAnchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
+
+  // ---- pathMatchesAllowed regression probes (pure in-process) ----
+  // Drift-resistant behavioral probes for the imported matcher: every probe
+  // is a pure string call against pathMatchesAllowed — no filesystem, Git,
+  // or temporary-clone access. Each mismatch fails path-specifically with
+  // expected and actual, and the single success detail below is emitted only
+  // when all 47 probes match: 18 exact allowlist entries, 4 wildcard
+  // descendants (direct and nested children under both wildcard directories),
+  // 4 lookalikes, 18 forbidden-prefix representatives, and 3 frozen registry
+  // paths.
+  let probeCount = 0;
+  let probeMismatches = 0;
+  const probe = (p, expected) => {
+    probeCount += 1;
+    const actual = pathMatchesAllowed(p);
+    if (actual !== expected) {
+      probeMismatches += 1;
+      fail(`pathMatchesAllowed probe mismatch for path ${JSON.stringify(p)}: expected ${expected}, actual ${actual}`);
+    }
+  };
+  for (const p of ALLOWED_PATHS_LITERAL) {
+    if (!p.includes('/**')) probe(p, true); // the 18 exact (non-wildcard) entries
+  }
+  probe('docs/storage/x', true); // direct child under docs/storage/**
+  probe('docs/storage/nested/x', true); // nested child under docs/storage/**
+  probe('internal/storage/postgres/x', true); // direct child under internal/storage/postgres/**
+  probe('internal/storage/postgres/nested/x', true); // nested child under internal/storage/postgres/**
+  probe('docs/storageevil/x', false); // lookalike of docs/storage/**
+  probe('internal/storage/postgresql/x', false); // lookalike of internal/storage/postgres/**
+  probe('go.mod.bak', false); // lookalike of go.mod
+  probe('README.md.bak', false); // lookalike of README.md
+  for (const p of FORBIDDEN_PREFIX_REPRESENTATIVES) probe(p, false);
+  for (const p of FROZEN_REGISTRY_PATHS_LITERAL) probe(p, false);
+  if (probeMismatches === 0) {
+    ok(`pathMatchesAllowed regression: all ${probeCount} probes matched (18 exact allowlist, 4 wildcard descendants, 4 lookalikes, 18 forbidden-prefix representatives, 3 frozen registry paths)`);
+  }
 
   // ---- accepted base identity: resolves, fixed tree, ancestor of HEAD ----
   const resolveCommit = (label, commit) => {
