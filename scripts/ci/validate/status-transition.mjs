@@ -8,9 +8,10 @@
 // registries are byte-identical to the base.
 //
 // Deliberately out of scope here: negative mutation self-probes, and any
-// constraint on runtime.status. The human-document section covers only the
-// minimal current B003 / next B004 relationship (no closed-history,
-// predecessor, base, platform, or contradiction checks).
+// constraint on runtime.status. The human-document section covers the minimal
+// current B003 / next B004 relationship plus positive same-line closed-history
+// (B000/B001/B002 = MERGED/CLOSED) and external-predecessor bindings; base,
+// platform, contradiction, and mutation checks remain out of scope.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -276,12 +277,15 @@ export function run(ctx) {
   }
 
   // ---- human-current-state (README.md / PROJECT_STATUS.md) ----
-  // Minimal same-line consistency checks for the current B003 construction
-  // snapshot (date, snapshot id, IN_PROGRESS, GLOBAL_WIP = 1) and the next
-  // B004 relationship (NOT_AUTHORIZED, not authorized, not started). Every
-  // relationship must be bound on a single document line — no whole-document
-  // token bags. No closed-history / predecessor / base / platform /
-  // contradiction / mutation / temp-file / runtime.status checks here.
+  // Same-line consistency checks for the current B003 construction snapshot
+  // (date, snapshot id, IN_PROGRESS, GLOBAL_WIP = 1), the next B004
+  // relationship (NOT_AUTHORIZED, not authorized, not started), the immutable
+  // closed history (AIPT-M0-B000 / B001 / B002 each = MERGED/CLOSED on one
+  // line), and the external serial predecessor (UNREGISTERED-AIPT-P0-B001 =
+  // MERGED/CLOSED with its closeout commit / CI run / success conclusion, in
+  // order on one line). Every relationship must be bound on a single document
+  // line — no whole-document token bags. No base / platform / contradiction /
+  // mutation / temp-file / runtime.status checks here.
   const HUMAN_DOCS = ['README.md', 'docs/authority/PROJECT_STATUS.md'];
   const HUMAN_CHECKS = [
     { re: /2026-08-19/, fact: 'contains status date 2026-08-19' },
@@ -289,6 +293,10 @@ export function run(ctx) {
     { re: /AIPT-M0-B003[^\n]*IN_PROGRESS/, fact: 'binds AIPT-M0-B003 to IN_PROGRESS on one line' },
     { re: /(?:AIPT-M0-B003[^\n]*GLOBAL_WIP = 1|GLOBAL_WIP = 1[^\n]*AIPT-M0-B003)/, fact: 'binds AIPT-M0-B003 and GLOBAL_WIP = 1 on one line' },
     { re: /AIPT-M0-B004[^\n]*NOT_AUTHORIZED[^\n]*next_batch_authorized = false[^\n]*next_batch_started = false/, fact: 'binds AIPT-M0-B004 to NOT_AUTHORIZED, next_batch_authorized = false, next_batch_started = false in order on one line' },
+    { re: /AIPT-M0-B000[^\n]*MERGED\/CLOSED/, fact: 'binds AIPT-M0-B000 to MERGED/CLOSED on one line' },
+    { re: /AIPT-M0-B001[^\n]*MERGED\/CLOSED/, fact: 'binds AIPT-M0-B001 to MERGED/CLOSED on one line' },
+    { re: /AIPT-M0-B002[^\n]*MERGED\/CLOSED/, fact: 'binds AIPT-M0-B002 to MERGED/CLOSED on one line' },
+    { re: /UNREGISTERED-AIPT-P0-B001[^\n]*MERGED\/CLOSED[^\n]*a37b284bf5ec35895f436abe71d22599edb6da53[^\n]*32194224161[^\n]*success/, fact: 'binds UNREGISTERED-AIPT-P0-B001 to MERGED/CLOSED, closeout commit a37b284bf5ec35895f436abe71d22599edb6da53, CI run 32194224161, success in order on one line' },
   ];
   const verifyHumanLine = (rel, text, check) => {
     if (text.split('\n').some((line) => check.re.test(line))) {
