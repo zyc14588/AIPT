@@ -67,11 +67,16 @@ function sameStrings(actual, expected) {
 }
 
 // Pure, deterministic critical-machine gate over the parsed live status. Reads
-// only candidateStatus.tracks['AIPT-STANDALONE'] and reports a descriptive
-// problem per strict mismatch of exactly the seven standalone current/WIP/
-// next-B004 fields plus the external serial predecessor binding (its exact
-// five-key set and the five immutable values against EXTERNAL_SERIAL_PREDECESSOR).
-// Side-effect-free: never touches ctx, git, or fs.
+// candidateStatus.tracks['AIPT-STANDALONE'], candidateStatus.tracks
+// ['AIPT-PLATFORM-INTEGRATION'], and candidateStatus.repositories.AIPT, and
+// reports a descriptive problem per strict mismatch of exactly the seven
+// standalone current/WIP/next-B004 fields, the external serial predecessor
+// binding (its exact five-key set and the five immutable values against
+// EXTERNAL_SERIAL_PREDECESSOR), the frozen platform
+// (FROZEN_WAITING_M1_ENGINE with unfreeze_authorized = false), and the
+// verified source/state (repositories.AIPT verified_head/tree/state against
+// BASE_COMMIT, BASE_TREE, and EXPECTED_VERIFIED_STATE). Side-effect-free:
+// never touches ctx, git, or fs.
 export function criticalMachineProblems(candidateStatus) {
   const problems = [];
   const standalone = candidateStatus?.tracks?.['AIPT-STANDALONE'];
@@ -108,6 +113,23 @@ export function criticalMachineProblems(candidateStatus) {
     predecessor.closeout_ci_conclusion !== EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_conclusion
   ) {
     problems.push(`external_serial_predecessor values drifted: ${JSON.stringify(predecessor)}`);
+  }
+  const platform = candidateStatus?.tracks?.['AIPT-PLATFORM-INTEGRATION'];
+  if (platform?.status !== PLATFORM_STATUS) {
+    problems.push(`platform status must be ${PLATFORM_STATUS}: ${JSON.stringify(platform?.status)}`);
+  }
+  if (platform?.unfreeze_authorized !== false) {
+    problems.push(`platform unfreeze_authorized must be false: ${JSON.stringify(platform?.unfreeze_authorized)}`);
+  }
+  const aipt = candidateStatus?.repositories?.AIPT;
+  if (aipt?.verified_head !== BASE_COMMIT) {
+    problems.push(`repositories.AIPT.verified_head must be accepted base ${BASE_COMMIT}: ${JSON.stringify(aipt?.verified_head)}`);
+  }
+  if (aipt?.verified_tree !== BASE_TREE) {
+    problems.push(`repositories.AIPT.verified_tree must be accepted base tree ${BASE_TREE}: ${JSON.stringify(aipt?.verified_tree)}`);
+  }
+  if (aipt?.verified_state !== EXPECTED_VERIFIED_STATE) {
+    problems.push(`repositories.AIPT.verified_state must exactly describe the B003 construction snapshot: ${JSON.stringify(aipt?.verified_state)}`);
   }
   return problems;
 }
