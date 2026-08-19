@@ -69,6 +69,44 @@ export function run(ctx) {
   };
   const read = (rel) => fs.readFileSync(path.join(ctx.repo, rel), 'utf8');
 
+  const verifyAnchor = (label, actual, expected) => {
+    if (actual !== expected) {
+      fail(`${label} drifted from its independent literal self-anchor: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);
+      return false;
+    }
+    ok(`${label} anchored to literal ${JSON.stringify(expected)}`);
+    return true;
+  };
+
+  // ---- independent literal self-anchors ----
+  // Every critical identity below is hard-coded in this gate and compared
+  // against the imported constants BEFORE any Git/history or machine-status
+  // validation runs. Drifting constants.mjs and the status data together can
+  // therefore never make a historical identity change pass silently: each
+  // imported field must equal its fixed literal.
+  verifyAnchor('BASE_COMMIT', BASE_COMMIT, '45a96087d75a61f2910cb5ce99134e3ca777bca8');
+  verifyAnchor('BASE_TREE', BASE_TREE, '8b16b599c261879406f0435e80c878e092683a50');
+  verifyAnchor('CURRENT_BATCH', CURRENT_BATCH, 'AIPT-M0-B003');
+  verifyAnchor('STATUS_DATE', STATUS_DATE, '2026-08-19');
+  verifyAnchor('B000.commit', B000.commit, '777a3f39ba78c1ef3168597890c61abf7a55d962');
+  verifyAnchor('B000.tree', B000.tree, 'f5f845b860ba0944ef104b4679fa074ad6efecbb');
+  verifyAnchor('B001.candidate', B001.candidate, '2e904ddc2d4f1313a99e19f6751a991d589f8336');
+  verifyAnchor('B001.merge_commit', B001.merge_commit, '8bcadc9669e7d04f589f883daa6d4f593875fc9e');
+  verifyAnchor('B001.tree', B001.tree, 'fefc25f1acb523d013c2a7d8db9801ccdab37d2d');
+  verifyAnchor('B002.candidate', B002.candidate, '9968cbc89c09640e3fc2feb8d851220eae98b9b9');
+  verifyAnchor('B002.merge_commit', B002.merge_commit, 'fccfb595c23feab38397506505a3e996fe7b9e9c');
+  verifyAnchor('B002.tree', B002.tree, 'f99570bc3c4307244ca926cec62e82a07ef5aee8');
+  verifyAnchor('B002.post_merge_ci_run', B002.post_merge_ci_run, 31985644832);
+  verifyAnchor('B002.post_merge_ci_conclusion', B002.post_merge_ci_conclusion, 'success');
+  verifyAnchor('B002_CLOSEOUT.commit', B002_CLOSEOUT.commit, '45a96087d75a61f2910cb5ce99134e3ca777bca8');
+  verifyAnchor('B002_CLOSEOUT.tree', B002_CLOSEOUT.tree, '8b16b599c261879406f0435e80c878e092683a50');
+  verifyAnchor('B002_CLOSEOUT.parent', B002_CLOSEOUT.parent, 'fccfb595c23feab38397506505a3e996fe7b9e9c');
+  verifyAnchor('EXTERNAL_SERIAL_PREDECESSOR.batch', EXTERNAL_SERIAL_PREDECESSOR.batch, 'UNREGISTERED-AIPT-P0-B001');
+  verifyAnchor('EXTERNAL_SERIAL_PREDECESSOR.status', EXTERNAL_SERIAL_PREDECESSOR.status, 'MERGED_CLOSED');
+  verifyAnchor('EXTERNAL_SERIAL_PREDECESSOR.closeout_commit', EXTERNAL_SERIAL_PREDECESSOR.closeout_commit, 'a37b284bf5ec35895f436abe71d22599edb6da53');
+  verifyAnchor('EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_run', EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_run, 32194224161);
+  verifyAnchor('EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_conclusion', EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_conclusion, 'success');
+
   const resolveCommit = (label, commit) => {
     const probe = git(ctx.repo, ['rev-parse', `${commit}^{commit}`], { check: false });
     const resolved = probe.stdout.trim();
