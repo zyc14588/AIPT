@@ -156,6 +156,32 @@ export function run(ctx) {
     ok('all changed paths within the registered B003 per-iteration scope');
   }
 
+  // ---- changed-worktree node safety ----
+  // Probe every changed path in the worktree with lstat so symbolic links
+  // (including broken links) are inspected as links rather than followed.
+  // ENOENT is the only tolerated lstat error: a changed path missing from the
+  // worktree is an allowed deletion versus BASE_COMMIT. Every other lstat
+  // error and every changed symbolic link is a path-specific failure, and the
+  // success detail below is emitted only when both counts are zero.
+  let lstatErrors = 0;
+  let changedSymlinks = 0;
+  for (const p of changed) {
+    try {
+      const st = fs.lstatSync(path.join(ctx.repo, p));
+      if (st.isSymbolicLink()) {
+        changedSymlinks += 1;
+        fail(`changed worktree path is a symbolic link: ${p}`);
+      }
+    } catch (err) {
+      if (err && err.code === 'ENOENT') continue; // allowed deletion vs BASE_COMMIT
+      lstatErrors += 1;
+      fail(`changed worktree path lstat failed: ${p}: ${err && err.message ? err.message : err}`);
+    }
+  }
+  if (lstatErrors === 0 && changedSymlinks === 0) {
+    ok(`changed-worktree node safety: ${changed.length} changed paths probed, no lstat errors, no symbolic links`);
+  }
+
   // LICENSE untouched vs base.
   const licDiff = git(ctx.repo, ['diff', BASE_COMMIT, '--', 'LICENSE']).stdout;
   if (licDiff.trim() !== '') fail('LICENSE modified by candidate');
