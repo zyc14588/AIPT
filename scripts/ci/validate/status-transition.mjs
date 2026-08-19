@@ -66,6 +66,37 @@ function sameStrings(actual, expected) {
   return JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
 }
 
+// Pure, deterministic critical-machine gate over the parsed live status. Reads
+// only candidateStatus.tracks['AIPT-STANDALONE'] and reports a descriptive
+// problem per strict mismatch of exactly the seven standalone current/WIP/
+// next-B004 fields. Side-effect-free: never touches ctx, git, or fs.
+export function criticalMachineProblems(candidateStatus) {
+  const problems = [];
+  const standalone = candidateStatus?.tracks?.['AIPT-STANDALONE'];
+  if (standalone?.construction !== CONSTRUCTION_STATE) {
+    problems.push(`construction must be ${CONSTRUCTION_STATE}: ${JSON.stringify(standalone?.construction)}`);
+  }
+  if (standalone?.current_batch !== CURRENT_BATCH) {
+    problems.push(`current_batch must be ${CURRENT_BATCH}: ${JSON.stringify(standalone?.current_batch)}`);
+  }
+  if (standalone?.global_wip !== 1) {
+    problems.push(`global_wip must be 1: ${JSON.stringify(standalone?.global_wip)}`);
+  }
+  if (standalone?.next_serial_batch !== NEXT_SERIAL_BATCH) {
+    problems.push(`next_serial_batch must be ${NEXT_SERIAL_BATCH}: ${JSON.stringify(standalone?.next_serial_batch)}`);
+  }
+  if (standalone?.next_batch_state !== NEXT_BATCH_STATE) {
+    problems.push(`next_batch_state must be ${NEXT_BATCH_STATE}: ${JSON.stringify(standalone?.next_batch_state)}`);
+  }
+  if (standalone?.next_batch_authorized !== false) {
+    problems.push(`next_batch_authorized must be false: ${JSON.stringify(standalone?.next_batch_authorized)}`);
+  }
+  if (standalone?.next_batch_started !== false) {
+    problems.push(`next_batch_started must be false: ${JSON.stringify(standalone?.next_batch_started)}`);
+  }
+  return problems;
+}
+
 export function run(ctx) {
   const details = [];
   let pass = true;
@@ -190,6 +221,10 @@ export function run(ctx) {
   } catch (err) {
     fail(`project-status.json unparseable: ${err.message}`);
     return { name: 'status-transition', result: 'FAIL', details };
+  }
+
+  for (const problem of criticalMachineProblems(status)) {
+    fail(`critical machine: ${problem}`);
   }
 
   const standalone = status.tracks?.['AIPT-STANDALONE'];
