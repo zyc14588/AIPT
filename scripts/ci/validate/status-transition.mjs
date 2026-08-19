@@ -10,8 +10,11 @@
 // Deliberately out of scope here: negative mutation self-probes, and any
 // constraint on runtime.status. The human-document section covers the minimal
 // current B003 / next B004 relationship plus positive same-line closed-history
-// (B000/B001/B002 = MERGED/CLOSED) and external-predecessor bindings; base,
-// platform, contradiction, and mutation checks remain out of scope.
+// (B000/B001/B002 = MERGED/CLOSED) and external-predecessor bindings, and two
+// focused forbidden-contradiction predicates (B003 must not be bound to
+// MERGED/CLOSED; B004 must not be bound to IN_PROGRESS or MERGED/CLOSED, both
+// within a bounded same-line gap); base, platform, mutation, and runtime.status
+// checks remain out of scope.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -284,8 +287,12 @@ export function run(ctx) {
   // line), and the external serial predecessor (UNREGISTERED-AIPT-P0-B001 =
   // MERGED/CLOSED with its closeout commit / CI run / success conclusion, in
   // order on one line). Every relationship must be bound on a single document
-  // line — no whole-document token bags. No base / platform / contradiction /
-  // mutation / temp-file / runtime.status checks here.
+  // line — no whole-document token bags. Two focused forbidden-contradiction
+  // checks are also applied here: AIPT-M0-B003 must not be bound to
+  // MERGED/CLOSED (either order, 0..40 same-line character gap), and
+  // AIPT-M0-B004 must not be bound to IN_PROGRESS or MERGED/CLOSED (either
+  // order, 0..80 same-line character gap). Base, platform, mutation,
+  // temp-file, and runtime.status checks remain out of scope.
   const HUMAN_DOCS = ['README.md', 'docs/authority/PROJECT_STATUS.md'];
   const HUMAN_CHECKS = [
     { re: /2026-08-19/, fact: 'contains status date 2026-08-19' },
@@ -298,8 +305,22 @@ export function run(ctx) {
     { re: /AIPT-M0-B002[^\n]*MERGED\/CLOSED/, fact: 'binds AIPT-M0-B002 to MERGED/CLOSED on one line' },
     { re: /UNREGISTERED-AIPT-P0-B001[^\n]*MERGED\/CLOSED[^\n]*a37b284bf5ec35895f436abe71d22599edb6da53[^\n]*32194224161[^\n]*success/, fact: 'binds UNREGISTERED-AIPT-P0-B001 to MERGED/CLOSED, closeout commit a37b284bf5ec35895f436abe71d22599edb6da53, CI run 32194224161, success in order on one line' },
   ];
-  const verifyHumanLine = (rel, text, check) => {
-    if (text.split('\n').some((line) => check.re.test(line))) {
+  // Forbidden contradiction predicates: the closed history may never claim
+  // B003, and the next serial batch may never be presented as in progress or
+  // closed. Each fact string positively describes the unwanted relation.
+  const HUMAN_FORBIDDEN_CHECKS = [
+    { re: /(?:AIPT-M0-B003[^\n]{0,40}MERGED\/CLOSED|MERGED\/CLOSED[^\n]{0,40}AIPT-M0-B003)/, fact: 'binds AIPT-M0-B003 to MERGED/CLOSED within 40 characters on one line' },
+    { re: /(?:AIPT-M0-B004[^\n]{0,80}(?:IN_PROGRESS|MERGED\/CLOSED)|(?:IN_PROGRESS|MERGED\/CLOSED)[^\n]{0,80}AIPT-M0-B004)/, fact: 'binds AIPT-M0-B004 to IN_PROGRESS or MERGED/CLOSED within 80 characters on one line' },
+  ];
+  const verifyHumanLine = (rel, text, check, forbidden) => {
+    const matched = text.split('\n').some((line) => check.re.test(line));
+    if (forbidden) {
+      if (matched) {
+        fail(`${rel}: forbidden ${check.fact}`);
+      } else {
+        ok(`${rel}: no ${check.fact}`);
+      }
+    } else if (matched) {
       ok(`${rel}: ${check.fact}`);
     } else {
       fail(`${rel}: missing ${check.fact} (no line matches /${check.re.source}/)`);
@@ -308,6 +329,7 @@ export function run(ctx) {
   for (const rel of HUMAN_DOCS) {
     const text = read(rel);
     for (const check of HUMAN_CHECKS) verifyHumanLine(rel, text, check);
+    for (const check of HUMAN_FORBIDDEN_CHECKS) verifyHumanLine(rel, text, check, true);
   }
 
   return { name: 'status-transition', result: pass ? 'PASS' : 'FAIL', details };
