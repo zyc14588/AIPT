@@ -7,9 +7,10 @@
 // AIPT-M0-B003-CONSTRUCTION-001 snapshot, and proves the frozen authority
 // registries are byte-identical to the base.
 //
-// Deliberately out of scope for this subleaf (added by follow-up coverage):
-// human-document (README / PROJECT_STATUS.md) consistency checks, negative
-// mutation self-probes, and any constraint on runtime.status.
+// Deliberately out of scope here: negative mutation self-probes, and any
+// constraint on runtime.status. The human-document section covers only the
+// minimal current B003 / next B004 relationship (no closed-history,
+// predecessor, base, platform, or contradiction checks).
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -272,6 +273,33 @@ export function run(ctx) {
     if (workingBlob !== baseBlob) {
       fail(`frozen registry ${rel} working-tree bytes differ from base blob: ${workingBlob} != ${baseBlob}`);
     } else ok(`frozen registry ${rel} byte-identical to base`);
+  }
+
+  // ---- human-current-state (README.md / PROJECT_STATUS.md) ----
+  // Minimal same-line consistency checks for the current B003 construction
+  // snapshot (date, snapshot id, IN_PROGRESS, GLOBAL_WIP = 1) and the next
+  // B004 relationship (NOT_AUTHORIZED, not authorized, not started). Every
+  // relationship must be bound on a single document line — no whole-document
+  // token bags. No closed-history / predecessor / base / platform /
+  // contradiction / mutation / temp-file / runtime.status checks here.
+  const HUMAN_DOCS = ['README.md', 'docs/authority/PROJECT_STATUS.md'];
+  const HUMAN_CHECKS = [
+    { re: /2026-08-19/, fact: 'contains status date 2026-08-19' },
+    { re: /AIPT-M0-B003-CONSTRUCTION-001/, fact: 'contains snapshot AIPT-M0-B003-CONSTRUCTION-001' },
+    { re: /AIPT-M0-B003[^\n]*IN_PROGRESS/, fact: 'binds AIPT-M0-B003 to IN_PROGRESS on one line' },
+    { re: /(?:AIPT-M0-B003[^\n]*GLOBAL_WIP = 1|GLOBAL_WIP = 1[^\n]*AIPT-M0-B003)/, fact: 'binds AIPT-M0-B003 and GLOBAL_WIP = 1 on one line' },
+    { re: /AIPT-M0-B004[^\n]*NOT_AUTHORIZED[^\n]*next_batch_authorized = false[^\n]*next_batch_started = false/, fact: 'binds AIPT-M0-B004 to NOT_AUTHORIZED, next_batch_authorized = false, next_batch_started = false in order on one line' },
+  ];
+  const verifyHumanLine = (rel, text, check) => {
+    if (text.split('\n').some((line) => check.re.test(line))) {
+      ok(`${rel}: ${check.fact}`);
+    } else {
+      fail(`${rel}: missing ${check.fact} (no line matches /${check.re.source}/)`);
+    }
+  };
+  for (const rel of HUMAN_DOCS) {
+    const text = read(rel);
+    for (const check of HUMAN_CHECKS) verifyHumanLine(rel, text, check);
   }
 
   return { name: 'status-transition', result: pass ? 'PASS' : 'FAIL', details };
