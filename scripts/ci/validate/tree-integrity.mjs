@@ -134,7 +134,8 @@ export function run(ctx) {
   } else ok(`current HEAD descends from accepted base ${BASE_COMMIT}`);
 
   // ---- scope (changed paths vs the registered B003 per-iteration allowed set) ----
-  const diff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
+  // --no-renames keeps both sides of a rename in the changed-path set.
+  const diff = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   // Regenerable package-manager install output is not candidate source: the
   // repository carries no .gitignore (adding one is outside the B003 allowed
   // path set), so filter the generated node_modules tree here.
