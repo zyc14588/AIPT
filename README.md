@@ -2,16 +2,16 @@
 
 AIPT 是一个**完全由 AI Agent 替代真人桌面席位的 TRPG 全流程桌测系统**：AI 替代 GM、玩家、Observer 等真人席位；状态、随机数、调度、日志与规则计算由确定性基础设施承担。
 
-## 当前状态（as of 2026-08-18）
+## 当前状态（as of 2026-08-19）
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`）；M0 当前无活跃实施批次（`IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`） |
+| `AIPT-STANDALONE` | 设计已冻结（`FROZEN_R0_R16_DCA_BOOTSTRAP`）；当前唯一活跃实施批次为 `AIPT-M0-B003`：施工中（`IN_PROGRESS`，`GLOBAL_WIP = 1`），权威快照 `AIPT-M0-B003-CONSTRUCTION-001` |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`：冻结等待平台 M1 游戏引擎，解冻未获授权（`unfreeze_authorized = false`） |
 
-批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）；`AIPT-M0-B001` = **MERGED/CLOSED**（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`，树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`，合并后公共 CI run `31951440133` PASS）；`AIPT-M0-B002` = **MERGED/CLOSED**（候选 `9968cbc89c09640e3fc2feb8d851220eae98b9b9`，implementation merge commit `fccfb595c23feab38397506505a3e996fe7b9e9c`，implementation tree `f99570bc3c4307244ca926cec62e82a07ef5aee8`，post-merge CI run `31985644832` success）。已验证接受的主线基点 = `fccfb595c23feab38397506505a3e996fe7b9e9c`。`GLOBAL_WIP = 0`。
+批次状态：`AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）；`AIPT-M0-B001` = **MERGED/CLOSED**（候选 `2e904ddc2d4f1313a99e19f6751a991d589f8336`，合并提交 `8bcadc9669e7d04f589f883daa6d4f593875fc9e`，树 `fefc25f1acb523d013c2a7d8db9801ccdab37d2d`，合并后公共 CI run `31951440133` PASS）；`AIPT-M0-B002` = **MERGED/CLOSED**（候选 `9968cbc89c09640e3fc2feb8d851220eae98b9b9`，implementation merge commit `fccfb595c23feab38397506505a3e996fe7b9e9c`，implementation tree `f99570bc3c4307244ca926cec62e82a07ef5aee8`，post-merge CI run `31985644832` success）。`AIPT-M0-B000`/`AIPT-M0-B001`/`AIPT-M0-B002` 为不可变已关闭历史。外部串行前序 `UNREGISTERED-AIPT-P0-B001` = **MERGED/CLOSED**（closeout 提交 `a37b284bf5ec35895f436abe71d22599edb6da53`，公共 CI run `32194224161` success）。已验证接受的 AIPT 源基线 = closeout 提交 `45a96087d75a61f2910cb5ce99134e3ca777bca8`，树 `8b16b599c261879406f0435e80c878e092683a50`。`GLOBAL_WIP = 1`。
 
-AIPT 当前无活跃实施批次。M0 串行链下一项为 `UNREGISTERED-AIPT-P0-B000`，状态 `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`），尚未启动（`next_batch_started = false`）；不得将其表示为已进入实施。
+`AIPT-M0-B003` 为当前唯一活跃实施批次（`IN_PROGRESS`，`GLOBAL_WIP = 1`），施工范围：PostgreSQL 迁移、追加式哈希链账本与验证；Core、Launcher、Harness Host、Web UI 与 `AIPT-M0-B004` 均不在本批次范围内。M0 串行链下一批为 `AIPT-M0-B004`：`NOT_AUTHORIZED`（`next_batch_authorized = false`，`next_batch_started = false`），尚未授权、尚未启动；不得将其表示为已进入实施。
 
 **设计基线已冻结、运行时代码尚未建设。** B001 已合并关闭（工具链骨架、公共 CI、供应链门禁）；B002 迭代 3/3B 已产出修复加固后的权威协议 Schema、确定性夹具（含持久化 wire 信封）与协议资产验证器（含 33 个负向探针；3B 关闭跨语言验证缺口：安全整数 id 边界、身份失配显式失败、lstat/realpath 遏制、错误响应与引用请求一致、消息身份措辞）；迭代 4 已产出依赖自由的一方 TypeScript Adapter SDK（契约常量/类型、确定性 canonical JSON 与 SHA-256、严格 JSON-RPC 2.0 四类信封的 parse/decode/encode 与类型化 builder、语义投影验证、夹具兼容验证、无导入副作用探针）及其机器门禁与供应链/SBOM 表示；迭代 4B 已关闭 Codex 对抗探针确认的验证缺口（无损 JSON 值门禁、manifest 预检 + 逐文档 schema 校验 + 突变语义证明、投影身份加固、wire 错误码类型修复、Schema 全量指纹与类型形状审计；测试 90 项、门禁负向探针 53 个）；迭代 4C 已关闭 Codex 独立探针确认的更深验证缺口（零调用描述符无损门禁、全值信任边界门禁、schema 指纹绑定 + 语法预检、普通投影语义门禁、突变元数据绑定、精确清单、成员类型表达式审计；测试 107 项、门禁负向探针 81 个）；迭代 4D 已关闭 Codex 独立源码评审与原始实现探针确认的求值器缺口（同对象跨调用陈旧预检接受、未引用定义本地 `$ref` 环、空 `required` 拒绝/type·enum 重复接受/注解与结构关键字语法不精确、十进制 `multipleOf` 误拒；测试 122 项、门禁探针 103 个）；迭代 5 已落地依赖自由的 Go 协议契约消费者（`internal/protocol`：严格信封解码、canonical JSON/SHA-256、投影/可见性语义、共享夹具与 schema 漂移测试），迭代 5B 已关闭 Codex 独立对抗评审复现的六个 Go 消费者 fail-open 缺口（整数值不安全小数/指数拼写、Node 逐字节兼容的孤立 UTF-16 代理、数值 wire 错误码一致性、突变内嵌投影身份绑定与 nil 语义输入、manifest 解码期语义预检与不可变 kind→schema_ref 权威，测试 183 项、负向用例 101 项），迭代 6 已落地聚焦 B002 CI 工作流演进（耐久名称 `AIPT M0 CI` 的公共 workflow 在两个合格 Ubuntu runner 上显式执行 `pnpm run check:protocol-assets` / `pnpm run test:adapter-sdk` / `pnpm run test:protocol-go`，`pnpm run check` 保留为 B001+B002 聚合门禁；workflow 验证器升级为 fail-closed B002 契约），尚未建设任何 server/socket/worker/model/数据库运行时；`AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`。
 
