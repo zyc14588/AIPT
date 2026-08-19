@@ -10,11 +10,13 @@
 // Deliberately out of scope here: negative mutation self-probes, and any
 // constraint on runtime.status. The human-document section covers the minimal
 // current B003 / next B004 relationship plus positive same-line closed-history
-// (B000/B001/B002 = MERGED/CLOSED) and external-predecessor bindings, and two
-// focused forbidden-contradiction predicates (B003 must not be bound to
+// (B000/B001/B002 = MERGED/CLOSED), external-predecessor, accepted-source
+// (commit -> tree), and frozen-platform (FROZEN_WAITING_M1_ENGINE ->
+// unfreeze_authorized = false) bindings, and two focused
+// forbidden-contradiction predicates (B003 must not be bound to
 // MERGED/CLOSED; B004 must not be bound to IN_PROGRESS or MERGED/CLOSED, both
-// within a bounded same-line gap); base, platform, mutation, and runtime.status
-// checks remain out of scope.
+// within a bounded same-line gap); mutation and runtime.status checks remain
+// out of scope.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -281,18 +283,20 @@ export function run(ctx) {
 
   // ---- human-current-state (README.md / PROJECT_STATUS.md) ----
   // Same-line consistency checks for the current B003 construction snapshot
-  // (date, snapshot id, IN_PROGRESS, GLOBAL_WIP = 1), the next B004
-  // relationship (NOT_AUTHORIZED, not authorized, not started), the immutable
-  // closed history (AIPT-M0-B000 / B001 / B002 each = MERGED/CLOSED on one
-  // line), and the external serial predecessor (UNREGISTERED-AIPT-P0-B001 =
-  // MERGED/CLOSED with its closeout commit / CI run / success conclusion, in
-  // order on one line). Every relationship must be bound on a single document
-  // line — no whole-document token bags. Two focused forbidden-contradiction
-  // checks are also applied here: AIPT-M0-B003 must not be bound to
-  // MERGED/CLOSED (either order, 0..40 same-line character gap), and
-  // AIPT-M0-B004 must not be bound to IN_PROGRESS or MERGED/CLOSED (either
-  // order, 0..80 same-line character gap). Base, platform, mutation,
-  // temp-file, and runtime.status checks remain out of scope.
+  // (date, snapshot id, IN_PROGRESS, GLOBAL_WIP = 1), the accepted source
+  // (commit -> tree), the frozen platform (FROZEN_WAITING_M1_ENGINE ->
+  // unfreeze_authorized = false), the next B004 relationship (NOT_AUTHORIZED,
+  // not authorized, not started), the immutable closed history (AIPT-M0-B000 /
+  // B001 / B002 each = MERGED/CLOSED on one line), and the external serial
+  // predecessor (UNREGISTERED-AIPT-P0-B001 = MERGED/CLOSED with its closeout
+  // commit / CI run / success conclusion, in order on one line). Every
+  // relationship must be bound on a single document line — no whole-document
+  // token bags. Two focused forbidden-contradiction checks are also applied
+  // here: AIPT-M0-B003 must not be bound to MERGED/CLOSED (either order, 0..40
+  // same-line character gap), and AIPT-M0-B004 must not be bound to
+  // IN_PROGRESS or MERGED/CLOSED (either order, 0..80 same-line character
+  // gap). Machine mutation probes and runtime.status checks remain out of
+  // scope.
   const HUMAN_DOCS = ['README.md', 'docs/authority/PROJECT_STATUS.md'];
   const HUMAN_CHECKS = [
     { re: /2026-08-19/, fact: 'contains status date 2026-08-19' },
@@ -304,6 +308,8 @@ export function run(ctx) {
     { re: /AIPT-M0-B001[^\n]*MERGED\/CLOSED/, fact: 'binds AIPT-M0-B001 to MERGED/CLOSED on one line' },
     { re: /AIPT-M0-B002[^\n]*MERGED\/CLOSED/, fact: 'binds AIPT-M0-B002 to MERGED/CLOSED on one line' },
     { re: /UNREGISTERED-AIPT-P0-B001[^\n]*MERGED\/CLOSED[^\n]*a37b284bf5ec35895f436abe71d22599edb6da53[^\n]*32194224161[^\n]*success/, fact: 'binds UNREGISTERED-AIPT-P0-B001 to MERGED/CLOSED, closeout commit a37b284bf5ec35895f436abe71d22599edb6da53, CI run 32194224161, success in order on one line' },
+    { re: /45a96087d75a61f2910cb5ce99134e3ca777bca8[^\n]*8b16b599c261879406f0435e80c878e092683a50/, fact: 'binds accepted source commit 45a96087d75a61f2910cb5ce99134e3ca777bca8 to tree 8b16b599c261879406f0435e80c878e092683a50 in order on one line' },
+    { re: /FROZEN_WAITING_M1_ENGINE[^\n]*unfreeze_authorized = false/, fact: 'binds FROZEN_WAITING_M1_ENGINE to unfreeze_authorized = false in order on one line' },
   ];
   // Forbidden contradiction predicates: the closed history may never claim
   // B003, and the next serial batch may never be presented as in progress or
