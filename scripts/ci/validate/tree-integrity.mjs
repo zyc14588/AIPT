@@ -1,26 +1,79 @@
-// B002 tree-integrity validator: scope, Markdown links, JSON parse, and
-// secret / private-path / prompt-body hygiene for the candidate tree
-// (including the executable scripts/ci sources themselves), plus a
+// B003 tree-integrity validator: self-anchored scope (accepted base identity
+// plus the registered B003 per-iteration allowed set), Markdown links, JSON
+// parse, and secret / private-path / prompt-body hygiene for the candidate
+// tree (including the executable scripts/ci sources themselves), plus a
 // temporary-fixture regression proving the hygiene scan really covers .mjs
 // files under a scripts/ci-shaped path.
 //
-// Markdown rules for B002: no brittle fixed total document count (later
-// approved B002 contract documents must not be rejected by a count) — instead
-// every Markdown document of the accepted base must still be present and
-// every current relative link must resolve.
+// Markdown rules for B003: no brittle fixed total document count (later
+// approved documents of the accepted base must not be rejected by a count) —
+// instead every Markdown document of the accepted base must still be present
+// and every current relative link must resolve.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  ALLOWED_PATHS,
   BASE_COMMIT,
+  BASE_TREE,
   EXPECTED_MIT_LICENSE,
-  FROZEN_REGISTRY_PATHS,
   FORBIDDEN_PREFIXES,
+  FROZEN_REGISTRY_PATHS,
   normalizeText,
   pathMatchesAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
+
+// Independent literal self-anchors for the B003 per-iteration scope: the
+// exact ordered 20-path B003 allowlist and the exact ordered 18-entry
+// forbidden-prefix list, hard-coded here and compared against the imported
+// constants BEFORE any candidate scope is evaluated. Drifting constants.mjs
+// together with the candidate can therefore never make a scope change pass
+// silently.
+const ALLOWED_PATHS_LITERAL = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/storage/**',
+  'package.json',
+  'go.mod',
+  'go.sum',
+  'internal/storage/postgres/**',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+  'scripts/ci/validate/workflow.mjs',
+  'scripts/ci/validate/storage.mjs',
+  'scripts/ci/validate/supply-chain.mjs',
+  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/sbom/generate-sbom.mjs',
+  'tools/supply-chain/licenses.json',
+  'docs/supply-chain/README.md',
+  '.github/workflows/ci.yml',
+];
+
+const FORBIDDEN_PREFIXES_LITERAL = [
+  'api/',
+  'cmd/',
+  'migrations/',
+  'deploy/',
+  'runtime/',
+  'packages/',
+  'schemas/protocol/',
+  'testdata/protocol/',
+  'docs/architecture/',
+  'docs/integration/',
+  'docs/test-model/',
+  'docs/security/',
+  'docs/evidence/',
+  'internal/protocol/',
+  'LICENSE',
+  'tools/supply-chain/policy.json',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
+];
 
 export function run(ctx) {
   const details = [];
@@ -31,10 +84,59 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
 
-  // ---- scope (changed paths vs the registered B002 per-iteration allowed set) ----
+  // ---- independent literal self-anchors (before candidate scope) ----
+  // Every identity the candidate scope depends on is hard-coded in this gate
+  // and compared against the imported constants BEFORE any Git/history or
+  // candidate-scope validation runs. Drifting constants.mjs together with the
+  // candidate can therefore never make the accepted base or the registered
+  // scope change pass silently: each imported field/list must equal its fixed
+  // literal (ordered equality for the scope lists).
+  const verifyAnchor = (label, actual, expected) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      fail(`${label} drifted from its independent literal self-anchor: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);
+      return false;
+    }
+    ok(`${label} anchored to literal ${JSON.stringify(expected)}`);
+    return true;
+  };
+  verifyAnchor('BASE_COMMIT', BASE_COMMIT, '45a96087d75a61f2910cb5ce99134e3ca777bca8');
+  verifyAnchor('BASE_TREE', BASE_TREE, '8b16b599c261879406f0435e80c878e092683a50');
+  verifyAnchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
+  verifyAnchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
+
+  // ---- accepted base identity: resolves, fixed tree, ancestor of HEAD ----
+  const resolveCommit = (label, commit) => {
+    const probe = git(ctx.repo, ['rev-parse', `${commit}^{commit}`], { check: false });
+    const resolved = probe.stdout.trim();
+    if (probe.status !== 0 || resolved !== commit) {
+      fail(`${label} does not resolve to fixed commit ${commit}: ${JSON.stringify(resolved)}`);
+      return false;
+    }
+    ok(`${label} resolves to fixed commit ${commit}`);
+    return true;
+  };
+  const verifyTree = (label, commit, expectedTree) => {
+    const probe = git(ctx.repo, ['rev-parse', `${commit}^{tree}`], { check: false });
+    const resolved = probe.stdout.trim();
+    if (probe.status !== 0 || resolved !== expectedTree) {
+      fail(`${label} tree drifted: ${JSON.stringify(resolved)} != ${expectedTree}`);
+      return false;
+    }
+    ok(`${label} tree = ${expectedTree}`);
+    return true;
+  };
+  resolveCommit('accepted base', BASE_COMMIT);
+  verifyTree('accepted base', BASE_COMMIT, BASE_TREE);
+  const headProbe = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
+  const ancestryProbe = git(ctx.repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], { check: false });
+  if (headProbe.status !== 0 || ancestryProbe.status !== 0) {
+    fail(`current HEAD ${JSON.stringify(headProbe.stdout.trim())} does not descend from accepted base ${BASE_COMMIT}`);
+  } else ok(`current HEAD descends from accepted base ${BASE_COMMIT}`);
+
+  // ---- scope (changed paths vs the registered B003 per-iteration allowed set) ----
   const diff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   // Regenerable package-manager install output is not candidate source: the
-  // repository carries no .gitignore (adding one is outside the B002 allowed
+  // repository carries no .gitignore (adding one is outside the B003 allowed
   // path set), so filter the generated node_modules tree here.
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
     .stdout.split('\n')
@@ -43,14 +145,14 @@ export function run(ctx) {
   if (changed.length === 0) fail('no changed paths found vs base');
   else ok(`${changed.length} changed paths vs base`);
   for (const p of changed) {
-    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B002 allowed set: ${p}`);
+    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B003 allowed set: ${p}`);
     for (const prefix of FORBIDDEN_PREFIXES) {
       if (p.startsWith(prefix)) fail(`forbidden prefix changed: ${p}`);
     }
     if (FROZEN_REGISTRY_PATHS.includes(p)) fail(`frozen registry modified: ${p}`);
   }
   if (changed.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
-    ok('all changed paths within the registered B002 per-iteration scope');
+    ok('all changed paths within the registered B003 per-iteration scope');
   }
 
   // LICENSE untouched vs base.
@@ -65,8 +167,8 @@ export function run(ctx) {
   // ---- Markdown links (no blanket scripts/ci skip: every Markdown document
   // in the tree participates). No fixed total count: instead, every base
   // Markdown document must remain present, and every current relative link
-  // must resolve — a later approved B002 protocol document must not be
-  // rejected by a brittle count. ----
+  // must resolve — a later approved protocol document of the accepted base
+  // must not be rejected by a brittle count. ----
   const baseFiles = git(ctx.repo, ['ls-tree', '-r', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   const baseMd = baseFiles.filter((f) => f.endsWith('.md'));
   const missingBaseMd = baseMd.filter((f) => !fs.existsSync(path.join(ctx.repo, f)));
