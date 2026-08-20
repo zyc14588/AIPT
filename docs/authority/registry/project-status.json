@@ -1,22 +1,29 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-18",
-  "authority_snapshot_id": "AIPT-DCA-CLOSEOUT-R0-R16-002",
+  "as_of": "2026-08-19",
+  "authority_snapshot_id": "AIPT-M0-B003-CONSTRUCTION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "UNREGISTERED-AIPT-P0-B000",
-      "next_batch_state": "AUTHORIZED_TO_PREPARE",
-      "next_batch_authorized": true,
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-M0-B003",
+      "next_serial_batch": "AIPT-M0-B004",
+      "next_batch_state": "NOT_AUTHORIZED",
+      "next_batch_authorized": false,
       "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
         "AIPT-M0-B001": "MERGED_CLOSED",
         "AIPT-M0-B002": "MERGED_CLOSED"
       },
-      "global_wip": 0
+      "external_serial_predecessor": {
+        "id": "UNREGISTERED-AIPT-P0-B001",
+        "status": "MERGED_CLOSED",
+        "closeout_commit": "a37b284bf5ec35895f436abe71d22599edb6da53",
+        "closeout_ci_run": 32194224161,
+        "closeout_ci_conclusion": "success"
+      },
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -27,8 +34,9 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "fccfb595c23feab38397506505a3e996fe7b9e9c",
-      "verified_state": "AIPT-M0-B002 MERGED_CLOSED: candidate 9968cbc89c09640e3fc2feb8d851220eae98b9b9; implementation merge commit fccfb595c23feab38397506505a3e996fe7b9e9c; implementation tree f99570bc3c4307244ca926cec62e82a07ef5aee8; post-merge CI run 31985644832 success; no active implementation batch; next serial batch UNREGISTERED-AIPT-P0-B000 is AUTHORIZED_TO_PREPARE and not started"
+      "verified_head": "45a96087d75a61f2910cb5ce99134e3ca777bca8",
+      "verified_tree": "8b16b599c261879406f0435e80c878e092683a50",
+      "verified_state": "AIPT-M0-B003 construction IN_PROGRESS (global WIP 1): accepted source base is the AIPT-M0-B002 closeout commit 45a96087d75a61f2910cb5ce99134e3ca777bca8, tree 8b16b599c261879406f0435e80c878e092683a50; B000/B001/B002 remain MERGED_CLOSED; B003 is not yet accepted or closed; next serial batch AIPT-M0-B004 is NOT_AUTHORIZED and not started"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",

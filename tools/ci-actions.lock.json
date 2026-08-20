@@ -29,7 +29,7 @@
       "release_published_at": "2026-07-16T02:50:50Z",
       "license": "MIT",
       "source_verified_at": "2026-08-16T06:51:41Z",
-      "purpose": "install the exact pinned Go toolchain (1.26.5) on GitHub-hosted Linux runners"
+      "purpose": "install the exact pinned Go toolchain (1.26.6, B003 security requalification of the B001-qualified 1.26.5) on GitHub-hosted Linux runners"
     },
     {
       "repository": "actions/setup-node",

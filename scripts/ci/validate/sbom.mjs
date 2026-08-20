@@ -1,9 +1,15 @@
 // SBOM validator (AIPT-M0-B001-REPAIR-R6 foundation, evolved by B002
-// iteration 4): the gate enforces deterministic output AND SPDX 2.3 /
-// component semantics — including the three-layer PostgreSQL license model,
-// the first-party @aipt/adapter-sdk package model (own SPDX 2.3 package,
-// MIT, version 1.0.0, npm purl, PACKAGE_OF AIPT — never DEV_TOOL_OF) — plus
-// negative probes proving invalid documents are rejected:
+// iteration 4 and AIPT-M0-B003 iteration 6a): the gate enforces deterministic
+// output AND SPDX 2.3 / component semantics — including the three-layer
+// PostgreSQL license model, the first-party @aipt/adapter-sdk package model
+// (own SPDX 2.3 package, MIT, version 1.0.0, npm purl, PACKAGE_OF AIPT —
+// never DEV_TOOL_OF), and (AIPT-M0-B003 iteration 6a) the six approved
+// third-party Go runtime modules of the pgx v5.10.0 closure with exact known
+// licenses (MIT/BSD-3-Clause, never NOASSERTION), golang purls, SHA-256
+// checksumValues decoded from the go.sum zip h1 base64 payloads, and the
+// application runtime dependency graph AIPT DEPENDS_ON pgx / pgx DEPENDS_ON
+// the five indirect modules (never DEV_TOOL_OF) — plus negative probes
+// proving invalid documents are rejected:
 //   - an invalid SRI-style checksum;
 //   - the human full license name "PostgreSQL License" in place of the SPDX
 //     short identifier PostgreSQL (on the main-software package);
@@ -24,31 +30,43 @@
 //     wrongly licensed in the SBOM, its npm purl missing/drifted, its
 //     PACKAGE_OF first-party relationship deleted or retyped to DEV_TOOL_OF
 //     (each rejected by its own semantic check, never merely by the
-//     content-addressed namespace mismatch).
+//     content-addressed namespace mismatch);
+//   - AIPT-M0-B003 iteration 6a: a Go runtime module package deleted,
+//     version/license/checksum drifted, a runtime module misclassified as
+//     DEV_TOOL_OF, the AIPT DEPENDS_ON pgx relationship deleted or retyped,
+//     a pgx DEPENDS_ON indirect-module relationship deleted, and the
+//     direct/transitive role of a runtime module drifted (each rejected by
+//     its own semantic check).
 //
 // `node scripts/ci/validate/sbom.mjs` reports PASS only when:
 //   1. semantic validation passes (SPDX-2.3, CC0-1.0, version-unique
 //      content-addressed documentNamespace — SHA-256 of the canonical
 //      version-defining payload — with the legacy static B001 namespace
-//      explicitly rejected, unique package SPDXIDs, the exact B002 required
+//      explicitly rejected, unique package SPDXIDs, the exact B003 required
 //      package set (all 11 B001 identities preserved plus the first-party
-//      @aipt/adapter-sdk package), SPDX license values for every current
-//      package (the three-layer PostgreSQL model: main software =
-//      PostgreSQL, packaging source = MIT, composite image = NOASSERTION),
+//      @aipt/adapter-sdk package plus the six approved Go runtime modules),
+//      SPDX license values for every current package (the three-layer
+//      PostgreSQL model: main software = PostgreSQL, packaging source = MIT,
+//      composite image = NOASSERTION; adapter-sdk = MIT; pgx closure = exact
+//      known MIT/BSD-3-Clause values),
 //      the exact composition relationships (image CONTAINS main software,
 //      image GENERATED_FROM packaging source — never CONTAINS the packaging
-//      source; adapter-sdk PACKAGE_OF AIPT — never DEV_TOOL_OF),
+//      source; adapter-sdk PACKAGE_OF AIPT — never DEV_TOOL_OF; AIPT
+//      DEPENDS_ON pgx; pgx DEPENDS_ON the five indirect modules — runtime
+//      modules never DEV_TOOL_OF),
 //      toolchain/action versions matching the lock files, resolvable
 //      relationships with SPDX 2.3-valid types, lowercase-hex checksums of
 //      algorithm-appropriate length, pnpm SHA512 hex decoded from the pinned
-//      SRI payload, the exact PostgreSQL multi-arch digest in the image
-//      versionInfo + purl + comment and the linux/amd64 platform digest in
-//      the comment, zero third-party deps);
+//      SRI payload, Go module SHA256 hex decoded from the go.sum zip h1
+//      base64 payloads and pinned against the frozen h1 values, the exact
+//      PostgreSQL multi-arch digest in the image versionInfo + purl + comment
+//      and the linux/amd64 platform digest in the comment, zero pnpm
+//      third-party deps, and the exact go.mod six-module closure);
 //   2. two independent generations are byte-identical;
 //   3. every negative probe above is rejected for the right reason
-//      (relationship-drift probes must be rejected by the composition
-//      relationship check itself, not merely by the content-addressed
-//      namespace mismatch that any mutation causes).
+//      (relationship-drift probes must be rejected by the composition or
+//      dependency relationship check itself, not merely by the
+//      content-addressed namespace mismatch that any mutation causes).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -66,10 +84,29 @@ const DATA_LICENSE = 'CC0-1.0';
 const DOCUMENT_SPDXID = 'SPDXRef-DOCUMENT';
 const AIPT_SPDXID = 'SPDXRef-AIPT';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b002';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003';
 // The static pre-R5 B001 namespace reused by distinct R3/R4 documents; still
-// forbidden — a B002 document must never fall back to it.
+// forbidden — a B003 document must never fall back to it.
 const LEGACY_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
+
+// The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
+// 6a). h1hex is the frozen SHA-256 (64 lowercase hex) that the go.sum zip
+// `h1:` base64 payload must decode to; gomodhex is the frozen SHA-256 that
+// the `<module> <version>/go.mod h1:` base64 payload must decode to. The
+// validator independently derives both values from go.sum and compares, so a
+// tampered h1 cannot pass.
+const GO_RUNTIME_MODULES = [
+  { module: 'github.com/jackc/pgx/v5', version: 'v5.10.0', direct: true, license: 'MIT', h1hex: '5614af814da34a58bca3702a20439326beeb670004515a381385e147de197ebd', gomodhex: '99a975b4118015f2c7bd9cda621efb612fde0ba217f4e59b455d50208334267e' },
+  { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
+  { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
+  { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
+  { module: 'golang.org/x/sync', version: 'v0.17.0', direct: false, license: 'BSD-3-Clause', h1hex: '97ad2738d323f65e5daeac3a8e584810b36ff48d00e0e16046c1bd936a13f548', gomodhex: 'f4a4c75e64a7a06aee2e9c058d5497d2534d03be42ca488c1026e8bcd4d9a862' },
+  { module: 'golang.org/x/text', version: 'v0.29.0', direct: false, license: 'BSD-3-Clause', h1hex: 'd6778db3dd30f58cc9f41a1cc5fb103472ae013e299208725dce27859eac26f9', gomodhex: 'ecc849380f420f6a99c8e2986b3c5d60c17ce4ec0f744afd8d3b41a4eef2747e' },
+];
+
+function goModuleSpdxId(module) {
+  return `SPDXRef-GoModule-${module.replace(/[^A-Za-z0-9-]/g, '-')}`;
+}
 
 // SPDX 2.3 specification relationship types.
 const SPDX23_RELATIONSHIP_TYPES = new Set([
@@ -88,9 +125,11 @@ const SPDX23_RELATIONSHIP_TYPES = new Set([
 ]);
 
 // The exact required package identities (B001's 11 identities preserved,
-// plus the first-party B002 workspace package @aipt/adapter-sdk). B002 has
-// zero third-party application runtime dependencies, so the SBOM package set
-// must be exactly this set — no GoDep/PnpmDep packages.
+// plus the first-party B002 workspace package @aipt/adapter-sdk, plus the
+// six approved third-party Go runtime modules of the pgx v5.10.0 closure
+// selected in AIPT-M0-B003 iteration 6a). B003 has zero pnpm third-party
+// packages, so the SBOM package set must be exactly this 18-identity set —
+// no PnpmDep packages and no Go dependency outside the approved closure.
 const REQUIRED_PACKAGES = [
   { name: 'AIPT', spdxId: AIPT_SPDXID },
   { name: '@aipt/adapter-sdk', spdxId: SDK_SPDXID },
@@ -104,6 +143,7 @@ const REQUIRED_PACKAGES = [
   { name: 'actions/checkout', spdxId: 'SPDXRef-Action-actions-checkout' },
   { name: 'actions/setup-go', spdxId: 'SPDXRef-Action-actions-setup-go' },
   { name: 'actions/setup-node', spdxId: 'SPDXRef-Action-actions-setup-node' },
+  ...GO_RUNTIME_MODULES.map((m) => ({ name: m.module, spdxId: goModuleSpdxId(m.module) })),
 ];
 
 const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
@@ -117,6 +157,9 @@ const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
 //     sources/components) carries `NOASSERTION` for BOTH fields — asserting
 //     `PostgreSQL` or `MIT` for the whole image is rejected.
 // B002 iteration 4 adds the first-party @aipt/adapter-sdk package: MIT.
+// AIPT-M0-B003 iteration 6a adds the six approved Go runtime modules with
+// their exact known SPDX licenses (MIT for the jackc modules, BSD-3-Clause
+// for the golang.org/x modules) — never NOASSERTION.
 const EXPECTED_PACKAGE_LICENSES = {
   AIPT: 'MIT',
   '@aipt/adapter-sdk': 'MIT',
@@ -130,6 +173,12 @@ const EXPECTED_PACKAGE_LICENSES = {
   'actions/checkout': 'MIT',
   'actions/setup-go': 'MIT',
   'actions/setup-node': 'MIT',
+  'github.com/jackc/pgx/v5': 'MIT',
+  'github.com/jackc/pgpassfile': 'MIT',
+  'github.com/jackc/pgservicefile': 'MIT',
+  'github.com/jackc/puddle/v2': 'MIT',
+  'golang.org/x/sync': 'BSD-3-Clause',
+  'golang.org/x/text': 'BSD-3-Clause',
 };
 
 // The exact npm purl of the first-party SDK package (percent-encoded scope).
@@ -171,6 +220,180 @@ function pinnedPnpmSha512Hex(toolchainLock) {
   if (bytes.length !== 64) return null;
   const hex = bytes.toString('hex');
   return /^[0-9a-f]{128}$/.test(hex) ? hex : null;
+}
+
+// Independent parse of go.mod require directives (single-line and block
+// forms, `// indirect` markers). A separate copy from the generator's, so a
+// generator parser defect cannot validate itself into PASS. The optional
+// leading horizontal whitespace accepted by Go is honored before the
+// `require` keyword and inside blocks.
+//
+// The parser is a FAIL-CLOSED line-state scanner, never a regex over block
+// bodies: a block is opened by a line whose code portion (everything before a
+// `//` comment, trimmed) is `require (` and is closed ONLY by a line whose
+// code portion, trimmed, is exactly `)`. A `)` inside a `//` comment can
+// therefore never close a block, and a block that is never closed is a parse
+// error. Every non-comment line inside a block must parse as
+// `<module> <version>`, with an arbitrary trailing `//` comment allowed: the
+// comment is stripped before module/version parsing, and indirectness is read
+// from the Go `// indirect` marker on the original line. Any top-level
+// `require` directive (single-line form) or non-comment block entry that
+// cannot be parsed is a parse error: the function THROWS instead of silently
+// omitting lines, and every caller treats a parser error as a hard failure.
+// Multiple blocks, the single-line form, exact count/version/directness, and
+// the replace/exclude/retract override rejection are all preserved.
+function parseGoModRequires(text) {
+  const requires = [];
+  const errors = [];
+  const stripComment = (line) => {
+    // Go line comments start at the first `//` outside code; module paths,
+    // versions, and pseudo-versions never contain `//`, so the first `//` is
+    // always the comment delimiter.
+    const idx = line.indexOf('//');
+    return idx === -1 ? line : line.slice(0, idx);
+  };
+  const isIndirect = (line) => /\/\/\s*indirect(\s|$)/.test(line);
+  const parseEntry = (raw, where) => {
+    const code = stripComment(raw).trim();
+    if (code === '') return null; // blank or comment-only line
+    const m = /^([^\s]+)\s+(v[\w.+\-]+)\s*$/.exec(code);
+    if (!m) {
+      errors.push(`${where}: cannot parse require entry ${JSON.stringify(raw.trim())}`);
+      return null;
+    }
+    return { module: m[1], version: m[2], indirect: isIndirect(raw) };
+  };
+  const lines = text.split('\n');
+  let inBlock = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    const raw = lines[i];
+    const code = stripComment(raw).trim();
+    if (inBlock) {
+      if (code === ')') {
+        inBlock = false;
+        continue;
+      }
+      const entry = parseEntry(raw, `line ${i + 1} (require block)`);
+      if (entry) requires.push(entry);
+      continue;
+    }
+    if (/^require\s*\($/.test(code)) {
+      inBlock = true;
+      continue;
+    }
+    if (/^require\b/.test(code)) {
+      const m = /^require\s+([^\s]+)\s+(v[\w.+\-]+)\s*$/.exec(code);
+      if (!m) {
+        errors.push(`line ${i + 1}: cannot parse single-line require directive ${JSON.stringify(raw.trim())}`);
+      } else {
+        requires.push({ module: m[1], version: m[2], indirect: isIndirect(raw) });
+      }
+    }
+  }
+  if (inBlock) errors.push('unterminated require ( block: no closing line whose code portion is exactly ")"');
+  if (errors.length > 0) throw new Error(`go.mod require parse error(s): ${errors.join('; ')}`);
+  return requires;
+}
+
+// A dependency-graph override directive (replace/exclude/retract) is present
+// in either its single-line form (`replace a => b v1.0.0`) or its block form
+// (`replace (` ... `)`), both with the optional leading horizontal whitespace
+// accepted by Go. The keyword must start the line (after whitespace), so a
+// comment or an unrelated line can never be misdetected as an override.
+function hasOverrideDirective(text, keyword) {
+  return new RegExp(`^[ \\t]*${keyword}\\s*(?:\\(|\\S)`, 'm').test(text);
+}
+
+// Independent derivation of one go.sum zip h1 value as 64 lowercase hex; null
+// when the line is missing or does not decode to 32 bytes. The Go dirhash H1
+// value is a 32-byte SHA-256 digest, so the SPDX 2.3 checksumValue is the
+// decoded lowercase hex.
+function goSumZipH1Hex(goSumText, module, version) {
+  const re = new RegExp(`^${module.replace(/[.\\+]/g, '\\$&')}\\s+${version.replace(/[.\\+]/g, '\\$&')}\\s+h1:([A-Za-z0-9+/=]+)$`, 'm');
+  const m = re.exec(goSumText);
+  if (!m) return null;
+  const bytes = Buffer.from(m[1], 'base64');
+  if (bytes.length !== 32) return null;
+  const hex = bytes.toString('hex');
+  return /^[0-9a-f]{64}$/.test(hex) ? hex : null;
+}
+
+// Independent fail-closed check that go.mod requires EXACTLY the six approved
+// Go runtime modules with exact versions and exact direct/indirect markers,
+// and carries NO replace/exclude/retract dependency-graph override directive.
+// Returns a list of problem strings (empty when clean).
+function goModClosureProblems(goModText) {
+  const problems = [];
+  // Parser errors are fail-closed: an unparseable top-level require directive
+  // or non-comment block entry is reported as a problem instead of silently
+  // dropping the offending line.
+  let requires;
+  try {
+    requires = parseGoModRequires(goModText);
+  } catch (err) {
+    problems.push(`go.mod require parse error (fail-closed): ${err.message}`);
+    return problems;
+  }
+  const byModule = new Map(requires.map((r) => [r.module, r]));
+  if (requires.length !== GO_RUNTIME_MODULES.length) {
+    problems.push(`go.mod require count must be exactly ${GO_RUNTIME_MODULES.length}, got ${requires.length}`);
+  }
+  for (const m of GO_RUNTIME_MODULES) {
+    const r = byModule.get(m.module);
+    if (!r) {
+      problems.push(`go.mod missing required module ${m.module}`);
+      continue;
+    }
+    if (r.version !== m.version) problems.push(`go.mod ${m.module} version must be ${m.version}, got ${r.version}`);
+    if (Boolean(r.indirect) !== !m.direct) problems.push(`go.mod ${m.module} directness drifted: expected ${m.direct ? 'direct' : 'indirect'}`);
+  }
+  for (const r of requires) {
+    if (!GO_RUNTIME_MODULES.some((m) => m.module === r.module)) problems.push(`unknown go.mod dependency: ${r.module}`);
+  }
+  const graphOverride = [];
+  if (hasOverrideDirective(goModText, 'replace')) graphOverride.push('replace');
+  if (hasOverrideDirective(goModText, 'exclude')) graphOverride.push('exclude');
+  if (hasOverrideDirective(goModText, 'retract')) graphOverride.push('retract');
+  if (graphOverride.length > 0) {
+    problems.push(`go.mod carries dependency-graph override directive(s): ${graphOverride.join(', ')} (replace/exclude/retract are forbidden for the approved closure)`);
+  }
+  return problems;
+}
+
+// Independent fail-closed check of the go.sum h1 pins for all six approved
+// modules: BOTH the zip `h1:` and the `/go.mod h1:` line must be present, and
+// every base64 payload must decode to 32 bytes whose lowercase hex equals the
+// frozen h1 SHA-256 value. Returns a list of problem strings (empty when
+// clean).
+function goSumH1Problems(goSumText) {
+  const problems = [];
+  const { zip, gomod } = (() => {
+    const zip = new Map();
+    const gomod = new Map();
+    for (const m of goSumText.matchAll(/^([^\s]+)\s+(v[\w.+\-]+)\s+h1:([A-Za-z0-9+/=]+)$/gm)) zip.set(`${m[1]} ${m[2]}`, m[3]);
+    for (const m of goSumText.matchAll(/^([^\s]+)\s+(v[\w.+\-]+)\/go\.mod\s+h1:([A-Za-z0-9+/=]+)$/gm)) gomod.set(`${m[1]} ${m[2]}`, m[3]);
+    return { zip, gomod };
+  })();
+  for (const m of GO_RUNTIME_MODULES) {
+    const key = `${m.module} ${m.version}`;
+    const z = zip.get(key);
+    const g = gomod.get(key);
+    if (!z) {
+      problems.push(`go.sum missing zip h1 for ${key}`);
+      continue;
+    }
+    if (!g) {
+      problems.push(`go.sum missing /go.mod h1 for ${key}`);
+      continue;
+    }
+    const zBytes = Buffer.from(z, 'base64');
+    const zHex = zBytes.length === 32 ? zBytes.toString('hex') : null;
+    if (zHex !== m.h1hex) problems.push(`go.sum ${key} zip h1 decodes to ${zHex ?? `<${zBytes.length} bytes>`}, expected pinned SHA-256 ${m.h1hex}`);
+    const gBytes = Buffer.from(g, 'base64');
+    const gHex = gBytes.length === 32 ? gBytes.toString('hex') : null;
+    if (gHex !== m.gomodhex) problems.push(`go.sum ${key} /go.mod h1 decodes to ${gHex ?? `<${gBytes.length} bytes>`}, expected pinned SHA-256 ${m.gomodhex}`);
+  }
+  return problems;
 }
 
 export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock }) {
@@ -236,14 +459,14 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       requiredOk = false;
     }
   }
-  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (11 B001 identities preserved + @aipt/adapter-sdk)`);
+  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (11 B001 identities preserved + @aipt/adapter-sdk + six approved Go runtime modules)`);
   const unknown = doc.packages.filter((p) => !byName.has(p.name) || !REQUIRED_PACKAGES.some((r) => r.name === p.name));
   if (doc.packages.length !== REQUIRED_PACKAGES.length || unknown.length > 0) {
-    fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required packages (third-party dependency count must remain 0), got ${doc.packages.length}`);
-  } else ok('SBOM package set is exactly the required set: third-party application dependency count = 0');
+    fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required packages (no package outside the approved identities), got ${doc.packages.length}`);
+  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities: 12 retained packages + six approved pgx v5.10.0 Go runtime modules`);
   const depIds = ids.filter((id) => id.startsWith('SPDXRef-GoDep-') || id.startsWith('SPDXRef-PnpmDep-'));
-  if (depIds.length > 0) fail(`SBOM carries dependency packages: ${depIds.join(', ')}`);
-  else ok('no GoDep/PnpmDep dependency packages in the SBOM');
+  if (depIds.length > 0) fail(`SBOM carries legacy GoDep/PnpmDep dependency packages: ${depIds.join(', ')}`);
+  else ok('no legacy GoDep/PnpmDep dependency packages in the SBOM');
 
   // ---- first-party @aipt/adapter-sdk package model (B002 iteration 4) ----
   const sdkPkg = byName.get('@aipt/adapter-sdk');
@@ -295,10 +518,20 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   }
   if (licenseOk) ok('every package licenseConcluded/licenseDeclared matches the expected SPDX license value (PostgreSQL main software = PostgreSQL, docker-library/postgres = MIT, composite image = NOASSERTION, @aipt/adapter-sdk = MIT)');
 
-  // ---- app-level zero-dependency invariants (go.mod / pnpm-lock) ----
+  // ---- app-level dependency invariants (go.mod closure / pnpm-lock) ----
+  // go.mod must carry EXACTLY the six approved Go runtime modules (1 direct +
+  // 5 transitive) with exact versions and directness; pnpm-lock must carry
+  // zero third-party packages.
   const goMod = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
-  if (/^require\b/m.test(goMod)) fail('go.mod declares runtime requires (third-party dependency count != 0)');
-  else ok('go.mod: zero module requirements (third-party dependency count = 0)');
+  const goModProblems = goModClosureProblems(goMod);
+  if (goModProblems.length > 0) {
+    for (const problem of goModProblems) fail(`go.mod closure: ${problem}`);
+  } else ok('go.mod requires exactly the six approved pgx v5.10.0 runtime-closure modules (1 direct + 5 transitive, exact versions/directness, no replace/exclude/retract override)');
+  const goSumH1Text = fs.readFileSync(path.join(repo, 'go.sum'), 'utf8');
+  const goSumProblems = goSumH1Problems(goSumH1Text);
+  if (goSumProblems.length > 0) {
+    for (const problem of goSumProblems) fail(`go.sum h1 pins: ${problem}`);
+  } else ok('go.sum carries exact zip + /go.mod h1 pins for all six approved modules (payloads decode to the frozen SHA-256 values)');
   const pnpmLock = fs.readFileSync(path.join(repo, 'pnpm-lock.yaml'), 'utf8');
   if (/^packages:\s*$/m.test(pnpmLock)) fail('pnpm-lock.yaml carries third-party packages (dependency count != 0)');
   else ok('pnpm-lock.yaml: zero third-party packages (dependency count = 0)');
@@ -406,6 +639,87 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`pnpm SHA512 checksumValue must be the 128-char lowercase hex decode of the pinned SRI payload, got ${JSON.stringify(pnpmCs?.[0])}`);
   } else ok('pnpm SHA512 checksumValue decodes from the exact pinned SRI payload (no sha512- prefix)');
 
+  // ---- Go runtime module packages (AIPT-M0-B003 iteration 6a): exact
+  // versions, exact known SPDX licenses, golang purls, SHA-256 checksumValues
+  // decoded from the go.sum zip h1 base64 payloads (independently derived
+  // here and pinned against the frozen h1 values), and the direct/transitive
+  // role in the comment ----
+  const goSumText = fs.readFileSync(path.join(repo, 'go.sum'), 'utf8');
+  let goModulesOk = true;
+  for (const m of GO_RUNTIME_MODULES) {
+    const pkg = byName.get(m.module);
+    if (!pkg) {
+      fail(`Go runtime module package missing from SBOM: ${m.module}`);
+      goModulesOk = false;
+      continue;
+    }
+    if (pkg.versionInfo !== m.version) {
+      fail(`${m.module} versionInfo must be ${m.version}, got ${JSON.stringify(pkg.versionInfo)}`);
+      goModulesOk = false;
+    }
+    const expectedPurl = `pkg:golang/${m.module}@${m.version}`;
+    const purlRef = (pkg.externalRefs ?? []).find((r) => r?.referenceType === 'purl');
+    if (!purlRef || purlRef.referenceLocator !== expectedPurl) {
+      fail(`${m.module} purl referenceLocator must be exactly ${expectedPurl}, got ${JSON.stringify(purlRef?.referenceLocator)}`);
+      goModulesOk = false;
+    }
+    const derived = goSumZipH1Hex(goSumText, m.module, m.version);
+    if (derived !== m.h1hex) {
+      fail(`go.sum zip h1 for ${m.module} ${m.version} must decode to the frozen SHA-256 ${m.h1hex}, got ${JSON.stringify(derived)}`);
+      goModulesOk = false;
+    }
+    const cs = pkg.checksums ?? [];
+    if (cs.length !== 1 || cs[0].algorithm !== 'SHA256' || cs[0].checksumValue !== m.h1hex) {
+      fail(`${m.module} SHA256 checksumValue must be the frozen lowercase hex ${m.h1hex} (go.sum zip h1 decode), got ${JSON.stringify(cs)}`);
+      goModulesOk = false;
+    }
+    const roleWord = m.direct ? 'direct' : 'transitive';
+    const roleToken = m.direct ? '(direct;' : '(transitive;';
+    const comment = pkg.comment ?? '';
+    // Exact structured role token: the generator emits `(direct;` or
+    // `(transitive;` as the role marker, and the validator requires that
+    // exact token. A bare substring check would accept 'indirect' for the
+    // direct role (because 'indirect' CONTAINS 'direct'); the structured
+    // token closes that fail-open gap.
+    if (!comment.includes(roleToken)) {
+      fail(`${m.module} comment must classify the module as ${roleWord} via the exact structured role token ${JSON.stringify(roleToken)} (so an "indirect" marker can never satisfy the direct role), got ${JSON.stringify(comment)}`);
+      goModulesOk = false;
+    }
+    if (!comment.includes('DEV_TOOL_OF') || !/never (?:classified as |a )?DEV_TOOL_OF/.test(comment)) {
+      fail(`${m.module} comment must state the module is never classified as DEV_TOOL_OF`);
+      goModulesOk = false;
+    }
+  }
+  if (goModulesOk) ok('all six Go runtime module packages carry exact versions, known SPDX licenses, golang purls, frozen h1 SHA-256 checksums, and truthful direct/transitive roles');
+
+  // ---- Go runtime dependency graph: AIPT DEPENDS_ON pgx (the single direct
+  // module) and pgx DEPENDS_ON each of the five indirect modules; runtime
+  // modules are never DEV_TOOL_OF packages ----
+  const pgxSpdxId = goModuleSpdxId('github.com/jackc/pgx/v5');
+  const aiptDependsOnPgx = doc.relationships.some(
+    (r) => r.spdxElementId === AIPT_SPDXID && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === pgxSpdxId,
+  );
+  if (!aiptDependsOnPgx) {
+    fail(`missing dependency relationship: ${AIPT_SPDXID} DEPENDS_ON ${pgxSpdxId} (pgx v5.10.0 is the direct application runtime dependency)`);
+  } else ok(`application runtime dependency present: ${AIPT_SPDXID} DEPENDS_ON ${pgxSpdxId}`);
+  let pgxDepsOk = true;
+  for (const m of GO_RUNTIME_MODULES.filter((x) => !x.direct)) {
+    const rel = doc.relationships.some(
+      (r) => r.spdxElementId === pgxSpdxId && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === goModuleSpdxId(m.module),
+    );
+    if (!rel) {
+      fail(`missing dependency relationship: ${pgxSpdxId} DEPENDS_ON ${goModuleSpdxId(m.module)} (transitive runtime module of pgx)`);
+      pgxDepsOk = false;
+    }
+  }
+  if (pgxDepsOk) ok(`pgx DEPENDS_ON all five indirect modules of the closure (${GO_RUNTIME_MODULES.filter((x) => !x.direct).length} transitive runtime relationships)`);
+  const goDevTool = doc.relationships.filter(
+    (r) => r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID && r.spdxElementId.startsWith('SPDXRef-GoModule-'),
+  );
+  if (goDevTool.length > 0) {
+    fail(`Go runtime module(s) wrongly classified as DEV_TOOL_OF of AIPT: ${goDevTool.map((r) => r.spdxElementId).join(', ')} (runtime modules are DEPENDS_ON, never DEV_TOOL_OF)`);
+  } else ok('no Go runtime module is classified as DEV_TOOL_OF (the pgx closure is an application runtime dependency)');
+
   // ---- PostgreSQL digest identity: the exact multi-arch digest must be
   // carried in the image versionInfo AND purl AND comment, and the exact
   // linux/amd64 platform digest in the comment ----
@@ -476,12 +790,16 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   );
   if (!describes) fail(`missing ${DOCUMENT_SPDXID} DESCRIBES ${AIPT_SPDXID} relationship`);
   else ok(`document DESCRIBES ${AIPT_SPDXID}`);
-  const nonAipt = doc.packages.filter((p) => p.SPDXID !== AIPT_SPDXID && p.SPDXID !== SDK_SPDXID);
+  // Every package that is neither AIPT nor the first-party SDK nor a Go
+  // runtime module (the runtime closure is modeled as DEPENDS_ON, never
+  // DEV_TOOL_OF) must have a DEV_TOOL_OF relationship to AIPT.
+  const nonDevTool = new Set([AIPT_SPDXID, SDK_SPDXID, ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module))]);
+  const nonAipt = doc.packages.filter((p) => !nonDevTool.has(p.SPDXID));
   const missingDevTool = nonAipt.filter(
     (p) => !doc.relationships.some((r) => r.spdxElementId === p.SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID),
   );
   if (missingDevTool.length > 0) fail(`packages missing DEV_TOOL_OF relationship to AIPT: ${missingDevTool.map((p) => p.SPDXID).join(', ')}`);
-  else ok('every tooling/CI/infrastructure package has a DEV_TOOL_OF relationship to AIPT (the first-party SDK is excluded: it is PACKAGE_OF AIPT)');
+  else ok('every tooling/CI/infrastructure package has a DEV_TOOL_OF relationship to AIPT (first-party SDK excluded: PACKAGE_OF AIPT; Go runtime modules excluded: DEPENDS_ON AIPT/pgx)');
 
   // ---- three-layer PostgreSQL composition: the composite image CONTAINS
   // the main software (a component inside the container) and GENERATED_FROM
@@ -648,7 +966,7 @@ export function run(ctx) {
     else ok(`negative-probe PASS: legacy static namespace ${JSON.stringify(LEGACY_NAMESPACE)} explicitly rejected (stale/reused namespace forbidden)`);
   }
 
-  // 7-10. Negative probes (B001-GPT-003 regressions): the three-layer
+  // 5-10. Negative probes (B001-GPT-003 regressions): the three-layer
   // license model and the exact digest identity must each be enforced.
   const threeLayerProbes = [
     {
@@ -862,6 +1180,191 @@ export function run(ctx) {
       else ok(`negative-probe PASS: ${def.label} rejected by the first-party package model checks`);
     }
   }
+
+  // 20-30. Negative probes (AIPT-M0-B003 iteration 6a): the six Go runtime
+  // module packages and the DEPENDS_ON dependency graph must be enforced —
+  // each rejection must come from the package/relationship checks themselves,
+  // not merely from the content-addressed namespace mismatch.
+  const pgxSpdxId = goModuleSpdxId('github.com/jackc/pgx/v5');
+  const goDepProbes = [
+    {
+      label: 'Go runtime module package deleted from the SBOM',
+      reason: /Go runtime module package missing from SBOM: github.com\/jackc\/pgx\/v5|required package missing: github.com\/jackc\/pgx\/v5/,
+      mutate: (probeDoc) => {
+        probeDoc.packages = probeDoc.packages.filter((p) => p.SPDXID !== pgxSpdxId);
+      },
+    },
+    {
+      label: 'Go runtime module version drifted',
+      reason: /versionInfo must be v5\.10\.0/,
+      mutate: (probeDoc) => {
+        probeDoc.packages.find((x) => x.SPDXID === pgxSpdxId).versionInfo = 'v5.9.0';
+      },
+    },
+    {
+      label: 'Go runtime module license drifted',
+      reason: /github\.com\/jackc\/pgx\/v5: licenseConcluded|SPDXRef-GoModule-github-com-jackc-pgx-v5: licenseConcluded/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === pgxSpdxId);
+        p.licenseConcluded = 'Apache-2.0';
+        p.licenseDeclared = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'Go runtime module checksum drifted',
+      reason: /SHA256 checksumValue must be the frozen lowercase hex/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === pgxSpdxId);
+        p.checksums = [{ algorithm: 'SHA256', checksumValue: '0'.repeat(64) }];
+      },
+    },
+    {
+      label: 'Go runtime module purl drifted',
+      reason: /purl referenceLocator must be exactly pkg:golang\/github.com\/jackc\/pgx\/v5@v5\.10\.0/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === pgxSpdxId);
+        p.externalRefs = (p.externalRefs ?? []).filter((r) => r.referenceType !== 'purl');
+      },
+    },
+    {
+      label: 'AIPT DEPENDS_ON pgx relationship deleted',
+      reason: /missing dependency relationship: SPDXRef-AIPT DEPENDS_ON SPDXRef-GoModule-github-com-jackc-pgx-v5/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(r.spdxElementId === AIPT_SPDXID && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === pgxSpdxId),
+        );
+      },
+    },
+    {
+      label: 'AIPT DEPENDS_ON pgx relationship retyped to DEV_TOOL_OF',
+      reason: /missing dependency relationship: SPDXRef-AIPT DEPENDS_ON SPDXRef-GoModule-github-com-jackc-pgx-v5|wrongly classified as DEV_TOOL_OF/,
+      mutate: (probeDoc) => {
+        const rel = probeDoc.relationships.find(
+          (r) => r.spdxElementId === AIPT_SPDXID && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === pgxSpdxId,
+        );
+        rel.relationshipType = 'DEV_TOOL_OF';
+      },
+    },
+    {
+      label: 'pgx DEPENDS_ON indirect module relationship deleted',
+      reason: /missing dependency relationship: SPDXRef-GoModule-github-com-jackc-pgx-v5 DEPENDS_ON SPDXRef-GoModule-golang-org-x-text/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(r.spdxElementId === pgxSpdxId && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === goModuleSpdxId('golang.org/x/text')),
+        );
+      },
+    },
+    {
+      label: 'Go runtime module direct/transitive role drifted in comment',
+      reason: /comment must classify the module as direct/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === pgxSpdxId);
+        p.comment = p.comment.replace('(direct;', '(transitive;');
+      },
+    },
+    {
+      label: 'direct Go runtime module comment retyped to indirect (structured role token regression)',
+      reason: /structured role token/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === pgxSpdxId);
+        p.comment = p.comment.replace('(direct;', '(indirect;');
+      },
+    },
+    {
+      label: 'transitive Go runtime module wrongly marked direct',
+      reason: /comment must classify the module as transitive/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === goModuleSpdxId('golang.org/x/text'));
+        p.comment = p.comment.replace('(transitive;', '(direct;');
+      },
+    },
+  ];
+  for (const def of goDepProbes) {
+    const probeDoc = JSON.parse(JSON.stringify(doc));
+    if (!probeDoc.packages.some((x) => x.SPDXID === pgxSpdxId)) {
+      fail(`negative ${def.label} probe could not run: pgx Go runtime module package missing from generated SBOM`);
+      continue;
+    }
+    def.mutate(probeDoc);
+    const probeResult = validateSbomSemantics(probeDoc, { repo: ctx.repo, toolchainLock, actionsLock });
+    if (probeResult.result !== 'FAIL') {
+      fail(`negative ${def.label} probe was NOT rejected`);
+    } else {
+      const rightReason = probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d));
+      if (!rightReason) fail(`negative ${def.label} probe failed for an unexpected reason (dependency package/graph check did not fire)`);
+      else ok(`negative-probe PASS: ${def.label} rejected by the Go runtime module/graph checks`);
+    }
+  }
+
+  // 31-37. Negative probes (AIPT-M0-B003 iteration 6a): the go.mod/go.sum
+  // closure manifest checks themselves are probed in memory — a
+  // replace/exclude/retract graph override (including a leading-whitespace
+  // form), a seventh dependency hidden in a second require block (including
+  // one hidden after a comment-paren `// )` line, which must not close the
+  // block), a rogue single-line require with an ordinary trailing comment, a
+  // missing /go.mod h1, and a tampered /go.mod h1 must each be rejected by
+  // the independent manifest checks (the on-disk go.mod/go.sum are never
+  // modified).
+  const realGoMod = fs.readFileSync(path.join(ctx.repo, 'go.mod'), 'utf8');
+  const realGoSum = fs.readFileSync(path.join(ctx.repo, 'go.sum'), 'utf8');
+  const manifestProbes = [
+    {
+      label: 'go.mod replace directive injected (graph override)',
+      reason: /replace\/exclude\/retract/,
+      run: () => goModClosureProblems(`${realGoMod}\nreplace github.com/jackc/pgx/v5 => github.com/jackc/pgx/v5 v5.9.0\n`),
+    },
+    {
+      label: 'seventh dependency hidden in a second require block',
+      reason: /require count must be exactly 6|unknown go.mod dependency/,
+      run: () => goModClosureProblems(`${realGoMod}\nrequire (\n\texample.com/rogue v1.0.0\n)\n`),
+    },
+    {
+      label: 'seventh dependency hidden after a comment-paren "// )" line in a second require block',
+      reason: /require count must be exactly 6|unknown go.mod dependency/,
+      run: () => goModClosureProblems(`${realGoMod}\nrequire (\n\t// )\n\texample.com/rogue v1.0.0\n)\n`),
+    },
+    {
+      label: 'rogue single-line require with an ordinary trailing comment',
+      reason: /require count must be exactly 6|unknown go.mod dependency/,
+      run: () => goModClosureProblems(`${realGoMod}\nrequire example.com/rogue v1.0.0 // ordinary comment\n`),
+    },
+    {
+      label: 'go.mod replace directive with leading whitespace (graph override)',
+      reason: /replace\/exclude\/retract/,
+      run: () => goModClosureProblems(`${realGoMod}\n\treplace github.com/jackc/pgx/v5 => github.com/jackc/pgx/v5 v5.9.0\n`),
+    },
+    {
+      label: 'go.sum pgx /go.mod h1 removed',
+      reason: /missing \/go\.mod h1 for github.com\/jackc\/pgx\/v5 v5\.10\.0/,
+      run: () => goSumH1Problems(realGoSum.replace(/^github\.com\/jackc\/pgx\/v5 v5\.10\.0\/go\.mod h1:[^\n]+\n/m, '')),
+    },
+    {
+      label: 'go.sum pgx /go.mod h1 tampered',
+      reason: /\/go\.mod h1 decodes to/,
+      run: () => goSumH1Problems(realGoSum.replace('github.com/jackc/pgx/v5 v5.10.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=', 'github.com/jackc/pgx/v5 v5.10.0/go.mod h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')),
+    },
+  ];
+  let manifestProbesOk = true;
+  for (const probe of manifestProbes) {
+    let problems;
+    try {
+      problems = probe.run();
+    } catch (err) {
+      fail(`negative go.mod/go.sum probe (${probe.label}) crashed: ${err.message}`);
+      manifestProbesOk = false;
+      continue;
+    }
+    if (!Array.isArray(problems) || problems.length === 0) {
+      fail(`negative go.mod/go.sum probe (${probe.label}) was NOT rejected`);
+      manifestProbesOk = false;
+    } else if (!problems.some((p) => probe.reason.test(p))) {
+      fail(`negative go.mod/go.sum probe (${probe.label}) failed for an unexpected reason`);
+      manifestProbesOk = false;
+    } else {
+      ok(`negative-probe PASS: go.mod/go.sum manifest checks reject ${probe.label}`);
+    }
+  }
+  if (manifestProbesOk) ok(`all ${manifestProbes.length} go.mod/go.sum manifest negative probes rejected as expected`);
 
   return { name: 'sbom', result: pass ? 'PASS' : 'FAIL', details };
 }

@@ -15,24 +15,57 @@
   },
   "toolchains": {
     "go": {
-      "version": "1.26.5",
+      "version": "1.26.6",
       "channel": "stable",
       "official_source": "go.dev",
       "release_index": "https://go.dev/dl/?mode=json&include=all",
       "release_status": "stable",
+      "release_date": "2026-08-13",
+      "release_history": "https://go.dev/doc/devel/release#go1.26.6",
+      "security_announcement": "https://groups.google.com/g/golang-announce/c/94pEornpRlI",
+      "upstream_tag": {
+        "tag": "go1.26.6",
+        "commit": "1ea5a71ad8ceb7b9f16b4b6f8ea4739a4327dd6e"
+      },
       "linux_amd64_archive": {
-        "filename": "go1.26.5.linux-amd64.tar.gz",
-        "url": "https://go.dev/dl/go1.26.5.linux-amd64.tar.gz",
-        "sha256": "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"
+        "filename": "go1.26.6.linux-amd64.tar.gz",
+        "url": "https://go.dev/dl/go1.26.6.linux-amd64.tar.gz",
+        "sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89"
       },
       "source_verification": {
-        "method": "official go.dev release index (stable=true) + linux/amd64 archive sha256 compared locally",
-        "verified_at": "2026-08-16T06:51:41Z"
+        "method": "official go.dev release index (stable=true) + linux/amd64 archive sha256 compared locally and independently recomputed; official release go1.26.6 stable dated 2026-08-13; official upstream tag go1.26.6 commit 1ea5a71ad8ceb7b9f16b4b6f8ea4739a4327dd6e; official release history + security announcement cross-referenced",
+        "verified_at": "2026-08-20T04:16:01Z"
       },
-      "expected_version_output": "go version go1.26.5 linux/amd64",
+      "expected_version_output": "go version go1.26.6 linux/amd64",
+      "provenance": {
+        "initial_qualification": {
+          "batch": "AIPT-M0-B001",
+          "go_version": "1.26.5",
+          "reason": "B001 exact-toolchain supply-chain qualification (froze DEFER-016)",
+          "archive_sha256": "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"
+        },
+        "security_requalification": {
+          "batch": "AIPT-M0-B003",
+          "previous_go_version": "1.26.5",
+          "current_go_version": "1.26.6",
+          "verified_at": "2026-08-20T04:16:01Z",
+          "reason": "reachable standard-library vulnerabilities",
+          "officially_fixed_in": "1.26.6",
+          "advisory_ids": [
+            "GO-2026-6090",
+            "GO-2026-6088",
+            "GO-2026-5972"
+          ],
+          "advisory_packages": {
+            "GO-2026-6090": "crypto/tls",
+            "GO-2026-6088": "encoding/xml",
+            "GO-2026-5972": "encoding/asn1"
+          }
+        }
+      },
       "repo_pins": [
         ".go-version",
-        "go.mod go/toolchain directives (go 1.26.x / toolchain go1.26.5)"
+        "go.mod go/toolchain directives (go 1.26.x / toolchain go1.26.6)"
       ]
     },
     "node": {
@@ -128,7 +161,7 @@
       "ubuntu-26.04": "public preview, reference environment"
     },
     "version_checks": [
-      "go 1.26.5",
+      "go 1.26.6",
       "node 24.19.0",
       "pnpm 11.4.0",
       "postgresql 18.4"

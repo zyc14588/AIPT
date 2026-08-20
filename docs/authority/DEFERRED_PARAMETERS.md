@@ -2,8 +2,11 @@
 
 > 本页由机器种子 `DEFERRED_PARAMETERS.json` 生成。机器权威为
 > [registry/deferred-parameters.json](registry/deferred-parameters.json)。
-> 16 项参数中，**`DEFER-016` 已 `RESOLVED`**（B001 已冻结精确工具链版本，见
-> [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）；其余 15 项**尚未冻结**：
+> 16 项参数中，**`DEFER-016` 已 `RESOLVED`**（`resolved_by_batch = AIPT-M0-B001`
+> 不可变历史事实；当前 Go 身份由 B003 安全重资格更新为 **1.26.6**——理由
+> reachable standard-library vulnerabilities，触发公告 GO-2026-6090 / GO-2026-6088 /
+> GO-2026-5972，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json) 的
+> provenance）；其余 15 项**尚未冻结**：
 > 任何文档不得把它们写成已实现或已关闭的能力。
 > 状态名与含义：
 
@@ -37,7 +40,7 @@
 | `DEFER-013` | claude_opus48_auditor_profile | `UNAPPROVED` | （未设置） | 备用 Opus 4.8 Profile 尚未经过管理员批准。 | formal Opus 4.8 fallback | M0 development | 管理员批准 Opus 4.8 Auditor Profile |
 | `DEFER-014` | unregistered_custom_license_final_legal_text | `POLICY_FROZEN_TEXT_NOT_DRAFTED` | LicenseRef-UNREGISTERED-NC-SA-1.0 | 许可政策已冻结，但最终法律正文未起草且应在发布前法律审阅。 | formal publication of the custom content license | AIPT B000 documentation；draft licensing boundary documentation | 起草正式许可正文并通过发布前法律审阅 |
 | `DEFER-015` | rootless_docker_capability | `ENVIRONMENT_PROBE_PENDING` | Docker confirmed; rootless/isolated context unknown | 当前确认普通用户可运行 Docker，具体 rootless/隔离 Context 能力待探测。 | production Evidence Adapter Docker certification | B000 | 探测并认证 rootless/隔离 Docker Context |
-| `DEFER-016` | go_node_pnpm_postgresql_exact_versions | `RESOLVED` | Go 1.26.5 / Node 24.19.0 / pnpm 11.4.0 / PostgreSQL 18.4 | B001 资格批次与公共 CI 已冻结精确版本（`tools/toolchain.lock.json`） | （无） | B000 | 已由 B001 关闭 |
+| `DEFER-016` | go_node_pnpm_postgresql_exact_versions | `RESOLVED` | Go 1.26.6 / Node 24.19.0 / pnpm 11.4.0 / PostgreSQL 18.4 | B001 资格批次冻结（`resolved_by_batch = AIPT-M0-B001`）；AIPT-M0-B003 security requalification 将当前 Go 重资格为 1.26.6（reason: reachable standard-library vulnerabilities，触发公告集 GO-2026-6090 / GO-2026-6088 / GO-2026-5972，各已由 1.26.6 官方修复） | （无） | B000 | 已由 B001 关闭（当前 Go 身份经 B003 安全重资格更新） |
 
 ## 必须公开强调的延期项
 
@@ -48,7 +51,7 @@
 - Claude `Model Improvement` 状态与备用 Profile 批准（`DEFER-010` 至 `DEFER-013`）：第二审计生产资格未达成。
 - 《未登记》自定义许可最终法律正文（`DEFER-014`）：政策冻结、正文未起草，须发布前法律审阅。
 - rootless Docker 实际资格（`DEFER-015`）：等待环境探测。
-- Go/Node/pnpm/PostgreSQL 精确版本（`DEFER-016`）：**已 `RESOLVED`**——Go 1.26.5 / Node.js 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，由 B001 资格批次与公共 CI 冻结（[../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）。
+- Go/Node/pnpm/PostgreSQL 精确版本（`DEFER-016`）：**已 `RESOLVED`**——`resolved_by_batch = AIPT-M0-B001`（历史 B001 初始资格 Go 1.26.5 保留为显式历史事实）；**当前 Go 1.26.6** 为 AIPT-M0-B003 安全重资格（reason: reachable standard-library vulnerabilities，触发公告集 GO-2026-6090 crypto/tls、GO-2026-6088 encoding/xml、GO-2026-5972 encoding/asn1，各已由 1.26.6 官方修复），Node.js 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4 不变（[../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）。
 
 ## 相邻文档
 

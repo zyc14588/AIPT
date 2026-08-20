@@ -1,26 +1,129 @@
-// B002 tree-integrity validator: scope, Markdown links, JSON parse, and
-// secret / private-path / prompt-body hygiene for the candidate tree
-// (including the executable scripts/ci sources themselves), plus a
+// B003 tree-integrity validator: self-anchored scope (accepted base identity
+// plus the registered B003 per-iteration allowed set), Markdown links, JSON
+// parse, and secret / private-path / prompt-body hygiene for the candidate
+// tree (including the executable scripts/ci sources themselves), plus a
 // temporary-fixture regression proving the hygiene scan really covers .mjs
-// files under a scripts/ci-shaped path.
+// files under a scripts/ci-shaped path. The imported pathMatchesAllowed is
+// additionally regression-probed in-process (55 pure string probes) against
+// the hard-coded scope literals.
 //
-// Markdown rules for B002: no brittle fixed total document count (later
-// approved B002 contract documents must not be rejected by a count) — instead
-// every Markdown document of the accepted base must still be present and
-// every current relative link must resolve.
+// Markdown rules for B003: no brittle fixed total document count (later
+// approved documents of the accepted base must not be rejected by a count) —
+// instead every Markdown document of the accepted base must still be present
+// and every current relative link must resolve.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  ALLOWED_PATHS,
   BASE_COMMIT,
+  BASE_TREE,
   EXPECTED_MIT_LICENSE,
-  FROZEN_REGISTRY_PATHS,
   FORBIDDEN_PREFIXES,
+  FROZEN_REGISTRY_PATHS,
   normalizeText,
   pathMatchesAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
+
+// Independent literal self-anchors for the B003 per-iteration scope: the
+// exact ordered 31-path B003 allowlist and the exact ordered 16-entry
+// forbidden-prefix list, hard-coded here and compared against the imported
+// constants BEFORE any candidate scope is evaluated. Drifting constants.mjs
+// together with the candidate can therefore never make a scope change pass
+// silently. The B003 security-requalification iteration admits the Go
+// identity pins (.go-version, tools/toolchain.lock.json, tools/ci-actions
+// .lock.json), the controlled DEFER-016 registry + deferred-parameters
+// human doc, the defer-016 validator, and the four stale-reference
+// synchronization paths (docs/authority/README.md, docs/protocol/README.md,
+// internal/toolchainsmoke/toolchainsmoke_test.go, tools/ci-actions.lock.json)
+// by exact literal only — no broad glob is introduced.
+const ALLOWED_PATHS_LITERAL = [
+  'README.md',
+  '.go-version',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/README.md',
+  'docs/authority/DECISION_MATRIX.md',
+  'docs/authority/DEFERRED_PARAMETERS.md',
+  'docs/authority/registry/deferred-parameters.json',
+  'docs/authority/registry/project-status.json',
+  'docs/storage/**',
+  'docs/protocol/README.md',
+  'package.json',
+  'go.mod',
+  'go.sum',
+  'internal/storage/postgres/**',
+  'internal/toolchainsmoke/toolchainsmoke_test.go',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/defer-016.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+  'scripts/ci/validate/workflow.mjs',
+  'scripts/ci/validate/storage.mjs',
+  'scripts/ci/validate/supply-chain.mjs',
+  'scripts/ci/validate/sbom.mjs',
+  // AIPT-M0-B003-SCOPE-EXPANSION-001: the exact additional B003 path (the
+  // toolchain-lock gate evolved to the approved pgx v5.10.0 closure).
+  'scripts/ci/validate/toolchain-lock.mjs',
+  'scripts/ci/sbom/generate-sbom.mjs',
+  'tools/supply-chain/licenses.json',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
+  'docs/supply-chain/README.md',
+  '.github/workflows/ci.yml',
+];
+
+const FORBIDDEN_PREFIXES_LITERAL = [
+  'api/',
+  'cmd/',
+  'migrations/',
+  'deploy/',
+  'runtime/',
+  'packages/',
+  'schemas/protocol/',
+  'testdata/protocol/',
+  'docs/architecture/',
+  'docs/integration/',
+  'docs/test-model/',
+  'docs/security/',
+  'docs/evidence/',
+  'internal/protocol/',
+  'LICENSE',
+  'tools/supply-chain/policy.json',
+];
+
+// Independent ordered literal for the frozen authority registries, hard-coded
+// here and compared against the imported FROZEN_REGISTRY_PATHS before probes.
+// decisions.json and supersessions.json stay fully frozen; deferred-parameters
+// .json moved out of the frozen set in the B003 security-requalification
+// iteration because its DEFER-016 record is under exact controlled evolution.
+const FROZEN_REGISTRY_PATHS_LITERAL = [
+  'docs/authority/registry/decisions.json',
+  'docs/authority/registry/supersessions.json',
+];
+
+// One representative path per FORBIDDEN_PREFIXES_LITERAL entry (directory
+// prefixes get a child path; exact-file prefixes get the file itself).
+const FORBIDDEN_PREFIX_REPRESENTATIVES = [
+  'api/server.js',
+  'cmd/tool/main.go',
+  'migrations/0001_init.sql',
+  'deploy/k8s.yaml',
+  'runtime/engine.js',
+  'packages/core/index.js',
+  'schemas/protocol/request.json',
+  'testdata/protocol/case.json',
+  'docs/architecture/overview.md',
+  'docs/integration/guide.md',
+  'docs/test-model/model.md',
+  'docs/security/notes.md',
+  'docs/evidence/audit.md',
+  'internal/protocol/types.go',
+  'LICENSE',
+  'tools/supply-chain/policy.json',
+];
 
 export function run(ctx) {
   const details = [];
@@ -31,10 +134,97 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
 
-  // ---- scope (changed paths vs the registered B002 per-iteration allowed set) ----
-  const diff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
+  // ---- independent literal self-anchors (before candidate scope) ----
+  // Every identity the candidate scope depends on is hard-coded in this gate
+  // and compared against the imported constants BEFORE any Git/history or
+  // candidate-scope validation runs. Drifting constants.mjs together with the
+  // candidate can therefore never make the accepted base or the registered
+  // scope change pass silently: each imported field/list must equal its fixed
+  // literal (ordered equality for the scope lists).
+  const verifyAnchor = (label, actual, expected) => {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      fail(`${label} drifted from its independent literal self-anchor: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);
+      return false;
+    }
+    ok(`${label} anchored to literal ${JSON.stringify(expected)}`);
+    return true;
+  };
+  verifyAnchor('BASE_COMMIT', BASE_COMMIT, '45a96087d75a61f2910cb5ce99134e3ca777bca8');
+  verifyAnchor('BASE_TREE', BASE_TREE, '8b16b599c261879406f0435e80c878e092683a50');
+  verifyAnchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
+  verifyAnchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
+  verifyAnchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
+
+  // ---- pathMatchesAllowed regression probes (pure in-process) ----
+  // Drift-resistant behavioral probes for the imported matcher: every probe
+  // is a pure string call against pathMatchesAllowed — no filesystem, Git,
+  // or temporary-clone access. Each mismatch fails path-specifically with
+  // expected and actual, and the single success detail below is emitted only
+  // when all 55 probes match: 29 exact allowlist entries, 4 wildcard
+  // descendants (direct and nested children under both wildcard directories),
+  // 4 lookalikes, 16 forbidden-prefix representatives, and 2 frozen registry
+  // paths.
+  let probeCount = 0;
+  let probeMismatches = 0;
+  const probe = (p, expected) => {
+    probeCount += 1;
+    const actual = pathMatchesAllowed(p);
+    if (actual !== expected) {
+      probeMismatches += 1;
+      fail(`pathMatchesAllowed probe mismatch for path ${JSON.stringify(p)}: expected ${expected}, actual ${actual}`);
+    }
+  };
+  for (const p of ALLOWED_PATHS_LITERAL) {
+    if (!p.includes('/**')) probe(p, true); // the 19 exact (non-wildcard) entries
+  }
+  probe('docs/storage/x', true); // direct child under docs/storage/**
+  probe('docs/storage/nested/x', true); // nested child under docs/storage/**
+  probe('internal/storage/postgres/x', true); // direct child under internal/storage/postgres/**
+  probe('internal/storage/postgres/nested/x', true); // nested child under internal/storage/postgres/**
+  probe('docs/storageevil/x', false); // lookalike of docs/storage/**
+  probe('internal/storage/postgresql/x', false); // lookalike of internal/storage/postgres/**
+  probe('go.mod.bak', false); // lookalike of go.mod
+  probe('README.md.bak', false); // lookalike of README.md
+  for (const p of FORBIDDEN_PREFIX_REPRESENTATIVES) probe(p, false);
+  for (const p of FROZEN_REGISTRY_PATHS_LITERAL) probe(p, false);
+  if (probeMismatches === 0) {
+    ok(`pathMatchesAllowed regression: all ${probeCount} probes matched (29 exact allowlist, 4 wildcard descendants, 4 lookalikes, 16 forbidden-prefix representatives, 2 frozen registry paths)`);
+  }
+
+  // ---- accepted base identity: resolves, fixed tree, ancestor of HEAD ----
+  const resolveCommit = (label, commit) => {
+    const probe = git(ctx.repo, ['rev-parse', `${commit}^{commit}`], { check: false });
+    const resolved = probe.stdout.trim();
+    if (probe.status !== 0 || resolved !== commit) {
+      fail(`${label} does not resolve to fixed commit ${commit}: ${JSON.stringify(resolved)}`);
+      return false;
+    }
+    ok(`${label} resolves to fixed commit ${commit}`);
+    return true;
+  };
+  const verifyTree = (label, commit, expectedTree) => {
+    const probe = git(ctx.repo, ['rev-parse', `${commit}^{tree}`], { check: false });
+    const resolved = probe.stdout.trim();
+    if (probe.status !== 0 || resolved !== expectedTree) {
+      fail(`${label} tree drifted: ${JSON.stringify(resolved)} != ${expectedTree}`);
+      return false;
+    }
+    ok(`${label} tree = ${expectedTree}`);
+    return true;
+  };
+  resolveCommit('accepted base', BASE_COMMIT);
+  verifyTree('accepted base', BASE_COMMIT, BASE_TREE);
+  const headProbe = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
+  const ancestryProbe = git(ctx.repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], { check: false });
+  if (headProbe.status !== 0 || ancestryProbe.status !== 0) {
+    fail(`current HEAD ${JSON.stringify(headProbe.stdout.trim())} does not descend from accepted base ${BASE_COMMIT}`);
+  } else ok(`current HEAD descends from accepted base ${BASE_COMMIT}`);
+
+  // ---- scope (changed paths vs the registered B003 per-iteration allowed set) ----
+  // --no-renames keeps both sides of a rename in the changed-path set.
+  const diff = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   // Regenerable package-manager install output is not candidate source: the
-  // repository carries no .gitignore (adding one is outside the B002 allowed
+  // repository carries no .gitignore (adding one is outside the B003 allowed
   // path set), so filter the generated node_modules tree here.
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
     .stdout.split('\n')
@@ -43,14 +233,40 @@ export function run(ctx) {
   if (changed.length === 0) fail('no changed paths found vs base');
   else ok(`${changed.length} changed paths vs base`);
   for (const p of changed) {
-    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B002 allowed set: ${p}`);
+    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B003 allowed set: ${p}`);
     for (const prefix of FORBIDDEN_PREFIXES) {
       if (p.startsWith(prefix)) fail(`forbidden prefix changed: ${p}`);
     }
     if (FROZEN_REGISTRY_PATHS.includes(p)) fail(`frozen registry modified: ${p}`);
   }
   if (changed.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
-    ok('all changed paths within the registered B002 per-iteration scope');
+    ok('all changed paths within the registered B003 per-iteration scope');
+  }
+
+  // ---- changed-worktree node safety ----
+  // Probe every changed path in the worktree with lstat so symbolic links
+  // (including broken links) are inspected as links rather than followed.
+  // ENOENT is the only tolerated lstat error: a changed path missing from the
+  // worktree is an allowed deletion versus BASE_COMMIT. Every other lstat
+  // error and every changed symbolic link is a path-specific failure, and the
+  // success detail below is emitted only when both counts are zero.
+  let lstatErrors = 0;
+  let changedSymlinks = 0;
+  for (const p of changed) {
+    try {
+      const st = fs.lstatSync(path.join(ctx.repo, p));
+      if (st.isSymbolicLink()) {
+        changedSymlinks += 1;
+        fail(`changed worktree path is a symbolic link: ${p}`);
+      }
+    } catch (err) {
+      if (err && err.code === 'ENOENT') continue; // allowed deletion vs BASE_COMMIT
+      lstatErrors += 1;
+      fail(`changed worktree path lstat failed: ${p}: ${err && err.message ? err.message : err}`);
+    }
+  }
+  if (lstatErrors === 0 && changedSymlinks === 0) {
+    ok(`changed-worktree node safety: ${changed.length} changed paths probed, no lstat errors, no symbolic links`);
   }
 
   // LICENSE untouched vs base.
@@ -65,8 +281,8 @@ export function run(ctx) {
   // ---- Markdown links (no blanket scripts/ci skip: every Markdown document
   // in the tree participates). No fixed total count: instead, every base
   // Markdown document must remain present, and every current relative link
-  // must resolve — a later approved B002 protocol document must not be
-  // rejected by a brittle count. ----
+  // must resolve — a later approved protocol document of the accepted base
+  // must not be rejected by a brittle count. ----
   const baseFiles = git(ctx.repo, ['ls-tree', '-r', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
   const baseMd = baseFiles.filter((f) => f.endsWith('.md'));
   const missingBaseMd = baseMd.filter((f) => !fs.existsSync(path.join(ctx.repo, f)));
@@ -128,6 +344,55 @@ export function run(ctx) {
     } else ok('hygiene regression: .mjs negative probe under scripts/ci/ detected (script-tree coverage intact)');
   } finally {
     fs.rmSync(probeDir, { recursive: true, force: true });
+  }
+
+  // ---- index mode scan (fail-closed) ----
+  // Every tracked index entry must be a regular file (or executable): mode
+  // 120000 (symlink) and mode 160000 (gitlink) are rejected. Metadata is
+  // parsed only up to the first TAB; the entire remainder is the path, so
+  // ordinary spaces in paths are preserved. Malformed output is a failure,
+  // and a nonzero git exit status is a failure.
+  const indexProbe = git(ctx.repo, ['ls-files', '--stage'], { check: false });
+  let entryCount = 0;
+  let parseErrors = 0;
+  const unsafeEntries = [];
+  if (indexProbe.status !== 0) {
+    fail(`git ls-files --stage failed with status ${indexProbe.status}: ${(indexProbe.stderr || '').trim()}`);
+  } else {
+    for (const line of indexProbe.stdout.split('\n')) {
+      if (line === '') continue;
+      entryCount += 1;
+      const tab = line.indexOf('\t');
+      if (tab === -1) {
+        parseErrors += 1;
+        fail(`malformed index entry (no tab separating metadata from path): ${JSON.stringify(line)}`);
+        continue;
+      }
+      const metadata = line.slice(0, tab);
+      const filePath = line.slice(tab + 1);
+      if (filePath === '') {
+        parseErrors += 1;
+        fail(`malformed index entry (empty path after metadata): ${JSON.stringify(line)}`);
+        continue;
+      }
+      // Metadata must be exactly '<mode> <object> <stage>' with six octal
+      // mode digits, an object id of exactly 40 or 64 lowercase hex digits,
+      // and a stage of exactly one digit 0..3.
+      const metaMatch = /^([0-7]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-3])$/.exec(metadata);
+      if (!metaMatch) {
+        parseErrors += 1;
+        fail(`malformed index entry metadata (expected six octal mode digits, 40/64 lowercase hex object id, one stage digit 0..3): ${JSON.stringify(metadata)}`);
+        continue;
+      }
+      const [, mode] = metaMatch;
+      if (mode === '120000' || mode === '160000') {
+        unsafeEntries.push({ mode, filePath });
+        fail(`unsafe index entry: mode ${mode} (${mode === '120000' ? 'symlink' : 'gitlink'}) at ${filePath}`);
+      }
+    }
+  }
+  if (indexProbe.status === 0 && parseErrors === 0 && unsafeEntries.length === 0) {
+    ok(`all ${entryCount} tracked index entries are regular files (no 120000 symlink / 160000 gitlink modes)`);
   }
 
   return { name: 'tree-integrity', result: pass ? 'PASS' : 'FAIL', details };

@@ -209,9 +209,22 @@
       "parameter_id": "DEFER-016",
       "name": "go_node_pnpm_postgresql_exact_versions",
       "status": "RESOLVED",
-      "value": "go 1.26.5, node 24.19.0, pnpm 11.4.0, postgresql 18.4",
-      "reason": "B001 资格批次与公共 CI 已冻结精确版本；完整资格与完整性材料见 tools/toolchain.lock.json。",
+      "value": "go 1.26.6, node 24.19.0, pnpm 11.4.0, postgresql 18.4",
+      "reason": "B001 资格批次与公共 CI 已冻结精确版本（初始资格 Go 1.26.5）；AIPT-M0-B003 security requalification 将当前 Go 重资格为 1.26.6（reason: reachable standard-library vulnerabilities，触发公告集 GO-2026-6090 (crypto/tls)、GO-2026-6088 (encoding/xml)、GO-2026-5972 (encoding/asn1)，每条均已在 Go 1.26.6 官方修复）；完整资格与完整性材料见 tools/toolchain.lock.json。",
       "resolved_by_batch": "AIPT-M0-B001",
+      "security_requalification": {
+        "batch": "AIPT-M0-B003",
+        "previous_go_version": "1.26.5",
+        "current_go_version": "1.26.6",
+        "verified_at": "2026-08-20T04:16:01Z",
+        "reason": "reachable standard-library vulnerabilities",
+        "officially_fixed_in": "1.26.6",
+        "advisory_ids": [
+          "GO-2026-6090",
+          "GO-2026-6088",
+          "GO-2026-5972"
+        ]
+      },
       "resolution": "tools/toolchain.lock.json",
       "blocks": [],
       "does_not_block": [
