@@ -1,7 +1,7 @@
 // B002 workflow validator: the public .github/workflows/ci.yml must be the
 // durable `AIPT M0 CI` workflow — secret-free, full-SHA action pins agreed
 // with the frozen action lock, digest-pinned containers, Linux-only, the
-// three required jobs, and the toolchain matrix (ubuntu-24.04 +
+// four required jobs, and the toolchain matrix (ubuntu-24.04 +
 // ubuntu-26.04, fail-fast false) running the three explicit B002 contract
 // gates plus the aggregate `pnpm run check` alongside every retained
 // B000/B001 command and gate. Every required needle is fail-closed: a
@@ -29,7 +29,7 @@
 // mutated or extra block can never hide beside one valid block. Focused and
 // aggregate commands must each run exactly once, unconditionally, after the
 // single frozen-install step, under their auditable step name, exactly once
-// total in the toolchain job and never in b000-retro/supply-chain; retained
+// total in the toolchain job and never in the other required jobs; retained
 // single-line gate commands must run exactly once in their intended job.
 // Triggers and the top-level concurrency block are parsed as real blocks too:
 // on.push/on.pull_request branches must be exactly the accepted non-comment
@@ -40,6 +40,69 @@
 // setup-go/setup-node, and extra uses: steps always fail).
 // Permission success details are emitted only when every permissions
 // mapping/body validated cleanly and no mapping anywhere grants write.
+//
+// 6B (AIPT-M0-B003 iteration 6b): the independent `storage-postgres` job is
+// required alongside the three retained baseline jobs — the jobs mapping must
+// contain EXACTLY those four jobs (exhaustive NORMALIZED key enumeration:
+// plain, quoted and spaced job-key spellings all count, so a quoted-key extra
+// job or a duplicate key can never hide), each unconditional and
+// failure-visible. The storage-postgres contract is bound to the real job and
+// its real steps: exact runner (ubuntu-26.04 via a normalized exact-one
+// runs-on check), zero needs: dependencies (normalized keys), exact action
+// inventory (checkout + setup-go with exact with: inputs, no new action
+// repository, normalized quoted/plain uses parsing in both the global
+// pin/lock checks and the per-step inventories), the ephemeral PostgreSQL
+// 18.4 container started from the exact multi-arch digest by EXACTLY ONE
+// approved docker run and published ONLY on the loopback interface
+// (comprehensive -p / -p= / --publish / --publish= rejection), the 18.4
+// readiness/server-version verification, the test-only loopback DSN with
+// dbname=postgres (no credentials, no production endpoint) and the
+// required-integration flag hard-enabled exactly once per integration
+// command — both variables confined by exact raw occurrence to their two
+// approved shell export lines, rejecting env: mappings, shadow/alternate
+// assignments and production values anywhere in the workflow — the exact full
+// `^TestPostgresIntegration` command, the exact race command for the
+// concurrent-runner/same-stream pair, and the CI-only container cleanup —
+// all as exact run blocks with unique anchors, plus distinct fail-closed
+// checks for independence, runner, loopback-only publication, DSN boundary
+// and flag count. The whole check is a pure in-memory function
+// (checkWorkflowText), and run() re-runs it against focused source mutations
+// to prove missing job, runner/digest/tag drift, non-loopback publication,
+// missing required flag, DSN/production-boundary drift, removed/altered
+// full/race commands, `|| true`/if:/continue-on-error masking, baseline
+// job/gate drift, unauthorized action/input, quoted-key job/needs/runs-on/
+// uses bypasses, duplicate runs-on, alternate publication syntaxes,
+// env:-shadowed integration variables and alternate DSN assignments are all
+// rejected while the exact candidate passes.
+//
+// 6B closed-world (second Codex review): storage-postgres is a COMPLETE
+// fixed subset, not a needle list — the job mapping must be exactly one
+// normalized name:, runs-on: and steps: (no extra/shadow/duplicate job-level
+// key), the job must be exactly the nine ordered named steps below with
+// step names parsed NORMALIZED (plain, quoted and spaced `- name:` spellings
+// all start a real step, so a quoted-name shadow or duplicate step can never
+// hide beside the canonical nine), every step must carry exactly the expected
+// NORMALIZED per-step key multiset (name+run for run steps, name+uses+with
+// for action steps — no env:, no extra/second run:, no missing uses/with),
+// run parsing/counting is NORMALIZED (`run:`, `'run':`, `"run":` and `run :`
+// all count as run forms, inline and block), the evidence-recording and
+// Go-version verification run blocks are bound as exact gates like every
+// other run block so EVERY run step is bound to exactly one exact block gate
+// (no unbound run step can ride along), psql and postgres:// connection URIs
+// appear only in the approved forms (one psql probe inside the verification
+// block; URIs only inside the two approved test-only DSN export lines), and
+// appended production psql, quoted duplicate run keys, quoted-name duplicate
+// steps, extra job-level keys and step-level env: mappings are all proven
+// rejected by focused mutation probes below.
+//
+// 6B root closed-world (third Codex review): the document root is a closed
+// world too — the complete indent-0 mapping key multiset must be exactly one
+// each of name, on, permissions, concurrency and jobs (NORMALIZED keys, so a
+// quoted duplicate top-level key can never hide from the raw `^key:$` block
+// regexes), with no extras, duplicates, missing keys or quoted shadows.
+// Focused probes prove duplicate quoted top-level jobs/on/concurrency/name
+// are all rejected for that root closed-world reason while the exact
+// candidate passes.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -56,7 +119,60 @@ const DURABLE_WORKFLOW_NAME = 'AIPT M0 CI';
 const STALE_WORKFLOW_NAME = 'AIPT M0 B001 CI';
 const CONCURRENCY_GROUP = 'aipt-m0-${{ github.workflow }}-${{ github.ref }}';
 const MATRIX_RUNNERS = ['ubuntu-24.04', 'ubuntu-26.04'];
-const REQUIRED_JOBS = ['b000-retro', 'toolchain', 'supply-chain'];
+const REQUIRED_JOBS = ['b000-retro', 'toolchain', 'supply-chain', 'storage-postgres'];
+
+// ---- AIPT-M0-B003 iteration 6b: the ephemeral storage-postgres contract ----
+// The independent storage-postgres job must run on exactly ubuntu-26.04, use
+// only the frozen checkout/setup-go actions, start a fresh ephemeral
+// PostgreSQL 18.4 container from the exact multi-arch digest published ONLY
+// on the loopback interface, verify the server reports 18.4, feed the tests
+// the exact loopback test-only DSN with dbname=postgres (no credentials, no
+// production endpoint), hard-enable AIPT_REQUIRE_POSTGRES_INTEGRATION=1 on
+// exactly the two integration commands, run the exact full
+// ^TestPostgresIntegration suite and the exact race pair, and remove the
+// container afterwards. Every needle is bound to the real job/steps (exact
+// run blocks + anchors), never to whole-file substrings.
+const STORAGE_POSTGRES_RUNNER = 'ubuntu-26.04';
+const STORAGE_POSTGRES_CONTAINER = 'aipt-pg-18.4';
+const STORAGE_POSTGRES_PORT_PUB = '127.0.0.1:5432:5432';
+const STORAGE_TEST_DSN = 'postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable';
+const STORAGE_REQUIRE_FLAG = 'export AIPT_REQUIRE_POSTGRES_INTEGRATION=1';
+const STORAGE_FULL_TEST = "go test ./internal/storage/postgres -run '^TestPostgresIntegration' -count=1 -v";
+const STORAGE_RACE_TEST = "go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends)$' -count=1 -v";
+
+// The closed-world storage-postgres job is exactly these nine ordered named
+// steps. Step names are parsed NORMALIZED (`- name:`, `- 'name':`,
+// `- "name":` and `- name :` all start a real step with that name), so a
+// quoted-name shadow or duplicate step can never hide beside the canonical
+// nine.
+const STORAGE_POSTGRES_STEPS = [
+  'Record runner environment (evidence)',
+  'Checkout candidate (full history for integration sources)',
+  'Setup exact Go 1.26.5',
+  'Verify exact Go version',
+  'Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)',
+  'Verify PostgreSQL 18.4 readiness and server version',
+  'PostgreSQL integration tests (full ^TestPostgresIntegration suite, test-only DSN)',
+  'PostgreSQL integration race coverage (MigrationConcurrentRunners | LedgerConcurrentSameStreamAppends)',
+  'Remove ephemeral PostgreSQL container (CI-only cleanup, never production)',
+];
+
+// The exact NORMALIZED per-step key multiset for each of the nine steps
+// (index-aligned with STORAGE_POSTGRES_STEPS): run steps are exactly
+// { name, run }, action steps exactly { name, uses, with }. Any extra key
+// (env:, if:, continue-on-error:, shell:, a second run:, ...) or any missing
+// key fails the closed world.
+const STORAGE_STEP_KEYS = [
+  ['name', 'run'],
+  ['name', 'uses', 'with'],
+  ['name', 'uses', 'with'],
+  ['name', 'run'],
+  ['name', 'run'],
+  ['name', 'run'],
+  ['name', 'run'],
+  ['name', 'run'],
+  ['name', 'run'],
+];
 
 // The three explicit B002 contract gates plus the retained aggregate
 // `pnpm run check`. Each must be exactly one real unconditional inline
@@ -108,6 +224,10 @@ const ACTION_STEPS = {
     { repo: 'actions/checkout', with: { 'fetch-depth': '0' } },
     { repo: 'actions/setup-go', with: { 'go-version': TOOLCHAIN.go, cache: 'false' } },
     { repo: 'actions/setup-node', with: { 'node-version': TOOLCHAIN.node } },
+  ],
+  'storage-postgres': [
+    { repo: 'actions/checkout', with: { 'fetch-depth': '0' } },
+    { repo: 'actions/setup-go', with: { 'go-version': TOOLCHAIN.go, cache: 'false' } },
   ],
 };
 
@@ -217,6 +337,89 @@ const BLOCK_GATES = {
       ],
     },
   ],
+  'storage-postgres': [
+    {
+      label: 'the runner environment evidence recording',
+      anchor: 'echo "GITHUB_WORKFLOW=$GITHUB_WORKFLOW"',
+      lines: [
+        'echo "GITHUB_WORKFLOW=$GITHUB_WORKFLOW"',
+        'echo "GITHUB_RUN_ID=$GITHUB_RUN_ID GITHUB_RUN_ATTEMPT=$GITHUB_RUN_ATTEMPT"',
+        'echo "GITHUB_REF=$GITHUB_REF GITHUB_SHA=$GITHUB_SHA"',
+        'echo "RUNNER_OS=$RUNNER_OS RUNNER_ARCH=$RUNNER_ARCH"',
+        'echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"',
+        "grep -E '^(NAME|PRETTY_NAME|VERSION|VERSION_ID|ID)=' /etc/os-release || true",
+        'uname -a',
+      ],
+    },
+    {
+      label: 'the exact Go version verification',
+      anchor: `test "$(go version)" = "go version go${TOOLCHAIN.go} linux/amd64"`,
+      lines: [
+        `test "$(go version)" = "go version go${TOOLCHAIN.go} linux/amd64"`,
+        'go version',
+      ],
+    },
+    {
+      label: 'the ephemeral PostgreSQL 18.4 container start (digest-pinned, loopback-only)',
+      anchor: `docker pull "postgres@${PG_MULTI_ARCH_DIGEST}"`,
+      lines: [
+        `docker pull "postgres@${PG_MULTI_ARCH_DIGEST}"`,
+        `docker run --rm --name ${STORAGE_POSTGRES_CONTAINER} -e POSTGRES_HOST_AUTH_METHOD=trust -p ${STORAGE_POSTGRES_PORT_PUB} -d "postgres@${PG_MULTI_ARCH_DIGEST}"`,
+      ],
+    },
+    {
+      label: 'the PostgreSQL 18.4 readiness and server-version verification',
+      anchor: `docker exec ${STORAGE_POSTGRES_CONTAINER} pg_isready -U postgres -d postgres`,
+      lines: [
+        'for i in $(seq 1 60); do',
+        `if docker exec ${STORAGE_POSTGRES_CONTAINER} pg_isready -U postgres -d postgres >/dev/null 2>&1; then`,
+        'break',
+        'fi',
+        'sleep 1',
+        'done',
+        `docker exec ${STORAGE_POSTGRES_CONTAINER} pg_isready -U postgres -d postgres`,
+        `PG_VERSION="$(docker exec ${STORAGE_POSTGRES_CONTAINER} postgres --version)"`,
+        'echo "postgres --version => ${PG_VERSION}"',
+        'case "${PG_VERSION}" in',
+        `"postgres (PostgreSQL) ${TOOLCHAIN.postgresql}"*) ;;`,
+        '*) echo "unexpected postgres version: ${PG_VERSION}"; exit 1 ;;',
+        'esac',
+        `SERVER_VERSION="$(docker exec ${STORAGE_POSTGRES_CONTAINER} psql -U postgres -d postgres -tAc 'SHOW server_version')"`,
+        'echo "server_version => ${SERVER_VERSION}"',
+        'case "${SERVER_VERSION}" in',
+        `"${TOOLCHAIN.postgresql}"*) ;;`,
+        '*) echo "unexpected server_version: ${SERVER_VERSION}"; exit 1 ;;',
+        'esac',
+      ],
+    },
+    {
+      label: 'the full PostgreSQL integration suite command (test-only DSN, required flag)',
+      anchor: STORAGE_FULL_TEST,
+      lines: [
+        `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
+        STORAGE_REQUIRE_FLAG,
+        STORAGE_FULL_TEST,
+      ],
+    },
+    {
+      label: 'the PostgreSQL integration race coverage command (concurrent runners + same-stream appends)',
+      anchor: STORAGE_RACE_TEST,
+      lines: [
+        `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
+        STORAGE_REQUIRE_FLAG,
+        STORAGE_RACE_TEST,
+      ],
+    },
+    {
+      label: 'the ephemeral container cleanup (CI-only, never production)',
+      anchor: `docker rm -f ${STORAGE_POSTGRES_CONTAINER}`,
+      lines: [
+        `if docker inspect ${STORAGE_POSTGRES_CONTAINER} >/dev/null 2>&1; then`,
+        `docker rm -f ${STORAGE_POSTGRES_CONTAINER}`,
+        'fi',
+      ],
+    },
+  ],
 };
 
 // ---- small explicit indentation helpers for this fixed workflow subset ----
@@ -288,12 +491,61 @@ function mappingKey(line, keyIndent) {
   return m[1] ?? m[2] ?? m[3];
 }
 
+// Normalized mapping entry at exactly `keyIndent`: returns the normalized
+// (unquoted) key plus the raw value part after the colon (trailing comment
+// and surrounding quotes NOT stripped — scalarValue does that per use), or
+// null when the line is not such an entry. `uses:`, `'uses':`, `"uses":`
+// and `uses :` all normalize to the same entry.
+function mappingEntry(line, keyIndent) {
+  const key = mappingKey(line, keyIndent);
+  if (key === null) return null;
+  const m = new RegExp(`^ {${keyIndent}}(?:'[^']*'|"[^"]*"|[^\\s:'"]+)\\s*:\\s*(.*)$`).exec(line);
+  return { key, rawValue: m ? m[1].trim() : '' };
+}
+
+// Split a uses: value into the pinned ref token and the trailing tag-comment
+// token (`actions/checkout@<sha> # v7.0.1` -> { raw, tagComment: 'v7.0.1' }).
+// One pair of surrounding quotes is stripped before the split.
+function parseUsesValue(v) {
+  let s = v.trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1).trim();
+  }
+  const hash = s.indexOf(' #');
+  const core = (hash >= 0 ? s.slice(0, hash) : s).trim();
+  const tag = hash >= 0 ? s.slice(hash + 2).trim().split(/\s+/)[0] : '';
+  if (!core) return null;
+  return { raw: core, tagComment: tag || null };
+}
+
+// Every docker port-publication syntax a run line may carry: `-p X`, `-pX`,
+// `-p=X`, `--publish X` and `--publish=X`. The loopback-only publication
+// check rejects anything besides the exact approved bind.
+function publicationValues(line) {
+  const pubs = [];
+  const re = /(?:^|\s)(--publish|-p)(?:=|\s+)?(\S+)/g;
+  let m;
+  while ((m = re.exec(line)) !== null) pubs.push(m[2]);
+  return pubs;
+}
+
+// Index of a block-style `key:` line at exactly `keyIndent` spaces whose
+// NORMALIZED key equals `name` (plain, quoted or spaced spellings all
+// match), searching `lines` in [from, to), or -1.
+function findNormalizedKeyLineIn(lines, name, keyIndent, from = 0, to = lines.length) {
+  for (let i = from; i < to; i += 1) {
+    if (mappingKey(lines[i], keyIndent) === name) return i;
+  }
+  return -1;
+}
+
 // Extract one required job's body from the parsed jobs block. `bodyStart` is
 // the absolute index of the first body line, so every body line can be
-// reported with its real 1-based file line number.
+// reported with its real 1-based file line number. The key lookup is
+// normalized (quoted/plain), matching the exhaustive job-key enumeration.
 function jobBlock(jobsBlock, name) {
   if (!jobsBlock) return null;
-  const keyIdx = findKeyLineIn(jobsBlock.lines, name, 2, 0, jobsBlock.lines.length);
+  const keyIdx = findNormalizedKeyLineIn(jobsBlock.lines, name, 2, 0, jobsBlock.lines.length);
   if (keyIdx < 0) return null;
   const body = blockAt(jobsBlock.lines, keyIdx, 2);
   return {
@@ -305,11 +557,15 @@ function jobBlock(jobsBlock, name) {
 }
 
 // Split a job body into steps and record every noncanonical step start. A
-// step starts at the real six-space `- name:` line — the canonical form this
-// workflow subset uses — and ends before the next six-space step. Any other
-// six-space `- ` item (`- run:`, `- uses:`, ...) is a disguised shorthand
-// step: it is recorded in `badStarts` (and never analyzed as an empty step)
-// so the validator fails on it explicitly instead of silently passing it.
+// step starts at a real six-space `- ` line whose first mapping key is the
+// NORMALIZED `name` key (`- name:`, `- 'name':`, `- "name":` and `- name :`
+// all start a real step with that name) and ends before the next six-space
+// step. Any other six-space `- ` item (`- run:`, `- uses:`, `- env:`, ...)
+// is a disguised shorthand step: it is recorded in `badStarts` (and never
+// analyzed as an empty step) so the validator fails on it explicitly instead
+// of silently passing it. Quoted-name steps are REAL steps here — they can
+// never hide beside the canonical nine; the closed-world exact-name checks
+// reject them when they are not the exact ordered nine.
 function stepsOf(job) {
   if (!job) return { steps: [], badStarts: [] };
   const stepsIdx = findKeyLineIn(job.body, 'steps', 4, 0, job.body.length);
@@ -322,10 +578,10 @@ function stepsOf(job) {
     const line = body.lines[i];
     if (/^ {6}- /.test(line)) {
       if (current) steps.push(current);
-      const m = /^ {6}- name:\s*(.+?)\s*$/.exec(line);
-      if (m) {
+      const m = /^ {6}-\s*(?:'([^']*)'|"([^"]*)"|([^\s:'"]+))\s*:\s*(.*)$/.exec(line);
+      if (m && (m[1] ?? m[2] ?? m[3]) === 'name') {
         current = {
-          name: scalarValue(m[1]),
+          name: scalarValue(m[4]),
           lines: [line],
           lineNo: job.bodyStart + body.start + i + 1,
         };
@@ -352,15 +608,23 @@ function stepsOf(job) {
 // `env:`/`run:`/`uses:`/`if:`/other step-level mapping can never contribute
 // indent-10 entries to withEntries, and the number of real step-level `with:`
 // mappings is tracked so split/duplicate `with:` blocks fail even when their
-// union equals the expected inputs. This is not a general YAML parser and
-// never claims to be one.
+// union equals the expected inputs. Run parsing is NORMALIZED: `run:`,
+// `'run':`, `"run":` and `run :` all count as real run forms (inline and
+// block), so a quoted or spaced run-key spelling can never hide a run from
+// the exact block gates, anchor counting or the closed-world per-step key
+// multiset. `stepKeys` is the NORMALIZED multiset of every real step-level
+// key, starting with the step's own start-line key. This is not a general
+// YAML parser and never claims to be one.
 function analyzeStep(step) {
   const runs = [];
   const conditions = { if: [], continueOnError: [], shell: [] };
   const uses = [];
   const withEntries = [];
+  const stepKeys = [];
   let inWith = false;
   let withMappings = 0;
+  const startKey = /^ {6}-\s*(?:'([^']*)'|"([^"]*)"|([^\s:'"]+))\s*:/.exec(step.lines[0]);
+  if (startKey) stepKeys.push(startKey[1] ?? startKey[2] ?? startKey[3]);
   for (let i = 0; i < step.lines.length; i += 1) {
     const line = step.lines[i];
     const lineNo = step.lineNo + i;
@@ -380,23 +644,53 @@ function analyzeStep(step) {
         body.push(l.trim());
       }
       runs.push({ kind: 'block', lines: body, lineNo });
+      stepKeys.push('run');
       i = j - 1;
       continue;
     }
     const inlineRun = /^ {8}run:\s*(.+?)\s*$/.exec(line);
     if (inlineRun) {
       runs.push({ kind: 'inline', command: inlineRun[1].trim(), lineNo });
+      stepKeys.push('run');
       continue;
     }
     const key = mappingKey(line, 8);
+    if (key === 'run') {
+      // NORMALIZED run-key spelling (`'run':`, `"run":`, `run :`): a real
+      // run form — parsed (inline or block) and counted like any other run,
+      // so a quoted duplicate run can never hide from the exact block gates,
+      // anchor counting or the per-step key multiset.
+      const e = mappingEntry(line, 8);
+      const raw = (e?.rawValue ?? '').trim();
+      if (/^[|>][-+]?\s*(?:#.*)?$/.test(raw)) {
+        const body = [];
+        let j = i + 1;
+        for (; j < step.lines.length; j += 1) {
+          const l = step.lines[j];
+          if (isBlankOrComment(l)) continue;
+          if (indent(l) <= 8) break;
+          body.push(l.trim());
+        }
+        runs.push({ kind: 'block', lines: body, lineNo });
+        i = j - 1;
+      } else if (raw) {
+        runs.push({ kind: 'inline', command: scalarValue(raw), lineNo });
+      }
+      stepKeys.push('run');
+      continue;
+    }
     if (key === 'uses') {
-      const um = /^ {8}uses:\s*(.+?)\s*$/.exec(line);
-      if (um) uses.push({ value: scalarValue(um[1]), lineNo });
+      // Normalized: `uses:`, `'uses':`, `"uses":` and `uses :` all parse, so
+      // a quoted-key uses: step can never hide from the per-step inventory.
+      const e = mappingEntry(line, 8);
+      if (e) uses.push({ value: scalarValue(e.rawValue), lineNo });
+      stepKeys.push('uses');
       continue;
     }
     if (key === 'with') {
       inWith = true;
       withMappings += 1;
+      stepKeys.push('with');
       continue;
     }
     if (inWith && indent(line) === 10) {
@@ -410,12 +704,19 @@ function analyzeStep(step) {
     if (key === 'if' || key === 'continue-on-error' || key === 'shell') {
       const vm = /^ {8}(?:'[^']*'|"[^"]*"|[^\s:'"]+)\s*:\s*(.*)$/.exec(line);
       const value = (vm?.[1] ?? '').trim();
+      stepKeys.push(key);
       if (key === 'if') conditions.if.push({ value, lineNo });
       else if (key === 'continue-on-error') conditions.continueOnError.push({ value, lineNo });
       else conditions.shell.push({ value, lineNo });
+    } else if (key) {
+      // Any other real step-level key (`env:`, `timeout-minutes:`, ...) is
+      // collected into the normalized key multiset too, so the closed-world
+      // per-step key multiset rejects mappings no needle check ever looked
+      // at (a step-level env: can never ride unnoticed beside name+run).
+      stepKeys.push(key);
     }
   }
-  return { ...step, runs, conditions, uses, withEntries, withMappings };
+  return { ...step, runs, conditions, uses, withEntries, withMappings, stepKeys };
 }
 
 // Steps (in order) whose runs contain an inline command exactly equal to cmd.
@@ -482,7 +783,12 @@ function triggerBranches(onBlock, trigger) {
     .map((l) => scalarValue(l.trim().slice(2)));
 }
 
-export function run(ctx) {
+// Pure fail-closed check over in-memory workflow text plus the frozen action
+// lock. Everything the live candidate must satisfy lives here; the 6b
+// mutation regressions in run() exercise exactly this function, so a drifted
+// or mutated workflow is proven rejected through the same code path the real
+// file is checked with.
+function checkWorkflowText(text, lock) {
   const details = [];
   let pass = true;
   const ok = (msg) => details.push(`ok: ${msg}`);
@@ -490,7 +796,6 @@ export function run(ctx) {
     pass = false;
     details.push(`FAIL: ${msg}`);
   };
-  const text = fs.readFileSync(path.join(ctx.repo, WORKFLOW), 'utf8');
   const lines = text.split('\n');
 
   // ---- durable workflow identity ----
@@ -498,6 +803,33 @@ export function run(ctx) {
   else fail(`workflow name must be exactly ${JSON.stringify(DURABLE_WORKFLOW_NAME)}`);
   if (text.includes(STALE_WORKFLOW_NAME)) fail(`stale workflow name ${STALE_WORKFLOW_NAME} still present`);
   else ok('no stale B001 workflow name');
+
+  // ---- closed-world root mapping: exactly one each of name, on,
+  // permissions, concurrency and jobs at indent 0 ----
+  // The complete indent-0 mapping key multiset of the document (NORMALIZED:
+  // plain, quoted and spaced spellings all count) must be exactly one each of
+  // `name`, `on`, `permissions`, `concurrency` and `jobs` — no extras,
+  // duplicates, missing keys or quoted shadows can hide a second top-level
+  // mapping that the raw `^key:$` block regexes would never see.
+  const rootKeys = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (isBlankOrComment(lines[i])) continue;
+    const rk = mappingKey(lines[i], 0);
+    if (rk) rootKeys.push({ key: rk, lineNo: i + 1 });
+  }
+  const rootCounts = {};
+  for (const e of rootKeys) rootCounts[e.key] = (rootCounts[e.key] ?? 0) + 1;
+  const expectedRoot = ['name', 'on', 'permissions', 'concurrency', 'jobs'];
+  const rootClosed =
+    rootKeys.length === expectedRoot.length &&
+    expectedRoot.every((k) => rootCounts[k] === 1);
+  if (rootClosed) {
+    ok(`closed-world root mapping is exactly one each of ${expectedRoot.join(', ')} (no extras, duplicates, missing keys or quoted shadows)`);
+  } else {
+    const unexpected = Object.keys(rootCounts).filter((k) => !expectedRoot.includes(k));
+    const wrongCounts = expectedRoot.filter((k) => rootCounts[k] !== 1);
+    fail(`closed-world root mapping must contain exactly one each of name, on, permissions, concurrency and jobs (normalized indent-0 keys, no extras/duplicates/missing/quoted shadows); parsed ${JSON.stringify(rootKeys.map((e) => e.key))}${unexpected.length ? `; unexpected top-level key(s): ${unexpected.join(', ')}` : ''}${wrongCounts.length ? `; wrong count(s): ${wrongCounts.map((k) => `${k}=${rootCounts[k] ?? 0}`).join(', ')}` : ''}`);
+  }
 
   // ---- concurrency: exactly the real top-level block ----
   // The top-level `concurrency:` mapping must carry exactly two real indent-2
@@ -605,12 +937,18 @@ export function run(ctx) {
   else ok('no OIDC id-token requested');
 
   // ---- action pins ----
-  const uses = [...text.matchAll(/^\s*uses:\s*([^\s#]+)\s*(#\s*(\S+))?\s*$/gm)].map((m) => ({
-    raw: m[1],
-    tagComment: m[3] ?? null,
-  }));
+  // Normalized line-by-line extraction: `uses:`, `'uses':`, `"uses":` and
+  // `uses :` all count, so a quoted-key uses: line can never bypass the
+  // global pin/lock checks by hiding outside the raw `uses:` regex.
+  const uses = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (isBlankOrComment(lines[i])) continue;
+    const e = mappingEntry(lines[i], indent(lines[i]));
+    if (!e || e.key !== 'uses') continue;
+    const parsed = parseUsesValue(e.rawValue);
+    if (parsed) uses.push({ raw: parsed.raw, tagComment: parsed.tagComment, lineNo: i + 1 });
+  }
   if (uses.length === 0) fail('no uses: entries found');
-  const lock = JSON.parse(fs.readFileSync(path.join(ctx.repo, 'tools/ci-actions.lock.json'), 'utf8'));
   const lockByRepo = new Map(lock.actions.map((a) => [a.repository, a]));
   const usedRepos = new Set();
   for (const use of uses) {
@@ -657,15 +995,45 @@ export function run(ctx) {
   // ---- jobs & runners ----
   const jobsKeyIdx = findKeyLineIn(lines, 'jobs', 0, 0, lines.length);
   const jobsBlock = jobsKeyIdx >= 0 ? blockAt(lines, jobsKeyIdx, 0) : null;
-  const jobNames = (jobsBlock?.lines ?? [])
-    .filter((l) => indent(l) === 2 && /^[a-z0-9-]+:$/.test(l.trimStart()))
-    .map((l) => l.trim().slice(0, -1));
+  // Exhaustive normalized job-key enumeration: every indent-2 mapping key of
+  // the real jobs block counts (plain, quoted or spaced spellings), so a
+  // quoted-key extra job can never hide from the exactly-four check and a
+  // duplicate key (plain + quoted) is still enumerated twice.
+  const jobNames = [];
+  for (const l of jobsBlock?.lines ?? []) {
+    if (isBlankOrComment(l)) continue;
+    if (indent(l) !== 2) continue;
+    const jk = mappingKey(l, 2);
+    if (jk) jobNames.push(jk);
+  }
   for (const required of REQUIRED_JOBS) {
     if (jobNames.includes(required)) ok(`required job present: ${required}`);
     else fail(`required job missing: ${required}`);
   }
-  if (/runs-on:\s*(macos|windows)/.test(text)) fail('CI must be GitHub-hosted Linux only');
-  else ok('GitHub-hosted Linux only');
+  // 6b: the jobs mapping must contain EXACTLY the four required jobs — no
+  // extra job can ride along beside the three retained baseline jobs and the
+  // new storage-postgres job.
+  const expectedJobSet = [...REQUIRED_JOBS].sort();
+  const actualJobSet = [...jobNames].sort();
+  if (jobNames.length === REQUIRED_JOBS.length && actualJobSet.every((j, i) => j === expectedJobSet[i])) {
+    ok(`jobs mapping contains exactly the four required jobs: ${REQUIRED_JOBS.join(', ')}`);
+  } else {
+    fail(`jobs mapping must contain exactly the four required jobs ${REQUIRED_JOBS.join(', ')}; parsed ${JSON.stringify(jobNames)}`);
+  }
+  // GitHub-hosted Linux only: every runs-on value (plain or quoted key) must
+  // be a Linux runner, never macos/windows.
+  const nonLinuxRunners = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (isBlankOrComment(lines[i])) continue;
+    const e = mappingEntry(lines[i], indent(lines[i]));
+    if (!e || e.key !== 'runs-on') continue;
+    const v = scalarValue(e.rawValue).toLowerCase();
+    if (v.startsWith('macos') || v.startsWith('windows')) {
+      nonLinuxRunners.push({ lineNo: i + 1, value: v });
+    }
+  }
+  if (nonLinuxRunners.length === 0) ok('GitHub-hosted Linux only');
+  else fail(`CI must be GitHub-hosted Linux only (non-Linux runs-on at line ${nonLinuxRunners[0].lineNo}: ${nonLinuxRunners[0].value})`);
 
   // ---- required jobs are unconditional and failure-visible ----
   const jobs = {};
@@ -860,6 +1228,240 @@ export function run(ctx) {
     }
   }
 
+  // ---- storage-postgres job: ephemeral PostgreSQL 18.4 integration
+  // contract ----
+  // The job must be independent, run on exactly ubuntu-26.04, publish the
+  // container only on the loopback interface, use only the loopback test-only
+  // DSN with dbname=postgres (no credentials, no production endpoint), and
+  // hard-enable AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly once per
+  // integration command. The exact container/version/full/race/cleanup run
+  // blocks are bound by BLOCK_GATES above; these additional checks bind the
+  // runner, independence, loopback-only publication, DSN boundary and
+  // required-flag evidence to the real job with distinct fail-closed
+  // messages.
+  const storageJob = jobs['storage-postgres'];
+  if (!storageJob) {
+    fail('storage-postgres job block not found');
+  } else {
+    const storageAnalyzed = analyzedJobs['storage-postgres'] ?? [];
+
+    // Independence: zero `needs:` entries with a NORMALIZED key — `needs:`,
+    // `'needs':`, `"needs":` and `needs :` all count, so a quoted-key
+    // dependency can never hide from the check.
+    const needsEntries = [];
+    for (let i = 0; i < storageJob.body.length; i += 1) {
+      if (isBlankOrComment(storageJob.body[i])) continue;
+      if (mappingKey(storageJob.body[i], 4) === 'needs') {
+        needsEntries.push({ lineNo: storageJob.bodyStart + i + 1, raw: storageJob.body[i].trim() });
+      }
+    }
+    if (needsEntries.length === 0) {
+      ok('storage-postgres job is independent (no needs: dependency, plain or quoted key)');
+    } else {
+      fail(`storage-postgres job must be independent (no needs: dependency on other jobs); found ${needsEntries.length} needs: entr${needsEntries.length === 1 ? 'y' : 'ies'} ${needsEntries.map((n) => `line ${n.lineNo}: ${JSON.stringify(n.raw)}`).join(', ')}`);
+    }
+
+    // Exact-one runs-on: exactly one real `runs-on:` entry with a NORMALIZED
+    // key, whose value (plain or quoted) is exactly ubuntu-26.04. A quoted
+    // key, a duplicate entry and a drifted runner all fail.
+    const runsOnEntries = [];
+    for (let i = 0; i < storageJob.body.length; i += 1) {
+      if (isBlankOrComment(storageJob.body[i])) continue;
+      const re2 = mappingEntry(storageJob.body[i], 4);
+      if (re2 && re2.key === 'runs-on') {
+        runsOnEntries.push({
+          value: scalarValue(re2.rawValue),
+          lineNo: storageJob.bodyStart + i + 1,
+          raw: storageJob.body[i].trim(),
+        });
+      }
+    }
+    if (runsOnEntries.length !== 1) {
+      fail(`storage-postgres job must carry exactly one real runs-on: entry (plain or quoted key) with value ${STORAGE_POSTGRES_RUNNER}; found ${runsOnEntries.length}: ${JSON.stringify(runsOnEntries.map((r) => r.raw))}`);
+    } else if (runsOnEntries[0].value !== STORAGE_POSTGRES_RUNNER) {
+      fail(`storage-postgres job must run on exactly ${STORAGE_POSTGRES_RUNNER}; parsed ${JSON.stringify(runsOnEntries.map((r) => r.value))}`);
+    } else {
+      ok(`storage-postgres job runs on exactly ${STORAGE_POSTGRES_RUNNER}`);
+    }
+
+    // Exactly one approved docker run, and loopback-only publication: every
+    // publication the job carries — `-p X`, `-pX`, `-p=X`, `--publish X` or
+    // `--publish=X` — must be exactly the loopback bind (127.0.0.1:5432:5432),
+    // so a second docker run or a 0.0.0.0 / bare-port publication in any
+    // alternate syntax is rejected.
+    const dockerRuns = [];
+    const publications = [];
+    for (const s of storageAnalyzed) {
+      for (const r of s.runs) {
+        const runLines = r.kind === 'inline' ? [r.command] : r.lines;
+        for (const l of runLines) {
+          if (/\bdocker run\b/.test(l)) dockerRuns.push(l);
+          publications.push(...publicationValues(l));
+        }
+      }
+    }
+    if (dockerRuns.length === 1) {
+      ok('storage-postgres runs exactly one docker run (the approved digest-pinned ephemeral container start)');
+    } else {
+      fail(`storage-postgres must run exactly one docker run (the approved digest-pinned ephemeral container start); found ${dockerRuns.length} docker run occurrence(s) across run forms`);
+    }
+    if (publications.length === 1 && publications[0] === STORAGE_POSTGRES_PORT_PUB) {
+      ok(`storage-postgres publishes the PostgreSQL container only on the loopback interface (${STORAGE_POSTGRES_PORT_PUB})`);
+    } else {
+      fail(`storage-postgres must publish the PostgreSQL container only on the loopback interface (${STORAGE_POSTGRES_PORT_PUB}); parsed ${JSON.stringify(publications)}`);
+    }
+
+    // Exact raw occurrence / assignment confinement: AIPT_POSTGRES_DSN and
+    // AIPT_REQUIRE_POSTGRES_INTEGRATION may appear ONLY inside the approved
+    // export lines, each exactly twice (once per integration command). env:
+    // mappings (job- or step-level), shadow/alternate assignments and
+    // production values anywhere in the workflow — including other jobs —
+    // are rejected. Comments are inert and never satisfy the boundary.
+    const dsnExportLine = `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`;
+    let dsnExact = 0;
+    let flagExact = 0;
+    const dsnOther = [];
+    const flagOther = [];
+    for (let i = 0; i < lines.length; i += 1) {
+      if (isBlankOrComment(lines[i])) continue;
+      const t = lines[i].trim();
+      if (t === dsnExportLine) dsnExact += 1;
+      else if (t.includes('AIPT_POSTGRES_DSN')) dsnOther.push({ lineNo: i + 1, line: t });
+      if (t === STORAGE_REQUIRE_FLAG) flagExact += 1;
+      else if (t.includes('AIPT_REQUIRE_POSTGRES_INTEGRATION')) flagOther.push({ lineNo: i + 1, line: t });
+    }
+    if (dsnOther.length === 0 && dsnExact === 2) {
+      ok(`storage-postgres confines AIPT_POSTGRES_DSN to exactly the two approved test-only DSN export lines (${JSON.stringify(STORAGE_TEST_DSN)}: dbname=postgres, loopback, no credentials, no production endpoint)`);
+    } else {
+      fail(`storage-postgres must confine AIPT_POSTGRES_DSN to exactly two occurrences of the approved test-only DSN export line ${JSON.stringify(dsnExportLine)} (dbname=postgres, no credentials, no production endpoint); found ${dsnExact} approved + ${dsnOther.length} other occurrence(s)${dsnOther.length ? ` (e.g. line ${dsnOther[0].lineNo}: ${dsnOther[0].line})` : ''}`);
+    }
+    if (flagOther.length === 0 && flagExact === 2) {
+      ok('storage-postgres hard-enables AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly twice via the approved export lines (once per integration command)');
+    } else {
+      fail(`storage-postgres must hard-enable AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly twice via the approved export line ${JSON.stringify(STORAGE_REQUIRE_FLAG)}; found ${flagExact} approved + ${flagOther.length} other occurrence(s)${flagOther.length ? ` (e.g. line ${flagOther[0].lineNo}: ${flagOther[0].line})` : ''}`);
+    }
+
+    // ---- closed world: the job mapping is exactly one normalized name:,
+    // runs-on: and steps: (no extra/shadow/duplicate job-level key) ----
+    // Every real indent-4 mapping key of the job body counts with a
+    // NORMALIZED key (plain, quoted and spaced spellings), so a quoted or
+    // duplicate name/runs-on/steps, an extra timeout-minutes:/env:/strategy:/
+    // needs:/defaults:/if: job-level key, or any other shadow mapping fails.
+    const jobLevelKeys = [];
+    for (let i = 0; i < storageJob.body.length; i += 1) {
+      if (isBlankOrComment(storageJob.body[i])) continue;
+      const jk = mappingKey(storageJob.body[i], 4);
+      if (jk) jobLevelKeys.push({ key: jk, lineNo: storageJob.bodyStart + i + 1 });
+    }
+    const jobLevelCounts = {};
+    for (const e of jobLevelKeys) jobLevelCounts[e.key] = (jobLevelCounts[e.key] ?? 0) + 1;
+    const jobLevelClosed =
+      jobLevelKeys.length === 3 &&
+      jobLevelCounts.name === 1 &&
+      jobLevelCounts['runs-on'] === 1 &&
+      jobLevelCounts.steps === 1;
+    if (jobLevelClosed) {
+      ok('storage-postgres job mapping is exactly name: + runs-on: + steps: (one each, normalized, no extra/shadow/duplicate job-level key)');
+    } else {
+      fail(`storage-postgres job mapping must contain exactly one name:, one runs-on: and one steps: (normalized keys) and no other job-level key; parsed ${JSON.stringify(jobLevelKeys.map((e) => e.key))}`);
+    }
+
+    // ---- closed world: exactly the nine ordered named steps ----
+    // Step names are parsed NORMALIZED (`- name:`, `- 'name':`, `- "name":`,
+    // `- name :` all start a real step), so a quoted-name shadow or a
+    // duplicate step can never hide beside the canonical nine: the job must
+    // be exactly this ordered list, no more, no less.
+    const storageStepNames = storageAnalyzed.map((s) => s.name);
+    const nineOrdered =
+      storageAnalyzed.length === STORAGE_POSTGRES_STEPS.length &&
+      storageStepNames.every((n, i) => n === STORAGE_POSTGRES_STEPS[i]);
+    if (nineOrdered) {
+      ok(`storage-postgres job contains exactly the nine ordered named steps (${STORAGE_POSTGRES_STEPS.length}): ${STORAGE_POSTGRES_STEPS.join(' | ')}`);
+    } else {
+      fail(`storage-postgres job must contain exactly the nine ordered named steps ${JSON.stringify(STORAGE_POSTGRES_STEPS)}; parsed ${JSON.stringify(storageStepNames)}`);
+    }
+
+    // ---- closed world: exact normalized per-step key multisets ----
+    // Every one of the nine fixed steps must carry exactly its expected
+    // normalized step-level key multiset (name+run for run steps,
+    // name+uses+with for action steps). An env: mapping, a second run: key
+    // (plain or quoted), a missing uses:/with:, an if:/continue-on-error:/
+    // shell: override or any other extra/missing step key fails.
+    let stepKeysClosed = true;
+    const stepKeysCheckCount = Math.min(storageAnalyzed.length, STORAGE_POSTGRES_STEPS.length);
+    for (let i = 0; i < stepKeysCheckCount; i += 1) {
+      const actual = [...storageAnalyzed[i].stepKeys].sort();
+      const expected = [...STORAGE_STEP_KEYS[i]].sort();
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        stepKeysClosed = false;
+        fail(`storage-postgres step ${i + 1} (${JSON.stringify(storageAnalyzed[i].name)}) must carry exactly the expected step key multiset ${JSON.stringify(STORAGE_STEP_KEYS[i])}; parsed ${JSON.stringify(actual)}`);
+      }
+    }
+    if (stepKeysClosed && storageAnalyzed.length === STORAGE_POSTGRES_STEPS.length) {
+      ok('every storage-postgres step carries exactly its expected normalized key multiset (no env:, extra run:, missing uses/with or shadow keys)');
+    }
+
+    // ---- closed world: production boundary — psql and connection URIs ----
+    // psql may appear only once (the SHOW server_version probe inside the
+    // approved readiness/version block) and every postgres:// URI must be
+    // exactly the approved test-only DSN export line — an appended
+    // production psql step or a credential-bearing connection string is
+    // rejected.
+    const psqlLines = [];
+    const uriLines = [];
+    for (const s of storageAnalyzed) {
+      for (const r of s.runs) {
+        const runLines = r.kind === 'inline' ? [r.command] : r.lines;
+        for (const l of runLines) {
+          if (/\bpsql\b/.test(l)) psqlLines.push(l);
+          if (l.includes('postgres://')) uriLines.push(l);
+        }
+      }
+    }
+    if (psqlLines.length === 1) {
+      ok('storage-postgres runs psql only once (the SHOW server_version probe inside the approved readiness/server-version block)');
+    } else {
+      fail(`storage-postgres must run psql only inside the approved readiness/server-version verification block (exactly one occurrence); found ${psqlLines.length} psql occurrence(s)`);
+    }
+    const badUriLines = uriLines.filter((l) => l !== dsnExportLine);
+    if (badUriLines.length === 0) {
+      ok('storage-postgres connection URIs appear only inside the approved test-only DSN export lines (no production/credential-bearing URI)');
+    } else {
+      fail(`storage-postgres must not carry connection URIs outside the approved test-only DSN export line ${JSON.stringify(dsnExportLine)}; found ${JSON.stringify(badUriLines)}`);
+    }
+
+    // ---- closed world: every run step is bound to exactly one exact block
+    // gate ----
+    // The union of steps covered by the exact block gates must equal the set
+    // of steps carrying any run form, and each covered step must carry
+    // exactly one run form (its block). A new or mutated run step can never
+    // ride unbound beside the nine fixed steps.
+    let gateCoverFailures = 0;
+    const gateCoveredSteps = new Set();
+    for (const gate of BLOCK_GATES['storage-postgres'] ?? []) {
+      const hits = exactBlockGateHits(storageAnalyzed, gate.lines);
+      if (hits.length === 1) gateCoveredSteps.add(hits[0].stepIndex);
+      else gateCoverFailures += 1;
+    }
+    if (gateCoverFailures === 0) {
+      const runStepIndices = [];
+      for (let i = 0; i < storageAnalyzed.length; i += 1) {
+        if (storageAnalyzed[i].runs.length > 0) runStepIndices.push(i);
+      }
+      const bound = [...gateCoveredSteps].sort((a, b) => a - b);
+      const allBoundSingleRun =
+        JSON.stringify(bound) === JSON.stringify(runStepIndices) &&
+        runStepIndices.every((i) => storageAnalyzed[i].runs.length === 1);
+      if (allBoundSingleRun) {
+        ok('every storage-postgres run step is bound to exactly one exact block gate (evidence, Go version, container start, version check, full/race tests, cleanup — no unbound or shadowed run evidence)');
+      } else {
+        const unbound = runStepIndices.filter((i) => !gateCoveredSteps.has(i));
+        const extraBound = [...gateCoveredSteps].filter((i) => !runStepIndices.includes(i));
+        fail(`every storage-postgres run step must be bound to exactly one exact block gate and carry exactly one run form; unbound run steps: ${JSON.stringify(unbound)}${extraBound.length ? `, gate-covered steps without a run: ${JSON.stringify(extraBound)}` : ''}`);
+      }
+    }
+  }
+
   // Focused + aggregate B002 commands: exactly once in toolchain, after the
   // single frozen-install step, under their own auditable step name, and
   // exactly once total across inline and block run forms — a block-run
@@ -871,7 +1473,7 @@ export function run(ctx) {
   for (const focused of FOCUSED_COMMANDS) {
     const hits = inlineHits(toolchainAnalyzed, focused.command);
     const total = totalOccurrences(toolchainAnalyzed, focused.command);
-    for (const other of ['b000-retro', 'supply-chain']) {
+    for (const other of ['b000-retro', 'supply-chain', 'storage-postgres']) {
       const otherTotal = totalOccurrences(analyzedJobs[other] ?? [], focused.command);
       if (otherTotal > 0) {
         fail(`${other} job must not run \`${focused.command}\` (focused/aggregate commands belong only to the toolchain job): found ${otherTotal} executable occurrence(s)`);
@@ -932,6 +1534,471 @@ export function run(ctx) {
   const hit = modelHosts.find((h) => text.toLowerCase().includes(h));
   if (hit) fail(`workflow contains model-endpoint material (${hit})`);
   else ok('workflow contains no remote-model network configuration');
+
+  return { result: pass ? 'PASS' : 'FAIL', details };
+}
+
+// ---- 6b focused mutation regressions (in-memory, same architecture) ----
+// Every probe mutates the real workflow text and re-runs the exact same
+// checkWorkflowText the live file is checked with, proving the
+// storage-postgres contract and every retained B000/B001/B002 invariant are
+// enforced fail-closed: missing job, runner drift, digest/tag drift,
+// non-loopback publication, missing required-integration flag, DSN/
+// production-boundary drift, removed/altered full or race command, `|| true`
+// / if: / continue-on-error masking, baseline job/gate drift, unauthorized
+// action/input, and — from the 6b review — quoted-key job/needs/runs-on/
+// uses bypasses, duplicate runs-on, alternate -p= / --publish= publication
+// syntaxes, env:-shadowed integration variables and alternate DSN
+// assignments are all rejected while the exact candidate passes. From the
+// second 6b review, the closed-world regressions prove appended production
+// psql, a quoted duplicate run key, a quoted-name duplicate step, an extra
+// job-level key and a step-level env: mapping are all rejected too.
+
+// Remove one whole job (key line + body) from the workflow text.
+function removeJobBlock(text, name) {
+  const lines = text.split('\n');
+  const keyIdx = findKeyLineIn(lines, name, 2, 0, lines.length);
+  if (keyIdx < 0) return text;
+  const body = blockAt(lines, keyIdx, 2);
+  return [...lines.slice(0, keyIdx), ...lines.slice(body.end)].join('\n');
+}
+
+// Apply `mutate` to exactly one job's text (key line through body end) and
+// reassemble the workflow, so a mutation can never bleed into another job.
+function mutateJobText(text, name, mutate) {
+  const lines = text.split('\n');
+  const keyIdx = findKeyLineIn(lines, name, 2, 0, lines.length);
+  if (keyIdx < 0) return text;
+  const body = blockAt(lines, keyIdx, 2);
+  const jobLines = lines.slice(keyIdx, body.end);
+  const mutated = mutate(jobLines.join('\n'));
+  return [...lines.slice(0, keyIdx), ...mutated.split('\n'), ...lines.slice(body.end)].join('\n');
+}
+
+export function run(ctx) {
+  const details = [];
+  let pass = true;
+  const ok = (msg) => details.push(`ok: ${msg}`);
+  const fail = (msg) => {
+    pass = false;
+    details.push(`FAIL: ${msg}`);
+  };
+
+  const text = fs.readFileSync(path.join(ctx.repo, WORKFLOW), 'utf8');
+  const lock = JSON.parse(fs.readFileSync(path.join(ctx.repo, 'tools/ci-actions.lock.json'), 'utf8'));
+
+  // The exact candidate must PASS the same pure check the probes are run
+  // against.
+  const main = checkWorkflowText(text, lock);
+  details.push(...main.details);
+  if (main.result !== 'PASS') pass = false;
+
+  const fullTestStepName =
+    '      - name: PostgreSQL integration tests (full ^TestPostgresIntegration suite, test-only DSN)';
+  const probes = [
+    {
+      label: 'storage-postgres job removed',
+      reason: /required job missing: storage-postgres/,
+      run: () => checkWorkflowText(removeJobBlock(text, 'storage-postgres'), lock),
+    },
+    {
+      label: 'storage-postgres runner drifted (ubuntu-26.04 -> ubuntu-24.04)',
+      reason: /storage-postgres job must run on exactly ubuntu-26\.04/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replace('runs-on: ubuntu-26.04', 'runs-on: ubuntu-24.04')),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres container digest drifted',
+      reason: /must keep the ephemeral PostgreSQL 18\.4 container start/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replace(PG_MULTI_ARCH_DIGEST, `sha256:${'0'.repeat(64)}`)),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres container referenced by bare tag (postgres:18.4)',
+      reason: /must keep the ephemeral PostgreSQL 18\.4 container start|must not be referenced by bare tag/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replaceAll(`"postgres@${PG_MULTI_ARCH_DIGEST}"`, 'postgres:18.4')),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres container published on non-loopback (0.0.0.0)',
+      reason: /must publish the PostgreSQL container only on the loopback interface/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replace(`-p ${STORAGE_POSTGRES_PORT_PUB}`, '-p 0.0.0.0:5432:5432')),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres missing AIPT_REQUIRE_POSTGRES_INTEGRATION=1 flag',
+      reason: /AIPT_REQUIRE_POSTGRES_INTEGRATION=1/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replaceAll(`${STORAGE_REQUIRE_FLAG}\n`, '')),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres DSN drifted to a non-loopback production-style endpoint',
+      reason: /test-only DSN/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replaceAll(STORAGE_TEST_DSN, 'postgres://postgres@db.prod.internal:5432/ledger?sslmode=require'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres full integration command removed',
+      reason: /must keep the full PostgreSQL integration suite command/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_FULL_TEST, "go test ./internal/storage/postgres -run '^TestPostgresIntegration$' -count=1"),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres full integration command altered (dropped -count=1)',
+      reason: /must keep the full PostgreSQL integration suite command/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_FULL_TEST, "go test ./internal/storage/postgres -run '^TestPostgresIntegration' -v"),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres race coverage command removed',
+      reason: /must keep the PostgreSQL integration race coverage command/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_RACE_TEST, 'go test -race ./internal/storage/postgres')),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres full command masked with || true',
+      reason: /must keep the full PostgreSQL integration suite command/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_FULL_TEST, `${STORAGE_FULL_TEST} || true`)),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres integration step conditionally skipped (if: always())',
+      reason: /must not be conditionally skipped/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) => t.replace(fullTestStepName, `${fullTestStepName}\n        if: always()`)),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres integration step masks failures (continue-on-error: true)',
+      reason: /must not mask failures/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(fullTestStepName, `${fullTestStepName}\n        continue-on-error: true`),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres integration step overrides the shell (shell: bash)',
+      reason: /must not set a custom shell/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(fullTestStepName, `${fullTestStepName}\n        shell: bash`),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'baseline job removed (toolchain)',
+      reason: /required job missing: toolchain/,
+      run: () => checkWorkflowText(removeJobBlock(text, 'toolchain'), lock),
+    },
+    {
+      label: 'baseline aggregate gate removed (pnpm run check from toolchain)',
+      reason: /must run `pnpm run check` exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) => t.replace('        run: pnpm run check\n', '        run: echo pnpm run check\n')),
+          lock,
+        ),
+    },
+    {
+      label: 'baseline retained gate removed (go vet from toolchain)',
+      reason: /must run `go vet \.\/\.\.\.` exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) => t.replace('        run: go vet ./...', '        run: echo go vet ./...')),
+          lock,
+        ),
+    },
+    {
+      label: 'unauthorized action added to storage-postgres',
+      reason: /must have exactly 2 uses: step\(s\)/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n      - name: Upload artifact\n        uses: actions/upload-artifact@1234567890123456789012345678901234567890`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'unauthorized with: input on storage-postgres setup-go',
+      reason: /action step 2/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(
+              '          go-version: 1.26.5\n          cache: false',
+              '          go-version: 1.26.5\n          cache: false\n          go-version-file: go.mod',
+            ),
+          ),
+          lock,
+        ),
+    },
+    // ---- AIPT-M0-B003 iteration 6b review: the five demonstrated passing
+    // bypasses plus quoted/duplicate runs-on and alternate publication
+    // syntaxes must each FAIL for their specific reason ----
+    {
+      label: 'storage-postgres hidden extra job with quoted key',
+      reason: /must contain exactly the four required jobs/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n  "sneak-job":\n    runs-on: ubuntu-26.04\n    steps:\n      - name: Sneak step\n        run: echo sneaky`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres hidden needs: dependency (quoted key)',
+      reason: /storage-postgres job must be independent/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace('    runs-on: ubuntu-26.04', "    runs-on: ubuntu-26.04\n    'needs': toolchain"),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres duplicate runs-on (plain + quoted key, drifted value)',
+      reason: /must carry exactly one real runs-on/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace('    runs-on: ubuntu-26.04', "    runs-on: ubuntu-26.04\n    'runs-on': ubuntu-24.04"),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres quoted runs-on key with drifted runner',
+      reason: /storage-postgres job must run on exactly ubuntu-26\.04/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace('    runs-on: ubuntu-26.04', "    'runs-on': ubuntu-24.04"),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres quoted uses: step (invisible action bypass)',
+      reason: /must have exactly 2 uses: step\(s\)|has no entry in tools\/ci-actions\.lock\.json/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n      - name: Sneak upload\n        "uses": actions/upload-artifact@1234567890123456789012345678901234567890`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres second docker run with --publish=0.0.0.0 (alternate publication syntax)',
+      reason: /exactly one docker run|only on the loopback interface/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n      - name: Sneak publish\n        run: docker run --rm -d --publish=0.0.0.0:5432:5432 "postgres@${PG_MULTI_ARCH_DIGEST}"`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres second docker run with -p=0.0.0.0 (alternate publication syntax)',
+      reason: /exactly one docker run|only on the loopback interface/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n      - name: Sneak publish\n        run: docker run --rm -d -p=0.0.0.0:5432:5432 "postgres@${PG_MULTI_ARCH_DIGEST}"`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres step-level env: shadows AIPT_REQUIRE_POSTGRES_INTEGRATION',
+      reason: /AIPT_REQUIRE_POSTGRES_INTEGRATION=1/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(fullTestStepName, `${fullTestStepName}\n        env:\n          AIPT_REQUIRE_POSTGRES_INTEGRATION: 0`),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres job-level env: sets production AIPT_POSTGRES_DSN',
+      reason: /test-only DSN/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(
+              '    runs-on: ubuntu-26.04',
+              '    runs-on: ubuntu-26.04\n    env:\n      AIPT_POSTGRES_DSN: postgres://postgres@db.prod.internal:5432/ledger?sslmode=require',
+            ),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres alternate DSN assignment (non-export, single-quoted)',
+      reason: /test-only DSN/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(
+              `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"\n`,
+              `AIPT_POSTGRES_DSN='${STORAGE_TEST_DSN}'\n`,
+            ),
+          ),
+          lock,
+        ),
+    },
+    // ---- AIPT-M0-B003 iteration 6b second Codex review: closed-world
+    // regressions — appended production psql, quoted duplicate run key,
+    // quoted-name duplicate step, extra job-level key and step-level env:
+    // must each FAIL for the closed-world reasons ----
+    {
+      label: 'storage-postgres appended production psql step',
+      reason: /must run psql only inside the approved/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n      - name: Sneak production psql\n        run: psql "postgres://admin:secret@db.prod.internal:5432/ledger" -c "DROP TABLE production.ledger"`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres quoted duplicate run key on the full-test step',
+      reason: /must carry exactly the expected step key multiset/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(fullTestStepName, `${fullTestStepName}\n        'run': ${STORAGE_FULL_TEST}`),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres quoted-name duplicate step (bypass of the exact nine ordered steps)',
+      reason: /must contain exactly the nine ordered named steps/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            `${t}\n      - "name": Verify exact Go version\n        run: |\n          test "$(go version)" = "go version go1.26.5 linux/amd64"\n          go version`,
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres extra job-level key (timeout-minutes)',
+      reason: /must contain exactly one name:, one runs-on: and one steps:/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace('    runs-on: ubuntu-26.04', '    runs-on: ubuntu-26.04\n    timeout-minutes: 30'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'storage-postgres step-level env: mapping on the full-test step',
+      reason: /must carry exactly the expected step key multiset/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(fullTestStepName, `${fullTestStepName}\n        env:\n          AIPT_CI_EVIDENCE: 1`),
+          ),
+          lock,
+        ),
+    },
+    // ---- AIPT-M0-B003 iteration 6b third Codex review: closed-world root
+    // mapping regressions — a quoted duplicate of a top-level key is
+    // invisible to the raw `^key:$` block regexes but must still be rejected
+    // by the normalized closed-world root check ----
+    {
+      label: 'duplicate quoted top-level jobs key',
+      reason: /closed-world root mapping must contain exactly one each/,
+      run: () => checkWorkflowText(text.replace('jobs:', "'jobs':\njobs:"), lock),
+    },
+    {
+      label: 'duplicate quoted top-level on key',
+      reason: /closed-world root mapping must contain exactly one each/,
+      run: () => checkWorkflowText(text.replace('on:', '"on":\non:'), lock),
+    },
+    {
+      label: 'duplicate quoted top-level concurrency key',
+      reason: /closed-world root mapping must contain exactly one each/,
+      run: () => checkWorkflowText(text.replace('concurrency:', "'concurrency':\nconcurrency:"), lock),
+    },
+    {
+      label: 'duplicate quoted top-level name key',
+      reason: /closed-world root mapping must contain exactly one each/,
+      run: () => checkWorkflowText(text.replace('name:', '"name": AIPT M0 CI\nname:'), lock),
+    },
+  ];
+  let probesOk = true;
+  for (const probe of probes) {
+    let result;
+    try {
+      result = probe.run();
+    } catch (err) {
+      fail(`negative workflow probe (${probe.label}) crashed: ${err.message}`);
+      probesOk = false;
+      continue;
+    }
+    if (result.result !== 'FAIL') {
+      fail(`negative workflow probe (${probe.label}) was NOT rejected`);
+      probesOk = false;
+    } else {
+      const rightReason = result.details.filter((d) => d.startsWith('FAIL')).some((d) => probe.reason.test(d));
+      if (!rightReason) fail(`negative workflow probe (${probe.label}) failed for an unexpected reason`);
+      else ok(`negative-probe PASS: ${probe.label} rejected`);
+    }
+  }
+  if (probesOk) ok(`all ${probes.length} in-memory workflow mutation probes rejected as expected`);
 
   return { name: 'workflow', result: pass ? 'PASS' : 'FAIL', details };
 }
