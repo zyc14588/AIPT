@@ -1,11 +1,12 @@
-// B003 tree-integrity validator: self-anchored scope (accepted base identity
-// plus the registered B003 per-iteration allowed set), Markdown links, JSON
-// parse, and secret / private-path / prompt-body hygiene for the candidate
-// tree (including the executable scripts/ci sources themselves), plus a
+// B003 tree-integrity validator: self-anchored two-layer scope (accepted base
+// through the fixed implementation merge under the registered B003 allowlist,
+// then the implementation merge through closeout under six exact authority
+// paths), Markdown links, JSON parse, and secret / private-path / prompt-body
+// hygiene for the current tree (including the executable scripts/ci sources), plus a
 // temporary-fixture regression proving the hygiene scan really covers .mjs
 // files under a scripts/ci-shaped path. The imported pathMatchesAllowed is
-// additionally regression-probed in-process (55 pure string probes) against
-// the hard-coded scope literals.
+// and pathMatchesCloseoutAllowed are additionally regression-probed in-process
+// against independent hard-coded scope literals.
 //
 // Markdown rules for B003: no brittle fixed total document count (later
 // approved documents of the accepted base must not be rejected by a count) —
@@ -16,13 +17,16 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   ALLOWED_PATHS,
+  B003,
   BASE_COMMIT,
   BASE_TREE,
+  CLOSEOUT_ALLOWED_PATHS,
   EXPECTED_MIT_LICENSE,
   FORBIDDEN_PREFIXES,
   FROZEN_REGISTRY_PATHS,
   normalizeText,
   pathMatchesAllowed,
+  pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -73,6 +77,18 @@ const ALLOWED_PATHS_LITERAL = [
   'tools/ci-actions.lock.json',
   'docs/supply-chain/README.md',
   '.github/workflows/ci.yml',
+];
+
+// Independent exact B003 closeout scope. These are the only paths allowed to
+// differ from the fixed implementation merge; unlike the implementation
+// allowlist, this contract intentionally has no wildcard entries.
+const CLOSEOUT_ALLOWED_PATHS_LITERAL = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
 ];
 
 const FORBIDDEN_PREFIXES_LITERAL = [
@@ -151,7 +167,11 @@ export function run(ctx) {
   };
   verifyAnchor('BASE_COMMIT', BASE_COMMIT, '45a96087d75a61f2910cb5ce99134e3ca777bca8');
   verifyAnchor('BASE_TREE', BASE_TREE, '8b16b599c261879406f0435e80c878e092683a50');
+  verifyAnchor('B003.candidate', B003.candidate, 'fbe1363acd977759c4effa2687483c0b78b63ab6');
+  verifyAnchor('B003.tree', B003.tree, '60bcdd0df2c29391c2564bfeae17013c07723cd3');
+  verifyAnchor('B003.merge_commit', B003.merge_commit, '725fc005185412d115307b594aa64e84acfabf67');
   verifyAnchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
+  verifyAnchor('CLOSEOUT_ALLOWED_PATHS', CLOSEOUT_ALLOWED_PATHS, CLOSEOUT_ALLOWED_PATHS_LITERAL);
   verifyAnchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
   verifyAnchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
 
@@ -191,7 +211,27 @@ export function run(ctx) {
     ok(`pathMatchesAllowed regression: all ${probeCount} probes matched (29 exact allowlist, 4 wildcard descendants, 4 lookalikes, 16 forbidden-prefix representatives, 2 frozen registry paths)`);
   }
 
-  // ---- accepted base identity: resolves, fixed tree, ancestor of HEAD ----
+  // The closeout matcher must be exact: every authorized literal passes, and
+  // representative suffix/prefix/directory lookalikes fail.
+  let closeoutProbeCount = 0;
+  let closeoutProbeMismatches = 0;
+  const closeoutProbe = (p, expected) => {
+    closeoutProbeCount += 1;
+    const actual = pathMatchesCloseoutAllowed(p);
+    if (actual !== expected) {
+      closeoutProbeMismatches += 1;
+      fail(`pathMatchesCloseoutAllowed probe mismatch for path ${JSON.stringify(p)}: expected ${expected}, actual ${actual}`);
+    }
+  };
+  for (const p of CLOSEOUT_ALLOWED_PATHS_LITERAL) closeoutProbe(p, true);
+  closeoutProbe('README.md.bak', false);
+  closeoutProbe('scripts/ci/lib/constants.mjs/child', false);
+  closeoutProbe('internal/storage/postgres/ledger.go', false);
+  if (closeoutProbeMismatches === 0) {
+    ok(`pathMatchesCloseoutAllowed regression: all ${closeoutProbeCount} exact and lookalike probes matched`);
+  }
+
+  // ---- accepted base and implementation identities ----
   const resolveCommit = (label, commit) => {
     const probe = git(ctx.repo, ['rev-parse', `${commit}^{commit}`], { check: false });
     const resolved = probe.stdout.trim();
@@ -214,33 +254,58 @@ export function run(ctx) {
   };
   resolveCommit('accepted base', BASE_COMMIT);
   verifyTree('accepted base', BASE_COMMIT, BASE_TREE);
+  resolveCommit('B003 Candidate', B003.candidate);
+  verifyTree('B003 Candidate', B003.candidate, B003.tree);
+  resolveCommit('B003 implementation merge', B003.merge_commit);
+  verifyTree('B003 implementation merge', B003.merge_commit, B003.tree);
   const headProbe = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
-  const ancestryProbe = git(ctx.repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], { check: false });
+  const ancestryProbe = git(ctx.repo, ['merge-base', '--is-ancestor', B003.merge_commit, 'HEAD'], { check: false });
   if (headProbe.status !== 0 || ancestryProbe.status !== 0) {
-    fail(`current HEAD ${JSON.stringify(headProbe.stdout.trim())} does not descend from accepted base ${BASE_COMMIT}`);
-  } else ok(`current HEAD descends from accepted base ${BASE_COMMIT}`);
+    fail(`current HEAD ${JSON.stringify(headProbe.stdout.trim())} does not descend from B003 implementation merge ${B003.merge_commit}`);
+  } else ok(`current HEAD descends from B003 implementation merge ${B003.merge_commit}`);
 
-  // ---- scope (changed paths vs the registered B003 per-iteration allowed set) ----
-  // --no-renames keeps both sides of a rename in the changed-path set.
-  const diff = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
+  // ---- two-layer scope ----
+  // Layer 1 is the immutable B003 implementation diff. Layer 2 is only the
+  // current closeout delta. --no-renames keeps both sides of a rename in each
+  // changed-path set, so a rename can never hide an unauthorized path.
+  const implementationDiff = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT, B003.merge_commit])
+    .stdout.split('\n')
+    .filter(Boolean);
+  const closeoutDiff = git(ctx.repo, ['diff', '--name-only', '--no-renames', B003.merge_commit])
+    .stdout.split('\n')
+    .filter(Boolean);
   // Regenerable package-manager install output is not candidate source: the
   // repository carries no .gitignore (adding one is outside the B003 allowed
   // path set), so filter the generated node_modules tree here.
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
     .stdout.split('\n')
     .filter((p) => p && p !== 'node_modules' && !p.startsWith('node_modules/'));
-  const changed = [...new Set([...diff, ...untracked])].sort();
-  if (changed.length === 0) fail('no changed paths found vs base');
-  else ok(`${changed.length} changed paths vs base`);
-  for (const p of changed) {
+  const closeoutChanged = [...new Set([...closeoutDiff, ...untracked])].sort();
+  const changed = [...new Set([...implementationDiff, ...closeoutChanged])].sort();
+  if (implementationDiff.length === 0) fail('no B003 implementation paths found between accepted base and implementation merge');
+  else ok(`${implementationDiff.length} B003 implementation paths between accepted base and implementation merge`);
+  for (const p of implementationDiff) {
     if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B003 allowed set: ${p}`);
     for (const prefix of FORBIDDEN_PREFIXES) {
       if (p.startsWith(prefix)) fail(`forbidden prefix changed: ${p}`);
     }
     if (FROZEN_REGISTRY_PATHS.includes(p)) fail(`frozen registry modified: ${p}`);
   }
-  if (changed.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
-    ok('all changed paths within the registered B003 per-iteration scope');
+  if (implementationDiff.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
+    ok('all implementation paths remain within the registered B003 per-iteration scope');
+  }
+  if (closeoutChanged.length === 0) {
+    fail('no B003 closeout paths found after the implementation merge');
+  } else {
+    ok(`${closeoutChanged.length} B003 closeout paths after the implementation merge`);
+  }
+  for (const p of closeoutChanged) {
+    if (!pathMatchesCloseoutAllowed(p)) fail(`path outside exact AIPT-M0-B003 closeout set: ${p}`);
+  }
+  if (JSON.stringify(closeoutChanged) !== JSON.stringify([...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort())) {
+    fail(`B003 closeout changed-path set must be exactly ${JSON.stringify([...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort())}, got ${JSON.stringify(closeoutChanged)}`);
+  } else {
+    ok('B003 closeout changed-path set is exactly the six authorized paths');
   }
 
   // ---- changed-worktree node safety ----

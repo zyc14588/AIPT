@@ -1,4 +1,4 @@
-// Shared B003 validator constants.
+// Shared B003 validator constants and closeout identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 acceptances. Nothing is
@@ -9,9 +9,14 @@
 // AIPT-M0-B002 closeout commit and its tree. B000, B001, and B002 keep their
 // own original commit/tree identities instead of aliasing the current base.
 
-// The batch under construction for this iteration (public status, runner
-// report, and the status-transition validator all target this batch).
+// The batch whose implementation and closeout are validated by this suite.
+// This remains AIPT-M0-B003 after closeout so B003 reports and immutable
+// identities do not masquerade as B004 work.
 export const CURRENT_BATCH = 'AIPT-M0-B003';
+
+// The machine authority has no active construction batch after B003 closeout.
+// B004 is only authorized to prepare and is explicitly not started.
+export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -21,8 +26,8 @@ export const CURRENT_BATCH = 'AIPT-M0-B003';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of this B003 iteration (machine + human docs).
-export const STATUS_DATE = '2026-08-19';
+// Public status date of the B003 closeout (machine + human docs).
+export const STATUS_DATE = '2026-08-20';
 
 // Immutable closed-batch identities — historical state, never updated by
 // later batches and never aliased to the current base.
@@ -67,8 +72,23 @@ export const B002_CLOSEOUT = {
   parent: 'fccfb595c23feab38397506505a3e996fe7b9e9c',
 };
 
-// External serial predecessor of the current batch: the unregistered serial
-// batch that ran and merged/closed before B003 construction began. Its
+// Immutable B003 implementation acceptance identity. The implementation
+// merge is a two-parent merge commit whose first parent is the B002 closeout
+// base and whose second parent is the frozen B003 Candidate. Candidate and
+// implementation merge intentionally share the exact accepted tree.
+export const B003 = {
+  candidate: 'fbe1363acd977759c4effa2687483c0b78b63ab6',
+  tree: '60bcdd0df2c29391c2564bfeae17013c07723cd3',
+  candidate_ci_run: 32334341279,
+  candidate_ci_conclusion: 'success',
+  merge_commit: '725fc005185412d115307b594aa64e84acfabf67',
+  post_merge_ci_run: 32336615560,
+  post_merge_ci_conclusion: 'success',
+  security_toolchain_requalification: 'AIPT-M0-B003-SECURITY-TOOLCHAIN-QUAL-001',
+};
+
+// External serial predecessor of B003: the unregistered serial batch that ran
+// and merged/closed before B003 construction began. Its
 // closeout commit and post-closeout public CI run are immutable facts.
 export const EXTERNAL_SERIAL_PREDECESSOR = {
   batch: 'UNREGISTERED-AIPT-P0-B001',
@@ -78,9 +98,9 @@ export const EXTERNAL_SERIAL_PREDECESSOR = {
   closeout_ci_conclusion: 'success',
 };
 
-// Accepted main base for the current B003 iteration: the AIPT-M0-B002
-// closeout commit / tree. `verified_head` may only point here, never at a
-// candidate.
+// Accepted implementation-diff base for B003: the AIPT-M0-B002 closeout
+// commit / tree. Closeout `verified_head` points to B003.merge_commit, never
+// to the B003 Candidate or to the later closeout commit itself.
 export const BASE_COMMIT = B002_CLOSEOUT.commit;
 export const BASE_TREE = B002_CLOSEOUT.tree;
 
@@ -241,6 +261,18 @@ export const ALLOWED_PATHS = [
   '.github/workflows/ci.yml',
 ];
 
+// Exact B003 closeout path contract. The implementation tree is already
+// frozen at B003.merge_commit; only these authority/status validator paths
+// may differ between that merge and the closeout commit. No glob is allowed.
+export const CLOSEOUT_ALLOWED_PATHS = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
+
 // Forbidden prefixes for the CURRENT B003 iteration (non-conflicting
 // historical frozen paths retained). B003 admits go.mod/go.sum and the
 // storage paths via the exact allowed-path list above, so go.mod/go.sum are
@@ -336,4 +368,8 @@ export function pathMatchesAllowed(p) {
     }
   }
   return false;
+}
+
+export function pathMatchesCloseoutAllowed(p) {
+  return CLOSEOUT_ALLOWED_PATHS.includes(p);
 }
