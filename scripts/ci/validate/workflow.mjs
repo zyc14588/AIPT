@@ -57,8 +57,8 @@
 // (comprehensive -p / -p= / --publish / --publish= rejection), the 18.4
 // readiness/server-version verification, the test-only loopback DSN with
 // dbname=postgres (no credentials, no production endpoint) and the
-// required-integration flag hard-enabled exactly once per integration
-// command — both variables confined by exact raw occurrence to their two
+// required-integration flag hard-enabled exactly once per integration test
+// block — both variables confined by exact raw occurrence to their two
 // approved shell export lines, rejecting env: mappings, shadow/alternate
 // assignments and production values anywhere in the workflow — the exact full
 // `^TestPostgresIntegration` command, the exact race command for the
@@ -139,6 +139,8 @@ const STORAGE_TEST_DSN = 'postgres://postgres@127.0.0.1:5432/postgres?sslmode=di
 const STORAGE_REQUIRE_FLAG = 'export AIPT_REQUIRE_POSTGRES_INTEGRATION=1';
 const STORAGE_FULL_TEST = "go test ./internal/storage/postgres -run '^TestPostgresIntegration' -count=1 -v";
 const STORAGE_RACE_TEST = "go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends)$' -count=1 -v";
+const STORAGE_LAUNCHER_FULL_TEST = "go test ./internal/launcher -run '^TestPostgresIntegrationLauncher' -count=1 -v";
+const STORAGE_LAUNCHER_RACE_TEST = "go test -race ./internal/launcher -run '^TestPostgresIntegrationLauncher' -count=1 -v";
 
 // The closed-world storage-postgres job is exactly these nine ordered named
 // steps. Step names are parsed NORMALIZED (`- name:`, `- 'name':`,
@@ -152,8 +154,8 @@ const STORAGE_POSTGRES_STEPS = [
   'Verify exact Go version',
   'Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)',
   'Verify PostgreSQL 18.4 readiness and server version',
-  'PostgreSQL integration tests (full ^TestPostgresIntegration suite, test-only DSN)',
-  'PostgreSQL integration race coverage (MigrationConcurrentRunners | LedgerConcurrentSameStreamAppends)',
+  'PostgreSQL integration tests (B003 storage + B004 runtime shell, test-only DSN)',
+  'PostgreSQL integration race coverage (B003 concurrency + B004 runtime shell)',
   'Remove ephemeral PostgreSQL container (CI-only cleanup, never production)',
 ];
 
@@ -188,7 +190,11 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run test:protocol-go',
     nameTokens: ['go fixture', 'shared fixture', 'replay'],
   },
-  { command: 'pnpm run check', nameTokens: ['b001+b002', 'aggregate'] },
+  {
+    command: 'pnpm run check:runtime-shell',
+    nameTokens: ['b004', 'runtime shell', 'fixed gate order', 'config', 'core', 'launcher', 'cli', 'mutation probes'],
+  },
+  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004', 'aggregate'] },
 ];
 
 // Retained single-line gate commands: each must be exactly one real inline
@@ -393,21 +399,23 @@ const BLOCK_GATES = {
       ],
     },
     {
-      label: 'the full PostgreSQL integration suite command (test-only DSN, required flag)',
+      label: 'the full B003 storage + B004 runtime-shell PostgreSQL integration commands (test-only DSN, required flag)',
       anchor: STORAGE_FULL_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
         STORAGE_REQUIRE_FLAG,
         STORAGE_FULL_TEST,
+        STORAGE_LAUNCHER_FULL_TEST,
       ],
     },
     {
-      label: 'the PostgreSQL integration race coverage command (concurrent runners + same-stream appends)',
+      label: 'the B003 concurrency + B004 runtime-shell PostgreSQL integration race commands',
       anchor: STORAGE_RACE_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
         STORAGE_REQUIRE_FLAG,
         STORAGE_RACE_TEST,
+        STORAGE_LAUNCHER_RACE_TEST,
       ],
     },
     {
@@ -1234,7 +1242,7 @@ function checkWorkflowText(text, lock) {
   // container only on the loopback interface, use only the loopback test-only
   // DSN with dbname=postgres (no credentials, no production endpoint), and
   // hard-enable AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly once per
-  // integration command. The exact container/version/full/race/cleanup run
+  // integration test block. The exact container/version/full/race/cleanup run
   // blocks are bound by BLOCK_GATES above; these additional checks bind the
   // runner, independence, loopback-only publication, DSN boundary and
   // required-flag evidence to the real job with distinct fail-closed
@@ -1313,7 +1321,7 @@ function checkWorkflowText(text, lock) {
 
     // Exact raw occurrence / assignment confinement: AIPT_POSTGRES_DSN and
     // AIPT_REQUIRE_POSTGRES_INTEGRATION may appear ONLY inside the approved
-    // export lines, each exactly twice (once per integration command). env:
+    // export lines, each exactly twice (once per integration test block). env:
     // mappings (job- or step-level), shadow/alternate assignments and
     // production values anywhere in the workflow — including other jobs —
     // are rejected. Comments are inert and never satisfy the boundary.
@@ -1336,7 +1344,7 @@ function checkWorkflowText(text, lock) {
       fail(`storage-postgres must confine AIPT_POSTGRES_DSN to exactly two occurrences of the approved test-only DSN export line ${JSON.stringify(dsnExportLine)} (dbname=postgres, no credentials, no production endpoint); found ${dsnExact} approved + ${dsnOther.length} other occurrence(s)${dsnOther.length ? ` (e.g. line ${dsnOther[0].lineNo}: ${dsnOther[0].line})` : ''}`);
     }
     if (flagOther.length === 0 && flagExact === 2) {
-      ok('storage-postgres hard-enables AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly twice via the approved export lines (once per integration command)');
+      ok('storage-postgres hard-enables AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly twice via the approved export lines (once per integration test block)');
     } else {
       fail(`storage-postgres must hard-enable AIPT_REQUIRE_POSTGRES_INTEGRATION=1 exactly twice via the approved export line ${JSON.stringify(STORAGE_REQUIRE_FLAG)}; found ${flagExact} approved + ${flagOther.length} other occurrence(s)${flagOther.length ? ` (e.g. line ${flagOther[0].lineNo}: ${flagOther[0].line})` : ''}`);
     }
@@ -1594,7 +1602,7 @@ export function run(ctx) {
   if (main.result !== 'PASS') pass = false;
 
   const fullTestStepName =
-    '      - name: PostgreSQL integration tests (full ^TestPostgresIntegration suite, test-only DSN)';
+    '      - name: PostgreSQL integration tests (B003 storage + B004 runtime shell, test-only DSN)';
   const probes = [
     {
       label: 'storage-postgres job removed',
@@ -1659,7 +1667,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full integration command removed',
-      reason: /must keep the full PostgreSQL integration suite command/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1670,7 +1678,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full integration command altered (dropped -count=1)',
-      reason: /must keep the full PostgreSQL integration suite command/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1681,7 +1689,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres race coverage command removed',
-      reason: /must keep the PostgreSQL integration race coverage command/,
+      reason: /must keep the B003 concurrency \+ B004 runtime-shell PostgreSQL integration race commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_RACE_TEST, 'go test -race ./internal/storage/postgres')),
@@ -1689,8 +1697,30 @@ export function run(ctx) {
         ),
     },
     {
+      label: 'B004 launcher full PostgreSQL integration command removed',
+      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_LAUNCHER_FULL_TEST, 'go test ./internal/launcher'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B004 launcher PostgreSQL integration race command removed',
+      reason: /must keep the B003 concurrency \+ B004 runtime-shell PostgreSQL integration race commands/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_LAUNCHER_RACE_TEST, 'go test -race ./internal/launcher'),
+          ),
+          lock,
+        ),
+    },
+    {
       label: 'storage-postgres full command masked with || true',
-      reason: /must keep the full PostgreSQL integration suite command/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_FULL_TEST, `${STORAGE_FULL_TEST} || true`)),
@@ -1739,6 +1769,17 @@ export function run(ctx) {
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) => t.replace('        run: pnpm run check\n', '        run: echo pnpm run check\n')),
+          lock,
+        ),
+    },
+    {
+      label: 'B004 runtime-shell focused gate removed from toolchain',
+      reason: /check:runtime-shell.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:runtime-shell', '        run: node --version'),
+          ),
           lock,
         ),
     },

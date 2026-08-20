@@ -1,5 +1,6 @@
 // AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4
-// and AIPT-M0-B003 iteration 6a).
+// AIPT-M0-B003 iteration 6a, and the AIPT-M0-B004 zero-new-dependency
+// runtime shell).
 //
 // Gates: lock presence/integrity, action SHA pins, container digest pin,
 // dependency inventory/license coverage (machine SPDX license values —
@@ -152,7 +153,8 @@ const SDK_RECORD = {
 // exact record kinds, the truthful SDK record metadata, the truthful B003 Go
 // runtime record metadata (version/directness/role/selection), the frozen
 // PostgreSQL digests on the composite-image record, and the exact
-// go=6/pnpm=0 application dependency inventory. Negative probes feed mutated
+// go=6/pnpm=0 application dependency inventory, including the truthful B004
+// zero-new-third-party runtime-shell note. Negative probes feed mutated
 // in-memory inventories; the on-disk file is never modified.
 function checkLicenseInventory(licenses) {
   const details = [];
@@ -351,6 +353,20 @@ function checkLicenseInventory(licenses) {
   if (appDeps.go_runtime_third_party_modules !== GO_RUNTIME_MODULES.length || appDeps.pnpm_runtime_third_party_packages !== 0) {
     fail(`licenses.json application_dependencies must be go=${GO_RUNTIME_MODULES.length}/pnpm=0, got go=${JSON.stringify(appDeps.go_runtime_third_party_modules)}/pnpm=${JSON.stringify(appDeps.pnpm_runtime_third_party_packages)}`);
   } else ok(`licenses.json application dependency inventory = ${GO_RUNTIME_MODULES.length} / 0 (six approved pgx runtime modules, zero pnpm third-party packages)`);
+  const b004NoteTokens = [
+    'AIPT-M0-B004',
+    'no new third-party dependency',
+    'cmd/aipt',
+    'internal/config',
+    'internal/core',
+    'internal/launcher',
+    'already-qualified B003 pgx runtime closure',
+  ];
+  if (typeof appDeps.note !== 'string' || b004NoteTokens.some((token) => !appDeps.note.includes(token))) {
+    fail(`licenses.json application_dependencies note must document AIPT-M0-B004 as zero new third-party dependency and name cmd/aipt, internal/config, internal/core, internal/launcher, and the already-qualified B003 pgx runtime closure`);
+  } else {
+    ok('licenses.json application dependency note truthfully records the B004 zero-new-third-party runtime shell and retained B003 pgx closure');
+  }
 
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
@@ -900,6 +916,14 @@ export function run(ctx) {
       reason: /top-level selected_by_batch must be AIPT-M0-B001/,
       mutate: (recs, whole) => {
         whole.selected_by_batch = 'AIPT-M0-B003';
+      },
+    },
+    {
+      label: 'AIPT-M0-B004 zero-new-third-party runtime-shell note removed',
+      targetId: 'AIPT',
+      reason: /application_dependencies note must document AIPT-M0-B004/,
+      mutate: (recs, whole) => {
+        whole.application_dependencies.note = 'Historical inventory only.';
       },
     },
     {

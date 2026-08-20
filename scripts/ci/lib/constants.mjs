@@ -257,6 +257,7 @@ export const ALLOWED_PATHS = [
   'package.json',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
@@ -265,6 +266,8 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/sbom.mjs',
   // New B004 fail-closed runtime-shell gate.
   'scripts/ci/validate/runtime-shell.mjs',
+  // Register the new gate in the retained standalone-entrypoint contract.
+  'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
   'docs/supply-chain/README.md',

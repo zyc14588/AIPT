@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B003.
+// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B004.
 //
 // Node.js standard library only (no third-party dependency). The same inputs
 // produce byte-identical output: fixed timestamps, sorted arrays, no
@@ -10,7 +10,7 @@
 // payload (the whole document minus documentNamespace) is canonically
 // serialized (sorted object keys) and SHA-256 hashed, and the 64 lowercase
 // hex characters become the namespace suffix under
-// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003/. Any change to a
+// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b004/. Any change to a
 // version-defining field therefore yields a different, version-unique
 // namespace; the historical static pre-R5 B001 namespace is never reused.
 //
@@ -50,8 +50,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CREATED = '2026-08-19T00:00:00Z';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003';
+const CREATED = '2026-08-20T00:00:00Z';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b004';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
@@ -300,15 +300,16 @@ export function buildSbom(repoRoot) {
       name: 'AIPT',
       SPDXID: 'SPDXRef-AIPT',
       downloadLocation: 'https://github.com/zyc14588/AIPT',
-      versionInfo: 'M0-B003',
+      versionInfo: 'M0-B004',
       licenseConcluded: 'MIT',
       licenseDeclared: 'MIT',
       copyrightText: 'Copyright (c) 2026 AIPT contributors',
       filesAnalyzed: false,
       comment:
+        'AIPT-M0-B004 fail-closed Launcher/Core runtime shell; no new third-party dependency was introduced. ' +
         'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.6 — B003 security requalification), private npm root package aipt@0.0.0, ' +
         `and the first-party workspace package @aipt/adapter-sdk@1.0.0 (packages/adapter-sdk, PACKAGE_OF AIPT). ` +
-        `B003 third-party runtime dependencies: go=${goModules.length}, pnpm=${pnpmPackages.length} ` +
+        `B004 retains the B003-qualified third-party runtime dependencies: go=${goModules.length}, pnpm=${pnpmPackages.length} ` +
         `(six approved Go runtime modules: pgx v5.10.0 direct + five transitive, recorded in ` +
         `tools/supply-chain/licenses.json with exact versions/licenses/directness). ` +
         `SPDXRef-AIPT DEPENDS_ON ${goModuleSpdxId('github.com/jackc/pgx/v5')} — the pgx closure is an application ` +
@@ -562,12 +563,13 @@ export function buildSbom(repoRoot) {
     spdxVersion: 'SPDX-2.3',
     dataLicense: 'CC0-1.0',
     SPDXID: 'SPDXRef-DOCUMENT',
-    name: 'AIPT-M0-B003-supply-chain-sbom',
+    name: 'AIPT-M0-B004-supply-chain-sbom',
     creationInfo: {
       created: CREATED,
-      creators: ['Tool: AIPT-M0-B003 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
+      creators: ['Tool: AIPT-M0-B004 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
       comment:
         'Deterministic SBOM: identical inputs produce byte-identical output (CI generates twice and compares). ' +
+        'AIPT-M0-B004 adds no third-party dependency and retains the exact B003 pgx runtime closure. ' +
         'The first-party workspace package @aipt/adapter-sdk is modeled as PACKAGE_OF AIPT (never DEV_TOOL_OF). ' +
         'The six approved pgx v5.10.0 Go runtime modules are modeled as application runtime dependencies: ' +
         'AIPT DEPENDS_ON github.com/jackc/pgx/v5 and pgx DEPENDS_ON the five indirect modules (never DEV_TOOL_OF). ' +

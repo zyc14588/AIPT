@@ -84,10 +84,15 @@ const DATA_LICENSE = 'CC0-1.0';
 const DOCUMENT_SPDXID = 'SPDXRef-DOCUMENT';
 const AIPT_SPDXID = 'SPDXRef-AIPT';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b004';
 // The static pre-R5 B001 namespace reused by distinct R3/R4 documents; still
-// forbidden — a B003 document must never fall back to it.
+// forbidden — a B004 document must never fall back to it.
 const LEGACY_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
+const PREVIOUS_NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003';
+const EXPECTED_DOCUMENT_NAME = 'AIPT-M0-B004-supply-chain-sbom';
+const EXPECTED_AIPT_VERSION = 'M0-B004';
+const EXPECTED_CREATED = '2026-08-20T00:00:00Z';
+const EXPECTED_CREATOR = 'Tool: AIPT-M0-B004 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
 // 6a). h1hex is the frozen SHA-256 (64 lowercase hex) that the go.sum zip
@@ -423,6 +428,9 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   if (doc.documentNamespace === LEGACY_NAMESPACE) {
     fail(`documentNamespace is the legacy static pre-R5 namespace ${JSON.stringify(LEGACY_NAMESPACE)} (already reused by distinct R3/R4 documents); a version-unique hash suffix is required`);
   }
+  if (typeof doc.documentNamespace === 'string' && doc.documentNamespace.startsWith(PREVIOUS_NAMESPACE_BASE + '/')) {
+    fail('documentNamespace reuses the prior B003 namespace family; B004 requires its own content-addressed namespace family');
+  }
   const expectedNamespace = computeExpectedNamespace(doc);
   if (doc.documentNamespace !== expectedNamespace) {
     fail(`documentNamespace must equal the content-addressed version namespace ${expectedNamespace} (SHA-256 of the canonical version-defining payload), got ${JSON.stringify(doc.documentNamespace)}`);
@@ -431,6 +439,15 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   }
   if (doc.SPDXID !== DOCUMENT_SPDXID) fail(`document SPDXID must be ${DOCUMENT_SPDXID}`);
   else ok(`document SPDXID = ${DOCUMENT_SPDXID}`);
+  if (doc.name !== EXPECTED_DOCUMENT_NAME) {
+    fail(`document name must be ${EXPECTED_DOCUMENT_NAME}, got ${JSON.stringify(doc.name)}`);
+  } else ok(`document name = ${EXPECTED_DOCUMENT_NAME}`);
+  if (doc.creationInfo?.created !== EXPECTED_CREATED) {
+    fail(`creationInfo.created must be deterministic B004 time ${EXPECTED_CREATED}, got ${JSON.stringify(doc.creationInfo?.created)}`);
+  } else ok(`creationInfo.created = ${EXPECTED_CREATED}`);
+  if (!Array.isArray(doc.creationInfo?.creators) || !doc.creationInfo.creators.includes(EXPECTED_CREATOR)) {
+    fail('creationInfo.creators must carry the exact B004 generator identity');
+  } else ok('creationInfo.creators carries the exact B004 generator identity');
 
   // ---- packages: unique, well-formed SPDXIDs ----
   if (!Array.isArray(doc.packages) || doc.packages.length === 0) {
@@ -445,6 +462,15 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   else ok('all package SPDXIDs match the SPDXRef- form');
   if (ids.includes(DOCUMENT_SPDXID)) fail('a package reuses the document SPDXID');
   else ok('no package reuses the document SPDXID');
+  const aiptPackage = find(AIPT_SPDXID);
+  if (!aiptPackage || aiptPackage.versionInfo !== EXPECTED_AIPT_VERSION) {
+    fail(`AIPT versionInfo must be ${EXPECTED_AIPT_VERSION}, got ${JSON.stringify(aiptPackage?.versionInfo)}`);
+  } else ok(`AIPT versionInfo = ${EXPECTED_AIPT_VERSION}`);
+  if (!aiptPackage || typeof aiptPackage.comment !== 'string' ||
+      !aiptPackage.comment.includes('AIPT-M0-B004 fail-closed Launcher/Core runtime shell') ||
+      !aiptPackage.comment.includes('no new third-party dependency')) {
+    fail('AIPT package comment must describe B004 runtime-shell scope and zero new third-party dependencies');
+  } else ok('AIPT package comment records B004 runtime-shell scope and zero new third-party dependencies');
 
   // ---- exact required package set (zero third-party deps) ----
   const byName = new Map(doc.packages.map((p) => [p.name, p]));
@@ -953,6 +979,24 @@ export function run(ctx) {
     else ok('negative-probe PASS: version-defining mutation invalidates the retained namespace (content-addressed namespace binding enforced)');
   }
 
+  // B004 identity must be enforced independently of the namespace binding.
+  const batchIdentityProbe = JSON.parse(JSON.stringify(doc));
+  const batchIdentityAipt = batchIdentityProbe.packages.find((p) => p.SPDXID === AIPT_SPDXID);
+  if (!batchIdentityAipt) {
+    fail('negative B004 identity probe could not run: AIPT package missing from SBOM');
+    return { name: 'sbom', result: 'FAIL', details };
+  }
+  batchIdentityAipt.versionInfo = 'M0-B003';
+  batchIdentityProbe.documentNamespace = computeExpectedNamespace(batchIdentityProbe);
+  const batchIdentityResult = validateSbomSemantics(batchIdentityProbe, { repo: ctx.repo, toolchainLock, actionsLock });
+  if (batchIdentityResult.result !== 'FAIL') {
+    fail('negative B004 identity probe was NOT rejected (M0-B003 root version accepted)');
+  } else if (!batchIdentityResult.details.some((d) => d.includes('AIPT versionInfo must be M0-B004'))) {
+    fail('B004 identity probe failed for an unexpected reason');
+  } else {
+    ok('negative-probe PASS: AIPT M0-B003 root version rejected even with a recomputed content-addressed namespace');
+  }
+
   // 6. Negative probe: the legacy static pre-R5 namespace must be rejected
   // explicitly, even though it is a valid absolute URI.
   const legacyProbe = JSON.parse(JSON.stringify(doc));
@@ -964,6 +1008,18 @@ export function run(ctx) {
     const rightReason = legacyProbeResult.details.some((d) => d.includes('legacy') || d.includes('documentNamespace'));
     if (!rightReason) fail('legacy-namespace probe failed for an unexpected reason');
     else ok(`negative-probe PASS: legacy static namespace ${JSON.stringify(LEGACY_NAMESPACE)} explicitly rejected (stale/reused namespace forbidden)`);
+  }
+
+  const previousNamespaceProbe = JSON.parse(JSON.stringify(doc));
+  const suffix = computeExpectedNamespace(previousNamespaceProbe).slice(NAMESPACE_BASE.length + 1);
+  previousNamespaceProbe.documentNamespace = PREVIOUS_NAMESPACE_BASE + '/' + suffix;
+  const previousNamespaceResult = validateSbomSemantics(previousNamespaceProbe, { repo: ctx.repo, toolchainLock, actionsLock });
+  if (previousNamespaceResult.result !== 'FAIL') {
+    fail('negative prior-B003 namespace probe was NOT rejected');
+  } else if (!previousNamespaceResult.details.some((d) => d.includes('prior B003 namespace family'))) {
+    fail('prior-B003 namespace probe failed for an unexpected reason');
+  } else {
+    ok('negative-probe PASS: prior B003 namespace family explicitly rejected for the B004 document');
   }
 
   // 5-10. Negative probes (B001-GPT-003 regressions): the three-layer

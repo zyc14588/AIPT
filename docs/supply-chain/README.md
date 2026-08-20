@@ -2,7 +2,7 @@
 
 > B001 依据 `R4-Q023`（固定版本、锁文件、SBOM、许可证、漏洞、来源、升级资格的完整供应链门禁）建立的公共工程基础。
 > 机器规则为 [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json)；本页是可读解释。
-> **AIPT-M0-B003 施工中（迭代 6a + security requalification）**：本页同时如实记录 B003 对 pgx v5.10.0 Go 运行时闭包的资格、许可证记录、SBOM 依赖关系建模，以及 B003 将当前 Go 身份从 B001 资格化的 **1.26.5** 安全重资格为 **1.26.6**（reason: reachable standard-library vulnerabilities，触发公告 GO-2026-6090 / GO-2026-6088 / GO-2026-5972）；**B003 尚未合并/关闭**——本页不是关闭声明。冻结的 `policy.json` 仍是不可变 B001 基线，从不被 B003 改写。
+> **AIPT-M0-B004 施工中**：B003 已合并关闭，其 pgx v5.10.0 运行时闭包和 Go 1.26.6 security requalification 是不可变历史。B004 的 `cmd/aipt`、`internal/config`、`internal/core` 与 `internal/launcher` 没有新增第三方依赖，继续复用该闭包；清单保持 go=6/pnpm=0。冻结的 `policy.json` 仍是不可变 B001 基线，B004 只演进许可证说明、B004 内容寻址 SBOM 和 runtime-shell CI 门禁。本页不是 B004 merge/closeout 声明。
 
 ## 冻结工具链（`DEFER-016` 已 RESOLVED）
 
@@ -23,11 +23,12 @@
 - 所有第三方 Action `uses:` 必须是**完整 40 hex Commit SHA**（tag 只作为行尾可读注释）；映射登记在 [../../tools/ci-actions.lock.json](../../tools/ci-actions.lock.json)。
 - 容器镜像必须 **digest pin**（PostgreSQL 以多架构 digest 拉取）。
 - runner：`ubuntu-26.04`（参考环境）与 `ubuntu-24.04`（GA）；runner 镜像版本/OS 信息写入 CI 日志。
-- 三个 required jobs：
+- 四个 required jobs：
   - `b000-retro`：用 B001 验证器对固定历史提交 `777a3f39ba78c1ef3168597890c61abf7a55d962` 做只读展开并追溯验证 B000（MIT 许可、454 条决策、35 条 supersession、16 项延期参数以 B000 自身状态为准、17 篇 Markdown 相对链接、JSON 解析、无凭据/私有路径/Prompt 正文、merge tree == `f5f845b860ba0944ef104b4679fa074ad6efecbb`）。
-  - `toolchain`：在 `ubuntu-24.04` 与 `ubuntu-26.04` 上验证精确 Go/Node/pnpm、`gofmt`、`go vet`、`go test`、`pnpm install --frozen-lockfile`、B001 Node 验证器、PostgreSQL Official Image digest pull/run（`postgres --version` 精确 18.4）。
+  - `toolchain`：在 `ubuntu-24.04` 与 `ubuntu-26.04` 上验证精确 Go/Node/pnpm、`gofmt`、`go vet`、`go test`、`pnpm install --frozen-lockfile`、B001–B004 聚合验证器与 focused `check:runtime-shell`、PostgreSQL Official Image digest pull/run（`postgres --version` 精确 18.4）。
   - `supply-chain`：锁文件存在性与完整性、Action SHA pin、容器 digest pin、依赖清单/许可证覆盖（三层 PostgreSQL 许可模型机器校验 + 负向回归）、确定性 + SPDX 2.3/组件语义 SBOM 校验（生成两次 byte-identical 并输出 SHA-256；三层许可模型、组合关系（镜像 `CONTAINS` 主软件 / `GENERATED_FROM` 打包源）、精确 digest 语义校验与全部负向探针必须通过）、Go 漏洞扫描、`pnpm audit`、来源溯源元数据、无秘密/无真实模型网络配置扫描。
-- 全部 required jobs PASS 是 B001 候选进入验收的前提；不自动 deploy/publish。
+  - `storage-postgres`：使用 digest-pinned、loopback-only PostgreSQL 18.4 临时容器，硬启用 B003 storage 与 B004 Launcher 的完整集成和适用 race 测试；不触碰生产数据库。
+- 全部 required jobs PASS 是当前 Candidate 进入验收的前提；不自动 deploy/publish。
 
 ## 许可证清单
 
@@ -50,15 +51,17 @@
 | `golang.org/x/sync` | v0.17.0 | indirect | **`BSD-3-Clause`** |
 | `golang.org/x/text` | v0.29.0 | indirect | **`BSD-3-Clause`** |
 
-**精确集合模型**（B003 迭代 6a）：记录集合必须恰为这 18 个 identity——任何未登记的第三方身份（`unrecorded license record ids`）一律拒绝；SDK 记录必须携带真实 B002 元数据（版本 1.0.0、`selected_by_batch = AIPT-M0-B002`、B002 `verified_at`、LICENSE 证据），六个 Go 运行时记录必须携带真实 B003 元数据（版本/直接性/角色/B003 选择证据），伪装成 B001/B002 验证即失败；licenses.json **文件顶层** `selected_by_batch` 必须**精确锁定为 `AIPT-M0-B001`**（不可变 B001 基线选择器，绝不改写为 B003——B003 只存在于各 Go 运行时记录内部的 `selected_by_batch`）。基线健壮性：`records` 必须是**非空数组**、记录 **id 唯一**（重复 id 必须 FAIL）、18 个期望 identity 必须全部存在。验证器并对内存中的变异副本运行 **29 个许可证清单负向回归**（原 13 个全部保留：复合镜像错标 PostgreSQL/MIT、主软件改离 PostgreSQL、打包源改离 MIT、镜像记录 digest 删除/修改、记录 id 重复、关键 identity 记录删除、SDK 记录删除/错许可/错 kind/冒充 B001 验证、注入未登记第三方身份；B003 新增 7 个：pgx 记录删除/错许可/版本漂移/直接性翻转/冒充 B001 验证、x/text 错标 MIT、**licenses.json 顶层 selected_by_batch 漂移到 B003**；B003 security requalification 再增 9 个：**go 工具链记录版本漂回历史 1.26.5**、**go 记录安全重资格 provenance 被删除**、**go 记录公告集错误**、**go 记录安全重资格 previous_go_version 错误**、**go 记录安全重资格 current_go_version 错误**、**go 记录安全重资格 verified_at 错误**、**go 记录保留歧义 go_version 键**、**go 记录顶层 verified_at 不是 B003 时间（2026-08-20T04:16:01Z）**、**go 记录安全重资格对象多出额外键（闭合键集）**）——全部必须被拒绝；当关键 identity 缺失时，无法执行的探针会**记录明确 FAIL 并安全跳过**（绝不因 `find` 返回 undefined 而抛异常），磁盘文件从不被探针改写。
+**精确集合模型**（B003 迭代 6a，B004 保留）：记录集合必须恰为这 18 个 identity——任何未登记的第三方身份（`unrecorded license record ids`）一律拒绝；SDK 记录必须携带真实 B002 元数据，六个 Go 运行时记录必须携带真实 B003 元数据；licenses.json **文件顶层** `selected_by_batch` 必须精确锁定为不可变历史 `AIPT-M0-B001`，绝不改写为 B003/B004。验证器对内存变异副本运行 **30 个许可证清单负向回归**：完整保留 B003 的 29 个回归，并新增删除 B004“零新增第三方依赖 + 四个 runtime 路径 + 复用 B003 pgx 闭包”说明的探针；全部必须按正确原因被拒绝，磁盘文件从不被探针改写。
 
 **一方 pnpm 工作区模型（迭代 4）**：`pnpm-workspace.yaml` 声明 `packages/*`，`pnpm-lock.yaml` 的 importer 集合**恰为** `.` 与 `packages/adapter-sdk`，每个 importer 零依赖说明符（`<key>: {}`），`packages:` 区不存在（零第三方包）；工作区包必须与 licenses.json 的一方记录一一对应（id = 包名、version = package.json 版本、MIT）。内存变异负向探针证明：注入未登记 importer/包、删除已登记 SDK importer、向 importer 夹带依赖说明符、向 `packages:` 区夹带第三方包，全部按**其自身的正确原因**被拒绝。
 
 **Go 运行时闭包交叉校验（B003 迭代 6a）**：`go.mod` 的 require 集合必须**恰为**上述六个模块（精确版本、精确直接/间接标记——pgx 直接、其余五个 indirect；任何未知依赖/版本漂移/直接性翻转一律 FAIL；解析是**失败关闭的行状态扫描器**——绝非对块体的正则抽取：解析覆盖**每一个**合法 `require (...)` 块并接受 Go 允许的可选行首水平空白，但只有代码部分（`//` 注释之前、trim 之后）**恰为 `)`** 的行才能关闭块，`//` 注释里的括号永远不能关闭块（`// )` 之后夹带的第七个依赖同样被计数并拒绝）；任何带任意尾随 `//` 注释的合法 require 项都被解析（先剥离注释再解析模块/版本，间接性由 Go `// indirect` 标记判定，单行 require 不重复计数）；任何无法解析的顶层 require 指令或块内非注释行都是**解析错误并使门禁 FAIL**（绝不静默丢行）），且**绝不允许任何 `replace`/`exclude`/`retract` 依赖图覆盖指令**（图覆盖会把批准闭包重路由/隐藏，一律 FAIL；单行与块两种形式、含可选行首空白均被检出）；`go.sum` 必须为每个模块同时携带 **zip `h1:` 与 `/go.mod h1:`**，且**两个** base64 载荷都必须解码为 32 字节、其小写 hex **等于冻结的 h1 SHA-256 值**（被篡改但仍是合法 base64 的 h1 也会被拒）。**13 个 go.mod/go.sum 内存变异负向探针**（注入未知依赖、pgx 版本漂移、删除 pgx 直接 require、直接性翻转、删除 pgx zip h1、删除 pgx /go.mod h1、篡改 pgx h1、注入 replace 图覆盖、**第二个 require 块夹带第七个依赖**、**`// )` 注释括号行之后的第二个 require 块夹带第七个依赖**、**带普通尾随注释的 rogue 单行 require**、**带行首空白的 replace 图覆盖**、篡改 pgx /go.mod h1）全部必须按自身原因被拒。`tools/toolchain.lock.json` 的基线/digest 另有 **3 个负向探针**（顶层 `selected_by_batch` 漂移到 B003、multi-arch digest 漂移、**linux/amd64 platform digest 漂移——精确等值校验，绝非仅格式校验**），且锁检查失败后**绝不输出无条件成功**。**`policy.json` 保持不可变 B001 基线**：`selected_by_batch = AIPT-M0-B001`、规则集冻结、`current_third_party_application_runtime_dependencies = 0` 是 B001 时代的历史事实，**从不被改写**；当前运行时依赖数只记录在 `licenses.json` 的 `application_dependencies`（go=6/pnpm=0）。
 
-B001 的第三方应用运行时依赖为 **0**；B002 迭代 4 保持第三方依赖数 **0**（go.mod 无 require、pnpm-lock.yaml 恰为 `.` + `packages/adapter-sdk` 两个零依赖一方 importer、零第三方包区）；**B003 迭代 6a 首次引入第三方应用运行时依赖**：go=**6**（上述 pgx v5.10.0 闭包，1 直接 + 5 传递）、pnpm=**0**。**任何未来第三方依赖必须先进入该清单并获得显式批准记录**，否则 CI 门禁 FAIL（`unknown_license_blocks = true`）。当前不引入超出冻结设计的复杂许可证白名单。
+B001 的第三方应用运行时依赖为 **0**；B002 迭代 4 保持第三方依赖数 **0**；**B003 迭代 6a 首次引入第三方应用运行时依赖**：go=**6**（上述 pgx v5.10.0 闭包，1 直接 + 5 传递）、pnpm=**0**。**B004 不增加该集合**：四个 runtime 新区域只使用 Go 标准库与既有 B003 pgx 闭包，清单仍为 go=6/pnpm=0。任何未来第三方依赖必须先进入该清单并获得显式批准记录，否则 CI 门禁 FAIL。
 
 ## 确定性 SBOM
+
+**B004 当前身份**：生成器输出 `AIPT-M0-B004-supply-chain-sbom`，AIPT 根版本为 `M0-B004`，确定性 `created` 为 `2026-08-20T00:00:00Z`，内容寻址 namespace 为 `https://github.com/zyc14588/AIPT/spdx/aipt-m0-b004/<hash>`。包集合和依赖图仍精确为 B003 资格化的 18 个包；B004 没有新增第三方包。验证器保留 B003 的 30 个 SBOM 语义负向探针，并新增“重算 namespace 后仍拒绝 M0-B003 根版本”与“拒绝 prior B003 namespace family”两项（当前共 32 项），另保留 7 个 go.mod/go.sum 清单探针。下文对 `aipt-m0-b003` namespace 与 30 项探针的详细描述是不可变 B003 历史基线；上述 B004 身份对当前生成物优先适用。
 
 仓库自带无第三方依赖的 Node 标准库脚本 [../../scripts/ci/sbom/generate-sbom.mjs](../../scripts/ci/sbom/generate-sbom.mjs) 生成**确定性 SPDX 2.3 JSON**，覆盖：AIPT 根包、**一方工作区包 `@aipt/adapter-sdk`**（自有 SPDX 2.3 包：MIT declared/concluded、versionInfo `1.0.0`、npm purl `pkg:npm/%40aipt/adapter-sdk@1.0.0`、`PACKAGE_OF AIPT` 一方关系——**绝不**建模为 `DEV_TOOL_OF`）、**B003 迭代 6a 的六个第三方 Go 运行时模块**（精确已知 SPDX 许可——jackc 四模块 `MIT`、golang.org/x 两模块 `BSD-3-Clause`，**绝不 NOASSERTION**；golang purl；SHA-256 `checksumValue` 为 go.sum zip `h1:` base64 载荷解码出的 64 位小写 hex——Go dirhash H1 本身是 32 字节 SHA-256 摘要，SPDX 2.3 要求解码后的小写 hex 而非 base64 字符串）、CI Actions 固定 Commit、供应链临时扫描器/工具身份、工具链版本，以及 **PostgreSQL 三层许可模型与镜像 digest**：`PostgreSQL`（18.4 主软件，`PostgreSQL`）、`docker-library/postgres`（打包源，`MIT`）、`PostgreSQL Docker Official Image`（复合镜像，两个许可字段均为 `NOASSERTION`），组合关系为**精确三层来源模型**：镜像 `CONTAINS` 主软件（容器内真实组件）、镜像 `GENERATED_FROM` 打包源（打包源代码是镜像的构建输入而非镜像内容——镜像从不 CONTAINS 打包源）。**运行时依赖关系模型（B003 迭代 6a）**：`SPDXRef-AIPT DEPENDS_ON` pgx（唯一直接模块），pgx `DEPENDS_ON` 其余五个间接模块——六个运行时模块**绝不**建模为 `DEV_TOOL_OF`；其余工具/CI/基础设施包仍是 `DEV_TOOL_OF AIPT`。所有校验和按 SPDX 2.3 规范输出：算法大写标识 + **小写十六进制** `checksumValue`（SHA256=64 位、SHA512=128 位）；pnpm 的 SHA512 由锁定 SRI base64 载荷解码为 128 位小写 hex，**不带** `sha512-` 前缀。生成器在构建时对 go.mod/go.sum 做 fail-closed 交叉校验：require 集合必须恰为六个批准模块、h1 必须存在且可解码，任何漂移直接中止生成。
 
