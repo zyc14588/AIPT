@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/config/v1/aipt-config.schema.json",
+  "title": "AIPT shared config v1 canonical schema (AIPT-M0-B004, leaf 2)",
+  "description": "The single authoritative AIPT shared-config schema root (JSON Schema 2020-12), consumed by the Go service internal/config and shared with the Web UI and the CLI/Launcher (R7-Q001). Every object schema in this document sets additionalProperties=false recursively, so unknown fields fail closed at every level. The root is executable: schema is the frozen aipt.config/v1 marker, profile is exactly development|production (R7-Q007), database is required with a URI-form PostgreSQL DSN (whose database must equal the declared identity), an explicit database identity, an SQL namespace, and a positive bounded ping_timeout_ms, and evidence is required with an explicit namespace. Written against the explicit dependency-free subset implemented by scripts/ci/lib/json-schema.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profile",
+    "database",
+    "evidence"
+  ],
+  "properties": {
+    "schema": {
+      "title": "Configuration schema marker",
+      "description": "The frozen strict JSON object schema marker. Any other value fails closed via const equality.",
+      "const": "aipt.config/v1"
+    },
+    "profile": {
+      "title": "Configuration profile",
+      "description": "Exactly the two frozen profiles; development and production use independent databases and evidence namespaces (R7-Q007).",
+      "enum": [
+        "development",
+        "production"
+      ]
+    },
+    "database": {
+      "$ref": "#/$defs/database"
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence"
+    }
+  },
+  "$defs": {
+    "database": {
+      "title": "Database configuration",
+      "description": "The required database object. dsn is a URI-form PostgreSQL DSN (scheme postgres/postgresql, a host, and a database) whose database must equal the declared identity; identity is the explicit canonical database name; namespace is the SQL namespace (schema); ping_timeout_ms is a positive bounded integer.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dsn",
+        "identity",
+        "namespace",
+        "ping_timeout_ms"
+      ],
+      "properties": {
+        "dsn": {
+          "title": "URI-form PostgreSQL DSN",
+          "description": "The raw DSN is private: the Go consumer keeps it inside the database value and exposes it only through the launcher-only DSN accessor; every diagnostic rendering emits [REDACTED].",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "identity": {
+          "title": "Explicit database identity",
+          "description": "The canonical database name the DSN must name. Lowercase unquoted PostgreSQL identifier.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+        },
+        "namespace": {
+          "title": "SQL namespace",
+          "description": "The SQL namespace (schema) of the database. Lowercase unquoted PostgreSQL identifier.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+        },
+        "ping_timeout_ms": {
+          "title": "Ping timeout",
+          "description": "Positive bounded ping timeout in milliseconds. Values outside the inclusive range fail closed.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600000
+        }
+      }
+    },
+    "evidence": {
+      "title": "Evidence configuration",
+      "description": "The required evidence object with an explicit namespace. Development and production must use different evidence namespaces (R7-Q007).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace"
+      ],
+      "properties": {
+        "namespace": {
+          "title": "Evidence namespace",
+          "description": "Explicit evidence namespace: lowercase namespace identifier; dots, underscores, and hyphens are allowed as separators.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z][a-z0-9_]*([.-][a-z0-9_]+)*$"
+        }
+      }
+    }
+  }
+}
