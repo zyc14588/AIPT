@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B002.
+// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B003.
 //
 // Node.js standard library only (no third-party dependency). The same inputs
 // produce byte-identical output: fixed timestamps, sorted arrays, no
@@ -10,16 +10,16 @@
 // payload (the whole document minus documentNamespace) is canonically
 // serialized (sorted object keys) and SHA-256 hashed, and the 64 lowercase
 // hex characters become the namespace suffix under
-// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b002/. Any change to a
+// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003/. Any change to a
 // version-defining field therefore yields a different, version-unique
 // namespace; the historical static pre-R5 B001 namespace is never reused.
 //
 // Coverage: AIPT root package, the first-party workspace package
 // @aipt/adapter-sdk (B002 iteration 4, PACKAGE_OF AIPT — never a
-// DEV_TOOL_OF dependency), Go module direct/transitive deps, pnpm
-// direct/transitive deps, CI action fixed commits, supply-chain ephemeral
-// scanner/tool identities, toolchain versions, and the three-layer
-// PostgreSQL model (AIPT-M0-B001-R6):
+// DEV_TOOL_OF dependency), the six approved third-party Go runtime modules of
+// the pgx v5.10.0 closure (AIPT-M0-B003 iteration 6a), CI action fixed
+// commits, supply-chain ephemeral scanner/tool identities, toolchain
+// versions, and the three-layer PostgreSQL model (AIPT-M0-B001-R6):
 //   1. PostgreSQL 18.4 main software — its own package identity with
 //      licenseConcluded/licenseDeclared = SPDX short identifier PostgreSQL;
 //   2. docker-library/postgres packaging source — its own package identity
@@ -35,14 +35,43 @@
 // and the docker-library/postgres packaging source is the image's build
 // INPUT rather than its content — so the image GENERATED_FROM the packaging
 // source. An image never CONTAINS its own packaging sources.
+//
+// Go runtime dependency model (AIPT-M0-B003 iteration 6a): the six modules
+// are APPLICATION RUNTIME dependencies, never DEV_TOOL_OF packages. AIPT
+// DEPENDS_ON github.com/jackc/pgx/v5 (the single direct go.mod require), and
+// pgx DEPENDS_ON each of the five indirect modules. Every module carries its
+// exact known SPDX license (MIT for the jackc modules, BSD-3-Clause for the
+// golang.org/x modules), its golang purl, and a SHA-256 checksumValue that is
+// the lowercase-hex decode of the go.sum zip `h1:` base64 payload (the Go
+// dirhash H1 value is itself a 32-byte SHA-256 digest, so SPDX 2.3 requires
+// the decoded lowercase hex, never the base64 `h1:` string).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CREATED = '2026-08-17T00:00:00Z';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b002';
+const CREATED = '2026-08-19T00:00:00Z';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b003';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
+
+// The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
+// 6a), pinned in the generator and cross-checked against go.mod/go.sum so a
+// manifest drift fails generation instead of silently changing the SBOM.
+// gomodhex is the frozen SHA-256 (64 lowercase hex) that the go.sum
+// `<module> <version>/go.mod h1:` base64 payload must decode to (the zip h1
+// is derived separately at build time).
+const GO_RUNTIME_MODULES = [
+  { module: 'github.com/jackc/pgx/v5', version: 'v5.10.0', direct: true, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: '5614af814da34a58bca3702a20439326beeb670004515a381385e147de197ebd', gomodhex: '99a975b4118015f2c7bd9cda621efb612fde0ba217f4e59b455d50208334267e' },
+  { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
+  { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
+  { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
+  { module: 'golang.org/x/sync', version: 'v0.17.0', direct: false, license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: '97ad2738d323f65e5daeac3a8e584810b36ff48d00e0e16046c1bd936a13f548', gomodhex: 'f4a4c75e64a7a06aee2e9c058d5497d2534d03be42ca488c1026e8bcd4d9a862' },
+  { module: 'golang.org/x/text', version: 'v0.29.0', direct: false, license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: 'd6778db3dd30f58cc9f41a1cc5fb103472ae013e299208725dce27859eac26f9', gomodhex: 'ecc849380f420f6a99c8e2986b3c5d60c17ce4ec0f744afd8d3b41a4eef2747e' },
+];
+
+function goModuleSpdxId(module) {
+  return `SPDXRef-GoModule-${module.replace(/[^A-Za-z0-9-]/g, '-')}`;
+}
 
 // Canonical JSON: arrays in order, object keys sorted recursively, so the
 // serialized version-defining payload is independent of insertion order.
@@ -66,20 +95,158 @@ function readJson(repo, rel) {
   return JSON.parse(fs.readFileSync(path.join(repo, rel), 'utf8'));
 }
 
-function parseGoRequires(repo) {
-  const text = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
+// Parse the require directives of a go.mod text into {module, version,
+// indirect}. Both the single-line form (`require m v`) and the block form
+// (`require (...)` with `// indirect` markers) are supported, with the
+// optional leading horizontal whitespace accepted by Go honored before the
+// `require` keyword and inside blocks.
+//
+// The parser is a FAIL-CLOSED line-state scanner, never a regex over block
+// bodies: a block is opened by a line whose code portion (everything before a
+// `//` comment, trimmed) is `require (` and is closed ONLY by a line whose
+// code portion, trimmed, is exactly `)`. A `)` inside a `//` comment can
+// therefore never close a block, and a block that is never closed is a parse
+// error. Every non-comment line inside a block must parse as
+// `<module> <version>`, with an arbitrary trailing `//` comment allowed: the
+// comment is stripped before module/version parsing, and indirectness is read
+// from the Go `// indirect` marker on the original line. Any top-level
+// `require` directive (single-line form) or non-comment block entry that
+// cannot be parsed is a parse error: the function THROWS instead of silently
+// omitting lines, and every caller treats a parser error as a hard failure.
+// Multiple blocks, the single-line form, exact count/version/directness, and
+// the replace/exclude/retract override rejection are all preserved.
+function readGoModRequiresText(text) {
   const requires = [];
-  const block = /^require\s*\(([\s\S]*?)^\)/m.exec(text);
-  if (block) {
-    for (const line of block[1].split('\n')) {
-      const m = /^\s*([\w./\-]+)\s+(v[\w.+\-]+)/.exec(line);
-      if (m) requires.push({ path: m[1], version: m[2] });
+  const errors = [];
+  const stripComment = (line) => {
+    // Go line comments start at the first `//` outside code; module paths,
+    // versions, and pseudo-versions never contain `//`, so the first `//` is
+    // always the comment delimiter.
+    const idx = line.indexOf('//');
+    return idx === -1 ? line : line.slice(0, idx);
+  };
+  const isIndirect = (line) => /\/\/\s*indirect(\s|$)/.test(line);
+  const parseEntry = (raw, where) => {
+    const code = stripComment(raw).trim();
+    if (code === '') return null; // blank or comment-only line
+    const m = /^([^\s]+)\s+(v[\w.+\-]+)\s*$/.exec(code);
+    if (!m) {
+      errors.push(`${where}: cannot parse require entry ${JSON.stringify(raw.trim())}`);
+      return null;
+    }
+    return { module: m[1], version: m[2], indirect: isIndirect(raw) };
+  };
+  const lines = text.split('\n');
+  let inBlock = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    const raw = lines[i];
+    const code = stripComment(raw).trim();
+    if (inBlock) {
+      if (code === ')') {
+        inBlock = false;
+        continue;
+      }
+      const entry = parseEntry(raw, `line ${i + 1} (require block)`);
+      if (entry) requires.push(entry);
+      continue;
+    }
+    if (/^require\s*\($/.test(code)) {
+      inBlock = true;
+      continue;
+    }
+    if (/^require\b/.test(code)) {
+      const m = /^require\s+([^\s]+)\s+(v[\w.+\-]+)\s*$/.exec(code);
+      if (!m) {
+        errors.push(`line ${i + 1}: cannot parse single-line require directive ${JSON.stringify(raw.trim())}`);
+      } else {
+        requires.push({ module: m[1], version: m[2], indirect: isIndirect(raw) });
+      }
     }
   }
-  for (const m of text.matchAll(/^require\s+([\w./\-]+)\s+(v[\w.+\-]+)\s*$/gm)) {
-    requires.push({ path: m[1], version: m[2] });
-  }
+  if (inBlock) errors.push('unterminated require ( block: no closing line whose code portion is exactly ")"');
+  if (errors.length > 0) throw new Error(`go.mod require parse error(s): ${errors.join('; ')}`);
   return requires;
+}
+
+// A dependency-graph override directive (replace/exclude/retract) is present
+// in either its single-line form (`replace a => b v1.0.0`) or its block form
+// (`replace (` ... `)`), both with the optional leading horizontal whitespace
+// accepted by Go. The keyword must start the line (after whitespace), so a
+// comment or an unrelated line can never be misdetected as an override.
+function hasOverrideDirective(text, keyword) {
+  return new RegExp(`^[ \\t]*${keyword}\\s*(?:\\(|\\S)`, 'm').test(text);
+}
+
+// Read the require directives of the repo's go.mod (disk wrapper).
+function readGoModRequires(repo) {
+  const text = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
+  return readGoModRequiresText(text);
+}
+
+// Read one go.sum h1 base64 payload for a module@version from a go.sum text
+// and return its SHA-256 as 64 lowercase hex. kind is 'zip' (the module
+// archive `h1:`) or 'gomod' (the module's go.mod `h1:`). The Go dirhash H1
+// value is a 32-byte SHA-256 digest, so the SPDX 2.3 checksumValue is the
+// decoded lowercase hex — never the base64 `h1:` string. Throws when the
+// payload is missing or does not decode to 32 bytes.
+function goModuleH1HexFromText(goSumText, module, version, kind) {
+  const suffix = kind === 'gomod' ? '/go.mod' : '';
+  const re = new RegExp(`^${module.replace(/[.\\+]/g, '\\$&')}\\s+${version.replace(/[.\\+]/g, '\\$&')}${suffix}\\s+h1:([A-Za-z0-9+/=]+)$`, 'm');
+  const m = re.exec(goSumText);
+  if (!m) throw new Error(`go.sum missing ${kind === 'gomod' ? '/go.mod ' : ''}h1 for ${module} ${version}`);
+  const bytes = Buffer.from(m[1], 'base64');
+  if (bytes.length !== 32) throw new Error(`go.sum ${kind === 'gomod' ? '/go.mod ' : ''}h1 for ${module} ${version} decodes to ${bytes.length} bytes, want 32`);
+  const hex = bytes.toString('hex');
+  if (!/^[0-9a-f]{64}$/.test(hex)) throw new Error(`go.sum ${kind === 'gomod' ? '/go.mod ' : ''}h1 for ${module} ${version} is not 64 lowercase hex chars`);
+  return hex;
+}
+
+// Read the go.sum zip `h1:` base64 payload for one module@version from the
+// repo and return its SHA-256 as 64 lowercase hex characters.
+function goModuleH1Hex(repo, module, version) {
+  const text = fs.readFileSync(path.join(repo, 'go.sum'), 'utf8');
+  return goModuleH1HexFromText(text, module, version, 'zip');
+}
+
+// Fail-closed cross-check over in-memory go.mod/go.sum texts: go.mod must
+// require EXACTLY the six approved modules with exact versions and exact
+// direct/indirect markers and carry NO replace/exclude/retract
+// dependency-graph override directive; go.sum must carry the zip + /go.mod
+// h1 for each module with both payloads decoding to the frozen pinned
+// SHA-256 values. Any drift throws and aborts generation.
+function verifyGoClosureText({ goMod, goSum }) {
+  const requires = readGoModRequiresText(goMod);
+  const byModule = new Map(requires.map((r) => [r.module, r]));
+  if (requires.length !== GO_RUNTIME_MODULES.length) {
+    throw new Error(`go.mod require count must be exactly ${GO_RUNTIME_MODULES.length}, got ${requires.length}`);
+  }
+  for (const m of GO_RUNTIME_MODULES) {
+    const r = byModule.get(m.module);
+    if (!r) throw new Error(`go.mod missing required module ${m.module}`);
+    if (r.version !== m.version) throw new Error(`go.mod ${m.module} version drift: ${r.version} != ${m.version}`);
+    if (Boolean(r.indirect) !== !m.direct) throw new Error(`go.mod ${m.module} directness drift: expected ${m.direct ? 'direct' : 'indirect'}`);
+  }
+  const unknown = requires.filter((r) => !GO_RUNTIME_MODULES.some((m) => m.module === r.module));
+  if (unknown.length > 0) throw new Error(`go.mod unknown dependency outside the approved closure: ${unknown.map((r) => r.module).join(', ')}`);
+  const graphOverride = [];
+  if (hasOverrideDirective(goMod, 'replace')) graphOverride.push('replace');
+  if (hasOverrideDirective(goMod, 'exclude')) graphOverride.push('exclude');
+  if (hasOverrideDirective(goMod, 'retract')) graphOverride.push('retract');
+  if (graphOverride.length > 0) throw new Error(`go.mod carries dependency-graph override directive(s): ${graphOverride.join(', ')} (replace/exclude/retract are forbidden for the approved closure)`);
+  for (const m of GO_RUNTIME_MODULES) {
+    const zipHex = goModuleH1HexFromText(goSum, m.module, m.version, 'zip');
+    if (zipHex !== m.h1hex) throw new Error(`go.sum ${m.module} ${m.version} zip h1 decodes to ${zipHex}, expected pinned SHA-256 ${m.h1hex}`);
+    const gomodHex = goModuleH1HexFromText(goSum, m.module, m.version, 'gomod');
+    if (gomodHex !== m.gomodhex) throw new Error(`go.sum ${m.module} ${m.version} /go.mod h1 decodes to ${gomodHex}, expected pinned SHA-256 ${m.gomodhex}`);
+  }
+}
+
+// Fail-closed cross-check of the repo's go.mod/go.sum (reads the on-disk
+// files and delegates to the pure verifyGoClosureText).
+function verifyGoClosure(repo) {
+  const goMod = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
+  const goSum = fs.readFileSync(path.join(repo, 'go.sum'), 'utf8');
+  verifyGoClosureText({ goMod, goSum });
 }
 
 function parsePnpmPackages(repo) {
@@ -122,7 +289,8 @@ export function buildSbom(repoRoot) {
   const repo = path.resolve(repoRoot);
   const toolchain = readJson(repo, 'tools/toolchain.lock.json');
   const actions = readJson(repo, 'tools/ci-actions.lock.json').actions;
-  const goRequires = parseGoRequires(repo);
+  verifyGoClosure(repo);
+  const goModules = GO_RUNTIME_MODULES.map((m) => ({ ...m, h1hex: goModuleH1Hex(repo, m.module, m.version) }));
   const pnpmPackages = parsePnpmPackages(repo);
   const govulncheck = toolchain.tooling.govulncheck;
   const pg = toolchain.toolchains.postgresql;
@@ -132,7 +300,7 @@ export function buildSbom(repoRoot) {
       name: 'AIPT',
       SPDXID: 'SPDXRef-AIPT',
       downloadLocation: 'https://github.com/zyc14588/AIPT',
-      versionInfo: 'M0-B002',
+      versionInfo: 'M0-B003',
       licenseConcluded: 'MIT',
       licenseDeclared: 'MIT',
       copyrightText: 'Copyright (c) 2026 AIPT contributors',
@@ -140,8 +308,11 @@ export function buildSbom(repoRoot) {
       comment:
         'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.5), private npm root package aipt@0.0.0, ' +
         `and the first-party workspace package @aipt/adapter-sdk@1.0.0 (packages/adapter-sdk, PACKAGE_OF AIPT). ` +
-        `B002 third-party runtime dependencies: go=${goRequires.length}, pnpm=${pnpmPackages.length} ` +
-        '(both expected to be 0; any future dependency must first enter tools/supply-chain/licenses.json).',
+        `B003 third-party runtime dependencies: go=${goModules.length}, pnpm=${pnpmPackages.length} ` +
+        `(six approved Go runtime modules: pgx v5.10.0 direct + five transitive, recorded in ` +
+        `tools/supply-chain/licenses.json with exact versions/licenses/directness). ` +
+        `SPDXRef-AIPT DEPENDS_ON ${goModuleSpdxId('github.com/jackc/pgx/v5')} — the pgx closure is an application ` +
+        'runtime dependency, never a DEV_TOOL_OF package.',
       externalRefs: [
         purl('golang', 'github.com/zyc14588/AIPT'),
         purl('npm', 'aipt@0.0.0'),
@@ -274,6 +445,37 @@ export function buildSbom(repoRoot) {
     },
   ];
 
+  // The six approved third-party Go runtime modules of the pgx v5.10.0
+  // closure: exact known SPDX licenses (never NOASSERTION), golang purls,
+  // and SHA-256 checksumValues decoded from the go.sum zip h1 base64 payload.
+  for (const m of goModules) {
+    const spdxId = goModuleSpdxId(m.module);
+    const role = m.direct ? 'direct' : 'transitive';
+    packages.push({
+      name: m.module,
+      SPDXID: spdxId,
+      downloadLocation: 'NOASSERTION',
+      versionInfo: m.version,
+      licenseConcluded: m.license,
+      licenseDeclared: m.license,
+      copyrightText: m.copyright,
+      filesAnalyzed: false,
+      checksums: [
+        {
+          algorithm: 'SHA256',
+          checksumValue: m.h1hex,
+        },
+      ],
+      externalRefs: [purl('golang', `${m.module}@${m.version}`)],
+      comment:
+        `third-party Go application runtime dependency (${role}; go.mod ${m.direct ? 'require' : 'require // indirect'} ` +
+        `${m.module} ${m.version}); SPDX license ${m.license}; go.sum zip h1 SHA-256 checksum ` +
+        `(SPDX 2.3 lowercase hex decode of the h1 base64 payload); ` +
+        `${m.direct ? `SPDXRef-AIPT DEPENDS_ON ${spdxId}` : `SPDXRef-GoModule-github-com-jackc-pgx-v5 DEPENDS_ON ${spdxId}`} — ` +
+        'never classified as DEV_TOOL_OF.',
+    });
+  }
+
   for (const action of actions) {
     packages.push({
       name: action.repository,
@@ -285,19 +487,6 @@ export function buildSbom(repoRoot) {
       copyrightText: `${action.repository} contributors`,
       filesAnalyzed: false,
       sourceInfo: `CI action pinned at commit ${action.resolved_commit_sha}`,
-    });
-  }
-
-  for (const dep of goRequires) {
-    packages.push({
-      name: dep.path,
-      SPDXID: `SPDXRef-GoDep-${dep.path.replace(/[^A-Za-z0-9-]/g, '-')}`,
-      downloadLocation: 'NOASSERTION',
-      versionInfo: dep.version,
-      licenseConcluded: 'NOASSERTION',
-      licenseDeclared: 'NOASSERTION',
-      copyrightText: 'NOASSERTION',
-      filesAnalyzed: false,
     });
   }
 
@@ -315,6 +504,11 @@ export function buildSbom(repoRoot) {
   }
 
   packages.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+
+  const pgxSpdxId = goModuleSpdxId('github.com/jackc/pgx/v5');
+  // Runtime dependency packages (the first-party SDK and the six Go runtime
+  // modules) never receive a DEV_TOOL_OF relationship to AIPT.
+  const nonDevTool = new Set(['SPDXRef-AIPT', SDK_SPDXID, ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module))]);
 
   const relationships = [
     {
@@ -341,8 +535,22 @@ export function buildSbom(repoRoot) {
       relationshipType: 'GENERATED_FROM',
       relatedSpdxElement: 'SPDXRef-docker-library-postgres',
     },
+    {
+      // Application runtime dependency: AIPT DEPENDS_ON the direct pgx module.
+      spdxElementId: 'SPDXRef-AIPT',
+      relationshipType: 'DEPENDS_ON',
+      relatedSpdxElement: pgxSpdxId,
+    },
+    // pgx DEPENDS_ON each of the five indirect modules of its closure.
+    ...GO_RUNTIME_MODULES
+      .filter((m) => !m.direct)
+      .map((m) => ({
+        spdxElementId: pgxSpdxId,
+        relationshipType: 'DEPENDS_ON',
+        relatedSpdxElement: goModuleSpdxId(m.module),
+      })),
     ...packages
-      .filter((p) => p.SPDXID !== 'SPDXRef-AIPT' && p.SPDXID !== SDK_SPDXID)
+      .filter((p) => !nonDevTool.has(p.SPDXID))
       .map((p) => ({
         spdxElementId: p.SPDXID,
         relationshipType: 'DEV_TOOL_OF',
@@ -354,13 +562,16 @@ export function buildSbom(repoRoot) {
     spdxVersion: 'SPDX-2.3',
     dataLicense: 'CC0-1.0',
     SPDXID: 'SPDXRef-DOCUMENT',
-    name: 'AIPT-M0-B002-supply-chain-sbom',
+    name: 'AIPT-M0-B003-supply-chain-sbom',
     creationInfo: {
       created: CREATED,
-      creators: ['Tool: AIPT-M0-B002 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
+      creators: ['Tool: AIPT-M0-B003 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
       comment:
         'Deterministic SBOM: identical inputs produce byte-identical output (CI generates twice and compares). ' +
         'The first-party workspace package @aipt/adapter-sdk is modeled as PACKAGE_OF AIPT (never DEV_TOOL_OF). ' +
+        'The six approved pgx v5.10.0 Go runtime modules are modeled as application runtime dependencies: ' +
+        'AIPT DEPENDS_ON github.com/jackc/pgx/v5 and pgx DEPENDS_ON the five indirect modules (never DEV_TOOL_OF). ' +
+        'Go module checksumValues are the SPDX 2.3 lowercase-hex decodes of the go.sum zip h1 base64 payloads. ' +
         'Dynamic source provenance is attached separately via scripts/ci/provenance.mjs.',
     },
     packages,
@@ -376,6 +587,101 @@ export function buildSbom(repoRoot) {
   return Buffer.from(`${JSON.stringify(doc, null, 2)}\n`, 'utf8');
 }
 
+// In-memory closure self-check: proves the generator's own fail-closed
+// go.mod/go.sum cross-check rejects every enumerated drift on mutated copies
+// of the real manifests (the on-disk files are never modified). Runs only in
+// main mode, immediately before generation.
+function runClosureSelfCheck(repo) {
+  const goMod = fs.readFileSync(path.join(repo, 'go.mod'), 'utf8');
+  const goSum = fs.readFileSync(path.join(repo, 'go.sum'), 'utf8');
+  const cases = [
+    {
+      label: 'exact pgx v5.10.0 closure PASS',
+      expectRejected: false,
+      run: () => verifyGoClosureText({ goMod, goSum }),
+    },
+    {
+      label: 'pgx missing FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: goMod.replace('require github.com/jackc/pgx/v5 v5.10.0\n\n', ''), goSum }),
+    },
+    {
+      label: 'pgx wrong version FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: goMod.replace('github.com/jackc/pgx/v5 v5.10.0', 'github.com/jackc/pgx/v5 v5.9.0'), goSum }),
+    },
+    {
+      label: 'extra direct dependency FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: `${goMod}\nrequire example.com/rogue v1.0.0\n`, goSum }),
+    },
+    {
+      label: 'replace graph override FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: `${goMod}\nreplace github.com/jackc/pgx/v5 => github.com/jackc/pgx/v5 v5.9.0\n`, goSum }),
+    },
+    {
+      label: 'seventh dependency hidden in a second require block FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: `${goMod}\nrequire (\n\texample.com/rogue v1.0.0\n)\n`, goSum }),
+    },
+    {
+      label: 'seventh dependency hidden after a comment-paren "// )" line in a second require block FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: `${goMod}\nrequire (\n\t// )\n\texample.com/rogue v1.0.0\n)\n`, goSum }),
+    },
+    {
+      label: 'rogue single-line require with an ordinary trailing comment FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: `${goMod}\nrequire example.com/rogue v1.0.0 // ordinary comment\n`, goSum }),
+    },
+    {
+      label: 'replace graph override with leading whitespace FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({ goMod: `${goMod}\n\treplace github.com/jackc/pgx/v5 => github.com/jackc/pgx/v5 v5.9.0\n`, goSum }),
+    },
+    {
+      label: 'zip h1 tampered FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({
+        goMod,
+        goSum: goSum.replace('github.com/jackc/pgx/v5 v5.10.0 h1:VhSvgU2jSli8o3AqIEOTJr7rZwAEUVo4E4XhR94Zfr0=', 'github.com/jackc/pgx/v5 v5.10.0 h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='),
+      }),
+    },
+    {
+      label: '/go.mod h1 removed FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({
+        goMod,
+        goSum: goSum.replace(/^github\.com\/jackc\/pgx\/v5 v5\.10\.0\/go\.mod h1:[^\n]+\n/m, ''),
+      }),
+    },
+    {
+      label: '/go.mod h1 tampered FAIL',
+      expectRejected: true,
+      run: () => verifyGoClosureText({
+        goMod,
+        goSum: goSum.replace('github.com/jackc/pgx/v5 v5.10.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=', 'github.com/jackc/pgx/v5 v5.10.0/go.mod h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='),
+      }),
+    },
+  ];
+  const failures = [];
+  for (const c of cases) {
+    let rejected = false;
+    try {
+      c.run();
+    } catch (err) {
+      rejected = true;
+    }
+    const good = c.expectRejected ? rejected : !rejected;
+    if (!good) failures.push(c.label);
+  }
+  if (failures.length > 0) {
+    throw new Error(`generator closure self-check FAILED: ${failures.join('; ')}`);
+  }
+  process.stderr.write(`generator closure self-check PASS: ${cases.length} in-memory cases (1 exact closure + ${cases.length - 1} rejected drifts)\n`);
+}
+
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const args = {};
@@ -388,7 +694,9 @@ if (isMain) {
       i += 1;
     }
   }
-  const out = buildSbom(args.repo || process.cwd());
+  const repo = args.repo || process.cwd();
+  runClosureSelfCheck(repo);
+  const out = buildSbom(repo);
   if (args.out) {
     fs.writeFileSync(args.out, out);
     process.stdout.write(`SBOM written: ${args.out} (${out.length} bytes)\n`);

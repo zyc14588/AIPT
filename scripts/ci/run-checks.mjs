@@ -1,8 +1,13 @@
 #!/usr/bin/env node
-// B002 validator suite entry (`pnpm run check`).
+// B003 validator suite entry (`pnpm run check`).
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
+// The report schema and task_id are B003 (AIPT-M0-B003 construction
+// IN_PROGRESS): the report is an under-construction validator run, never a
+// merge/closeout claim. Every pre-B003 validator (B001 foundation gates,
+// B002 protocol/adapter gates) is retained alongside the B003 storage and
+// supply-chain/SBOM evolutions.
 import path from 'node:path';
 import { run as runStatus } from './validate/status-transition.mjs';
 import { run as runDefer } from './validate/defer-016.mjs';
@@ -12,6 +17,7 @@ import { run as runTree } from './validate/tree-integrity.mjs';
 import { run as runRetro } from './validate/b000-retro.mjs';
 import { run as runSupplyChain } from './validate/supply-chain.mjs';
 import { run as runSbom } from './validate/sbom.mjs';
+import { run as runStorage } from './validate/storage.mjs';
 import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
 import { run as runProtocol } from './validate/protocol-assets.mjs';
 import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
@@ -28,14 +34,19 @@ const checks = await Promise.all([
   runRetro(ctx),
   runSupplyChain(ctx),
   runSbom(ctx),
+  runStorage(ctx),
   runStandalone(ctx),
   runAdapterSdk(ctx),
 ]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
 const report = {
-  schema: 'aipt.public.b002-validator-run/v1',
+  schema: 'aipt.public.b003-validator-run/v1',
   task_id: CURRENT_BATCH,
+  // AIPT-M0-B003 is under construction (IN_PROGRESS, GLOBAL_WIP = 1). This
+  // report carries B003 task metadata but is explicitly NOT a closeout: the
+  // batch is not accepted or merged until the controller closes it.
+  note: 'AIPT-M0-B003 construction IN_PROGRESS — validator-run report, not a merge/closeout claim',
   repo: ctx.repo,
   result,
   checks,

@@ -3,9 +3,9 @@
   "selected_by_batch": "AIPT-M0-B001",
   "generated_at": "2026-08-17",
   "application_dependencies": {
-    "go_runtime_third_party_modules": 0,
+    "go_runtime_third_party_modules": 6,
     "pnpm_runtime_third_party_packages": 0,
-    "note": "B001 introduced no third-party application runtime dependency (go.mod has zero require entries; pnpm-lock.yaml records only the private root package). B002 iteration 4 registers the first-party dependency-free workspace package @aipt/adapter-sdk (packages/adapter-sdk, zero dependency specifiers) and keeps both third-party dependency counts at zero. Any future dependency must first be added to records below and receive explicit approval."
+    "note": "B001 introduced no third-party application runtime dependency; B002 iteration 4 registered the first-party dependency-free workspace package @aipt/adapter-sdk (packages/adapter-sdk, zero dependency specifiers) and kept both third-party dependency counts at zero. AIPT-M0-B003 iteration 6a qualifies the exact pgx v5.10.0 Go runtime closure required by internal/storage/postgres: go.mod direct github.com/jackc/pgx/v5 v5.10.0 plus five indirect modules (github.com/jackc/pgpassfile v1.0.0, github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761, github.com/jackc/puddle/v2 v2.2.2 — MIT; golang.org/x/sync v0.17.0, golang.org/x/text v0.29.0 — BSD-3-Clause), recorded below with exact versions, roles, directness, and B003 selection/verification evidence (go=6). pnpm third-party packages stay at 0. Any future dependency must first be added to records below and receive explicit approval."
   },
   "records": [
     {
@@ -109,6 +109,72 @@
       "version": "v1.7.0",
       "evidence": "LICENSE at go.googlesource.com/vuln (Copyright 2009 The Go Authors)",
       "verified_at": "2026-08-16T06:51:41Z"
+    },
+    {
+      "id": "github.com/jackc/pgx/v5",
+      "kind": "third_party_go_runtime",
+      "license": "MIT",
+      "version": "v5.10.0",
+      "direct": true,
+      "role": "runtime_dependency",
+      "selected_by_batch": "AIPT-M0-B003",
+      "evidence": "github.com/jackc/pgx/v5 v5.10.0: direct Go runtime dependency of internal/storage/postgres (pgx v5 driver + pgxpool, require in go.mod); MIT license at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
+      "verified_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "github.com/jackc/pgpassfile",
+      "kind": "third_party_go_runtime",
+      "license": "MIT",
+      "version": "v1.0.0",
+      "direct": false,
+      "role": "runtime_dependency",
+      "selected_by_batch": "AIPT-M0-B003",
+      "evidence": "github.com/jackc/pgpassfile v1.0.0: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect); MIT license at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
+      "verified_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "github.com/jackc/pgservicefile",
+      "kind": "third_party_go_runtime",
+      "license": "MIT",
+      "version": "v0.0.0-20240606120523-5a60cdf6a761",
+      "direct": false,
+      "role": "runtime_dependency",
+      "selected_by_batch": "AIPT-M0-B003",
+      "evidence": "github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect); MIT license at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
+      "verified_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "github.com/jackc/puddle/v2",
+      "kind": "third_party_go_runtime",
+      "license": "MIT",
+      "version": "v2.2.2",
+      "direct": false,
+      "role": "runtime_dependency",
+      "selected_by_batch": "AIPT-M0-B003",
+      "evidence": "github.com/jackc/puddle/v2 v2.2.2: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect, connection pool); MIT license at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
+      "verified_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "golang.org/x/sync",
+      "kind": "third_party_go_runtime",
+      "license": "BSD-3-Clause",
+      "version": "v0.17.0",
+      "direct": false,
+      "role": "runtime_dependency",
+      "selected_by_batch": "AIPT-M0-B003",
+      "evidence": "golang.org/x/sync v0.17.0: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect); BSD-3-Clause (Copyright 2009 The Go Authors) at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
+      "verified_at": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "golang.org/x/text",
+      "kind": "third_party_go_runtime",
+      "license": "BSD-3-Clause",
+      "version": "v0.29.0",
+      "direct": false,
+      "role": "runtime_dependency",
+      "selected_by_batch": "AIPT-M0-B003",
+      "evidence": "golang.org/x/text v0.29.0: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect); BSD-3-Clause (Copyright 2009 The Go Authors) at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
+      "verified_at": "2026-08-19T00:00:00Z"
     }
   ]
 }

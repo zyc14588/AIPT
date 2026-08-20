@@ -165,6 +165,11 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/storage.mjs',
   'scripts/ci/validate/supply-chain.mjs',
   'scripts/ci/validate/sbom.mjs',
+  // AIPT-M0-B003-SCOPE-EXPANSION-001: the exact additional B003 path that
+  // lets this iteration evolve the toolchain-lock gate from the historical
+  // B001 zero-Go-dependency bootstrap rule to the approved pgx v5.10.0
+  // closure. Exact path only — no glob is introduced.
+  'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
   'docs/supply-chain/README.md',
