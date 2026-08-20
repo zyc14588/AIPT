@@ -306,7 +306,7 @@ export function buildSbom(repoRoot) {
       copyrightText: 'Copyright (c) 2026 AIPT contributors',
       filesAnalyzed: false,
       comment:
-        'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.5), private npm root package aipt@0.0.0, ' +
+        'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.6 — B003 security requalification), private npm root package aipt@0.0.0, ' +
         `and the first-party workspace package @aipt/adapter-sdk@1.0.0 (packages/adapter-sdk, PACKAGE_OF AIPT). ` +
         `B003 third-party runtime dependencies: go=${goModules.length}, pnpm=${pnpmPackages.length} ` +
         `(six approved Go runtime modules: pgx v5.10.0 direct + five transitive, recorded in ` +

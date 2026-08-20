@@ -93,7 +93,7 @@
 
 - 需要某条决定的原文语义时，在 [registry/decisions.json](registry/decisions.json) 中按 `decision_id` 查找。
 - `REFINED`/`SUPERSEDED` 决定的当前含义见 [SUPERSEDED_DECISIONS.md](SUPERSEDED_DECISIONS.md) 与 [registry/supersessions.json](registry/supersessions.json)。
-- 延期参数见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)：`DEFER-016` 已 `RESOLVED`（Go 1.26.5 / Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）；其余 15 项（如 `DEFER-001`）尚未冻结。
+- 延期参数见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)：`DEFER-016` 已 `RESOLVED`（`resolved_by_batch = AIPT-M0-B001`；当前 Go 1.26.6 为 B003 安全重资格——理由 reachable standard-library vulnerabilities、触发公告 GO-2026-6090 / GO-2026-6088 / GO-2026-5972——Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4 不变，完整材料见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)）；其余 15 项（如 `DEFER-001`）尚未冻结。
 
 ## 相邻文档
 

@@ -85,14 +85,69 @@ export const BASE_COMMIT = B002_CLOSEOUT.commit;
 export const BASE_TREE = B002_CLOSEOUT.tree;
 
 export const TOOLCHAIN = {
-  go: '1.26.5',
+  go: '1.26.6',
   node: '24.19.0',
   pnpm: '11.4.0',
   postgresql: '18.4',
 };
 
 export const GO_LINUX_AMD64_SHA256 =
-  '5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053';
+  '708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89';
+
+// Exact official Go 1.26.6 security-requalification identity (AIPT-M0-B003
+// security toolchain requalification, leaf B003): official stable release
+// go1.26.6 dated 2026-08-13, official release index, linux/amd64 archive and
+// SHA-256 (independently recomputed), official upstream tag go1.26.6 commit,
+// official release history and security announcement.
+export const GO_SECURITY_REQUALIFICATION = {
+  version: '1.26.6',
+  // The B001-qualified Go this B003 security requalification supersedes as
+  // the CURRENT identity (equals GO_INITIAL_QUALIFICATION.go_version — an
+  // explicit historical B001 fact, never rewritten).
+  previous_go_version: '1.26.5',
+  // Mandated UTC verification time for the B003 security requalification.
+  verified_at: '2026-08-20T04:16:01Z',
+  // The exact frozen Go source_verification method recorded in
+  // tools/toolchain.lock.json (official go.dev release index + locally
+  // compared and independently recomputed linux/amd64 archive sha256, the
+  // official stable release date, the official upstream tag commit, and the
+  // cross-referenced official release history + security announcement). The
+  // toolchain-lock validator requires this exact method string and the exact
+  // {method, verified_at} key set, never a looser match.
+  source_verification_method:
+    'official go.dev release index (stable=true) + linux/amd64 archive sha256 compared locally and independently recomputed; official release go1.26.6 stable dated 2026-08-13; official upstream tag go1.26.6 commit 1ea5a71ad8ceb7b9f16b4b6f8ea4739a4327dd6e; official release history + security announcement cross-referenced',
+  channel: 'stable',
+  release_index: 'https://go.dev/dl/?mode=json&include=all',
+  release_status: 'stable',
+  release_date: '2026-08-13',
+  release_history: 'https://go.dev/doc/devel/release#go1.26.6',
+  security_announcement: 'https://groups.google.com/g/golang-announce/c/94pEornpRlI',
+  upstream_tag: 'go1.26.6',
+  upstream_commit: '1ea5a71ad8ceb7b9f16b4b6f8ea4739a4327dd6e',
+  archive_filename: 'go1.26.6.linux-amd64.tar.gz',
+  archive_url: 'https://go.dev/dl/go1.26.6.linux-amd64.tar.gz',
+  archive_sha256: GO_LINUX_AMD64_SHA256,
+  expected_version_output: 'go version go1.26.6 linux/amd64',
+  reason: 'reachable standard-library vulnerabilities',
+  officially_fixed_in: '1.26.6',
+};
+
+// Exact trigger advisory set, each officially fixed in Go 1.26.6.
+export const GO_SECURITY_ADVISORIES = [
+  { id: 'GO-2026-6090', package: 'crypto/tls' },
+  { id: 'GO-2026-6088', package: 'encoding/xml' },
+  { id: 'GO-2026-5972', package: 'encoding/asn1' },
+];
+
+// The historical B001 initial qualification (Go 1.26.5) that this B003
+// security requalification supersedes as the CURRENT Go identity. Explicit
+// B001 historical facts are retained and never rewritten.
+export const GO_INITIAL_QUALIFICATION = {
+  batch: 'AIPT-M0-B001',
+  go_version: '1.26.5',
+  reason: 'B001 exact-toolchain supply-chain qualification (froze DEFER-016)',
+  archive_sha256: '5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053',
+};
 export const NODE_LINUX_X64_SHA256 =
   '14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647';
 export const PNPM_REGISTRY_INTEGRITY =
@@ -150,16 +205,24 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
 // change, and the scope gate is never disabled.
 export const ALLOWED_PATHS = [
   'README.md',
+  '.go-version',
   'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/README.md',
+  'docs/authority/DECISION_MATRIX.md',
+  'docs/authority/DEFERRED_PARAMETERS.md',
+  'docs/authority/registry/deferred-parameters.json',
   'docs/authority/registry/project-status.json',
   'docs/storage/**',
+  'docs/protocol/README.md',
   'package.json',
   'go.mod',
   'go.sum',
   'internal/storage/postgres/**',
+  'internal/toolchainsmoke/toolchainsmoke_test.go',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
   'scripts/ci/validate/storage.mjs',
@@ -172,6 +235,8 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
   'docs/supply-chain/README.md',
   '.github/workflows/ci.yml',
 ];
@@ -179,12 +244,17 @@ export const ALLOWED_PATHS = [
 // Forbidden prefixes for the CURRENT B003 iteration (non-conflicting
 // historical frozen paths retained). B003 admits go.mod/go.sum and the
 // storage paths via the exact allowed-path list above, so go.mod/go.sum are
-// NOT forbidden; the frozen B001 supply-chain artifacts (policy.json,
-// toolchain/action locks) stay mechanically blocked. The B002-era
-// adapter/protocol paths are read-only for B003 and are blocked by exact
-// prefix: packages/, schemas/protocol/, testdata/protocol/, internal/
-// protocol/, plus the prohibited cmd/, runtime/, api/ implementations and
-// the frozen docs/architecture|security|evidence|integration/ documents.
+// NOT forbidden; the frozen B001 supply-chain artifacts (policy.json) stay
+// mechanically blocked. tools/toolchain.lock.json and
+// tools/ci-actions.lock.json moved OUT of this list in the B003 security
+// requalification iteration: both are now admitted by exact literal in
+// ALLOWED_PATHS (the toolchain lock records the Go 1.26.6 security
+// requalification; the action lock synchronizes its setup-go purpose), so no
+// broad glob is introduced. The B002-era adapter/protocol paths are read-only
+// for B003 and are blocked by exact prefix: packages/, schemas/protocol/,
+// testdata/protocol/, internal/protocol/, plus the prohibited cmd/, runtime/,
+// api/ implementations and the frozen docs/architecture|security|evidence|
+// integration/ documents.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'cmd/',
@@ -202,18 +272,17 @@ export const FORBIDDEN_PREFIXES = [
   'internal/protocol/',
   'LICENSE',
   'tools/supply-chain/policy.json',
-  'tools/toolchain.lock.json',
-  'tools/ci-actions.lock.json',
 ];
 
 // Frozen authority registries: byte-for-byte immutability is enforced
-// against the accepted main base. Deferred parameters are frozen for the
-// B003 iteration as well (DEFER-016 stays RESOLVED with the exact B001
-// toolchain qualification; the other 15 stay open).
+// against the accepted main base. decisions.json and supersessions.json are
+// fully frozen. deferred-parameters.json moved OUT of this list in the B003
+// security requalification iteration: its DEFER-016 record is under exact
+// controlled evolution (current Go 1.26.6 + security provenance) while
+// DEFER-001..DEFER-015 stay byte-semantically unchanged from the base.
 export const FROZEN_REGISTRY_PATHS = [
   'docs/authority/registry/decisions.json',
   'docs/authority/registry/supersessions.json',
-  'docs/authority/registry/deferred-parameters.json',
 ];
 
 export const FROZEN_DECISION_PATHS = [

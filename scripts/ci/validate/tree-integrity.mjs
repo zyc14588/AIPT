@@ -4,7 +4,7 @@
 // tree (including the executable scripts/ci sources themselves), plus a
 // temporary-fixture regression proving the hygiene scan really covers .mjs
 // files under a scripts/ci-shaped path. The imported pathMatchesAllowed is
-// additionally regression-probed in-process (48 pure string probes) against
+// additionally regression-probed in-process (55 pure string probes) against
 // the hard-coded scope literals.
 //
 // Markdown rules for B003: no brittle fixed total document count (later
@@ -28,23 +28,37 @@ import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib
 import { git, runAsMain } from '../lib/cli.mjs';
 
 // Independent literal self-anchors for the B003 per-iteration scope: the
-// exact ordered 21-path B003 allowlist and the exact ordered 18-entry
+// exact ordered 31-path B003 allowlist and the exact ordered 16-entry
 // forbidden-prefix list, hard-coded here and compared against the imported
 // constants BEFORE any candidate scope is evaluated. Drifting constants.mjs
 // together with the candidate can therefore never make a scope change pass
-// silently.
+// silently. The B003 security-requalification iteration admits the Go
+// identity pins (.go-version, tools/toolchain.lock.json, tools/ci-actions
+// .lock.json), the controlled DEFER-016 registry + deferred-parameters
+// human doc, the defer-016 validator, and the four stale-reference
+// synchronization paths (docs/authority/README.md, docs/protocol/README.md,
+// internal/toolchainsmoke/toolchainsmoke_test.go, tools/ci-actions.lock.json)
+// by exact literal only — no broad glob is introduced.
 const ALLOWED_PATHS_LITERAL = [
   'README.md',
+  '.go-version',
   'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/README.md',
+  'docs/authority/DECISION_MATRIX.md',
+  'docs/authority/DEFERRED_PARAMETERS.md',
+  'docs/authority/registry/deferred-parameters.json',
   'docs/authority/registry/project-status.json',
   'docs/storage/**',
+  'docs/protocol/README.md',
   'package.json',
   'go.mod',
   'go.sum',
   'internal/storage/postgres/**',
+  'internal/toolchainsmoke/toolchainsmoke_test.go',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
   'scripts/ci/validate/storage.mjs',
@@ -55,6 +69,8 @@ const ALLOWED_PATHS_LITERAL = [
   'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
   'docs/supply-chain/README.md',
   '.github/workflows/ci.yml',
 ];
@@ -76,16 +92,16 @@ const FORBIDDEN_PREFIXES_LITERAL = [
   'internal/protocol/',
   'LICENSE',
   'tools/supply-chain/policy.json',
-  'tools/toolchain.lock.json',
-  'tools/ci-actions.lock.json',
 ];
 
 // Independent ordered literal for the frozen authority registries, hard-coded
 // here and compared against the imported FROZEN_REGISTRY_PATHS before probes.
+// decisions.json and supersessions.json stay fully frozen; deferred-parameters
+// .json moved out of the frozen set in the B003 security-requalification
+// iteration because its DEFER-016 record is under exact controlled evolution.
 const FROZEN_REGISTRY_PATHS_LITERAL = [
   'docs/authority/registry/decisions.json',
   'docs/authority/registry/supersessions.json',
-  'docs/authority/registry/deferred-parameters.json',
 ];
 
 // One representative path per FORBIDDEN_PREFIXES_LITERAL entry (directory
@@ -107,8 +123,6 @@ const FORBIDDEN_PREFIX_REPRESENTATIVES = [
   'internal/protocol/types.go',
   'LICENSE',
   'tools/supply-chain/policy.json',
-  'tools/toolchain.lock.json',
-  'tools/ci-actions.lock.json',
 ];
 
 export function run(ctx) {
@@ -146,9 +160,9 @@ export function run(ctx) {
   // is a pure string call against pathMatchesAllowed — no filesystem, Git,
   // or temporary-clone access. Each mismatch fails path-specifically with
   // expected and actual, and the single success detail below is emitted only
-  // when all 48 probes match: 19 exact allowlist entries, 4 wildcard
+  // when all 55 probes match: 29 exact allowlist entries, 4 wildcard
   // descendants (direct and nested children under both wildcard directories),
-  // 4 lookalikes, 18 forbidden-prefix representatives, and 3 frozen registry
+  // 4 lookalikes, 16 forbidden-prefix representatives, and 2 frozen registry
   // paths.
   let probeCount = 0;
   let probeMismatches = 0;
@@ -174,7 +188,7 @@ export function run(ctx) {
   for (const p of FORBIDDEN_PREFIX_REPRESENTATIVES) probe(p, false);
   for (const p of FROZEN_REGISTRY_PATHS_LITERAL) probe(p, false);
   if (probeMismatches === 0) {
-    ok(`pathMatchesAllowed regression: all ${probeCount} probes matched (19 exact allowlist, 4 wildcard descendants, 4 lookalikes, 18 forbidden-prefix representatives, 3 frozen registry paths)`);
+    ok(`pathMatchesAllowed regression: all ${probeCount} probes matched (29 exact allowlist, 4 wildcard descendants, 4 lookalikes, 16 forbidden-prefix representatives, 2 frozen registry paths)`);
   }
 
   // ---- accepted base identity: resolves, fixed tree, ancestor of HEAD ----

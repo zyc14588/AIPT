@@ -24,10 +24,23 @@
 //   - application dependency inventory go=6 / pnpm=0 in licenses.json, while
 //     the frozen B001 policy.json baseline keeps its immutable
 //     current_third_party_application_runtime_dependencies = 0;
+//   - the go toolchain license record (id go) carries the current Go 1.26.6
+//     identity with its top-level verified_at bumped to the exact B003
+//     security requalification UTC verification time 2026-08-20T04:16:01Z
+//     (the ONLY record whose verified_at the security requalification
+//     touches — every other record's verified_at stays unchanged) and a
+//     closed-shape security_requalification object whose exact key set is
+//     {batch, previous_go_version, current_go_version, verified_at, reason,
+//     officially_fixed_in, advisory_ids} with the exact B003 values;
 //   - focused negative probes reject mutated go.mod/go.sum (unknown dependency,
 //     version drift, directness flip, missing/tampered h1) and mutated
 //     inventory records (Go runtime record deleted / wrongly licensed / wrong
-//     version / directness flipped / pretending B001 verification).
+//     version / directness flipped / pretending B001 verification, go
+//     toolchain record version reverted to 1.26.5, missing/wrong
+//     security_requalification metadata, wrong advisory set, drifted previous/
+//     current go version, wrong verified_at, top-level verified_at not the
+//     B003 time, extra key in security_requalification, ambiguous go_version
+//     key).
 // The B001 "root importer only" snapshot is superseded by the exact two-
 // importer workspace model; the exact-set validation is kept and extended,
 // never deleted. The frozen policy.json remains an immutable B001 baseline and
@@ -40,6 +53,7 @@ import {
   PG_MULTI_ARCH_DIGEST,
   REQUIRED_SUPPLY_CHAIN_RULES,
   SUPPLY_CHAIN_BASELINE_BATCH,
+  TOOLCHAIN,
 } from '../lib/constants.mjs';
 import { scanTreeForHazards } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -185,6 +199,50 @@ function checkLicenseInventory(licenses) {
   const aiptRec = records.find((r) => r?.id === 'AIPT');
   if (aiptRec?.license !== 'MIT') fail('AIPT license record must be MIT');
   else ok('AIPT = MIT (root LICENSE)');
+  // The go toolchain record must carry the exact current Go identity (B003
+  // security requalification: 1.26.6) with the truthful closed-shape B003
+  // security requalification metadata — never the historical B001 1.26.5 as
+  // the current version, and never the ambiguous go_version key.
+  const goRec = records.find((r) => r?.id === 'go');
+  if (goRec?.version !== TOOLCHAIN.go) {
+    fail(`go toolchain license record version must be the current ${TOOLCHAIN.go} (B003 security requalification), got ${JSON.stringify(goRec?.version)}`);
+  } else ok(`go toolchain license record version = ${TOOLCHAIN.go} (current B003 security requalification)`);
+  const goSec = goRec?.security_requalification;
+  // The go record's top-level verified_at must be the exact B003 security
+  // requalification UTC verification time (this is the ONLY record whose
+  // verified_at was bumped by the security requalification; every other
+  // record's verified_at is untouched).
+  if (goRec?.verified_at !== '2026-08-20T04:16:01Z') {
+    fail(`go toolchain license record top-level verified_at must be 2026-08-20T04:16:01Z (B003 security requalification verification time): ${JSON.stringify(goRec?.verified_at)}`);
+  } else ok(`go toolchain license record top-level verified_at = 2026-08-20T04:16:01Z (B003 security requalification verification time)`);
+  if (!goSec || typeof goSec !== 'object') {
+    fail('go toolchain license record must carry the truthful B003 security requalification metadata (batch AIPT-M0-B003, previous Go 1.26.5 -> current Go 1.26.6, verified_at 2026-08-20T04:16:01Z)');
+  } else {
+    // Exact closed key set: the nested security_requalification object is
+    // exactly {batch, previous_go_version, current_go_version, verified_at,
+    // reason, officially_fixed_in, advisory_ids} — an extra or missing key
+    // fails.
+    const goSecKeys = Object.keys(goSec).sort().join(',');
+    const expectedGoSecKeys = ['advisory_ids', 'batch', 'current_go_version', 'officially_fixed_in', 'previous_go_version', 'reason', 'verified_at'].sort().join(',');
+    if (goSecKeys !== expectedGoSecKeys) {
+      fail(`go toolchain license record security requalification key set must be exactly batch, previous_go_version, current_go_version, verified_at, reason, officially_fixed_in, advisory_ids (closed shape): ${JSON.stringify(Object.keys(goSec))}`);
+    }
+    if (goSec.batch !== 'AIPT-M0-B003') fail(`go toolchain license record security requalification batch must be AIPT-M0-B003: ${JSON.stringify(goSec.batch)}`);
+    if (goSec.previous_go_version !== '1.26.5') fail(`go toolchain license record security requalification previous_go_version must be 1.26.5 (the B001-qualified Go): ${JSON.stringify(goSec.previous_go_version)}`);
+    if (goSec.current_go_version !== TOOLCHAIN.go) fail(`go toolchain license record security requalification current_go_version must be ${TOOLCHAIN.go}: ${JSON.stringify(goSec.current_go_version)}`);
+    if (goSec.verified_at !== '2026-08-20T04:16:01Z') fail(`go toolchain license record security requalification verified_at must be 2026-08-20T04:16:01Z (UTC): ${JSON.stringify(goSec.verified_at)}`);
+    if (Object.prototype.hasOwnProperty.call(goSec, 'go_version')) fail('go toolchain license record security requalification must not carry the ambiguous go_version key (use previous_go_version / current_go_version)');
+    if (goSec.reason !== 'reachable standard-library vulnerabilities') fail('go toolchain license record security requalification reason must be "reachable standard-library vulnerabilities"');
+    if (goSec.officially_fixed_in !== '1.26.6') fail('go toolchain license record security requalification officially_fixed_in must be 1.26.6');
+  }
+  const goAdvisoryIds = [...(goRec?.security_requalification?.advisory_ids ?? [])].sort();
+  const expectedGoAdvisoryIds = ['GO-2026-6090', 'GO-2026-6088', 'GO-2026-5972'].sort();
+  if (JSON.stringify(goAdvisoryIds) !== JSON.stringify(expectedGoAdvisoryIds)) {
+    fail('go toolchain license record security requalification advisory set must be exactly GO-2026-6090 / GO-2026-6088 / GO-2026-5972');
+  }
+  if (goRec?.selected_by_batch !== SUPPLY_CHAIN_BASELINE_BATCH) {
+    fail(`go toolchain license record selected_by_batch must be ${SUPPLY_CHAIN_BASELINE_BATCH} (historical B001 initial qualification, never rewritten)`);
+  }
   // Machine-check every expected inventory record against its expected SPDX
   // license value and kind — all 18 expected identities (12 prior + six B003
   // Go runtime modules) must exist and match exactly.
@@ -842,6 +900,78 @@ export function run(ctx) {
       reason: /top-level selected_by_batch must be AIPT-M0-B001/,
       mutate: (recs, whole) => {
         whole.selected_by_batch = 'AIPT-M0-B003';
+      },
+    },
+    {
+      label: 'go toolchain license record version drifted back to the historical 1.26.5',
+      targetId: 'go',
+      reason: /version must be the current 1\.26\.6/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').version = '1.26.5';
+      },
+    },
+    {
+      label: 'go toolchain license record security requalification provenance removed',
+      targetId: 'go',
+      reason: /truthful B003 security requalification metadata/,
+      mutate: (recs) => {
+        delete recs.find((r) => r.id === 'go').security_requalification;
+      },
+    },
+    {
+      label: 'go toolchain license record advisory set wrong',
+      targetId: 'go',
+      reason: /advisory set must be exactly/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').security_requalification.advisory_ids = ['GO-2026-6090', 'GO-2026-6088', 'GO-2026-9999'];
+      },
+    },
+    {
+      label: 'go toolchain license record security requalification previous_go_version wrong',
+      targetId: 'go',
+      reason: /previous_go_version must be 1\.26\.5/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').security_requalification.previous_go_version = '1.26.4';
+      },
+    },
+    {
+      label: 'go toolchain license record security requalification current_go_version wrong',
+      targetId: 'go',
+      reason: /current_go_version must be 1\.26\.6/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').security_requalification.current_go_version = '1.26.7';
+      },
+    },
+    {
+      label: 'go toolchain license record security requalification verified_at wrong',
+      targetId: 'go',
+      reason: /verified_at must be 2026-08-20T04:16:01Z/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').security_requalification.verified_at = '2026-08-19T00:00:00Z';
+      },
+    },
+    {
+      label: 'go toolchain license record security requalification retains the ambiguous go_version key',
+      targetId: 'go',
+      reason: /ambiguous go_version key/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').security_requalification.go_version = '1.26.6';
+      },
+    },
+    {
+      label: 'go toolchain license record top-level verified_at not the B003 security requalification time',
+      targetId: 'go',
+      reason: /top-level verified_at must be 2026-08-20T04:16:01Z/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').verified_at = '2026-08-16T06:51:41Z';
+      },
+    },
+    {
+      label: 'go toolchain license record security requalification extra key (closed key set)',
+      targetId: 'go',
+      reason: /security requalification key set must be exactly/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'go').security_requalification.extra = 'x';
       },
     },
   ];

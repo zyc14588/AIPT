@@ -148,7 +148,7 @@ const STORAGE_RACE_TEST = "go test -race ./internal/storage/postgres -run '^Test
 const STORAGE_POSTGRES_STEPS = [
   'Record runner environment (evidence)',
   'Checkout candidate (full history for integration sources)',
-  'Setup exact Go 1.26.5',
+  'Setup exact Go 1.26.6',
   'Verify exact Go version',
   'Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)',
   'Verify PostgreSQL 18.4 readiness and server version',
@@ -1769,8 +1769,8 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
             t.replace(
-              '          go-version: 1.26.5\n          cache: false',
-              '          go-version: 1.26.5\n          cache: false\n          go-version-file: go.mod',
+              '          go-version: 1.26.6\n          cache: false',
+              '          go-version: 1.26.6\n          cache: false\n          go-version-file: go.mod',
             ),
           ),
           lock,
@@ -1927,7 +1927,7 @@ export function run(ctx) {
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
-            `${t}\n      - "name": Verify exact Go version\n        run: |\n          test "$(go version)" = "go version go1.26.5 linux/amd64"\n          go version`,
+            `${t}\n      - "name": Verify exact Go version\n        run: |\n          test "$(go version)" = "go version go1.26.6 linux/amd64"\n          go version`,
           ),
           lock,
         ),

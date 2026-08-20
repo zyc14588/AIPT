@@ -1,10 +1,12 @@
 // B001 exact-toolchain lock validator, evolved by AIPT-M0-B003-SCOPE-
-// EXPANSION-001 for iteration 6a.
+// EXPANSION-001 for iteration 6a and by the AIPT-M0-B003 security
+// requalification for the current Go identity.
 //
 // The candidate must freeze, in tools/toolchain.lock.json and the repo pins,
-// exactly: Go 1.26.5, Node.js 24.19.0 LTS, pnpm 11.4.0, PostgreSQL 18.4, plus
-// the pinned Go vulnerability tooling (govulncheck). All integrity material
-// must match the values qualified from official sources.
+// exactly: Go 1.26.6 (B003 security requalification of the B001-qualified Go
+// 1.26.5), Node.js 24.19.0 LTS, pnpm 11.4.0, PostgreSQL 18.4, plus the pinned
+// Go vulnerability tooling (govulncheck). All integrity material must match
+// the values qualified from official sources.
 //
 // AIPT-M0-B003 iteration 6a evolution: the historical B001 bootstrap rule
 // "go.mod must declare no third-party runtime dependency (no require
@@ -17,6 +19,32 @@
 // selected_by_batch=AIPT-M0-B001 fact (SUPPLY_CHAIN_BASELINE_BATCH stays
 // AIPT-M0-B001), and the zero-pnpm-dependency policy are preserved unchanged.
 //
+// AIPT-M0-B003 security-requalification evolution (current Go identity): the
+// exact current Go identity is 1.26.6 with the official go.dev release/archive/
+// hash evidence (official release go1.26.6 stable dated 2026-08-13, official
+// release index, official linux/amd64 archive go1.26.6.linux-amd64.tar.gz and
+// its SHA-256, official upstream tag go1.26.6 commit, official release history
+// and security announcement) AND the explicit dual provenance: the historical
+// B001 initial qualification (Go 1.26.5) versus the B003 security
+// requalification (Go 1.26.6, selected_by_batch stays AIPT-M0-B001, reason
+// 'reachable standard-library vulnerabilities', exact trigger advisory set
+// GO-2026-6090 / GO-2026-6088 / GO-2026-5972, each officially fixed in
+// 1.26.6). The security_requalification object is a closed shape carrying the
+// unambiguous transition facts — batch AIPT-M0-B003, previous_go_version
+// 1.26.5, current_go_version 1.26.6, verified_at 2026-08-20T04:16:01Z (UTC),
+// reason, officially_fixed_in, the exact advisory set and the exact advisory
+// package map — and any ambiguous go_version key is rejected. Missing
+// requalification provenance, a wrong advisory set, Go 1.26.5 (the old
+// qualification), an arbitrary 1.26.7, or the old B001 archive SHA each FAIL
+// for its specific reason. The go source_verification object is frozen to the
+// exact closed {method, verified_at} shape: the exact official-source
+// verification method string and the exact B003 verification timestamp
+// 2026-08-20T04:16:01Z, with no extra key allowed. The initial_qualification
+// object is a closed B001 shape {batch, go_version, reason, archive_sha256}
+// whose exact values — including the B001 reason — are immutable historical
+// facts, and advisory_packages is a closed map of the three trigger
+// advisories to their exact official packages.
+//
 // The gate runs meaningful in-memory regressions: PASS for the exact closure
 // and the exact lock, and FAIL for pgx missing, wrong version, extra direct
 // dependency, a seventh dependency hidden in a second require block (including
@@ -25,13 +53,22 @@
 // graph override (replace, including a leading-whitespace form), go.mod module
 // path rewritten behind a misleading comment, a second module directive with a
 // different path, a second/different go directive, a second/different toolchain
-// directive, Go/toolchain version drift, PostgreSQL digest drift,
-// SUPPLY_CHAIN_BASELINE_BATCH drift to B003, toolchain.lock selected_by_batch
-// drift to B003, and peer/bundled dependency declarations in package.json.
+// directive, Go/toolchain version drift (1.26.5 / 1.26.7), missing security
+// requalification provenance, drifted previous/current go version, drifted
+// verified_at, the ambiguous go_version key, an extra provenance key, wrong
+// advisory set, advisory_packages extra key / wrong mapping, source
+// verification method / timestamp / extra-key drift, initial_qualification
+// reason / key-set drift, upstream tag drift, old B001 archive SHA, PostgreSQL
+// digest/version drift, Node drift, pnpm drift, SUPPLY_CHAIN_BASELINE_BATCH
+// drift to B003, toolchain.lock selected_by_batch drift to B003, and
+// peer/bundled dependency declarations in package.json.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  GO_INITIAL_QUALIFICATION,
   GO_LINUX_AMD64_SHA256,
+  GO_SECURITY_ADVISORIES,
+  GO_SECURITY_REQUALIFICATION,
   GOVULNCHECK,
   NODE_LINUX_X64_SHA256,
   PG_LINUX_AMD64_PLATFORM_DIGEST,
@@ -268,13 +305,16 @@ function checkGoClosure({ goMod, goSum }) {
 }
 
 // Pure machine check of tools/toolchain.lock.json against the frozen B001
-// toolchain qualification: selected_by_batch must be the historical
-// SUPPLY_CHAIN_BASELINE_BATCH (AIPT-M0-B001 — never rewritten to B003), the
-// exact Go 1.26.5 / Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4 versions
-// with channels and source/CI verification records, the official archive and
-// registry integrity values, the exact PostgreSQL Docker Official Image
-// multi-arch and linux/amd64 platform digests, and the govulncheck v1.7.0
-// module/source identity.
+// toolchain baseline and the B003 security requalification: selected_by_batch
+// must be the historical SUPPLY_CHAIN_BASELINE_BATCH (AIPT-M0-B001 — never
+// rewritten to B003), the exact Go 1.26.6 (B003 security requalification of
+// the B001-qualified Go 1.26.5, with the exact official release/archive/hash
+// evidence and the explicit B001-initial vs B003-security dual provenance) /
+// Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4 versions with channels and
+// source/CI verification records, the official archive and registry integrity
+// values, the exact PostgreSQL Docker Official Image multi-arch and
+// linux/amd64 platform digests, and the govulncheck v1.7.0 module/source
+// identity.
 function checkToolchainObject(lock, baseline = SUPPLY_CHAIN_BASELINE_BATCH) {
   const details = [];
   let pass = true;
@@ -303,9 +343,146 @@ function checkToolchainObject(lock, baseline = SUPPLY_CHAIN_BASELINE_BATCH) {
   expect('pnpm', TOOLCHAIN.pnpm, 'stable');
   expect('postgresql', TOOLCHAIN.postgresql, 'stable');
 
+  // ---- exact current Go 1.26.6 identity (B003 security requalification) ----
+  // The lock must carry the exact official release/source evidence and the
+  // exact dual provenance. Every value is compared against the fixed
+  // GO_SECURITY_REQUALIFICATION / GO_SECURITY_ADVISORIES / GO_INITIAL_
+  // QUALIFICATION facts, so a drifted or missing identity field fails
+  // path-specifically.
+  const go = tc.go ?? {};
+  if (go.channel !== GO_SECURITY_REQUALIFICATION.channel) {
+    fail(`go channel must be ${GO_SECURITY_REQUALIFICATION.channel}: ${JSON.stringify(go.channel)}`);
+  }
+  if (go.official_source !== 'go.dev') fail('go official_source must be go.dev');
+  if (go.release_index !== GO_SECURITY_REQUALIFICATION.release_index) {
+    fail(`go release_index must be the official go.dev release index ${GO_SECURITY_REQUALIFICATION.release_index}`);
+  }
+  if (go.release_status !== GO_SECURITY_REQUALIFICATION.release_status) {
+    fail(`go release_status must be ${GO_SECURITY_REQUALIFICATION.release_status}: ${JSON.stringify(go.release_status)}`);
+  }
+  if (go.release_date !== GO_SECURITY_REQUALIFICATION.release_date) {
+    fail(`go release_date must be ${GO_SECURITY_REQUALIFICATION.release_date} (official go1.26.6 stable release date): ${JSON.stringify(go.release_date)}`);
+  } else ok(`go official stable release dated ${GO_SECURITY_REQUALIFICATION.release_date}`);
+  if (go.release_history !== GO_SECURITY_REQUALIFICATION.release_history) {
+    fail(`go release_history must be the official release history anchor ${GO_SECURITY_REQUALIFICATION.release_history}`);
+  }
+  if (go.security_announcement !== GO_SECURITY_REQUALIFICATION.security_announcement) {
+    fail(`go security_announcement must be the official golang-announce URL ${GO_SECURITY_REQUALIFICATION.security_announcement}`);
+  }
+  if (go.upstream_tag?.tag !== GO_SECURITY_REQUALIFICATION.upstream_tag || go.upstream_tag?.commit !== GO_SECURITY_REQUALIFICATION.upstream_commit) {
+    fail(`go upstream tag must be ${GO_SECURITY_REQUALIFICATION.upstream_tag} at commit ${GO_SECURITY_REQUALIFICATION.upstream_commit}: ${JSON.stringify(go.upstream_tag)}`);
+  } else ok('go upstream tag go1.26.6 commit recorded (official upstream tag identity)');
+
+  // ---- exact frozen Go source verification (B003 security requalification)
+  // The go.source_verification object is a closed {method, verified_at} shape
+  // whose method is the exact official-source verification method and whose
+  // verified_at is the mandated B003 UTC verification time. Any extra key,
+  // a drifted method, or a drifted timestamp fails path-specifically.
+  const goSv = go.source_verification ?? {};
+  const goSvKeys = Object.keys(goSv).sort().join(',');
+  if (goSvKeys !== ['method', 'verified_at'].sort().join(',')) {
+    fail(`go source_verification key set must be exactly {method, verified_at}: ${JSON.stringify(Object.keys(goSv))}`);
+  }
+  if (goSv.method !== GO_SECURITY_REQUALIFICATION.source_verification_method) {
+    fail('go source_verification method must be the exact official go.dev release-index + locally recomputed archive sha256 method');
+  } else ok('go source_verification method == exact official-source verification method (go.dev release index, local archive sha256 recomputation, upstream tag, release history + security announcement)');
+  if (goSv.verified_at !== GO_SECURITY_REQUALIFICATION.verified_at) {
+    fail(`go source_verification verified_at must be ${GO_SECURITY_REQUALIFICATION.verified_at} (UTC): ${JSON.stringify(goSv.verified_at)}`);
+  } else ok(`go source_verification verified_at = ${GO_SECURITY_REQUALIFICATION.verified_at} (UTC)`);
+
   if (tc.go?.linux_amd64_archive?.sha256 !== GO_LINUX_AMD64_SHA256) {
     fail(`go linux/amd64 archive sha256 must match official value (${GO_LINUX_AMD64_SHA256})`);
   } else ok('go linux/amd64 archive sha256 == official go.dev value');
+  if (tc.go?.linux_amd64_archive?.filename !== GO_SECURITY_REQUALIFICATION.archive_filename) {
+    fail(`go linux/amd64 archive filename must be ${GO_SECURITY_REQUALIFICATION.archive_filename}`);
+  }
+  if (tc.go?.linux_amd64_archive?.url !== GO_SECURITY_REQUALIFICATION.archive_url) {
+    fail(`go linux/amd64 archive url must be the official go.dev archive ${GO_SECURITY_REQUALIFICATION.archive_url}`);
+  }
+  if (tc.go?.expected_version_output !== GO_SECURITY_REQUALIFICATION.expected_version_output) {
+    fail(`go expected_version_output must be ${GO_SECURITY_REQUALIFICATION.expected_version_output}: ${JSON.stringify(tc.go?.expected_version_output)}`);
+  }
+
+  // ---- dual provenance: B001 initial qualification vs B003 security
+  // requalification ----
+  const prov = go.provenance ?? {};
+  const provKeys = Object.keys(prov).sort().join(',');
+  if (provKeys !== ['initial_qualification', 'security_requalification'].sort().join(',')) {
+    fail(`go provenance key set must be exactly initial_qualification + security_requalification: ${JSON.stringify(Object.keys(prov))}`);
+  }
+  const initial = prov.initial_qualification ?? {};
+  // Closed B001 shape: the historical initial qualification is exactly
+  // {batch, go_version, reason, archive_sha256} — an extra or missing key, or
+  // a drifted value (including the reason), fails path-specifically.
+  const initialKeys = Object.keys(initial).sort().join(',');
+  if (initialKeys !== ['archive_sha256', 'batch', 'go_version', 'reason'].sort().join(',')) {
+    fail(`go provenance initial_qualification key set must be exactly {batch, go_version, reason, archive_sha256}: ${JSON.stringify(Object.keys(initial))}`);
+  }
+  if (initial.batch !== GO_INITIAL_QUALIFICATION.batch || initial.go_version !== GO_INITIAL_QUALIFICATION.go_version) {
+    fail(`go provenance initial_qualification must record the historical B001 qualification (${GO_INITIAL_QUALIFICATION.batch}, Go ${GO_INITIAL_QUALIFICATION.go_version}): ${JSON.stringify(initial)}`);
+  } else ok(`go provenance records the historical B001 initial qualification (Go ${GO_INITIAL_QUALIFICATION.go_version})`);
+  if (initial.reason !== GO_INITIAL_QUALIFICATION.reason) {
+    fail(`go provenance initial_qualification reason must be ${JSON.stringify(GO_INITIAL_QUALIFICATION.reason)} (explicit B001 historical fact): ${JSON.stringify(initial.reason)}`);
+  }
+  if (initial.archive_sha256 !== GO_INITIAL_QUALIFICATION.archive_sha256) {
+    fail('go provenance initial_qualification must keep the historical B001 archive sha256 (explicit B001 historical fact)');
+  }
+  const sec = prov.security_requalification ?? {};
+  if (!prov.security_requalification || typeof prov.security_requalification !== 'object') {
+    fail('go provenance must record the B003 security requalification (batch AIPT-M0-B003, Go 1.26.6): missing');
+  } else {
+    const secKeys = Object.keys(sec).sort().join(',');
+    const expectedSecKeys = ['advisory_ids', 'advisory_packages', 'batch', 'current_go_version', 'officially_fixed_in', 'previous_go_version', 'reason', 'verified_at'].sort().join(',');
+    if (secKeys !== expectedSecKeys) {
+      fail(`go security requalification key set must be exactly batch, previous_go_version, current_go_version, verified_at, reason, officially_fixed_in, advisory_ids, advisory_packages: ${JSON.stringify(Object.keys(sec))}`);
+    }
+    if (sec.batch !== 'AIPT-M0-B003') {
+      fail(`go security requalification batch must be AIPT-M0-B003: ${JSON.stringify(sec.batch)}`);
+    }
+    if (sec.previous_go_version !== GO_SECURITY_REQUALIFICATION.previous_go_version) {
+      fail(`go security requalification previous_go_version must be ${GO_SECURITY_REQUALIFICATION.previous_go_version} (the B001-qualified Go): ${JSON.stringify(sec.previous_go_version)}`);
+    }
+    if (sec.current_go_version !== GO_SECURITY_REQUALIFICATION.version) {
+      fail(`go security requalification current_go_version must be ${GO_SECURITY_REQUALIFICATION.version}: ${JSON.stringify(sec.current_go_version)}`);
+    } else ok(`go security requalification provenance records the exact transition (B001 ${GO_SECURITY_REQUALIFICATION.previous_go_version} -> B003 ${GO_SECURITY_REQUALIFICATION.version}, batch AIPT-M0-B003)`);
+    if (sec.verified_at !== GO_SECURITY_REQUALIFICATION.verified_at) {
+      fail(`go security requalification verified_at must be ${GO_SECURITY_REQUALIFICATION.verified_at} (UTC): ${JSON.stringify(sec.verified_at)}`);
+    } else ok(`go security requalification verified_at = ${GO_SECURITY_REQUALIFICATION.verified_at} (UTC)`);
+    if (Object.prototype.hasOwnProperty.call(sec, 'go_version')) {
+      fail('go security requalification must not carry the ambiguous go_version key (use previous_go_version / current_go_version)');
+    }
+    if (sec.reason !== GO_SECURITY_REQUALIFICATION.reason) {
+      fail(`go security requalification reason must be ${JSON.stringify(GO_SECURITY_REQUALIFICATION.reason)}: ${JSON.stringify(sec.reason)}`);
+    }
+    if (sec.officially_fixed_in !== GO_SECURITY_REQUALIFICATION.officially_fixed_in) {
+      fail(`go security requalification officially_fixed_in must be ${GO_SECURITY_REQUALIFICATION.officially_fixed_in}`);
+    }
+    const expectedAdvisoryIds = GO_SECURITY_ADVISORIES.map((a) => a.id).sort();
+    const actualAdvisoryIds = [...(sec.advisory_ids ?? [])].sort();
+    if (JSON.stringify(actualAdvisoryIds) !== JSON.stringify(expectedAdvisoryIds)) {
+      fail(`go security requalification advisory set must be exactly ${expectedAdvisoryIds.join(', ')} (each officially fixed in Go 1.26.6): ${JSON.stringify(sec.advisory_ids)}`);
+    } else ok(`go security requalification advisory set = ${expectedAdvisoryIds.join(', ')} (GO-2026-6090 crypto/tls, GO-2026-6088 encoding/xml, GO-2026-5972 encoding/asn1)`);
+    // advisory_packages is a closed {GO-2026-6090, GO-2026-6088, GO-2026-5972}
+    // map: the key set must be exactly the three trigger advisories and every
+    // mapping must be the exact official package — an extra/missing key or a
+    // wrong mapping fails path-specifically.
+    const pkgMap = sec.advisory_packages ?? {};
+    const pkgKeys = Object.keys(pkgMap).sort();
+    if (JSON.stringify(pkgKeys) !== JSON.stringify(expectedAdvisoryIds)) {
+      fail(`go security requalification advisory_packages key set must be exactly ${expectedAdvisoryIds.join(', ')}: ${JSON.stringify(Object.keys(pkgMap))}`);
+    }
+    for (const a of GO_SECURITY_ADVISORIES) {
+      if (pkgMap[a.id] !== a.package) {
+        fail(`go security requalification advisory ${a.id} must map to ${a.package}: ${JSON.stringify(pkgMap[a.id])}`);
+      }
+    }
+    if (JSON.stringify(pkgKeys) === JSON.stringify(expectedAdvisoryIds) && GO_SECURITY_ADVISORIES.every((a) => pkgMap[a.id] === a.package)) {
+      ok('go security requalification advisory_packages exact key set + mappings (GO-2026-6090 crypto/tls, GO-2026-6088 encoding/xml, GO-2026-5972 encoding/asn1)');
+    }
+  }
+  if (!Array.isArray(go.repo_pins) || !go.repo_pins.includes('.go-version') || !go.repo_pins.some((p) => p.includes('toolchain go1.26.6'))) {
+    fail('go repo_pins must list .go-version and the go.mod go/toolchain directives pinning toolchain go1.26.6');
+  }
 
   if (tc.node?.linux_x64_archive?.sha256 !== NODE_LINUX_X64_SHA256) {
     fail('node linux-x64 archive sha256 must match official SHASUMS256.txt value');
@@ -385,16 +562,16 @@ function checkRepoPins({ goVersion, nodeVersion, goMod, goSum, pkgJson, pnpmLock
     ok('go.mod pins the go directive to 1.26.x (exactly one anchored go directive)');
   }
   // go.mod must carry EXACTLY ONE anchored `toolchain` directive, and it must
-  // be exactly `toolchain go1.26.5`. EVERY anchored toolchain directive line
+  // be exactly `toolchain go1.26.6`. EVERY anchored toolchain directive line
   // is collected and counted regardless of its value, so a second/different
   // toolchain directive (or a removed one) is rejected.
   const toolchainDirectives = (goMod.match(/^[ \t]*toolchain\b[^\n]*$/gm) ?? []).map((line) => line.trim());
   if (toolchainDirectives.length !== 1) {
     fail(`go.mod must carry exactly one anchored toolchain directive, got ${toolchainDirectives.length}: ${toolchainDirectives.join(' | ') || 'none'}`);
-  } else if (toolchainDirectives[0] !== 'toolchain go1.26.5') {
-    fail(`go.mod toolchain directive must be exactly "toolchain go1.26.5", got ${JSON.stringify(toolchainDirectives[0])}`);
+  } else if (toolchainDirectives[0] !== 'toolchain go1.26.6') {
+    fail(`go.mod toolchain directive must be exactly "toolchain go1.26.6", got ${JSON.stringify(toolchainDirectives[0])}`);
   } else {
-    ok('go.mod pins toolchain go1.26.5 (exactly one anchored toolchain directive)');
+    ok('go.mod pins toolchain go1.26.6 (exactly one anchored toolchain directive)');
   }
   const closure = checkGoClosure({ goMod, goSum });
   details.push(...closure.details);
@@ -445,8 +622,8 @@ export function run(ctx) {
 
   const toolchainCheck = checkToolchainObject(lock);
   details.push(...toolchainCheck.details);
-  if (toolchainCheck.result !== 'PASS') fail('tools/toolchain.lock.json does not match the frozen B001 toolchain qualification');
-  else ok('tools/toolchain.lock.json matches the frozen B001 toolchain qualification (versions, archives, digests, govulncheck identity, B001 selection)');
+  if (toolchainCheck.result !== 'PASS') fail('tools/toolchain.lock.json does not match the frozen B001 baseline / B003 security requalification');
+  else ok('tools/toolchain.lock.json matches the frozen B001 baseline and the B003 Go 1.26.6 security requalification (versions, official release/archive/hash evidence, dual provenance, advisory set, digests, govulncheck identity, B001 selection)');
 
   const repoPins = checkRepoPins({
     goVersion: read('.go-version').trim(),
@@ -542,10 +719,170 @@ export function run(ctx) {
       }),
     },
     {
-      label: 'Go/toolchain version drift in toolchain.lock.json FAIL',
+      label: 'Go 1.26.5 (old B001 qualification) in toolchain.lock.json FAIL',
       expect: 'FAIL',
-      reason: /go version must be 1\.26\.5/,
-      run: () => checkToolchainObject(mutatedLock((copy) => { copy.toolchains.go.version = '1.26.6'; })),
+      reason: /go version must be 1\.26\.6/,
+      run: () => checkToolchainObject(mutatedLock((copy) => { copy.toolchains.go.version = '1.26.5'; })),
+    },
+    {
+      label: 'Go 1.26.7 (arbitrary future patch) in toolchain.lock.json FAIL',
+      expect: 'FAIL',
+      reason: /go version must be 1\.26\.6/,
+      run: () => checkToolchainObject(mutatedLock((copy) => { copy.toolchains.go.version = '1.26.7'; })),
+    },
+    {
+      label: 'Go linux/amd64 archive sha256 reverted to the B001 1.26.5 value FAIL',
+      expect: 'FAIL',
+      reason: /archive sha256 must match official value/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.linux_amd64_archive.sha256 = GO_INITIAL_QUALIFICATION.archive_sha256;
+      })),
+    },
+    {
+      label: 'Go security requalification provenance removed from toolchain.lock.json FAIL',
+      expect: 'FAIL',
+      reason: /must record the B003 security requalification/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        delete copy.toolchains.go.provenance.security_requalification;
+      })),
+    },
+    {
+      label: 'Go security requalification previous_go_version drifted FAIL',
+      expect: 'FAIL',
+      reason: /previous_go_version must be 1\.26\.5/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.previous_go_version = '1.26.4';
+      })),
+    },
+    {
+      label: 'Go security requalification current_go_version drifted FAIL',
+      expect: 'FAIL',
+      reason: /current_go_version must be 1\.26\.6/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.current_go_version = '1.26.7';
+      })),
+    },
+    {
+      label: 'Go security requalification verified_at drifted FAIL',
+      expect: 'FAIL',
+      reason: /verified_at must be 2026-08-20T04:16:01Z/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.verified_at = '2026-08-19T00:00:00Z';
+      })),
+    },
+    {
+      label: 'Go security requalification retains the ambiguous go_version key FAIL',
+      expect: 'FAIL',
+      reason: /ambiguous go_version key/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.go_version = '1.26.6';
+      })),
+    },
+    {
+      label: 'Go security requalification carries an extra key FAIL (closed key set)',
+      expect: 'FAIL',
+      reason: /key set must be exactly/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.extra = 'x';
+      })),
+    },
+    {
+      label: 'Go security requalification advisory set wrong FAIL',
+      expect: 'FAIL',
+      reason: /advisory set must be exactly/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.advisory_ids = ['GO-2026-6090', 'GO-2026-6088', 'GO-2026-9999'];
+      })),
+    },
+    {
+      label: 'Go security requalification reason drifted FAIL',
+      expect: 'FAIL',
+      reason: /requalification reason must be/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.reason = 'arbitrary bump';
+      })),
+    },
+    {
+      label: 'Go upstream tag commit drifted FAIL',
+      expect: 'FAIL',
+      reason: /upstream tag must be/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.upstream_tag.commit = '0'.repeat(40);
+      })),
+    },
+    {
+      label: 'Go source_verification method drifted FAIL',
+      expect: 'FAIL',
+      reason: /source_verification method must be the exact official/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.source_verification.method = 'arbitrary method';
+      })),
+    },
+    {
+      label: 'Go source_verification verified_at drifted FAIL',
+      expect: 'FAIL',
+      reason: /source_verification verified_at must be 2026-08-20T04:16:01Z/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.source_verification.verified_at = '2026-08-19T00:00:00Z';
+      })),
+    },
+    {
+      label: 'Go source_verification extra key FAIL (closed {method, verified_at} key set)',
+      expect: 'FAIL',
+      reason: /source_verification key set must be exactly/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.source_verification.extra = 'x';
+      })),
+    },
+    {
+      label: 'Go initial_qualification reason drifted FAIL',
+      expect: 'FAIL',
+      reason: /initial_qualification reason must be/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.initial_qualification.reason = 'wrong reason';
+      })),
+    },
+    {
+      label: 'Go initial_qualification extra key FAIL (closed B001 key set)',
+      expect: 'FAIL',
+      reason: /initial_qualification key set must be exactly/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.initial_qualification.extra = 'x';
+      })),
+    },
+    {
+      label: 'Go advisory_packages extra key FAIL (closed advisory map)',
+      expect: 'FAIL',
+      reason: /advisory_packages key set must be exactly/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.advisory_packages['GO-2026-9999'] = 'net/http';
+      })),
+    },
+    {
+      label: 'Go advisory_packages wrong mapping FAIL',
+      expect: 'FAIL',
+      reason: /advisory GO-2026-6090 must map to crypto\/tls/,
+      run: () => checkToolchainObject(mutatedLock((copy) => {
+        copy.toolchains.go.provenance.security_requalification.advisory_packages['GO-2026-6090'] = 'net/http';
+      })),
+    },
+    {
+      label: 'Node version drift in toolchain.lock.json FAIL',
+      expect: 'FAIL',
+      reason: /node version must be 24\.19\.0/,
+      run: () => checkToolchainObject(mutatedLock((copy) => { copy.toolchains.node.version = '24.18.0'; })),
+    },
+    {
+      label: 'pnpm version drift in toolchain.lock.json FAIL',
+      expect: 'FAIL',
+      reason: /pnpm version must be 11\.4\.0/,
+      run: () => checkToolchainObject(mutatedLock((copy) => { copy.toolchains.pnpm.version = '11.5.0'; })),
+    },
+    {
+      label: 'PostgreSQL version drift in toolchain.lock.json FAIL',
+      expect: 'FAIL',
+      reason: /postgresql version must be 18\.4/,
+      run: () => checkToolchainObject(mutatedLock((copy) => { copy.toolchains.postgresql.version = '18.5'; })),
     },
     {
       label: 'PostgreSQL multi-arch digest drift in toolchain.lock.json FAIL',
@@ -649,7 +986,46 @@ export function run(ctx) {
       run: () => checkRepoPins({
         goVersion: read('.go-version').trim(),
         nodeVersion: read('.node-version').trim(),
-        goMod: `${goModText}\ntoolchain go1.26.6\n`,
+        goMod: `${goModText}\ntoolchain go1.26.7\n`,
+        goSum: goSumText,
+        pkgJson: JSON.parse(read('package.json')),
+        pnpmLockText: read('pnpm-lock.yaml'),
+      }),
+    },
+    {
+      label: '.go-version drifted back to Go 1.26.5 FAIL',
+      expect: 'FAIL',
+      reason: /\.go-version must be 1\.26\.6/,
+      run: () => checkRepoPins({
+        goVersion: '1.26.5',
+        nodeVersion: read('.node-version').trim(),
+        goMod: goModText,
+        goSum: goSumText,
+        pkgJson: JSON.parse(read('package.json')),
+        pnpmLockText: read('pnpm-lock.yaml'),
+      }),
+    },
+    {
+      label: '.go-version drifted to arbitrary Go 1.26.7 FAIL',
+      expect: 'FAIL',
+      reason: /\.go-version must be 1\.26\.6/,
+      run: () => checkRepoPins({
+        goVersion: '1.26.7',
+        nodeVersion: read('.node-version').trim(),
+        goMod: goModText,
+        goSum: goSumText,
+        pkgJson: JSON.parse(read('package.json')),
+        pnpmLockText: read('pnpm-lock.yaml'),
+      }),
+    },
+    {
+      label: 'go.mod toolchain directive drifted to go1.26.5 FAIL',
+      expect: 'FAIL',
+      reason: /toolchain directive must be exactly/,
+      run: () => checkRepoPins({
+        goVersion: read('.go-version').trim(),
+        nodeVersion: read('.node-version').trim(),
+        goMod: goModText.replace('toolchain go1.26.6', 'toolchain go1.26.5'),
         goSum: goSumText,
         pkgJson: JSON.parse(read('package.json')),
         pnpmLockText: read('pnpm-lock.yaml'),

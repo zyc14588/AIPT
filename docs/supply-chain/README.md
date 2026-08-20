@@ -2,18 +2,18 @@
 
 > B001 依据 `R4-Q023`（固定版本、锁文件、SBOM、许可证、漏洞、来源、升级资格的完整供应链门禁）建立的公共工程基础。
 > 机器规则为 [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json)；本页是可读解释。
-> **AIPT-M0-B003 施工中（迭代 6a）**：本页同时如实记录 B003 对 pgx v5.10.0 Go 运行时闭包的资格、许可证记录与 SBOM 依赖关系建模；**B003 尚未合并/关闭**——本页不是关闭声明。冻结的 `policy.json` 仍是不可变 B001 基线，从不被 B003 改写。
+> **AIPT-M0-B003 施工中（迭代 6a + security requalification）**：本页同时如实记录 B003 对 pgx v5.10.0 Go 运行时闭包的资格、许可证记录、SBOM 依赖关系建模，以及 B003 将当前 Go 身份从 B001 资格化的 **1.26.5** 安全重资格为 **1.26.6**（reason: reachable standard-library vulnerabilities，触发公告 GO-2026-6090 / GO-2026-6088 / GO-2026-5972）；**B003 尚未合并/关闭**——本页不是关闭声明。冻结的 `policy.json` 仍是不可变 B001 基线，从不被 B003 改写。
 
 ## 冻结工具链（`DEFER-016` 已 RESOLVED）
 
 | 工具 | 精确版本 | 频道 | 官方来源 |
 |---|---|---|---|
-| Go | **1.26.5** | stable | go.dev |
+| Go | **1.26.6**（B003 安全重资格；历史 B001 初始资格为 1.26.5） | stable | go.dev |
 | Node.js | **24.19.0** | LTS（Krypton） | nodejs.org |
 | pnpm | **11.4.0** | stable | pnpm/pnpm release + npm registry |
 | PostgreSQL | **18.4** | stable | postgresql.org + Docker Official Image |
 
-完整资格（来源身份、发行/完整性材料、验证时间、linux/amd64 校验和、PostgreSQL 多架构与 linux/amd64 平台 digest、CI 期望版本输出）见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)。
+完整资格（来源身份、发行/完整性材料、验证时间、linux/amd64 校验和、PostgreSQL 多架构与 linux/amd64 平台 digest、CI 期望版本输出）见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)。Go 的 `provenance` 显式区分 **B001 初始资格（Go 1.26.5）** 与 **B003 安全重资格（Go 1.26.6）**：官方稳定版 go1.26.6（2026-08-13）、官方 release index、linux/amd64 归档 `go1.26.6.linux-amd64.tar.gz` 及其 SHA-256、官方 upstream tag go1.26.6 提交、官方 release history 与安全公告；触发公告集 GO-2026-6090（crypto/tls）、GO-2026-6088（encoding/xml）、GO-2026-5972（encoding/asn1）每条均已由 1.26.6 官方修复；`selected_by_batch` 保持不可变历史 `AIPT-M0-B001`。
 
 规则：**禁止静默升级/降级**。任何版本变更必须重新资格化并进入新的变更批次。
 
@@ -50,7 +50,7 @@
 | `golang.org/x/sync` | v0.17.0 | indirect | **`BSD-3-Clause`** |
 | `golang.org/x/text` | v0.29.0 | indirect | **`BSD-3-Clause`** |
 
-**精确集合模型**（B003 迭代 6a）：记录集合必须恰为这 18 个 identity——任何未登记的第三方身份（`unrecorded license record ids`）一律拒绝；SDK 记录必须携带真实 B002 元数据（版本 1.0.0、`selected_by_batch = AIPT-M0-B002`、B002 `verified_at`、LICENSE 证据），六个 Go 运行时记录必须携带真实 B003 元数据（版本/直接性/角色/B003 选择证据），伪装成 B001/B002 验证即失败；licenses.json **文件顶层** `selected_by_batch` 必须**精确锁定为 `AIPT-M0-B001`**（不可变 B001 基线选择器，绝不改写为 B003——B003 只存在于各 Go 运行时记录内部的 `selected_by_batch`）。基线健壮性：`records` 必须是**非空数组**、记录 **id 唯一**（重复 id 必须 FAIL）、18 个期望 identity 必须全部存在。验证器并对内存中的变异副本运行 **20 个许可证清单负向回归**（原 13 个全部保留：复合镜像错标 PostgreSQL/MIT、主软件改离 PostgreSQL、打包源改离 MIT、镜像记录 digest 删除/修改、记录 id 重复、关键 identity 记录删除、SDK 记录删除/错许可/错 kind/冒充 B001 验证、注入未登记第三方身份；B003 新增 7 个：pgx 记录删除/错许可/版本漂移/直接性翻转/冒充 B001 验证、x/text 错标 MIT、**licenses.json 顶层 selected_by_batch 漂移到 B003**）——全部必须被拒绝；当关键 identity 缺失时，无法执行的探针会**记录明确 FAIL 并安全跳过**（绝不因 `find` 返回 undefined 而抛异常），磁盘文件从不被探针改写。
+**精确集合模型**（B003 迭代 6a）：记录集合必须恰为这 18 个 identity——任何未登记的第三方身份（`unrecorded license record ids`）一律拒绝；SDK 记录必须携带真实 B002 元数据（版本 1.0.0、`selected_by_batch = AIPT-M0-B002`、B002 `verified_at`、LICENSE 证据），六个 Go 运行时记录必须携带真实 B003 元数据（版本/直接性/角色/B003 选择证据），伪装成 B001/B002 验证即失败；licenses.json **文件顶层** `selected_by_batch` 必须**精确锁定为 `AIPT-M0-B001`**（不可变 B001 基线选择器，绝不改写为 B003——B003 只存在于各 Go 运行时记录内部的 `selected_by_batch`）。基线健壮性：`records` 必须是**非空数组**、记录 **id 唯一**（重复 id 必须 FAIL）、18 个期望 identity 必须全部存在。验证器并对内存中的变异副本运行 **29 个许可证清单负向回归**（原 13 个全部保留：复合镜像错标 PostgreSQL/MIT、主软件改离 PostgreSQL、打包源改离 MIT、镜像记录 digest 删除/修改、记录 id 重复、关键 identity 记录删除、SDK 记录删除/错许可/错 kind/冒充 B001 验证、注入未登记第三方身份；B003 新增 7 个：pgx 记录删除/错许可/版本漂移/直接性翻转/冒充 B001 验证、x/text 错标 MIT、**licenses.json 顶层 selected_by_batch 漂移到 B003**；B003 security requalification 再增 9 个：**go 工具链记录版本漂回历史 1.26.5**、**go 记录安全重资格 provenance 被删除**、**go 记录公告集错误**、**go 记录安全重资格 previous_go_version 错误**、**go 记录安全重资格 current_go_version 错误**、**go 记录安全重资格 verified_at 错误**、**go 记录保留歧义 go_version 键**、**go 记录顶层 verified_at 不是 B003 时间（2026-08-20T04:16:01Z）**、**go 记录安全重资格对象多出额外键（闭合键集）**）——全部必须被拒绝；当关键 identity 缺失时，无法执行的探针会**记录明确 FAIL 并安全跳过**（绝不因 `find` 返回 undefined 而抛异常），磁盘文件从不被探针改写。
 
 **一方 pnpm 工作区模型（迭代 4）**：`pnpm-workspace.yaml` 声明 `packages/*`，`pnpm-lock.yaml` 的 importer 集合**恰为** `.` 与 `packages/adapter-sdk`，每个 importer 零依赖说明符（`<key>: {}`），`packages:` 区不存在（零第三方包）；工作区包必须与 licenses.json 的一方记录一一对应（id = 包名、version = package.json 版本、MIT）。内存变异负向探针证明：注入未登记 importer/包、删除已登记 SDK importer、向 importer 夹带依赖说明符、向 `packages:` 区夹带第三方包，全部按**其自身的正确原因**被拒绝。
 

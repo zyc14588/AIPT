@@ -43,7 +43,7 @@ B001 建立公共 CI 与供应链基础后，以下工具登记随仓库同行�
 
 | 登记 | 内容 |
 |---|---|
-| [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json) | 精确工具链资格：Go 1.26.5 / Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，含官方来源、完整性材料与验证时间 |
+| [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json) | 精确工具链资格：Go 1.26.6（B003 安全重资格，理由 reachable standard-library vulnerabilities，触发公告 GO-2026-6090 crypto/tls、GO-2026-6088 encoding/xml、GO-2026-5972 encoding/asn1，各已由 Go 1.26.6 官方修复；`selected_by_batch` 保持历史 `AIPT-M0-B001`，`provenance` 同时记录 B001 初始资格 Go 1.26.5 与 B003 安全重资格）/ Node 24.19.0 LTS / pnpm 11.4.0 / PostgreSQL 18.4，含官方来源、完整性材料与验证时间 |
 | [../../tools/ci-actions.lock.json](../../tools/ci-actions.lock.json) | 公共 CI Actions 的稳定 tag → 完整 Commit SHA 映射与来源验证 |
 | [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json) | `R4-Q023` 供应链机器规则 |
 | [../../tools/supply-chain/licenses.json](../../tools/supply-chain/licenses.json) | 许可证清单（AIPT MIT、CI Actions、工具链与扫描工具） |
@@ -62,7 +62,7 @@ B001 建立公共 CI 与供应链基础后，以下工具登记随仓库同行�
 ## 状态名约定
 
 - 决策状态：`ACTIVE`（当前权威）、`REFINED`（已被细化，指向细化决定）、`SUPERSEDED`（已被取代，指向取代决定）。
-- 延期参数状态：见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)。`DEFER-016` 已由 B001 资格批次 `RESOLVED`（精确工具链版本已冻结）；其余 15 项为非冻结状态（如 `DEFERRED_TO_*`、`ADMIN_DECISION_PENDING`），不得写成已实现。
+- 延期参数状态：见 [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md)。`DEFER-016` 已由 B001 资格批次 `RESOLVED`（`resolved_by_batch = AIPT-M0-B001` 不可变历史事实）；当前 Go 身份由 B003 安全重资格更新为 **1.26.6**（理由 reachable standard-library vulnerabilities，见 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json) 的 provenance），其余 15 项为非冻结状态（如 `DEFERRED_TO_*`、`ADMIN_DECISION_PENDING`），不得写成已实现。
 
 ## 返回
 
