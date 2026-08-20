@@ -116,6 +116,123 @@ export const EXTERNAL_SERIAL_PREDECESSOR = {
 export const B004_BASE_COMMIT = '6d7225828b45b69ecc44d5bb51a04c40f0865aba';
 export const B004_BASE_TREE = 'f557a9f54cbac11474f2d56f78e2d983a7d6a7be';
 
+// Immutable append-only construction checkpoint. Dependency security repair
+// commits must descend from this exact commit/tree; it is never amended or
+// rewritten by the B004 requalification.
+export const B004_CONSTRUCTION_CHECKPOINT = {
+  commit: '59230daae0113d35896f192a255633ba2cc1dec7',
+  tree: 'bab4289817a26a07553da4bfcccaac82dbb04319',
+};
+
+// Exact B004 dependency-security requalification. The B003-selected runtime
+// identities remain historical facts; this records the current selected
+// versions and every deterministic MVS consequence under Go 1.26.6.
+export const B004_DEPENDENCY_SECURITY_REQUALIFICATION = {
+  directive: 'AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001',
+  batch: 'AIPT-M0-B004',
+  advisory: 'GO-2026-5970',
+  cve: 'CVE-2026-56852',
+  module: 'golang.org/x/text',
+  previous_version: 'v0.29.0',
+  current_version: 'v0.39.0',
+  fixed_in: 'v0.39.0',
+  reason: 'reachable vulnerability',
+  verified_at: '2026-08-20T16:00:40Z',
+  vulnerability_authority: 'https://vuln.go.dev/ID/GO-2026-5970.json',
+  upstream: 'https://go.googlesource.com/text',
+  upstream_tag: 'v0.39.0',
+  upstream_commit: 'b326f3d3c814ab79b3c516f4ac03c2314d8df65f',
+  fix_commit: '5ae8e578e495731553eddba11b2d0e86c91a00ce',
+  module_h1: 'h1:UbZz4pLOvn600D6Oh6GGEI6VAmndrEBLv8/6BEXzyus=',
+  go_mod_h1: 'h1:3UwRclnC2g0TU9x8PZiyfOajCd1zaUNHF9cvqcQZ+ZM=',
+  module_h1_sha256: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb',
+  go_mod_h1_sha256: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993',
+  raw_module_zip_sha256: 'cbfa33111dfa6cbafef63103b82c544d35df425824ac94ea19629a12bdbf0523',
+  raw_go_mod_sha256: '40e9425e17dcc56faf496619fde6908631d57b2cce0f766c4dca6bea8fc93838',
+  license: 'BSD-3-Clause',
+  license_file_sha256: '911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad',
+  go_version: '1.26.6',
+  pgx_version: 'v5.10.0',
+  vulnerability_database: 'https://vuln.go.dev',
+  vulnerability_module_index: 'https://vuln.go.dev/index/modules.json',
+  vulnerability_checked_at: '2026-08-20T16:16:58Z',
+  vulnerability_module_index_sha256: '8b4159bf3e73d78c9246c49a6ccf576a27bb2f3871a4cf0046d94d128e068dca',
+  vulnerability_qualifications: {
+    'golang.org/x/text': {
+      status: 'FIXED_AT_SELECTED_VERSION',
+      known_advisory_ids: ['GO-2020-0015', 'GO-2021-0113', 'GO-2022-1059', 'GO-2026-5970'],
+      affected_advisory_ids_at_selected_version: [],
+      affected_package_graph_evidence: 'golang.org/x/text/unicode/norm is imported; GO-2026-5970 is fixed at selected v0.39.0',
+      reachable_vulnerability: false,
+    },
+    'golang.org/x/sync': {
+      status: 'NO_KNOWN_MODULE_ADVISORY',
+      known_advisory_ids: [],
+      affected_advisory_ids_at_selected_version: [],
+      affected_package_graph_evidence: 'golang.org/x/sync/semaphore is imported; the fresh official module index contains no x/sync advisory',
+      reachable_vulnerability: false,
+    },
+    'golang.org/x/mod': {
+      status: 'AFFECTED_VERSION_GRAPH_ONLY_NO_IMPORTED_PACKAGE',
+      known_advisory_ids: ['GO-2026-6179', 'GO-2026-6180'],
+      affected_advisory_ids_at_selected_version: ['GO-2026-6179', 'GO-2026-6180'],
+      affected_package_graph_evidence: 'go list -deps -test ./... imports no golang.org/x/mod package; Go 1.26.6 cmd/go is fixed',
+      reachable_vulnerability: false,
+    },
+    'golang.org/x/tools': {
+      status: 'NO_KNOWN_MODULE_ADVISORY',
+      known_advisory_ids: [],
+      affected_advisory_ids_at_selected_version: [],
+      affected_package_graph_evidence: 'go list -deps -test ./... imports no golang.org/x/tools package; the fresh official module index contains no x/tools advisory',
+      reachable_vulnerability: false,
+    },
+  },
+  mvs_induced_changes: [
+    {
+      module: 'golang.org/x/sync',
+      previous_version: 'v0.17.0',
+      current_version: 'v0.21.0',
+      role: 'runtime_dependency',
+      direct: false,
+      upstream_commit: '5071ed6a9f1617117556b66384f765c934de3698',
+      module_h1: 'h1:HLII4xRRTtCRkxYp4HNFF0Js/Og6q2i++KXbg0gHCwM=',
+      go_mod_h1: 'h1:9xrNwdLfx4jkKbNva9FpL6vEN7evnE43NNNJQ2LF3+0=',
+      module_h1_sha256: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03',
+      go_mod_h1_sha256: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed',
+      raw_module_zip_sha256: 'ee65459023de7f24836f6e2123144b5329bd0a4d05a87c3c448509378e2e6be7',
+      raw_go_mod_sha256: 'a3e29e76060bd561060454b1fa2bdcd66674f60c9ca93833b8106355e34c603c',
+    },
+    {
+      module: 'golang.org/x/mod',
+      previous_version: 'v0.27.0',
+      current_version: 'v0.37.0',
+      role: 'module_graph_tooling',
+      direct: false,
+      upstream_commit: 'deb1dfcdb7c7fd98fb5afddc3e95dd36d5880874',
+      module_h1: 'h1:vF1DjpVEshcIqoEaauuHebaLk1O1forxjxBaVn884JQ=',
+      go_mod_h1: 'h1:m8S8VeM9r4dzDwjrKO0a1sZP3YjeMamRRlD+fmR2Q/0=',
+      module_h1_sha256: 'bc5d438e9544b21708aa811a6aeb8779b68b9353b57e8af18f105a567f3ce094',
+      go_mod_h1_sha256: '9bc4bc55e33daf87730f08eb28ed1ad6c64fdd88de31a9914650fe7e647643fd',
+      raw_module_zip_sha256: '91e8e4e9b74a8706dae808b66538d4ab22befd00c11f34134eb97ff572d52e85',
+      raw_go_mod_sha256: '538472fdf094dd5e49dc40e70468fa931a93c241eba07fb946a98747c94ab4df',
+    },
+    {
+      module: 'golang.org/x/tools',
+      previous_version: 'v0.36.0',
+      current_version: 'v0.47.0',
+      role: 'module_graph_tooling',
+      direct: false,
+      upstream_commit: 'fbf9f2e2c8124fbe1877f5ed2857111038d9fe12',
+      module_h1: 'h1:7Kn5x/d1svx/PzryTsqeoZN4TZwqeH5pGWjefhLi/1Q=',
+      go_mod_h1: 'h1:dFHnyTvFWY212G+h7ZY4Vsp/K3U4/7W9TyVaAul8uCA=',
+      module_h1_sha256: 'eca9f9c7f775b2fc7f3f3af24eca9ea193784d9c2a787e691968de7e12e2ff54',
+      go_mod_h1_sha256: '7451e7c93bc5598db5d86fa1ed963856ca7f2b7538ffb5bd4f255a02e97cb820',
+      raw_module_zip_sha256: '143d132b519da1454db967febb65241796805d7c9d4752034341c1376fd3d7f1',
+      raw_go_mod_sha256: 'eb46e44850fb4dca48f7b680cac5177682cb0e302b307d4d3dbd7ed9df05fc0f',
+    },
+  ],
+};
+
 export const BASE_COMMIT = B004_BASE_COMMIT;
 export const BASE_TREE = B004_BASE_TREE;
 
@@ -254,11 +371,14 @@ export const ALLOWED_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
+  'go.mod',
+  'go.sum',
   'package.json',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
   'scripts/ci/validate/storage.mjs',
@@ -315,8 +435,6 @@ export const FORBIDDEN_PREFIXES = [
   'internal/ipc/',
   'internal/campaign/',
   '.go-version',
-  'go.mod',
-  'go.sum',
   'pnpm-lock.yaml',
   'LICENSE',
   'tools/toolchain.lock.json',

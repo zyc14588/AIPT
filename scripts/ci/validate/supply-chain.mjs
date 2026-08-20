@@ -48,7 +48,9 @@
 // is never rewritten.
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import {
+  B004_DEPENDENCY_SECURITY_REQUALIFICATION,
   CI_ACTION_PINS,
   PG_LINUX_AMD64_PLATFORM_DIGEST,
   PG_MULTI_ARCH_DIGEST,
@@ -72,9 +74,35 @@ const GO_RUNTIME_MODULES = [
   { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
   { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
   { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
-  { module: 'golang.org/x/sync', version: 'v0.17.0', direct: false, license: 'BSD-3-Clause', h1hex: '97ad2738d323f65e5daeac3a8e584810b36ff48d00e0e16046c1bd936a13f548', gomodhex: 'f4a4c75e64a7a06aee2e9c058d5497d2534d03be42ca488c1026e8bcd4d9a862' },
-  { module: 'golang.org/x/text', version: 'v0.29.0', direct: false, license: 'BSD-3-Clause', h1hex: 'd6778db3dd30f58cc9f41a1cc5fb103472ae013e299208725dce27859eac26f9', gomodhex: 'ecc849380f420f6a99c8e2986b3c5d60c17ce4ec0f744afd8d3b41a4eef2747e' },
+  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, license: 'BSD-3-Clause', h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, license: 'BSD-3-Clause', h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
 ];
+
+// Go 1.26.6 selected-module graph after the exact x/text v0.39.0 upgrade.
+// The two graph-only identities are not application runtime dependencies and
+// therefore do not enter go.mod's six-module runtime closure.
+const GO_MODULE_GRAPH_TOOLING = [
+  { module: 'golang.org/x/mod', previousVersion: 'v0.27.0', version: 'v0.37.0', license: 'BSD-3-Clause', h1hex: 'bc5d438e9544b21708aa811a6aeb8779b68b9353b57e8af18f105a567f3ce094', gomodhex: '9bc4bc55e33daf87730f08eb28ed1ad6c64fdd88de31a9914650fe7e647643fd' },
+  { module: 'golang.org/x/tools', previousVersion: 'v0.36.0', version: 'v0.47.0', license: 'BSD-3-Clause', h1hex: 'eca9f9c7f775b2fc7f3f3af24eca9ea193784d9c2a787e691968de7e12e2ff54', gomodhex: '7451e7c93bc5598db5d86fa1ed963856ca7f2b7538ffb5bd4f255a02e97cb820' },
+];
+
+const EXPECTED_SELECTED_MODULE_GRAPH = {
+  'github.com/davecgh/go-spew': 'v1.1.1',
+  'github.com/jackc/pgpassfile': 'v1.0.0',
+  'github.com/jackc/pgservicefile': 'v0.0.0-20240606120523-5a60cdf6a761',
+  'github.com/jackc/pgx/v5': 'v5.10.0',
+  'github.com/jackc/puddle/v2': 'v2.2.2',
+  'github.com/kr/pretty': 'v0.3.0',
+  'github.com/pmezard/go-difflib': 'v1.0.0',
+  'github.com/stretchr/objx': 'v0.1.0',
+  'github.com/stretchr/testify': 'v1.11.1',
+  'golang.org/x/mod': 'v0.37.0',
+  'golang.org/x/sync': 'v0.21.0',
+  'golang.org/x/text': 'v0.39.0',
+  'golang.org/x/tools': 'v0.47.0',
+  'gopkg.in/check.v1': 'v1.0.0-20201130134442-10cb98267c6c',
+  'gopkg.in/yaml.v3': 'v3.0.1',
+};
 
 // Expected SPDX license values for the machine `license` fields of the
 // license inventory. Three-layer PostgreSQL model (R6):
@@ -108,6 +136,8 @@ const EXPECTED_SPDX_LICENSES = {
   'github.com/jackc/puddle/v2': 'MIT',
   'golang.org/x/sync': 'BSD-3-Clause',
   'golang.org/x/text': 'BSD-3-Clause',
+  'golang.org/x/mod': 'BSD-3-Clause',
+  'golang.org/x/tools': 'BSD-3-Clause',
 };
 
 // Exact expected record kinds for the current inventory: the exact
@@ -133,6 +163,8 @@ const EXPECTED_RECORD_KINDS = {
   'github.com/jackc/puddle/v2': 'third_party_go_runtime',
   'golang.org/x/sync': 'third_party_go_runtime',
   'golang.org/x/text': 'third_party_go_runtime',
+  'golang.org/x/mod': 'selected_go_module_graph_tooling',
+  'golang.org/x/tools': 'selected_go_module_graph_tooling',
 };
 
 const EXPECTED_FIRST_PARTY_IDS = ['AIPT', '@aipt/adapter-sdk'];
@@ -146,10 +178,121 @@ const SDK_RECORD = {
   verified_at: '2026-08-17T07:15:00Z',
 };
 
+function exactScalarObject(actual, expected) {
+  if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
+  const actualKeys = Object.keys(actual).sort();
+  const expectedKeys = Object.keys(expected).sort();
+  if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) return false;
+  return expectedKeys.every((key) => actual[key] === expected[key]);
+}
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (value && typeof value === 'object') {
+    const result = {};
+    for (const key of Object.keys(value).sort()) result[key] = canonicalValue(value[key]);
+    return result;
+  }
+  return value;
+}
+
+function exactJsonValue(actual, expected) {
+  return JSON.stringify(canonicalValue(actual)) === JSON.stringify(canonicalValue(expected));
+}
+
+function selectedModuleGraphProblems(text) {
+  const problems = [];
+  const selected = new Map();
+  for (const [index, raw] of text.split('\n').entries()) {
+    const line = raw.trim();
+    if (line === '') continue;
+    const fields = line.split(/\s+/);
+    if (fields.length !== 2 || !fields[0] || !fields[1]) {
+      problems.push(`selected module graph line ${index + 1} malformed: ${JSON.stringify(raw)}`);
+      continue;
+    }
+    if (selected.has(fields[0])) {
+      problems.push(`selected module graph duplicate identity: ${fields[0]}`);
+      continue;
+    }
+    selected.set(fields[0], fields[1]);
+  }
+  for (const [module, version] of Object.entries(EXPECTED_SELECTED_MODULE_GRAPH)) {
+    const actual = selected.get(module);
+    if (actual === undefined) problems.push(`selected module graph missing ${module}`);
+    else if (actual !== version) problems.push(`selected module graph ${module} version must be ${version}, got ${actual}`);
+  }
+  for (const module of selected.keys()) {
+    if (!Object.prototype.hasOwnProperty.call(EXPECTED_SELECTED_MODULE_GRAPH, module)) {
+      problems.push(`unexpected unrelated module in selected module graph: ${module}`);
+    }
+  }
+  return problems;
+}
+
+function readSelectedModuleGraph(repo) {
+  const result = spawnSync(
+    'go',
+    ['list', '-mod=readonly', '-m', '-f', '{{if not .Main}}{{.Path}} {{.Version}}{{end}}', 'all'],
+    { cwd: repo, encoding: 'utf8', timeout: 120000 },
+  );
+  if (result.error) return { output: '', problems: [`go list -m all failed: ${result.error.message}`] };
+  if (result.status !== 0) {
+    return { output: result.stdout ?? '', problems: [`go list -m all exited ${result.status}: ${(result.stderr ?? '').trim()}`] };
+  }
+  return { output: result.stdout, problems: selectedModuleGraphProblems(result.stdout) };
+}
+
+function buildPackageGraphProblems(text) {
+  const problems = [];
+  const packagesByModule = new Map();
+  for (const [index, raw] of text.split('\n').entries()) {
+    if (raw.trim() === '') continue;
+    const tab = raw.indexOf('\t');
+    if (tab <= 0 || tab === raw.length - 1) {
+      problems.push(`build package graph line ${index + 1} malformed: ${JSON.stringify(raw)}`);
+      continue;
+    }
+    const module = raw.slice(0, tab).trim();
+    const importPath = raw.slice(tab + 1).trim();
+    if (!packagesByModule.has(module)) packagesByModule.set(module, new Set());
+    packagesByModule.get(module).add(importPath);
+  }
+  const textPackages = packagesByModule.get('golang.org/x/text') ?? new Set();
+  const syncPackages = packagesByModule.get('golang.org/x/sync') ?? new Set();
+  if (!textPackages.has('golang.org/x/text/unicode/norm')) {
+    problems.push('build package graph missing reachable golang.org/x/text/unicode/norm evidence');
+  }
+  if (!syncPackages.has('golang.org/x/sync/semaphore')) {
+    problems.push('build package graph missing selected golang.org/x/sync/semaphore runtime package');
+  }
+  for (const module of ['golang.org/x/mod', 'golang.org/x/tools']) {
+    const imported = [...(packagesByModule.get(module) ?? [])].sort();
+    if (imported.length > 0) {
+      problems.push(`build package graph must import no ${module} package; found ${imported.join(', ')}`);
+    }
+  }
+  return problems;
+}
+
+function readBuildPackageGraph(repo) {
+  const result = spawnSync(
+    'go',
+    ['list', '-mod=readonly', '-deps', '-test', '-f', '{{with .Module}}{{.Path}}\t{{$.ImportPath}}{{end}}', './...'],
+    { cwd: repo, encoding: 'utf8', timeout: 120000 },
+  );
+  if (result.error) return { output: '', problems: [`go list -deps -test ./... failed: ${result.error.message}`] };
+  if (result.status !== 0) {
+    return { output: result.stdout ?? '', problems: [`go list -deps -test ./... exited ${result.status}: ${(result.stderr ?? '').trim()}`] };
+  }
+  return { output: result.stdout, problems: buildPackageGraphProblems(result.stdout) };
+}
+
 // Pure machine check over a parsed licenses.json inventory: record sanity
-// (records must be a non-empty array with unique ids), the exact 18-identity
+// (records must be a non-empty array with unique ids), the exact 20-identity
 // record set (exact first-party set + exact B001 tooling/CI/infrastructure
-// set + exact B003 six-module Go runtime closure), exact SPDX license values,
+// set + exact B003 six-module Go runtime closure + two B004-selected graph
+// tooling identities), exact SPDX license values,
 // exact record kinds, the truthful SDK record metadata, the truthful B003 Go
 // runtime record metadata (version/directness/role/selection), the frozen
 // PostgreSQL digests on the composite-image record, and the exact
@@ -267,7 +410,7 @@ function checkLicenseInventory(licenses) {
     }
   }
   if (identityOk) {
-    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (exact first-party set + exact B001 tooling/CI/infrastructure set + exact B003 Go runtime closure)`);
+    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (first-party + B001 tooling/CI/infrastructure + B003 runtime closure + B004 graph tooling)`);
   }
   // Exact-set model: no unrecorded third-party identity may exist.
   const known = new Set(Object.keys(EXPECTED_SPDX_LICENSES));
@@ -334,6 +477,119 @@ function checkLicenseInventory(licenses) {
   if (goRuntimeOk) {
     ok(`${GO_RUNTIME_MODULES.length} Go runtime license records carry exact versions, SPDX licenses, kind/role, go.mod directness, and truthful B003 selection/verification evidence`);
   }
+
+  // B004 preserves the B003 selectors while recording the current security
+  // closure in closed-shape metadata. Missing provenance, checksums, history,
+  // or an arbitrary older/newer x/text version must fail independently.
+  const requal = B004_DEPENDENCY_SECURITY_REQUALIFICATION;
+  const textRec = records.find((r) => r?.id === requal.module);
+  const expectedTextSecurity = {
+    directive: requal.directive,
+    batch: requal.batch,
+    advisory: requal.advisory,
+    cve: requal.cve,
+    previous_version: requal.previous_version,
+    current_version: requal.current_version,
+    reason: requal.reason,
+    fixed_in: requal.fixed_in,
+    verified_at: requal.verified_at,
+    vulnerability_authority: requal.vulnerability_authority,
+    upstream_tag: requal.upstream_tag,
+    upstream_commit: requal.upstream_commit,
+    fix_commit: requal.fix_commit,
+    module_h1: requal.module_h1,
+    go_mod_h1: requal.go_mod_h1,
+    module_h1_sha256: requal.module_h1_sha256,
+    go_mod_h1_sha256: requal.go_mod_h1_sha256,
+    raw_module_zip_sha256: requal.raw_module_zip_sha256,
+    raw_go_mod_sha256: requal.raw_go_mod_sha256,
+    license_file_sha256: requal.license_file_sha256,
+  };
+  if (!textRec || textRec.version !== 'v0.39.0' || textRec.selected_by_batch !== 'AIPT-M0-B003') {
+    fail('golang.org/x/text must preserve selected_by_batch=AIPT-M0-B003 and select exact approved v0.39.0');
+  } else if (textRec.verified_at !== requal.verified_at || !exactScalarObject(textRec.security_requalification, expectedTextSecurity)) {
+    fail('golang.org/x/text must carry the exact closed B004 security_requalification provenance and checksums');
+  } else {
+    ok('golang.org/x/text preserves B003 v0.29.0 history and carries exact B004 GO-2026-5970 requalification to v0.39.0');
+  }
+
+  const mvsRecords = [
+    {
+      module: 'golang.org/x/sync',
+      selectedBy: 'AIPT-M0-B003',
+      kind: 'third_party_go_runtime',
+      role: 'runtime_dependency',
+      reason: 'deterministic MVS consequence of the x/text v0.39.0 security upgrade',
+    },
+    {
+      module: 'golang.org/x/mod',
+      selectedBy: 'AIPT-M0-B004',
+      kind: 'selected_go_module_graph_tooling',
+      role: 'module_graph_tooling',
+      reason: 'deterministic selected-module-graph consequence of the x/text v0.39.0 security upgrade',
+    },
+    {
+      module: 'golang.org/x/tools',
+      selectedBy: 'AIPT-M0-B004',
+      kind: 'selected_go_module_graph_tooling',
+      role: 'module_graph_tooling',
+      reason: 'deterministic selected-module-graph consequence of the x/text v0.39.0 security upgrade',
+    },
+  ];
+  let mvsInventoryOk = true;
+  for (const expected of mvsRecords) {
+    const change = requal.mvs_induced_changes.find((item) => item.module === expected.module);
+    const rec = records.find((item) => item?.id === expected.module);
+    const expectedMvs = change && {
+      directive: requal.directive,
+      batch: requal.batch,
+      trigger_module: requal.module,
+      trigger_version: requal.current_version,
+      previous_version: change.previous_version,
+      current_version: change.current_version,
+      reason: expected.reason,
+      verified_at: requal.verified_at,
+      upstream_tag: change.current_version,
+      upstream_commit: change.upstream_commit,
+      module_h1: change.module_h1,
+      go_mod_h1: change.go_mod_h1,
+      module_h1_sha256: change.module_h1_sha256,
+      go_mod_h1_sha256: change.go_mod_h1_sha256,
+      raw_module_zip_sha256: change.raw_module_zip_sha256,
+      raw_go_mod_sha256: change.raw_go_mod_sha256,
+      license_file_sha256: requal.license_file_sha256,
+    };
+    if (
+      !change || !rec || rec.version !== change.current_version || rec.direct !== false ||
+      rec.kind !== expected.kind || rec.role !== expected.role ||
+      rec.selected_by_batch !== expected.selectedBy || rec.verified_at !== requal.verified_at ||
+      !exactScalarObject(rec.mvs_requalification, expectedMvs)
+    ) {
+      fail(`licenses.json record ${expected.module} must carry exact ${change?.previous_version ?? '?'} -> ${change?.current_version ?? '?'} MVS provenance, role, checksums, and selection history`);
+      mvsInventoryOk = false;
+    }
+  }
+  if (mvsInventoryOk) {
+    ok('x/sync, x/mod, and x/tools carry exact deterministic MVS provenance; graph tooling is kept outside the runtime closure');
+  }
+  let vulnerabilityInventoryOk = true;
+  for (const [module, qualification] of Object.entries(requal.vulnerability_qualifications)) {
+    const rec = records.find((item) => item?.id === module);
+    const expected = {
+      database: requal.vulnerability_database,
+      module_index: requal.vulnerability_module_index,
+      checked_at: requal.vulnerability_checked_at,
+      module_index_sha256: requal.vulnerability_module_index_sha256,
+      ...qualification,
+    };
+    if (!rec || !exactJsonValue(rec.vulnerability_qualification, expected)) {
+      fail(`licenses.json record ${module} must carry exact closed official vulnerability qualification and build-package reachability evidence`);
+      vulnerabilityInventoryOk = false;
+    }
+  }
+  if (vulnerabilityInventoryOk) {
+    ok('x/text, x/sync, x/mod, and x/tools carry exact fresh official vulnerability qualification; affected x/mod v0.37.0 remains selected-graph-only with no imported package');
+  }
   // The composite-image record must pin both frozen digests exactly.
   const imageRec = records.find((r) => r?.id === 'postgresql-docker-official-image');
   if (!imageRec) {
@@ -350,9 +606,13 @@ function checkLicenseInventory(licenses) {
     }
   }
   const appDeps = src.application_dependencies && typeof src.application_dependencies === 'object' ? src.application_dependencies : {};
-  if (appDeps.go_runtime_third_party_modules !== GO_RUNTIME_MODULES.length || appDeps.pnpm_runtime_third_party_packages !== 0) {
-    fail(`licenses.json application_dependencies must be go=${GO_RUNTIME_MODULES.length}/pnpm=0, got go=${JSON.stringify(appDeps.go_runtime_third_party_modules)}/pnpm=${JSON.stringify(appDeps.pnpm_runtime_third_party_packages)}`);
-  } else ok(`licenses.json application dependency inventory = ${GO_RUNTIME_MODULES.length} / 0 (six approved pgx runtime modules, zero pnpm third-party packages)`);
+  if (
+    appDeps.go_runtime_third_party_modules !== GO_RUNTIME_MODULES.length ||
+    appDeps.go_selected_module_graph_tooling_modules !== GO_MODULE_GRAPH_TOOLING.length ||
+    appDeps.pnpm_runtime_third_party_packages !== 0
+  ) {
+    fail(`licenses.json application_dependencies must be runtime-go=${GO_RUNTIME_MODULES.length}/graph-tooling=${GO_MODULE_GRAPH_TOOLING.length}/pnpm=0, got go=${JSON.stringify(appDeps.go_runtime_third_party_modules)}/graph-tooling=${JSON.stringify(appDeps.go_selected_module_graph_tooling_modules)}/pnpm=${JSON.stringify(appDeps.pnpm_runtime_third_party_packages)}`);
+  } else ok(`licenses.json application dependency inventory = runtime-go ${GO_RUNTIME_MODULES.length}, selected graph tooling ${GO_MODULE_GRAPH_TOOLING.length}, pnpm runtime 0`);
   const b004NoteTokens = [
     'AIPT-M0-B004',
     'no new third-party dependency',
@@ -361,9 +621,15 @@ function checkLicenseInventory(licenses) {
     'internal/core',
     'internal/launcher',
     'already-qualified B003 pgx runtime closure',
+    'AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001',
+    'GO-2026-5970',
+    'x/text v0.39.0',
+    'x/sync v0.21.0',
+    'x/mod v0.37.0',
+    'x/tools v0.47.0',
   ];
   if (typeof appDeps.note !== 'string' || b004NoteTokens.some((token) => !appDeps.note.includes(token))) {
-    fail(`licenses.json application_dependencies note must document AIPT-M0-B004 as zero new third-party dependency and name cmd/aipt, internal/config, internal/core, internal/launcher, and the already-qualified B003 pgx runtime closure`);
+    fail(`licenses.json application_dependencies note must preserve B003 history and document the exact B004 dependency security/MVS closure and roles`);
   } else {
     ok('licenses.json application dependency note truthfully records the B004 zero-new-third-party runtime shell and retained B003 pgx closure');
   }
@@ -911,6 +1177,88 @@ export function run(ctx) {
       },
     },
     {
+      label: 'golang.org/x/text vulnerable B003 version v0.29.0 rejected',
+      targetId: 'golang.org/x/text',
+      reason: /version must be v0\.39\.0|select exact approved v0\.39\.0/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'golang.org/x/text').version = 'v0.29.0';
+      },
+    },
+    {
+      label: 'golang.org/x/text below-fixed version v0.38.0 rejected',
+      targetId: 'golang.org/x/text',
+      reason: /version must be v0\.39\.0|select exact approved v0\.39\.0/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'golang.org/x/text').version = 'v0.38.0';
+      },
+    },
+    {
+      label: 'golang.org/x/text unapproved newer version v0.40.0 rejected',
+      targetId: 'golang.org/x/text',
+      reason: /version must be v0\.39\.0|select exact approved v0\.39\.0/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'golang.org/x/text').version = 'v0.40.0';
+      },
+    },
+    {
+      label: 'golang.org/x/text B004 security provenance missing',
+      targetId: 'golang.org/x/text',
+      reason: /exact closed B004 security_requalification provenance/,
+      mutate: (recs) => {
+        delete recs.find((r) => r.id === 'golang.org/x/text').security_requalification;
+      },
+    },
+    {
+      label: 'golang.org/x/text qualified checksum missing',
+      targetId: 'golang.org/x/text',
+      reason: /exact closed B004 security_requalification provenance/,
+      mutate: (recs) => {
+        delete recs.find((r) => r.id === 'golang.org/x/text').security_requalification.module_h1;
+      },
+    },
+    {
+      label: 'golang.org/x/text vulnerability qualification missing',
+      targetId: 'golang.org/x/text',
+      reason: /must carry exact closed official vulnerability qualification and build-package reachability evidence/,
+      mutate: (recs) => {
+        delete recs.find((r) => r.id === 'golang.org/x/text').vulnerability_qualification;
+      },
+    },
+    {
+      label: 'golang.org/x/sync old MVS version v0.17.0 rejected',
+      targetId: 'golang.org/x/sync',
+      reason: /version must be v0\.21\.0|must carry exact v0\.17\.0 -> v0\.21\.0 MVS provenance/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'golang.org/x/sync').version = 'v0.17.0';
+      },
+    },
+    {
+      label: 'golang.org/x/mod graph-tooling role drifted to runtime',
+      targetId: 'golang.org/x/mod',
+      reason: /kind must be "selected_go_module_graph_tooling"|must carry exact v0\.27\.0 -> v0\.37\.0 MVS provenance/,
+      mutate: (recs) => {
+        const rec = recs.find((r) => r.id === 'golang.org/x/mod');
+        rec.kind = 'third_party_go_runtime';
+        rec.role = 'runtime_dependency';
+      },
+    },
+    {
+      label: 'golang.org/x/mod non-reachable vulnerability qualification falsified',
+      targetId: 'golang.org/x/mod',
+      reason: /must carry exact closed official vulnerability qualification and build-package reachability evidence/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'golang.org/x/mod').vulnerability_qualification.status = 'NO_KNOWN_MODULE_ADVISORY';
+      },
+    },
+    {
+      label: 'golang.org/x/tools graph-tooling license missing',
+      targetId: 'golang.org/x/tools',
+      reason: /license record incomplete\/unknown|machine license must be "BSD-3-Clause"/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === 'golang.org/x/tools').license = '';
+      },
+    },
+    {
       label: 'licenses.json top-level selected_by_batch drifted to AIPT-M0-B003 (baseline probe)',
       targetId: 'AIPT',
       reason: /top-level selected_by_batch must be AIPT-M0-B001/,
@@ -921,7 +1269,7 @@ export function run(ctx) {
     {
       label: 'AIPT-M0-B004 zero-new-third-party runtime-shell note removed',
       targetId: 'AIPT',
-      reason: /application_dependencies note must document AIPT-M0-B004/,
+      reason: /application_dependencies note must preserve B003 history and document the exact B004 dependency security\/MVS closure and roles/,
       mutate: (recs, whole) => {
         whole.application_dependencies.note = 'Historical inventory only.';
       },
@@ -1252,6 +1600,86 @@ export function run(ctx) {
   details.push(...closure.details);
   if (closure.result !== 'PASS') fail('go.mod/go.sum runtime closure FAIL');
   else ok('go.mod/go.sum carry exactly the approved pgx v5.10.0 runtime closure (1 direct + 5 transitive modules, no graph override, exact zip + /go.mod h1 pins)');
+
+  const selectedGraph = readSelectedModuleGraph(ctx.repo);
+  if (selectedGraph.problems.length > 0) {
+    for (const problem of selectedGraph.problems) fail(problem);
+  } else {
+    ok(`Go 1.26.6 selected module graph is the exact ${Object.keys(EXPECTED_SELECTED_MODULE_GRAPH).length}-module set, including x/mod v0.37.0 and x/tools v0.47.0 as graph tooling`);
+  }
+  const selectedGraphProbes = [
+    {
+      label: 'x/text old vulnerable v0.29.0',
+      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
+      text: selectedGraph.output.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0'),
+    },
+    {
+      label: 'x/text unexpected newer v0.40.0',
+      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
+      text: selectedGraph.output.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0'),
+    },
+    {
+      label: 'x/mod MVS version drift',
+      reason: /golang\.org\/x\/mod version must be v0\.37\.0/,
+      text: selectedGraph.output.replace('golang.org/x/mod v0.37.0', 'golang.org/x/mod v0.38.0'),
+    },
+    {
+      label: 'unexpected unrelated selected module',
+      reason: /unexpected unrelated module/,
+      text: `${selectedGraph.output}\nexample.com/rogue v1.0.0\n`,
+    },
+  ];
+  let selectedGraphProbesOk = selectedGraph.problems.length === 0;
+  if (selectedGraph.problems.length === 0) {
+    for (const probe of selectedGraphProbes) {
+      const problems = selectedModuleGraphProblems(probe.text);
+      if (!problems.some((problem) => probe.reason.test(problem))) {
+        fail(`selected-module graph negative probe (${probe.label}) was not rejected for the expected reason`);
+        selectedGraphProbesOk = false;
+      } else {
+        ok(`negative-probe PASS: selected module graph rejects ${probe.label}`);
+      }
+    }
+  }
+  if (selectedGraphProbesOk) ok(`all ${selectedGraphProbes.length} selected-module graph negative probes rejected as expected`);
+
+  const buildPackageGraph = readBuildPackageGraph(ctx.repo);
+  if (buildPackageGraph.problems.length > 0) {
+    for (const problem of buildPackageGraph.problems) fail(problem);
+  } else {
+    ok('Go 1.26.6 build/test package graph imports fixed x/text/unicode/norm and x/sync/semaphore, with zero x/mod or x/tools packages');
+  }
+  const buildGraphLines = buildPackageGraph.output.split('\n');
+  const buildPackageGraphProbes = [
+    {
+      label: 'affected x/mod sumdb package becomes imported',
+      reason: /must import no golang\.org\/x\/mod package/,
+      text: `${buildPackageGraph.output}\ngolang.org/x/mod\tgolang.org/x/mod/sumdb\n`,
+    },
+    {
+      label: 'x/tools package becomes imported despite graph-only role',
+      reason: /must import no golang\.org\/x\/tools package/,
+      text: `${buildPackageGraph.output}\ngolang.org/x/tools\tgolang.org/x/tools/go/packages\n`,
+    },
+    {
+      label: 'reachable x/text unicode/norm evidence removed',
+      reason: /missing reachable golang\.org\/x\/text\/unicode\/norm evidence/,
+      text: buildGraphLines.filter((line) => line !== 'golang.org/x/text\tgolang.org/x/text/unicode/norm').join('\n'),
+    },
+  ];
+  let buildPackageGraphProbesOk = buildPackageGraph.problems.length === 0;
+  if (buildPackageGraph.problems.length === 0) {
+    for (const probe of buildPackageGraphProbes) {
+      const problems = buildPackageGraphProblems(probe.text);
+      if (!problems.some((problem) => probe.reason.test(problem))) {
+        fail(`build-package graph negative probe (${probe.label}) was not rejected for the expected reason`);
+        buildPackageGraphProbesOk = false;
+      } else {
+        ok(`negative-probe PASS: build package graph rejects ${probe.label}`);
+      }
+    }
+  }
+  if (buildPackageGraphProbesOk) ok(`all ${buildPackageGraphProbes.length} build-package graph negative probes rejected as expected`);
   if (workspaceModel.result === 'PASS') {
     ok('pnpm-lock.yaml: zero third-party packages (exact workspace importer set checked above)');
   }
@@ -1263,6 +1691,46 @@ export function run(ctx) {
       mutate: () => checkGoModuleClosure({
         goMod: `${goMod}\nrequire example.com/rogue v1.0.0\n`,
         goSum,
+      }),
+    },
+    {
+      label: 'x/text vulnerable v0.29.0 selected in go.mod',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      mutate: () => checkGoModuleClosure({
+        goMod: goMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0'),
+        goSum,
+      }),
+    },
+    {
+      label: 'x/text below-fixed v0.38.0 selected in go.mod',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      mutate: () => checkGoModuleClosure({
+        goMod: goMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.38.0'),
+        goSum,
+      }),
+    },
+    {
+      label: 'x/text unapproved newer v0.40.0 selected in go.mod',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      mutate: () => checkGoModuleClosure({
+        goMod: goMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0'),
+        goSum,
+      }),
+    },
+    {
+      label: 'x/sync pre-MVS v0.17.0 selected in go.mod',
+      reason: /golang.org\/x\/sync version must be v0\.21\.0/,
+      mutate: () => checkGoModuleClosure({
+        goMod: goMod.replace('golang.org/x/sync v0.21.0', 'golang.org/x/sync v0.17.0'),
+        goSum,
+      }),
+    },
+    {
+      label: 'x/text zip h1 removed from go.sum',
+      reason: /go.sum missing zip h1 for golang.org\/x\/text v0\.39\.0/,
+      mutate: () => checkGoModuleClosure({
+        goMod,
+        goSum: goSum.replace(/^golang\.org\/x\/text v0\.39\.0 h1:[^\n]+\n/m, ''),
       }),
     },
     {

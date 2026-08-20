@@ -105,8 +105,13 @@ const GO_RUNTIME_MODULES = [
   { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
   { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
   { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
-  { module: 'golang.org/x/sync', version: 'v0.17.0', direct: false, license: 'BSD-3-Clause', h1hex: '97ad2738d323f65e5daeac3a8e584810b36ff48d00e0e16046c1bd936a13f548', gomodhex: 'f4a4c75e64a7a06aee2e9c058d5497d2534d03be42ca488c1026e8bcd4d9a862' },
-  { module: 'golang.org/x/text', version: 'v0.29.0', direct: false, license: 'BSD-3-Clause', h1hex: 'd6778db3dd30f58cc9f41a1cc5fb103472ae013e299208725dce27859eac26f9', gomodhex: 'ecc849380f420f6a99c8e2986b3c5d60c17ce4ec0f744afd8d3b41a4eef2747e' },
+  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, license: 'BSD-3-Clause', h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, license: 'BSD-3-Clause', h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
+];
+
+const GO_MODULE_GRAPH_TOOLING = [
+  { module: 'golang.org/x/mod', previousVersion: 'v0.27.0', version: 'v0.37.0', license: 'BSD-3-Clause', h1hex: 'bc5d438e9544b21708aa811a6aeb8779b68b9353b57e8af18f105a567f3ce094', gomodhex: '9bc4bc55e33daf87730f08eb28ed1ad6c64fdd88de31a9914650fe7e647643fd' },
+  { module: 'golang.org/x/tools', previousVersion: 'v0.36.0', version: 'v0.47.0', license: 'BSD-3-Clause', h1hex: 'eca9f9c7f775b2fc7f3f3af24eca9ea193784d9c2a787e691968de7e12e2ff54', gomodhex: '7451e7c93bc5598db5d86fa1ed963856ca7f2b7538ffb5bd4f255a02e97cb820' },
 ];
 
 function goModuleSpdxId(module) {
@@ -130,11 +135,11 @@ const SPDX23_RELATIONSHIP_TYPES = new Set([
 ]);
 
 // The exact required package identities (B001's 11 identities preserved,
-// plus the first-party B002 workspace package @aipt/adapter-sdk, plus the
-// six approved third-party Go runtime modules of the pgx v5.10.0 closure
-// selected in AIPT-M0-B003 iteration 6a). B003 has zero pnpm third-party
-// packages, so the SBOM package set must be exactly this 18-identity set —
-// no PnpmDep packages and no Go dependency outside the approved closure.
+// plus the first-party B002 workspace package @aipt/adapter-sdk, the six
+// approved third-party Go runtime modules of the pgx v5.10.0 closure, and
+// the two B004-qualified selected-module-graph tooling identities). The SBOM
+// package set is exactly these 20 identities — no PnpmDep package and no Go
+// identity outside the approved runtime/graph closure.
 const REQUIRED_PACKAGES = [
   { name: 'AIPT', spdxId: AIPT_SPDXID },
   { name: '@aipt/adapter-sdk', spdxId: SDK_SPDXID },
@@ -149,6 +154,7 @@ const REQUIRED_PACKAGES = [
   { name: 'actions/setup-go', spdxId: 'SPDXRef-Action-actions-setup-go' },
   { name: 'actions/setup-node', spdxId: 'SPDXRef-Action-actions-setup-node' },
   ...GO_RUNTIME_MODULES.map((m) => ({ name: m.module, spdxId: goModuleSpdxId(m.module) })),
+  ...GO_MODULE_GRAPH_TOOLING.map((m) => ({ name: m.module, spdxId: goModuleSpdxId(m.module) })),
 ];
 
 const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
@@ -184,6 +190,8 @@ const EXPECTED_PACKAGE_LICENSES = {
   'github.com/jackc/puddle/v2': 'MIT',
   'golang.org/x/sync': 'BSD-3-Clause',
   'golang.org/x/text': 'BSD-3-Clause',
+  'golang.org/x/mod': 'BSD-3-Clause',
+  'golang.org/x/tools': 'BSD-3-Clause',
 };
 
 // The exact npm purl of the first-party SDK package (percent-encoded scope).
@@ -485,11 +493,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       requiredOk = false;
     }
   }
-  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (11 B001 identities preserved + @aipt/adapter-sdk + six approved Go runtime modules)`);
+  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (11 B001 identities + @aipt/adapter-sdk + six Go runtime modules + two selected-graph tooling modules)`);
   const unknown = doc.packages.filter((p) => !byName.has(p.name) || !REQUIRED_PACKAGES.some((r) => r.name === p.name));
   if (doc.packages.length !== REQUIRED_PACKAGES.length || unknown.length > 0) {
     fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required packages (no package outside the approved identities), got ${doc.packages.length}`);
-  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities: 12 retained packages + six approved pgx v5.10.0 Go runtime modules`);
+  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities: 12 retained packages + six approved pgx v5.10.0 runtime modules + two B004 selected-graph tooling modules`);
   const depIds = ids.filter((id) => id.startsWith('SPDXRef-GoDep-') || id.startsWith('SPDXRef-PnpmDep-'));
   if (depIds.length > 0) fail(`SBOM carries legacy GoDep/PnpmDep dependency packages: ${depIds.join(', ')}`);
   else ok('no legacy GoDep/PnpmDep dependency packages in the SBOM');
@@ -718,6 +726,41 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   }
   if (goModulesOk) ok('all six Go runtime module packages carry exact versions, known SPDX licenses, golang purls, frozen h1 SHA-256 checksums, and truthful direct/transitive roles');
 
+  let graphToolingOk = true;
+  for (const m of GO_MODULE_GRAPH_TOOLING) {
+    const pkg = byName.get(m.module);
+    if (!pkg) {
+      fail(`Go selected module-graph tooling package missing from SBOM: ${m.module}`);
+      graphToolingOk = false;
+      continue;
+    }
+    if (pkg.versionInfo !== m.version) {
+      fail(`${m.module} graph-tooling versionInfo must be ${m.version}, got ${JSON.stringify(pkg.versionInfo)}`);
+      graphToolingOk = false;
+    }
+    const expectedPurl = `pkg:golang/${m.module}@${m.version}`;
+    const purlRef = (pkg.externalRefs ?? []).find((r) => r?.referenceType === 'purl');
+    if (!purlRef || purlRef.referenceLocator !== expectedPurl) {
+      fail(`${m.module} graph-tooling purl must be exactly ${expectedPurl}`);
+      graphToolingOk = false;
+    }
+    const cs = pkg.checksums ?? [];
+    if (cs.length !== 1 || cs[0].algorithm !== 'SHA256' || cs[0].checksumValue !== m.h1hex) {
+      fail(`${m.module} graph-tooling SHA256 checksumValue must be frozen sumdb h1 hex ${m.h1hex}`);
+      graphToolingOk = false;
+    }
+    const comment = pkg.comment ?? '';
+    if (
+      !comment.includes('(module-graph-tooling;') ||
+      !comment.includes(`${m.previousVersion} -> ${m.version}`) ||
+      !comment.includes('not an AIPT runtime dependency')
+    ) {
+      fail(`${m.module} comment must preserve previous/current MVS history and exact module-graph-tooling non-runtime role`);
+      graphToolingOk = false;
+    }
+  }
+  if (graphToolingOk) ok('x/mod and x/tools SBOM packages carry exact MVS versions, BSD-3-Clause licenses, purls, checksums, and non-runtime tooling roles');
+
   // ---- Go runtime dependency graph: AIPT DEPENDS_ON pgx (the single direct
   // module) and pgx DEPENDS_ON each of the five indirect modules; runtime
   // modules are never DEV_TOOL_OF packages ----
@@ -739,6 +782,27 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     }
   }
   if (pgxDepsOk) ok(`pgx DEPENDS_ON all five indirect modules of the closure (${GO_RUNTIME_MODULES.filter((x) => !x.direct).length} transitive runtime relationships)`);
+  const xtextSpdxId = goModuleSpdxId('golang.org/x/text');
+  let xtextGraphOk = true;
+  for (const module of ['golang.org/x/sync', ...GO_MODULE_GRAPH_TOOLING.map((m) => m.module)]) {
+    const target = goModuleSpdxId(module);
+    if (!doc.relationships.some(
+      (r) => r.spdxElementId === xtextSpdxId && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === target,
+    )) {
+      fail(`missing selected-module relationship: ${xtextSpdxId} DEPENDS_ON ${target}`);
+      xtextGraphOk = false;
+    }
+  }
+  for (const m of GO_MODULE_GRAPH_TOOLING) {
+    const source = goModuleSpdxId(m.module);
+    if (!doc.relationships.some(
+      (r) => r.spdxElementId === source && r.relationshipType === 'BUILD_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+    )) {
+      fail(`missing graph-tooling relationship: ${source} BUILD_TOOL_OF ${AIPT_SPDXID}`);
+      xtextGraphOk = false;
+    }
+  }
+  if (xtextGraphOk) ok('x/text selected graph edges and x/mod/x/tools BUILD_TOOL_OF roles are exact');
   const goDevTool = doc.relationships.filter(
     (r) => r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID && r.spdxElementId.startsWith('SPDXRef-GoModule-'),
   );
@@ -819,13 +883,18 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   // Every package that is neither AIPT nor the first-party SDK nor a Go
   // runtime module (the runtime closure is modeled as DEPENDS_ON, never
   // DEV_TOOL_OF) must have a DEV_TOOL_OF relationship to AIPT.
-  const nonDevTool = new Set([AIPT_SPDXID, SDK_SPDXID, ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module))]);
+  const nonDevTool = new Set([
+    AIPT_SPDXID,
+    SDK_SPDXID,
+    ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module)),
+    ...GO_MODULE_GRAPH_TOOLING.map((m) => goModuleSpdxId(m.module)),
+  ]);
   const nonAipt = doc.packages.filter((p) => !nonDevTool.has(p.SPDXID));
   const missingDevTool = nonAipt.filter(
     (p) => !doc.relationships.some((r) => r.spdxElementId === p.SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID),
   );
   if (missingDevTool.length > 0) fail(`packages missing DEV_TOOL_OF relationship to AIPT: ${missingDevTool.map((p) => p.SPDXID).join(', ')}`);
-  else ok('every tooling/CI/infrastructure package has a DEV_TOOL_OF relationship to AIPT (first-party SDK excluded: PACKAGE_OF AIPT; Go runtime modules excluded: DEPENDS_ON AIPT/pgx)');
+  else ok('every generic tooling/CI/infrastructure package has DEV_TOOL_OF AIPT; SDK, runtime modules, and explicit graph-tooling BUILD_TOOL_OF packages are correctly excluded');
 
   // ---- three-layer PostgreSQL composition: the composite image CONTAINS
   // the main software (a component inside the container) and GENERATED_FROM
@@ -1334,6 +1403,50 @@ export function run(ctx) {
         p.comment = p.comment.replace('(transitive;', '(direct;');
       },
     },
+    {
+      label: 'x/text vulnerable v0.29.0 package version rejected',
+      reason: /golang\.org\/x\/text versionInfo must be v0\.39\.0/,
+      mutate: (probeDoc) => {
+        probeDoc.packages.find((x) => x.SPDXID === goModuleSpdxId('golang.org/x/text')).versionInfo = 'v0.29.0';
+      },
+    },
+    {
+      label: 'x/mod selected graph-tooling package deleted',
+      reason: /Go selected module-graph tooling package missing from SBOM: golang\.org\/x\/mod|required package missing: golang\.org\/x\/mod/,
+      mutate: (probeDoc) => {
+        probeDoc.packages = probeDoc.packages.filter((p) => p.SPDXID !== goModuleSpdxId('golang.org/x/mod'));
+      },
+    },
+    {
+      label: 'x/tools selected graph-tooling checksum removed',
+      reason: /x\/tools graph-tooling SHA256 checksumValue must be frozen sumdb h1 hex/,
+      mutate: (probeDoc) => {
+        probeDoc.packages.find((x) => x.SPDXID === goModuleSpdxId('golang.org/x/tools')).checksums = [];
+      },
+    },
+    {
+      label: 'x/text DEPENDS_ON x/mod selected graph edge deleted',
+      reason: /missing selected-module relationship:.*x-text DEPENDS_ON.*x-mod/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(
+            r.spdxElementId === goModuleSpdxId('golang.org/x/text') &&
+            r.relationshipType === 'DEPENDS_ON' &&
+            r.relatedSpdxElement === goModuleSpdxId('golang.org/x/mod')
+          ),
+        );
+      },
+    },
+    {
+      label: 'x/mod BUILD_TOOL_OF role retyped to runtime dependency',
+      reason: /missing graph-tooling relationship:.*x-mod BUILD_TOOL_OF/,
+      mutate: (probeDoc) => {
+        const rel = probeDoc.relationships.find(
+          (r) => r.spdxElementId === goModuleSpdxId('golang.org/x/mod') && r.relationshipType === 'BUILD_TOOL_OF',
+        );
+        rel.relationshipType = 'RUNTIME_DEPENDENCY_OF';
+      },
+    },
   ];
   for (const def of goDepProbes) {
     const probeDoc = JSON.parse(JSON.stringify(doc));
@@ -1364,6 +1477,26 @@ export function run(ctx) {
   const realGoMod = fs.readFileSync(path.join(ctx.repo, 'go.mod'), 'utf8');
   const realGoSum = fs.readFileSync(path.join(ctx.repo, 'go.sum'), 'utf8');
   const manifestProbes = [
+    {
+      label: 'go.mod x/text vulnerable v0.29.0',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      run: () => goModClosureProblems(realGoMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0')),
+    },
+    {
+      label: 'go.mod x/text below-fixed v0.38.0',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      run: () => goModClosureProblems(realGoMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.38.0')),
+    },
+    {
+      label: 'go.mod x/text unapproved newer v0.40.0',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      run: () => goModClosureProblems(realGoMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0')),
+    },
+    {
+      label: 'go.sum x/text zip h1 removed',
+      reason: /missing zip h1 for golang.org\/x\/text v0\.39\.0/,
+      run: () => goSumH1Problems(realGoSum.replace(/^golang\.org\/x\/text v0\.39\.0 h1:[^\n]+\n/m, '')),
+    },
     {
       label: 'go.mod replace directive injected (graph override)',
       reason: /replace\/exclude\/retract/,

@@ -43,8 +43,8 @@ const GO_RUNTIME_MODULES = [
   { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
   { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
   { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
-  { module: 'golang.org/x/sync', version: 'v0.17.0', direct: false, license: 'BSD-3-Clause', h1hex: '97ad2738d323f65e5daeac3a8e584810b36ff48d00e0e16046c1bd936a13f548', gomodhex: 'f4a4c75e64a7a06aee2e9c058d5497d2534d03be42ca488c1026e8bcd4d9a862' },
-  { module: 'golang.org/x/text', version: 'v0.29.0', direct: false, license: 'BSD-3-Clause', h1hex: 'd6778db3dd30f58cc9f41a1cc5fb103472ae013e299208725dce27859eac26f9', gomodhex: 'ecc849380f420f6a99c8e2986b3c5d60c17ce4ec0f744afd8d3b41a4eef2747e' },
+  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, license: 'BSD-3-Clause', h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, license: 'BSD-3-Clause', h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
 ];
 
 // The pinned SHA-256 of the exact bytes of migrations/000001_ledger.sql as
@@ -593,6 +593,30 @@ export function run(ctx) {
       run: () => checkGoClosureText({
         goMod: goModText.replace('github.com/jackc/pgx/v5 v5.10.0', 'github.com/jackc/pgx/v5 v5.9.0'),
         goSum: goSumText,
+      }),
+    },
+    {
+      label: 'go.mod x/text vulnerable v0.29.0 rejected',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      run: () => checkGoClosureText({
+        goMod: goModText.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0'),
+        goSum: goSumText,
+      }),
+    },
+    {
+      label: 'go.mod x/text unapproved newer v0.40.0 rejected',
+      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      run: () => checkGoClosureText({
+        goMod: goModText.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0'),
+        goSum: goSumText,
+      }),
+    },
+    {
+      label: 'go.sum x/text zip h1 removed',
+      reason: /go.sum missing zip h1 for golang.org\/x\/text v0\.39\.0/,
+      run: () => checkGoClosureText({
+        goMod: goModText,
+        goSum: goSumText.replace(/^golang\.org\/x\/text v0\.39\.0 h1:[^\n]+\n/m, ''),
       }),
     },
     {

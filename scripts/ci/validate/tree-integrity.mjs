@@ -12,6 +12,7 @@ import path from 'node:path';
 import {
   ALLOWED_PATHS,
   B003_CLOSEOUT,
+  B004_CONSTRUCTION_CHECKPOINT,
   BASE_COMMIT,
   BASE_TREE,
   EXPECTED_MIT_LICENSE,
@@ -37,11 +38,14 @@ const ALLOWED_PATHS_LITERAL = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
+  'go.mod',
+  'go.sum',
   'package.json',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
   'scripts/ci/validate/storage.mjs',
@@ -76,8 +80,6 @@ const FORBIDDEN_PREFIXES_LITERAL = [
   'internal/ipc/',
   'internal/campaign/',
   '.go-version',
-  'go.mod',
-  'go.sum',
   'pnpm-lock.yaml',
   'LICENSE',
   'tools/toolchain.lock.json',
@@ -94,8 +96,6 @@ const FROZEN_REGISTRY_PATHS_LITERAL = [
 const FROZEN_FILES = [
   '.go-version',
   'LICENSE',
-  'go.mod',
-  'go.sum',
   'pnpm-lock.yaml',
   'tools/ci-actions.lock.json',
   'tools/toolchain.lock.json',
@@ -116,7 +116,10 @@ const FALSE_ALLOWLIST_PROBES = [
   'schemas/config/v1.json',
   'docs/runtimeevil/README.md',
   'README.md.bak',
+  'go.mod.bak',
+  'go.sum.bak',
   'package.json.bak',
+  'scripts/ci/validate/toolchain-lock.mjs.bak',
   'scripts/ci/validate/runtime-shell.mjs.bak',
   'scripts/ci/validate/standalone-entrypoints.mjs.bak',
   'scripts/ci/validate/defer-016.mjs.bak',
@@ -162,6 +165,27 @@ export function run(ctx) {
     fail('B003 closeout identity drifted');
   } else {
     ok('B003 closeout identity independently anchored');
+  }
+  if (
+    B004_CONSTRUCTION_CHECKPOINT.commit !== '59230daae0113d35896f192a255633ba2cc1dec7' ||
+    B004_CONSTRUCTION_CHECKPOINT.tree !== 'bab4289817a26a07553da4bfcccaac82dbb04319'
+  ) {
+    fail('B004 preserved construction checkpoint literal drifted');
+  } else {
+    const checkpointCommit = git(ctx.repo, ['rev-parse', B004_CONSTRUCTION_CHECKPOINT.commit + '^{commit}'], { check: false });
+    const checkpointTree = git(ctx.repo, ['rev-parse', B004_CONSTRUCTION_CHECKPOINT.commit + '^{tree}'], { check: false });
+    const checkpointAncestor = git(ctx.repo, ['merge-base', '--is-ancestor', B004_CONSTRUCTION_CHECKPOINT.commit, 'HEAD'], { check: false });
+    if (
+      checkpointCommit.status !== 0 ||
+      checkpointCommit.stdout.trim() !== B004_CONSTRUCTION_CHECKPOINT.commit ||
+      checkpointTree.status !== 0 ||
+      checkpointTree.stdout.trim() !== B004_CONSTRUCTION_CHECKPOINT.tree ||
+      checkpointAncestor.status !== 0
+    ) {
+      fail('B004 dependency repair must descend append-only from the preserved 59230daa construction checkpoint/tree');
+    } else {
+      ok('B004 preserved construction checkpoint/tree resolve and remain an ancestor of HEAD');
+    }
   }
   anchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
   anchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);

@@ -1,11 +1,12 @@
 {
   "schema": "aipt.public.supply-chain-licenses/v1",
   "selected_by_batch": "AIPT-M0-B001",
-  "generated_at": "2026-08-17",
+  "generated_at": "2026-08-20",
   "application_dependencies": {
     "go_runtime_third_party_modules": 6,
+    "go_selected_module_graph_tooling_modules": 2,
     "pnpm_runtime_third_party_packages": 0,
-    "note": "B001 introduced no third-party application runtime dependency; B002 iteration 4 registered the first-party dependency-free workspace package @aipt/adapter-sdk (packages/adapter-sdk, zero dependency specifiers) and kept both third-party dependency counts at zero. AIPT-M0-B003 iteration 6a qualifies the exact pgx v5.10.0 Go runtime closure required by internal/storage/postgres: go.mod direct github.com/jackc/pgx/v5 v5.10.0 plus five indirect modules (github.com/jackc/pgpassfile v1.0.0, github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761, github.com/jackc/puddle/v2 v2.2.2 — MIT; golang.org/x/sync v0.17.0, golang.org/x/text v0.29.0 — BSD-3-Clause), recorded below with exact versions, roles, directness, and B003 selection/verification evidence (go=6). AIPT-M0-B004 introduces no new third-party dependency: cmd/aipt, internal/config, internal/core, and internal/launcher use the Go standard library plus the already-qualified B003 pgx runtime closure. pnpm third-party packages stay at 0. Any future dependency must first be added to records below and receive explicit approval."
+    "note": "B001 introduced no third-party application runtime dependency; B002 iteration 4 registered the first-party dependency-free workspace package @aipt/adapter-sdk. AIPT-M0-B003 iteration 6a originally qualified the exact pgx v5.10.0 Go runtime closure required by internal/storage/postgres: x/sync v0.17.0 and x/text v0.29.0 were part of that historical six-module closure. Under AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001, reachable GO-2026-5970 requires x/text v0.39.0; Go 1.26.6 MVS deterministically selects x/sync v0.21.0, x/mod v0.37.0 and x/tools v0.47.0 while pgx remains v5.10.0. x/mod and x/tools are selected-module-graph tooling only and are not application runtime dependencies. AIPT-M0-B004 adds no new third-party dependency identity to cmd/aipt, internal/config, internal/core, or internal/launcher: they use the standard library plus the already-qualified B003 pgx runtime closure, now security-requalified by B004. Current counts remain go runtime=6 and pnpm runtime=0; selected graph tooling=2. Any future dependency must first be explicitly approved and qualified."
   },
   "records": [
     {
@@ -172,23 +173,179 @@
       "id": "golang.org/x/sync",
       "kind": "third_party_go_runtime",
       "license": "BSD-3-Clause",
-      "version": "v0.17.0",
+      "version": "v0.21.0",
       "direct": false,
       "role": "runtime_dependency",
       "selected_by_batch": "AIPT-M0-B003",
-      "evidence": "golang.org/x/sync v0.17.0: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect); BSD-3-Clause (Copyright 2009 The Go Authors) at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
-      "verified_at": "2026-08-19T00:00:00Z"
+      "evidence": "AIPT-M0-B003 originally selected and license-qualified golang.org/x/sync v0.17.0 as an indirect pgx v5.10.0 runtime dependency. AIPT-M0-B004 security closure deterministically selects v0.21.0 because golang.org/x/text v0.39.0 requires it; pgx remains v5.10.0. BSD-3-Clause (Copyright 2009 The Go Authors), official Go upstream tag and sumdb checks were requalified under AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001.",
+      "verified_at": "2026-08-20T16:00:40Z",
+      "mvs_requalification": {
+        "directive": "AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001",
+        "batch": "AIPT-M0-B004",
+        "trigger_module": "golang.org/x/text",
+        "trigger_version": "v0.39.0",
+        "previous_version": "v0.17.0",
+        "current_version": "v0.21.0",
+        "reason": "deterministic MVS consequence of the x/text v0.39.0 security upgrade",
+        "verified_at": "2026-08-20T16:00:40Z",
+        "upstream_tag": "v0.21.0",
+        "upstream_commit": "5071ed6a9f1617117556b66384f765c934de3698",
+        "module_h1": "h1:HLII4xRRTtCRkxYp4HNFF0Js/Og6q2i++KXbg0gHCwM=",
+        "go_mod_h1": "h1:9xrNwdLfx4jkKbNva9FpL6vEN7evnE43NNNJQ2LF3+0=",
+        "module_h1_sha256": "1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03",
+        "go_mod_h1_sha256": "f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed",
+        "raw_module_zip_sha256": "ee65459023de7f24836f6e2123144b5329bd0a4d05a87c3c448509378e2e6be7",
+        "raw_go_mod_sha256": "a3e29e76060bd561060454b1fa2bdcd66674f60c9ca93833b8106355e34c603c",
+        "license_file_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      },
+      "vulnerability_qualification": {
+        "database": "https://vuln.go.dev",
+        "module_index": "https://vuln.go.dev/index/modules.json",
+        "checked_at": "2026-08-20T16:16:58Z",
+        "module_index_sha256": "8b4159bf3e73d78c9246c49a6ccf576a27bb2f3871a4cf0046d94d128e068dca",
+        "status": "NO_KNOWN_MODULE_ADVISORY",
+        "known_advisory_ids": [],
+        "affected_advisory_ids_at_selected_version": [],
+        "affected_package_graph_evidence": "golang.org/x/sync/semaphore is imported; the fresh official module index contains no x/sync advisory",
+        "reachable_vulnerability": false
+      }
     },
     {
       "id": "golang.org/x/text",
       "kind": "third_party_go_runtime",
       "license": "BSD-3-Clause",
-      "version": "v0.29.0",
+      "version": "v0.39.0",
       "direct": false,
       "role": "runtime_dependency",
       "selected_by_batch": "AIPT-M0-B003",
-      "evidence": "golang.org/x/text v0.29.0: transitive Go runtime dependency of pgx v5.10.0 (go.mod indirect); BSD-3-Clause (Copyright 2009 The Go Authors) at the pinned module version; selected and license-verified in AIPT-M0-B003 leaf 6a storage supply-chain qualification",
-      "verified_at": "2026-08-19T00:00:00Z"
+      "evidence": "AIPT-M0-B003 originally selected and license-qualified golang.org/x/text v0.29.0 as an indirect pgx v5.10.0 runtime dependency. AIPT-M0-B004 security-requalified the current version to v0.39.0 because GO-2026-5970/CVE-2026-56852 is reachable through the B003 storage VerifyStream path and is officially fixed first in v0.39.0. BSD-3-Clause (Copyright 2009 The Go Authors); pgx remains v5.10.0.",
+      "verified_at": "2026-08-20T16:00:40Z",
+      "security_requalification": {
+        "directive": "AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001",
+        "batch": "AIPT-M0-B004",
+        "advisory": "GO-2026-5970",
+        "cve": "CVE-2026-56852",
+        "previous_version": "v0.29.0",
+        "current_version": "v0.39.0",
+        "reason": "reachable vulnerability",
+        "fixed_in": "v0.39.0",
+        "verified_at": "2026-08-20T16:00:40Z",
+        "vulnerability_authority": "https://vuln.go.dev/ID/GO-2026-5970.json",
+        "upstream_tag": "v0.39.0",
+        "upstream_commit": "b326f3d3c814ab79b3c516f4ac03c2314d8df65f",
+        "fix_commit": "5ae8e578e495731553eddba11b2d0e86c91a00ce",
+        "module_h1": "h1:UbZz4pLOvn600D6Oh6GGEI6VAmndrEBLv8/6BEXzyus=",
+        "go_mod_h1": "h1:3UwRclnC2g0TU9x8PZiyfOajCd1zaUNHF9cvqcQZ+ZM=",
+        "module_h1_sha256": "51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb",
+        "go_mod_h1_sha256": "dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993",
+        "raw_module_zip_sha256": "cbfa33111dfa6cbafef63103b82c544d35df425824ac94ea19629a12bdbf0523",
+        "raw_go_mod_sha256": "40e9425e17dcc56faf496619fde6908631d57b2cce0f766c4dca6bea8fc93838",
+        "license_file_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      },
+      "vulnerability_qualification": {
+        "database": "https://vuln.go.dev",
+        "module_index": "https://vuln.go.dev/index/modules.json",
+        "checked_at": "2026-08-20T16:16:58Z",
+        "module_index_sha256": "8b4159bf3e73d78c9246c49a6ccf576a27bb2f3871a4cf0046d94d128e068dca",
+        "status": "FIXED_AT_SELECTED_VERSION",
+        "known_advisory_ids": [
+          "GO-2020-0015",
+          "GO-2021-0113",
+          "GO-2022-1059",
+          "GO-2026-5970"
+        ],
+        "affected_advisory_ids_at_selected_version": [],
+        "affected_package_graph_evidence": "golang.org/x/text/unicode/norm is imported; GO-2026-5970 is fixed at selected v0.39.0",
+        "reachable_vulnerability": false
+      }
+    },
+    {
+      "id": "golang.org/x/mod",
+      "kind": "selected_go_module_graph_tooling",
+      "license": "BSD-3-Clause",
+      "version": "v0.37.0",
+      "direct": false,
+      "role": "module_graph_tooling",
+      "selected_by_batch": "AIPT-M0-B004",
+      "evidence": "Go 1.26.6 selected-module graph moved golang.org/x/mod v0.27.0 to v0.37.0 as a deterministic dependency of golang.org/x/text v0.39.0. It is module-graph tooling only, not an AIPT runtime dependency. BSD-3-Clause (Copyright 2009 The Go Authors), official Go upstream tag and sumdb checks requalified by AIPT-M0-B004.",
+      "verified_at": "2026-08-20T16:00:40Z",
+      "mvs_requalification": {
+        "directive": "AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001",
+        "batch": "AIPT-M0-B004",
+        "trigger_module": "golang.org/x/text",
+        "trigger_version": "v0.39.0",
+        "previous_version": "v0.27.0",
+        "current_version": "v0.37.0",
+        "reason": "deterministic selected-module-graph consequence of the x/text v0.39.0 security upgrade",
+        "verified_at": "2026-08-20T16:00:40Z",
+        "upstream_tag": "v0.37.0",
+        "upstream_commit": "deb1dfcdb7c7fd98fb5afddc3e95dd36d5880874",
+        "module_h1": "h1:vF1DjpVEshcIqoEaauuHebaLk1O1forxjxBaVn884JQ=",
+        "go_mod_h1": "h1:m8S8VeM9r4dzDwjrKO0a1sZP3YjeMamRRlD+fmR2Q/0=",
+        "module_h1_sha256": "bc5d438e9544b21708aa811a6aeb8779b68b9353b57e8af18f105a567f3ce094",
+        "go_mod_h1_sha256": "9bc4bc55e33daf87730f08eb28ed1ad6c64fdd88de31a9914650fe7e647643fd",
+        "raw_module_zip_sha256": "91e8e4e9b74a8706dae808b66538d4ab22befd00c11f34134eb97ff572d52e85",
+        "raw_go_mod_sha256": "538472fdf094dd5e49dc40e70468fa931a93c241eba07fb946a98747c94ab4df",
+        "license_file_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      },
+      "vulnerability_qualification": {
+        "database": "https://vuln.go.dev",
+        "module_index": "https://vuln.go.dev/index/modules.json",
+        "checked_at": "2026-08-20T16:16:58Z",
+        "module_index_sha256": "8b4159bf3e73d78c9246c49a6ccf576a27bb2f3871a4cf0046d94d128e068dca",
+        "status": "AFFECTED_VERSION_GRAPH_ONLY_NO_IMPORTED_PACKAGE",
+        "known_advisory_ids": [
+          "GO-2026-6179",
+          "GO-2026-6180"
+        ],
+        "affected_advisory_ids_at_selected_version": [
+          "GO-2026-6179",
+          "GO-2026-6180"
+        ],
+        "affected_package_graph_evidence": "go list -deps -test ./... imports no golang.org/x/mod package; Go 1.26.6 cmd/go is fixed",
+        "reachable_vulnerability": false
+      }
+    },
+    {
+      "id": "golang.org/x/tools",
+      "kind": "selected_go_module_graph_tooling",
+      "license": "BSD-3-Clause",
+      "version": "v0.47.0",
+      "direct": false,
+      "role": "module_graph_tooling",
+      "selected_by_batch": "AIPT-M0-B004",
+      "evidence": "Go 1.26.6 selected-module graph moved golang.org/x/tools v0.36.0 to v0.47.0 as a deterministic dependency of golang.org/x/text v0.39.0. It is module-graph tooling only, not an AIPT runtime dependency. BSD-3-Clause (Copyright 2009 The Go Authors), official Go upstream tag and sumdb checks requalified by AIPT-M0-B004.",
+      "verified_at": "2026-08-20T16:00:40Z",
+      "mvs_requalification": {
+        "directive": "AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001",
+        "batch": "AIPT-M0-B004",
+        "trigger_module": "golang.org/x/text",
+        "trigger_version": "v0.39.0",
+        "previous_version": "v0.36.0",
+        "current_version": "v0.47.0",
+        "reason": "deterministic selected-module-graph consequence of the x/text v0.39.0 security upgrade",
+        "verified_at": "2026-08-20T16:00:40Z",
+        "upstream_tag": "v0.47.0",
+        "upstream_commit": "fbf9f2e2c8124fbe1877f5ed2857111038d9fe12",
+        "module_h1": "h1:7Kn5x/d1svx/PzryTsqeoZN4TZwqeH5pGWjefhLi/1Q=",
+        "go_mod_h1": "h1:dFHnyTvFWY212G+h7ZY4Vsp/K3U4/7W9TyVaAul8uCA=",
+        "module_h1_sha256": "eca9f9c7f775b2fc7f3f3af24eca9ea193784d9c2a787e691968de7e12e2ff54",
+        "go_mod_h1_sha256": "7451e7c93bc5598db5d86fa1ed963856ca7f2b7538ffb5bd4f255a02e97cb820",
+        "raw_module_zip_sha256": "143d132b519da1454db967febb65241796805d7c9d4752034341c1376fd3d7f1",
+        "raw_go_mod_sha256": "eb46e44850fb4dca48f7b680cac5177682cb0e302b307d4d3dbd7ed9df05fc0f",
+        "license_file_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      },
+      "vulnerability_qualification": {
+        "database": "https://vuln.go.dev",
+        "module_index": "https://vuln.go.dev/index/modules.json",
+        "checked_at": "2026-08-20T16:16:58Z",
+        "module_index_sha256": "8b4159bf3e73d78c9246c49a6ccf576a27bb2f3871a4cf0046d94d128e068dca",
+        "status": "NO_KNOWN_MODULE_ADVISORY",
+        "known_advisory_ids": [],
+        "affected_advisory_ids_at_selected_version": [],
+        "affected_package_graph_evidence": "go list -deps -test ./... imports no golang.org/x/tools package; the fresh official module index contains no x/tools advisory",
+        "reachable_vulnerability": false
+      }
     }
   ]
 }
