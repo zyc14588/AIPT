@@ -57,7 +57,7 @@ jobs:
   # ------------------------------------------------------------------
   # Exact toolchain qualification on GA and reference runner images,
   # plus the explicit B002 protocol, B004 runtime-shell, and B005 Harness
-  # Adapter gates on every matrix runner.
+  # Adapter and B006 Evidence gates on every matrix runner.
   # ------------------------------------------------------------------
   toolchain:
     name: toolchain (${{ matrix.os }})
@@ -126,7 +126,11 @@ jobs:
         run: pnpm run check:harness-adapter
       - name: B005 Harness Adapter real-child stdio smoke tests
         run: pnpm run test:harness-adapter
-      - name: B001+B002+B003+B004+B005 aggregate validators (pnpm run check)
+      - name: "B006 Evidence schema + RAW_CAPTURE contract + security mutation probes"
+        run: pnpm run check:evidence
+      - name: "B006 Evidence Go exporter/verifier deterministic and tamper tests"
+        run: pnpm run test:evidence-go
+      - name: B001+B002+B003+B004+B005+B006 aggregate validators (pnpm run check)
         run: pnpm run check
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |
@@ -199,7 +203,7 @@ jobs:
         run: node scripts/ci/provenance.mjs
 
   # ------------------------------------------------------------------
-  # AIPT-M0-B003 storage + AIPT-M0-B004 runtime-shell integration against
+  # AIPT-M0-B003 storage + B004 runtime-shell + B006 Evidence integration against
   # ephemeral PostgreSQL 18.4.
   # A fresh container is started per run from the exact multi-arch
   # digest, published ONLY on the loopback interface (127.0.0.1:5432),
@@ -260,18 +264,20 @@ jobs:
             "18.4"*) ;;
             *) echo "unexpected server_version: ${SERVER_VERSION}"; exit 1 ;;
           esac
-      - name: PostgreSQL integration tests (B003 storage + B004 runtime shell, test-only DSN)
+      - name: PostgreSQL integration tests (B003 storage + B004 runtime shell + B006 Evidence, test-only DSN)
         run: |
           export AIPT_POSTGRES_DSN="postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable"
           export AIPT_REQUIRE_POSTGRES_INTEGRATION=1
           go test ./internal/storage/postgres -run '^TestPostgresIntegration' -count=1 -v
           go test ./internal/launcher -run '^TestPostgresIntegrationLauncher' -count=1 -v
-      - name: PostgreSQL integration race coverage (B003 concurrency + B004 runtime shell)
+          go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
+      - name: PostgreSQL integration race coverage (B003 concurrency + B004 runtime shell + B006 Evidence)
         run: |
           export AIPT_POSTGRES_DSN="postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable"
           export AIPT_REQUIRE_POSTGRES_INTEGRATION=1
           go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends)$' -count=1 -v
           go test -race ./internal/launcher -run '^TestPostgresIntegrationLauncher' -count=1 -v
+          go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
       - name: Remove ephemeral PostgreSQL container (CI-only cleanup, never production)
         run: |
           if docker inspect aipt-pg-18.4 >/dev/null 2>&1; then

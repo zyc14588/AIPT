@@ -3,8 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { BASE_COMMIT, HARNESS_SOURCE } from '../lib/constants.mjs';
-import { git, runAsMain } from '../lib/cli.mjs';
+import { HARNESS_SOURCE } from '../lib/constants.mjs';
+import { runAsMain } from '../lib/cli.mjs';
 
 const PACKAGE_NAME = '@aipt/harness-adapter';
 const PACKAGE_VERSION = '0.1.0';
@@ -75,6 +75,9 @@ export function harnessAdapterProblems(snapshot) {
       if (!(specifier === SDK || specifier.startsWith('node:') || specifier.startsWith('./') || specifier.startsWith('../'))) {
         problems.push(name + ' imports non-approved module ' + specifier);
       }
+      if (specifier.toLowerCase().includes('internal/evidence') || specifier.toLowerCase().includes('schemas/evidence')) {
+        problems.push(name + ' couples the frozen B005 Adapter to B006 Evidence runtime/schema');
+      }
     }
     if (NETWORK_PATTERNS.some((pattern) => pattern.test(source))) problems.push(name + ' contains network capability');
     if (COPIED_SCHEMA_PATTERNS.some((pattern) => pattern.test(source))) problems.push(name + ' copies schema truth');
@@ -93,16 +96,6 @@ export function harnessAdapterProblems(snapshot) {
   }
   if (!sdkImportSeen) problems.push('production source removed the canonical SDK dependency');
 
-  const changedPaths = snapshot?.changedPaths;
-  if (!Array.isArray(changedPaths)) problems.push('changed path set missing');
-  for (const changed of changedPaths ?? []) {
-    const lower = changed.toLowerCase();
-    if (lower.startsWith('docs/evidence/') || lower.startsWith('schemas/evidence/') ||
-        lower.startsWith('internal/evidence/') || lower.startsWith('packages/evidence/') ||
-        lower.includes('audit-export')) {
-      problems.push('B006 Evidence/Audit surface entered B005');
-    }
-  }
   return problems;
 }
 
@@ -132,9 +125,7 @@ export function run(ctx) {
   const sources = Object.fromEntries(productionNames.map((name) => [
     name, fs.readFileSync(path.join(root, 'src', name), 'utf8'),
   ]));
-  const changedPaths = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT])
-    .stdout.split('\n').filter(Boolean);
-  const snapshot = { manifest, sources, changedPaths };
+  const snapshot = { manifest, sources };
   for (const problem of harnessAdapterProblems(snapshot)) fail(problem);
   if (harnessAdapterProblems(snapshot).length === 0) ok('live package passes the thin-adapter security contract');
 
@@ -211,7 +202,7 @@ export function run(ctx) {
     ['ambient environment', (s) => { s.sources['process-worker.ts'] += '\nconst forwarded = process.env;\n'; }],
     ['SDK dependency removal', (s) => { delete s.manifest.dependencies[SDK]; }],
     ['registry SDK dependency', (s) => { s.manifest.dependencies[SDK] = '^1.0.0'; }],
-    ['B006 Evidence surface', (s) => { s.changedPaths.push('schemas/evidence/v1/evidence.json'); }],
+    ['B006 Evidence coupling', (s) => { s.sources['runtime.ts'] += "\nimport '../../../internal/evidence/export.go';\n"; }],
     ['web listener', (s) => { s.sources['runtime.ts'] += '\ncreateServer().listen(8080);\n'; }],
   ];
   let missed = 0;

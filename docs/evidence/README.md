@@ -1,7 +1,38 @@
 # 证据与审计（EVIDENCE）
 
 > 公开证据流水线设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> **本节全部为设计目标；B000 使用简化的 Bootstrap 证据路径（见文末）。**
+> B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema；其余能力仍按下表明确标记为未实现。B000 使用简化的 Bootstrap 证据路径（见文末）。
+
+## B006 能力矩阵
+
+| 能力 | 状态 |
+|---|---|
+| `RAW_CAPTURE_EXPORT` | `IMPLEMENTED_MINIMAL` |
+| `AUDIT_READY_SCHEMA` | `IMPLEMENTED` |
+| `AUDIT_READY_GENERATOR` | `NOT_IMPLEMENTED` |
+| `AUDIT_RESULT_SCHEMA` | `IMPLEMENTED` |
+| `AUDIT_RESULT_GENERATOR` | `NOT_IMPLEMENTED` |
+| `SIGNING` | `NOT_IMPLEMENTED` |
+| `ENCRYPTION` | `NOT_IMPLEMENTED` |
+| `CHUNKING` | `NOT_IMPLEMENTED` |
+
+唯一公开 Schema 根为 [aipt-evidence.schema.json](../../schemas/evidence/v1/aipt-evidence.schema.json)：Draft 2020-12、根为严格三阶段 `oneOf`、未知 version/stage/字段拒绝。B006 runtime 只生成 `RAW_CAPTURE`；Schema 表达 `AUDIT_READY` 与 `AUDIT_RESULT` 不等于存在对应 generator。
+
+## 最小 RAW_CAPTURE
+
+[`internal/evidence`](../../internal/evidence) 的原生 Go exporter 从 B003 ledger 读取一个完整 stream，输出权限为目录 `0700`、文件 `0600` 的精确三文件目录：
+
+- `events.ndjson`：sequence `1..N`，每行由既有 `internal/protocol.CanonicalJSON` 生成 canonical JSON + 单 LF；保留数据库 exact `payload_canonical` TEXT，`committed_at` 规范化为 UTC RFC3339Nano。
+- `manifest.json`：canonical JSON + LF，绑定 source repo/commit/tree、`LEDGER_STREAM`、verified count/tail、normalization version，以及 `events.ndjson` 的 exact byte length/SHA-256。
+- `ROOT.sha256`：`SHA-256(manifest.json exact bytes)` 的 lowercase 64hex + LF。
+
+Exporter 在同一文件系统的私有临时 sibling 中写入、fsync、调用独立 verifier 自检后才 rename 发布；existing final（包括 symlink）拒绝，失败清理临时目录，不留下貌似完成的 final。Verifier 要求精确文件集、无 extra/symlink、canonical bytes、root/asset hash、完整 sequence/stream/count/tail、payload SHA、previous-hash chain 与 UTC 时间；它只验证 capture 自身一致性，不复制 B003 event-hash preimage。
+
+稳定错误类别覆盖 `AIPT_EVIDENCE_INVALID_INPUT`、`AIPT_EVIDENCE_UNSAFE_PATH`、`AIPT_EVIDENCE_TARGET_EXISTS`、`AIPT_EVIDENCE_LEDGER_VERIFY_FAILED`、`AIPT_EVIDENCE_STREAM_CHANGED`、`AIPT_EVIDENCE_WRITE_FAILED` 与 `AIPT_EVIDENCE_BUNDLE_INVALID`；包装错误仍保留 B003 原始 ledger 校验错误的 `errors.Is` 语义，错误文本不回显 payload。
+
+PostgreSQL source 先调用 B003 `postgres.VerifyStream` 得到 `N/H`，再以 read-only transaction 只执行 `SELECT ... sequence <= N ORDER BY sequence ASC`，要求精确 N 条且最后 hash 为 H；结束前重读 cursor，变化则返回 `AIPT_EVIDENCE_STREAM_CHANGED`。公共 CI 只连接 digest-pinned、loopback-only 的 ephemeral PostgreSQL 18.4，并只使用完全合成 PUBLIC 数据；不得连接生产数据库。
+
+RAW_CAPTURE 是本地原生证据，B006 不自动外传，不调用网络、远端模型、construction Harness 或 GitHub API。Manifest/root 语义不含 export wall clock、hostname、PID、username、本机绝对路径、DSN 或 credential；没有 `max-events` 成功截断模式，超体积分块仍是未来能力。
 
 ## 权威来源
 

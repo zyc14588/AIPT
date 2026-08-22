@@ -58,7 +58,10 @@ DSH checkout、远端 API 或模型凭据。
 
 ## 批次边界
 
-`AIPT-M0-B005` 为 `MERGED_CLOSED`；`construction = IDLE_WAITING_NEXT_BATCH`、
-`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。`AIPT-M0-B006` 为
-`AUTHORIZED_TO_PREPARE`，`next_batch_authorized = true`、`next_batch_started = false`；
-本目录不定义 Evidence/Audit Schema、audit export 或其运行时，也不开始 B006 implementation。
+`AIPT-M0-B005` 为 `MERGED_CLOSED`。`AIPT-M0-B006` 当前为 `IN_PROGRESS`，
+`construction = IN_PROGRESS`、`current_batch = AIPT-M0-B006`、`GLOBAL_WIP = 1`。
+B006 施工前按 DeepSeek 官方中文价格页重核为 `OFF_PEAK` 并选择 `CODEX_HARNESS`；
+construction leaf 在发送真实 RAW_CAPTURE、真实数据库内容或秘密数据之前触发硬输入
+token 门并失败关闭，未产生补丁，随后按治理规则降级为 `CODEX_ONLY`，不重试、不放宽
+门禁。下一串行项 `UNREGISTERED-AIPT-P0-B002` 为 `NOT_AUTHORIZED`，
+`next_batch_authorized = false`、`next_batch_started = false`，不得开始。
