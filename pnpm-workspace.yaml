@@ -1,11 +1,8 @@
 # AIPT pnpm workspace.
 #
-# B002 iteration 4 registers the first-party dependency-free TypeScript
-# Adapter SDK: packages/adapter-sdk (@aipt/adapter-sdk 1.0.0, Node 24 native
-# erasable TypeScript). Both workspace importers (the private root package and
-# packages/adapter-sdk) carry ZERO dependency specifiers, and pnpm-lock.yaml
-# records zero third-party packages. Future batches register additional
-# runtime packages (Core tooling, Harness Adapter, Web UI) under packages/*
-# only after explicit supply-chain approval.
+# B002 registered dependency-free packages/adapter-sdk (@aipt/adapter-sdk). B005 registers
+# @aipt/harness-adapter with exactly one first-party workspace dependency on
+# that SDK. The root and SDK importers remain dependency-free and the lockfile
+# still records zero third-party packages.
 packages:
   - "packages/*"

@@ -120,6 +120,7 @@ const EXPECTED_SELECTED_MODULE_GRAPH = {
 const EXPECTED_SPDX_LICENSES = {
   AIPT: 'MIT',
   '@aipt/adapter-sdk': 'MIT',
+  '@aipt/harness-adapter': 'MIT',
   'actions/checkout': 'MIT',
   'actions/setup-go': 'MIT',
   'actions/setup-node': 'MIT',
@@ -147,6 +148,7 @@ const EXPECTED_SPDX_LICENSES = {
 const EXPECTED_RECORD_KINDS = {
   AIPT: 'first_party',
   '@aipt/adapter-sdk': 'first_party',
+  '@aipt/harness-adapter': 'first_party',
   'actions/checkout': 'ci_action',
   'actions/setup-go': 'ci_action',
   'actions/setup-node': 'ci_action',
@@ -167,7 +169,7 @@ const EXPECTED_RECORD_KINDS = {
   'golang.org/x/tools': 'selected_go_module_graph_tooling',
 };
 
-const EXPECTED_FIRST_PARTY_IDS = ['AIPT', '@aipt/adapter-sdk'];
+const EXPECTED_FIRST_PARTY_IDS = ['AIPT', '@aipt/adapter-sdk', '@aipt/harness-adapter'];
 
 // Truthful B002 metadata the SDK inventory record must carry: the SDK was
 // verified in AIPT-M0-B002 iteration 4, never in B001.
@@ -176,6 +178,13 @@ const SDK_RECORD = {
   version: '1.0.0',
   selected_by_batch: 'AIPT-M0-B002',
   verified_at: '2026-08-17T07:15:00Z',
+};
+
+const HARNESS_ADAPTER_RECORD = {
+  id: '@aipt/harness-adapter',
+  version: '0.1.0',
+  selected_by_batch: 'AIPT-M0-B005',
+  verified_at: '2026-08-22T00:00:00Z',
 };
 
 function exactScalarObject(actual, expected) {
@@ -435,6 +444,19 @@ function checkLicenseInventory(licenses) {
       fail('@aipt/adapter-sdk license record evidence must reference packages/adapter-sdk and the root LICENSE');
     } else ok('@aipt/adapter-sdk license record carries truthful B002 metadata (version 1.0.0, B002 selection, B002 verification, root LICENSE evidence)');
   }
+  const harnessRec = records.find((r) => r?.id === HARNESS_ADAPTER_RECORD.id);
+  if (harnessRec) {
+    if (harnessRec.version !== HARNESS_ADAPTER_RECORD.version) fail(`@aipt/harness-adapter license record version must be ${HARNESS_ADAPTER_RECORD.version}`);
+    if (harnessRec.selected_by_batch !== HARNESS_ADAPTER_RECORD.selected_by_batch) fail('@aipt/harness-adapter selected_by_batch must be AIPT-M0-B005');
+    if (harnessRec.verified_at !== HARNESS_ADAPTER_RECORD.verified_at) fail('@aipt/harness-adapter verified_at drifted');
+    if (typeof harnessRec.evidence !== 'string' ||
+        !harnessRec.evidence.includes('packages/harness-adapter') ||
+        !harnessRec.evidence.includes('@aipt/adapter-sdk') ||
+        !harnessRec.evidence.includes('workspace:*') ||
+        !harnessRec.evidence.includes('zero npm registry')) {
+      fail('@aipt/harness-adapter evidence must bind the first-party workspace SDK edge and zero registry packages');
+    } else ok('@aipt/harness-adapter carries truthful B005 first-party dependency metadata');
+  }
   // Truthful B003 Go runtime record metadata (AIPT-M0-B003 iteration 6a): the
   // six approved modules must carry exact versions, SPDX licenses, kind
   // third_party_go_runtime, role runtime_dependency, the exact go.mod
@@ -613,34 +635,33 @@ function checkLicenseInventory(licenses) {
   ) {
     fail(`licenses.json application_dependencies must be runtime-go=${GO_RUNTIME_MODULES.length}/graph-tooling=${GO_MODULE_GRAPH_TOOLING.length}/pnpm=0, got go=${JSON.stringify(appDeps.go_runtime_third_party_modules)}/graph-tooling=${JSON.stringify(appDeps.go_selected_module_graph_tooling_modules)}/pnpm=${JSON.stringify(appDeps.pnpm_runtime_third_party_packages)}`);
   } else ok(`licenses.json application dependency inventory = runtime-go ${GO_RUNTIME_MODULES.length}, selected graph tooling ${GO_MODULE_GRAPH_TOOLING.length}, pnpm runtime 0`);
-  const b004NoteTokens = [
+  const dependencyNoteTokens = [
+    'AIPT-M0-B003',
     'AIPT-M0-B004',
-    'no new third-party dependency',
-    'cmd/aipt',
-    'internal/config',
-    'internal/core',
-    'internal/launcher',
-    'already-qualified B003 pgx runtime closure',
-    'AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001',
     'GO-2026-5970',
     'x/text v0.39.0',
     'x/sync v0.21.0',
     'x/mod v0.37.0',
     'x/tools v0.47.0',
+    'AIPT-M0-B005',
+    '@aipt/harness-adapter@0.1.0',
+    '@aipt/adapter-sdk',
+    'workspace:*',
+    'zero npm registry',
+    'pnpm runtime third-party=0',
   ];
-  if (typeof appDeps.note !== 'string' || b004NoteTokens.some((token) => !appDeps.note.includes(token))) {
-    fail(`licenses.json application_dependencies note must preserve B003 history and document the exact B004 dependency security/MVS closure and roles`);
+  if (typeof appDeps.note !== 'string' || dependencyNoteTokens.some((token) => !appDeps.note.includes(token))) {
+    fail('licenses.json application_dependencies note must preserve B003/B004 history and document the exact B005 first-party workspace edge with zero registry dependency');
   } else {
-    ok('licenses.json application dependency note truthfully records the B004 zero-new-third-party runtime shell and retained B003 pgx closure');
+    ok('licenses.json application dependency note preserves B003/B004 and records the B005 first-party-only edge');
   }
 
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
 // Pure machine check of the first-party pnpm workspace model.
-//   - exact importer set: '.' plus exactly the registered workspace package
-//     directories (B002 iteration 4: packages/adapter-sdk);
-//   - every importer carries zero dependency specifiers;
+//   - exact importer set: root + adapter-sdk + harness-adapter;
+//   - root and SDK are empty; Harness Adapter has exactly one workspace SDK edge;
 //   - zero third-party packages (no `packages:` section);
 //   - pnpm-workspace.yaml declares packages/* and its prose names the SDK.
 function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
@@ -681,25 +702,39 @@ function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
   if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
     fail(`pnpm-lock importers must be exactly the registered workspace importers [${expectedKeys.join(', ')}], got [${actualKeys.join(', ')}] (unregistered workspace importer/package rejected)`);
   } else ok(`pnpm-lock importers = exactly [${expectedKeys.join(', ')}]`);
-  let specifierFree = true;
+  let importerShapeOk = true;
   for (const [key, importer] of importers) {
-    if (!(importer.inline === '{}' && importer.content.length === 0)) {
-      fail(`pnpm-lock importer ${JSON.stringify(key)} carries dependency specifiers (importer entry must be exactly <key>: {})`);
-      specifierFree = false;
+    if (key === 'packages/harness-adapter') {
+      const expectedContent = [
+        '    dependencies:',
+        "      '@aipt/adapter-sdk':",
+        '        specifier: workspace:*',
+        '        version: link:../adapter-sdk',
+      ];
+      if (importer.inline !== '' || JSON.stringify(importer.content) !== JSON.stringify(expectedContent)) {
+        fail('pnpm-lock Harness Adapter importer must contain exactly @aipt/adapter-sdk workspace:* -> link:../adapter-sdk');
+        importerShapeOk = false;
+      }
+    } else if (!(importer.inline === '{}' && importer.content.length === 0)) {
+      fail(`pnpm-lock importer ${JSON.stringify(key)} must remain exactly <key>: {}`);
+      importerShapeOk = false;
     }
   }
-  if (specifierFree) ok('every pnpm-lock importer carries zero dependency specifiers');
+  if (importerShapeOk) ok('root/SDK importers are empty and Harness Adapter has the exact first-party workspace SDK edge');
   if (typeof workspaceYaml === 'string') {
     if (!workspaceYaml.includes('"packages/*"')) fail('pnpm-workspace.yaml must keep the packages/* workspace glob');
     else if (!workspaceYaml.includes('packages/adapter-sdk')) fail('pnpm-workspace.yaml prose must name the registered first-party package packages/adapter-sdk');
-    else ok('pnpm-workspace.yaml declares packages/* and names packages/adapter-sdk');
+    else if (!workspaceYaml.includes('@aipt/harness-adapter')) fail('pnpm-workspace.yaml prose must name @aipt/harness-adapter');
+    else if (!workspaceYaml.includes('workspace dependency')) fail('pnpm-workspace.yaml must document the first-party workspace dependency');
+    else ok('pnpm-workspace.yaml declares packages/* and documents both first-party packages');
   }
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
 // Pure machine check that every registered workspace package directory has a
 // matching first-party license record (id == package name, version ==
-// package version, MIT == package license) and zero dependency specifiers.
+// package version and MIT license. Only Harness Adapter may carry a dependency,
+// and it must be exactly @aipt/adapter-sdk workspace:*.
 function checkWorkspaceFirstParty(packageEntries, licenses) {
   const details = [];
   let pass = true;
@@ -718,8 +753,16 @@ function checkWorkspaceFirstParty(packageEntries, licenses) {
     if (record.kind !== 'first_party') fail(`workspace package ${entry.name} license record must be kind first_party`);
     if (record.license !== entry.license || entry.license !== 'MIT') fail(`workspace package ${entry.name} license record must be MIT (package says ${JSON.stringify(entry.license)})`);
     if (record.version !== entry.version) fail(`workspace package ${entry.name} license record version ${JSON.stringify(record.version)} must equal package.json version ${JSON.stringify(entry.version)}`);
-    if (entry.hasDeps) fail(`workspace package ${entry.name} carries dependency specifiers (first-party packages must stay dependency-free)`);
-    else ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, dependency-free, license-covered`);
+    const expectedDependencies = entry.name === '@aipt/harness-adapter'
+      ? { '@aipt/adapter-sdk': 'workspace:*' }
+      : {};
+    if (!exactJsonValue(entry.dependencies, expectedDependencies) || entry.hasNonRuntimeDeps) {
+      fail(`workspace package ${entry.name} dependency shape drifted from its approved first-party contract`);
+    } else if (entry.name === '@aipt/harness-adapter') {
+      ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, exact SDK workspace edge, license-covered`);
+    } else {
+      ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, dependency-free, license-covered`);
+    }
   }
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
@@ -1112,6 +1155,32 @@ export function run(ctx) {
       },
     },
     {
+      label: 'Harness Adapter inventory record deleted',
+      targetId: HARNESS_ADAPTER_RECORD.id,
+      reason: /missing record @aipt\/harness-adapter/,
+      mutate: (recs) => {
+        recs.splice(recs.findIndex((r) => r.id === HARNESS_ADAPTER_RECORD.id), 1);
+      },
+    },
+    {
+      label: 'Harness Adapter inventory record wrongly licensed',
+      targetId: HARNESS_ADAPTER_RECORD.id,
+      reason: /MIT/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === HARNESS_ADAPTER_RECORD.id).license = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'Harness Adapter inventory metadata drifted',
+      targetId: HARNESS_ADAPTER_RECORD.id,
+      reason: /selected_by_batch must be AIPT-M0-B005|verified_at drifted/,
+      mutate: (recs) => {
+        const rec = recs.find((r) => r.id === HARNESS_ADAPTER_RECORD.id);
+        rec.selected_by_batch = 'AIPT-M0-B004';
+        rec.verified_at = '2026-08-20T00:00:00Z';
+      },
+    },
+    {
       label: 'unrecorded third-party license identity injected',
       targetId: 'AIPT',
       reason: /unrecorded license record ids/,
@@ -1267,9 +1336,9 @@ export function run(ctx) {
       },
     },
     {
-      label: 'AIPT-M0-B004 zero-new-third-party runtime-shell note removed',
+      label: 'B005 first-party-only dependency note removed',
       targetId: 'AIPT',
-      reason: /application_dependencies note must preserve B003 history and document the exact B004 dependency security\/MVS closure and roles/,
+      reason: /application_dependencies note must preserve B003\/B004 history and document the exact B005 first-party workspace edge/,
       mutate: (recs, whole) => {
         whole.application_dependencies.note = 'Historical inventory only.';
       },
@@ -1399,14 +1468,15 @@ export function run(ctx) {
       name: pkg.name,
       version: pkg.version,
       license: pkg.license,
-      hasDeps: Boolean(pkg.dependencies || pkg.devDependencies || pkg.peerDependencies || pkg.optionalDependencies),
+      dependencies: pkg.dependencies ?? {},
+      hasNonRuntimeDeps: Boolean(pkg.devDependencies || pkg.peerDependencies || pkg.optionalDependencies),
     });
   }
   if (importerDirs.length === 0) fail('no workspace packages found under packages/ (packages/adapter-sdk missing)');
   const workspaceModel = checkPnpmWorkspaceModel({ lockText: pnpmLockText, importerDirs, workspaceYaml });
   details.push(...workspaceModel.details);
   if (workspaceModel.result !== 'PASS') fail('first-party pnpm workspace model FAIL');
-  else ok('first-party pnpm workspace model PASS: exact importer set, zero specifiers, zero third-party packages');
+  else ok('first-party pnpm workspace model PASS: exact importer set, one first-party SDK link, zero third-party packages');
   const workspaceFirstParty = checkWorkspaceFirstParty(packageEntries, licenses);
   details.push(...workspaceFirstParty.details);
   if (workspaceFirstParty.result !== 'PASS') fail('workspace first-party license coverage FAIL');
@@ -1433,9 +1503,32 @@ export function run(ctx) {
     },
     {
       label: 'dependency specifier smuggled into an importer',
-      reason: /dependency specifiers/,
+      reason: /must remain exactly/,
       mutate: () => checkPnpmWorkspaceModel({
         lockText: pnpmLockText.replace('  packages/adapter-sdk: {}', '  packages/adapter-sdk:\n    dependencies:\n      is-odd:\n        specifier: ^3.0.0\n        version: 3.0.2'),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'Harness Adapter SDK dependency removed',
+      reason: /Harness Adapter importer must contain exactly/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText.replace(
+          "  packages/harness-adapter:\n    dependencies:\n      '@aipt/adapter-sdk':\n        specifier: workspace:*\n        version: link:../adapter-sdk",
+          '  packages/harness-adapter: {}',
+        ),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'Harness Adapter SDK edge changed to registry dependency',
+      reason: /Harness Adapter importer must contain exactly/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText
+          .replace('specifier: workspace:*', 'specifier: ^1.0.0')
+          .replace('version: link:../adapter-sdk', 'version: 1.0.0'),
         importerDirs,
         workspaceYaml,
       }),

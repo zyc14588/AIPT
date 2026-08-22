@@ -1,23 +1,17 @@
-// Shared B004 validator constants and closeout identities.
+// Shared B005 validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
 // acceptances. Nothing is computed at runtime from the candidate itself, so
 // the candidate cannot validate itself into acceptance.
 //
-// BASE_* is the accepted main base the B004 candidate must diff against: the
-// AIPT-M0-B003 closeout commit and its tree, held as independent literal
-// anchors. B000, B001, B002, and B003 keep their own original commit/tree
-// identities instead of aliasing the current base.
+// BASE_* is the accepted main base the B005 candidate must diff against: the
+// AIPT-M0-B004 closeout commit and its tree, held as independent literal
+// anchors. Every predecessor keeps its own original identity.
 
-// The batch whose implementation, repair, and closeout are validated by this
-// suite. This remains AIPT-M0-B004 after closeout so B004 reports and
-// immutable identities cannot masquerade as B005 work.
-export const CURRENT_BATCH = 'AIPT-M0-B004';
+export const CURRENT_BATCH = 'AIPT-M0-B005';
 
-// B004 is closed, so the machine authority has no active construction batch.
-// B005 is authorized only to prepare and is explicitly not started.
-export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
+export const ACTIVE_BATCH = 'AIPT-M0-B005';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -27,7 +21,7 @@ export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B004 closeout snapshot (machine + human docs).
+// Public status date of the B005 construction snapshot (machine + human docs).
 export const STATUS_DATE = '2026-08-22';
 
 // Immutable closed-batch identities — historical state, never updated by
@@ -160,6 +154,29 @@ export const B004_POST_MERGE_REPAIR = {
   ci_conclusion: 'success',
 };
 
+// Immutable B004 closeout. This ordinary single-parent authority commit is
+// the independently supplied B005 implementation base; it never masquerades
+// as the B004 implementation merge or Candidate identity.
+export const B004_CLOSEOUT = {
+  commit: '8005dd3bec8b367a6d97dcd9397158f1d8618f3e',
+  tree: 'd0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b',
+  parent: 'bd0c06867da58f89e82a35d82ce1d798c1ec9cae',
+};
+
+export const B005_BASE_COMMIT = '8005dd3bec8b367a6d97dcd9397158f1d8618f3e';
+export const B005_BASE_TREE = 'd0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b';
+
+// The Owner-authorized 2026-08-22 DSH deployment upgrade. The previous
+// frozen commit remains explicit historical provenance; B005 qualifies only
+// the currently clean source checkout/tag as its external compatibility seam.
+export const HARNESS_SOURCE = {
+  installation: 'source',
+  previous_commit: '47f943859bef60e4160492346772ded9b24f765a',
+  commit: '141eb6fef83422698aef7a981029e843e8161534',
+  release: 'dsh-v0.1.0-rc.8',
+  upgrade_authority: 'AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001',
+};
+
 // Exact B004 dependency-security requalification. The B003-selected runtime
 // identities remain historical facts; this records the current selected
 // versions and every deterministic MVS consequence under Go 1.26.6.
@@ -269,8 +286,8 @@ export const B004_DEPENDENCY_SECURITY_REQUALIFICATION = {
   ],
 };
 
-export const BASE_COMMIT = B004_BASE_COMMIT;
-export const BASE_TREE = B004_BASE_TREE;
+export const BASE_COMMIT = B005_BASE_COMMIT;
+export const BASE_TREE = B005_BASE_TREE;
 
 export const TOOLCHAIN = {
   go: '1.26.6',
@@ -382,51 +399,31 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// AIPT-M0-B004 allowed paths. The tree-integrity gate diffs the candidate
-// against the accepted batch base (the AIPT-M0-B003 closeout commit), so this
-// list is exactly the full approved B004 scope from the master contract: the
-// Go Launcher shell (cmd/aipt), the shared config service/schema foundation
-// (internal/config + schemas/config/v1), the Core lifecycle shell
-// (internal/core), the launcher gate machine (internal/launcher), the runtime
-// documentation (docs/runtime), and the retained authority / status /
-// validator / supply-chain / SBOM / CI-workflow paths that B004 iterations may
-// evolve — including the storage validator gate. B003 storage/protocol code
-// and docs stay read-only; dependency and toolchain registries stay frozen.
-// Path admission is PER-ITERATION: each B004 iteration registers only the
-// paths its own accepted scope may change, and the scope gate is never
-// disabled.
+// Exact AIPT-M0-B005 construction surface. Protocol/SDK/Go-core truth stays
+// frozen: this batch adds only the thin Harness Adapter, its deterministic
+// fixture/smoke, compatibility docs, and the gates/metadata needed to admit it.
 export const ALLOWED_PATHS = [
-  // Major new B004 areas from the master contract.
-  'cmd/aipt/**',
-  'internal/config/**',
-  'internal/core/**',
-  'internal/launcher/**',
-  'schemas/config/v1/**',
-  'docs/runtime/**',
-  // Retained authority / status / validator / CI paths B004 may evolve.
+  'packages/harness-adapter/**',
+  'docs/harness/**',
+  'scripts/ci/smoke/**',
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'go.mod',
-  'go.sum',
+  'docs/supply-chain/README.md',
   'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
-  'scripts/ci/validate/defer-016.mjs',
   'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
-  'scripts/ci/validate/storage.mjs',
   'scripts/ci/validate/supply-chain.mjs',
   'scripts/ci/validate/sbom.mjs',
-  // New B004 fail-closed runtime-shell gate.
-  'scripts/ci/validate/runtime-shell.mjs',
-  // Register the new gate in the retained standalone-entrypoint contract.
+  'scripts/ci/validate/harness-adapter.mjs',
   'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
-  'docs/supply-chain/README.md',
   '.github/workflows/ci.yml',
 ];
 
@@ -442,34 +439,15 @@ export const STATUS_TRANSITION_PATHS = [
   'scripts/ci/validate/tree-integrity.mjs',
 ];
 
-// Exact B004 closeout path contract. The implementation tree is frozen at
-// B004_IMPLEMENTATION_MERGE.commit. These are the only files that may differ
-// from the accepted post-merge repair at B004 closeout.
-export const CLOSEOUT_ALLOWED_PATHS = [
-  'README.md',
-  'docs/authority/PROJECT_STATUS.md',
-  'docs/authority/registry/project-status.json',
-  'docs/runtime/README.md',
-  'docs/supply-chain/README.md',
-  'scripts/ci/lib/constants.mjs',
-  'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/tree-integrity.mjs',
-];
+export const B005_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B005';
 
-// Forbidden prefixes/files for the CURRENT B004 iteration (non-conflicting
-// historical frozen paths retained). cmd/ is NOT a blanket forbidden prefix:
-// the master-contract B004 scope admits cmd/aipt/** by exact wildcard, and
-// non-aipt cmd paths remain outside the exact allowlist (the allowlist alone
-// rejects them). The frozen B001 supply-chain artifacts (policy.json) stay
-// mechanically blocked, the B002-era adapter/protocol paths are read-only for
-// B004 and are blocked by exact prefix, and B005 / runtime / platform
-// implementation paths remain fail-closed.
+// Frozen implementation areas and future B006 evidence/audit surfaces.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'migrations/',
   'deploy/',
   'runtime/',
-  'packages/',
+  'packages/adapter-sdk/',
   'schemas/protocol/',
   'testdata/protocol/',
   'docs/architecture/',
@@ -477,6 +455,9 @@ export const FORBIDDEN_PREFIXES = [
   'docs/test-model/',
   'docs/security/',
   'docs/evidence/',
+  'schemas/evidence/',
+  'internal/evidence/',
+  'packages/evidence/',
   'internal/protocol/',
   'internal/storage/postgres/',
   'internal/harness/',
@@ -485,7 +466,8 @@ export const FORBIDDEN_PREFIXES = [
   'internal/ipc/',
   'internal/campaign/',
   '.go-version',
-  'pnpm-lock.yaml',
+  'go.mod',
+  'go.sum',
   'LICENSE',
   'tools/toolchain.lock.json',
   'tools/ci-actions.lock.json',
@@ -559,8 +541,4 @@ export function pathMatchesAllowed(p) {
 
 export function pathMatchesStatusTransition(p) {
   return STATUS_TRANSITION_PATHS.includes(p);
-}
-
-export function pathMatchesCloseoutAllowed(p) {
-  return CLOSEOUT_ALLOWED_PATHS.includes(p);
 }

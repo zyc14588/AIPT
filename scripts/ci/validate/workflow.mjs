@@ -194,7 +194,15 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run check:runtime-shell',
     nameTokens: ['b004', 'runtime shell', 'fixed gate order', 'config', 'core', 'launcher', 'cli', 'mutation probes'],
   },
-  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004', 'aggregate'] },
+  {
+    command: 'pnpm run check:harness-adapter',
+    nameTokens: ['b005', 'harness adapter', 'contract', 'thin stdio runtime', 'security', 'mutation probes'],
+  },
+  {
+    command: 'pnpm run test:harness-adapter',
+    nameTokens: ['b005', 'harness adapter', 'real-child', 'stdio', 'smoke tests'],
+  },
+  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005', 'aggregate'] },
 ];
 
 // Retained single-line gate commands: each must be exactly one real inline
@@ -1779,6 +1787,28 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run check:runtime-shell', '        run: node --version'),
+          ),
+          lock,
+      ),
+    },
+    {
+      label: 'B005 Harness Adapter focused validator removed from toolchain',
+      reason: /check:harness-adapter.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:harness-adapter', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B005 Harness Adapter real-child tests removed from toolchain',
+      reason: /test:harness-adapter.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:harness-adapter', '        run: node --version'),
           ),
           lock,
         ),

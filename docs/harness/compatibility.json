@@ -1,0 +1,33 @@
+{
+  "schema": "aipt.public.harness-compatibility/v1",
+  "qualified_at": "2026-08-22",
+  "authority": "AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001",
+  "deepseek_harness": {
+    "installation": "source",
+    "previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
+    "qualified_commit": "141eb6fef83422698aef7a981029e843e8161534",
+    "release": "dsh-v0.1.0-rc.8",
+    "source_clean_at_qualification": true
+  },
+  "compatibility_seam": {
+    "kind": "explicit-managed-subprocess-with-pipe-stdio",
+    "aipt_wire_contract": "aipt.protocol.applyAction and aipt.protocol.event from @aipt/adapter-sdk",
+    "dsh_wire_vocabulary_reused": false,
+    "model_call_required_for_smoke": false,
+    "network_required_for_smoke": false,
+    "source_contracts": [
+      "packages/subprocess/subprocess-local/src/spawn.ts",
+      "packages/sdk/protocol/src/transport.ts",
+      "packages/sdk/client/src/dispose.ts",
+      "packages/examples/jsonrpc-demo/src/bin.ts"
+    ]
+  },
+  "aipt_worker": {
+    "package": "@aipt/harness-adapter",
+    "entrypoint": "@aipt/harness-adapter/process-worker",
+    "transport": "one UTF-8 JSON-RPC envelope per LF-terminated line",
+    "max_frame_bytes": 1048576,
+    "stdout": "protocol-only",
+    "stderr": "redacted-diagnostics-only"
+  }
+}
