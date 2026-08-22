@@ -60,6 +60,11 @@ function same(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
+function isGeneratedWorktreeArtifact(relative) {
+  return relative.split('/').includes('node_modules') ||
+    relative === '.b001-toolcache' || relative.startsWith('.b001-toolcache/');
+}
+
 // Pure evaluator used by the live Git gate and deterministic mutation probes.
 export function evaluateB005Lifecycle(input) {
   const problems = [];
@@ -196,10 +201,24 @@ export function run(ctx) {
 
   const trackedChanged = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT])
     .stdout.split('\n').filter(Boolean);
+  const artifactProbes = [
+    ['node_modules/.pnpm/lock.yaml', true],
+    ['packages/harness-adapter/node_modules/@aipt/adapter-sdk', true],
+    ['packages/node_modules-shadow/file.ts', false],
+    ['packages/harness-adapter/src/node_modules-guard.ts', false],
+  ];
+  let artifactProbeFailures = 0;
+  for (const [relative, expected] of artifactProbes) {
+    if (isGeneratedWorktreeArtifact(relative) !== expected) {
+      artifactProbeFailures += 1;
+      fail('generated-worktree artifact probe mismatch: ' + relative);
+    }
+  }
+  if (artifactProbeFailures === 0) {
+    ok('generated-worktree artifact filter matches exact node_modules path segments only');
+  }
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
-    .stdout.split('\n').filter((relative) => relative &&
-      relative !== 'node_modules' && !relative.startsWith('node_modules/') &&
-      relative !== '.b001-toolcache' && !relative.startsWith('.b001-toolcache/'));
+    .stdout.split('\n').filter((relative) => relative && !isGeneratedWorktreeArtifact(relative));
   const changed = [...new Set([...trackedChanged, ...untracked])].sort();
   if (changed.length === 0) fail('B005 candidate has no changed paths');
   else ok(changed.length + ' B005 paths differ from the accepted base');
