@@ -1,16 +1,13 @@
-// B002 deferred-parameter freeze validator, evolved by the AIPT-M0-B003
-// security requalification.
+// Deferred-parameter freeze validator, evolved by the AIPT-M0-B003 security
+// requalification and retained as immutable history by AIPT-M0-B004.
 //
-// Rules (AIPT-M0-B002 iteration 1 + B003 security requalification):
-//   - decisions.json / supersessions.json remain fully frozen: byte-identical
-//     to the accepted B002 closeout/base (BASE_COMMIT — the AIPT-M0-B002
-//     closeout commit on main, never the B001 merge);
-//   - deferred-parameters.json is under EXACT CONTROLLED evolution:
-//     DEFER-001..DEFER-015 must be byte-semantically identical to the accepted
-//     base (each record JSON-identical, so a tampered record can never hide),
-//     and DEFER-016 must match the exact controlled RESOLVED shape — an exact
-//     top-level key set (the 9-key B002 base shape plus the single added
-//     security_requalification key, nothing else), status RESOLVED,
+// Rules (B003 security requalification, frozen at the accepted B004 base):
+//   - decisions.json / supersessions.json / deferred-parameters.json remain
+//     fully frozen: byte-identical to BASE_COMMIT (the accepted B003 closeout
+//     and B004 base, never an earlier B002/B001 identity);
+//   - DEFER-001..DEFER-015 remain byte-semantically identical to that base,
+//     and DEFER-016 must preserve the exact B003 RESOLVED shape — an exact
+//     10-key top-level set including security_requalification, status RESOLVED,
 //     resolved_by_batch = AIPT-M0-B001 (immutable historical fact), resolution
 //     tools/toolchain.lock.json, value carrying the exact current toolchain
 //     versions (go 1.26.6 / node 24.19.0 / pnpm 11.4.0 / postgresql 18.4),
@@ -39,12 +36,10 @@ import { git, runAsMain } from '../lib/cli.mjs';
 
 const DEFERRED_PATH = 'docs/authority/registry/deferred-parameters.json';
 
-// The exact controlled DEFER-016 record shape. The base record is the exact
-// 9-key B002 shape (no security_requalification); the current record is the
-// exact 10-key controlled shape whose security_requalification nested object
-// is itself an exact 7-key closed shape. Any extra/missing key at either
-// level fails — the controlled evolution is a closed shape, never an open
-// extension.
+// The exact frozen DEFER-016 record shape. The accepted B004 base already
+// contains the closed 10-key B003 result; the current record must keep that
+// shape, whose security_requalification object is itself an exact 7-key
+// closed shape. Any extra/missing key at either level fails.
 const DEFER_016_VALUE = 'go 1.26.6, node 24.19.0, pnpm 11.4.0, postgresql 18.4';
 const DEFER_016_SECURITY_BATCH = 'AIPT-M0-B003';
 const DEFER_016_PREVIOUS_GO = '1.26.5';
@@ -55,7 +50,7 @@ const DEFER_016_SECURITY_FIXED_IN = '1.26.6';
 const DEFER_016_ADVISORY_IDS = ['GO-2026-6090', 'GO-2026-6088', 'GO-2026-5972'];
 const DEFER_016_RESOLUTION = 'tools/toolchain.lock.json';
 const DEFER_016_TOP_KEYS = ['parameter_id', 'name', 'status', 'value', 'reason', 'resolved_by_batch', 'security_requalification', 'resolution', 'blocks', 'does_not_block'];
-const DEFER_016_BASE_KEYS = ['parameter_id', 'name', 'status', 'value', 'reason', 'resolved_by_batch', 'resolution', 'blocks', 'does_not_block'];
+const DEFER_016_BASE_KEYS = DEFER_016_TOP_KEYS;
 const DEFER_016_SECURITY_KEYS = ['batch', 'previous_go_version', 'current_go_version', 'verified_at', 'reason', 'officially_fixed_in', 'advisory_ids'];
 const sortedKeys = (obj) => Object.keys(obj).sort().join(',');
 
@@ -90,16 +85,15 @@ export function defer016Problems(base, current) {
     problems.push('DEFER-016 record is not an object');
     return problems;
   }
-  // Exact closed-shape key sets: base = the 9-key B002 shape, current = the
-  // 10-key controlled shape. An extra key (a parallel field) or a missing key
-  // fails.
+  // Exact closed-shape key sets: accepted B004 base and current are both the
+  // frozen 10-key B003 result. An extra key or a missing key fails.
   if (sortedKeys(b16) !== [...DEFER_016_BASE_KEYS].sort().join(',')) {
-    problems.push(`DEFER-016 base key set drifted at the B002 base: ${JSON.stringify(Object.keys(b16))}`);
+    problems.push(`DEFER-016 base key set drifted at the accepted B004 base: ${JSON.stringify(Object.keys(b16))}`);
   }
   if (sortedKeys(c16) !== [...DEFER_016_TOP_KEYS].sort().join(',')) {
     problems.push(`DEFER-016 top-level key set must be exactly ${DEFER_016_TOP_KEYS.join(', ')} (closed controlled shape): ${JSON.stringify(Object.keys(c16))}`);
   }
-  if (b16.status !== 'RESOLVED') problems.push(`DEFER-016 base status drifted at the B002 base: ${JSON.stringify(b16.status)}`);
+  if (b16.status !== 'RESOLVED') problems.push(`DEFER-016 base status drifted at the accepted B004 base: ${JSON.stringify(b16.status)}`);
   if (c16.status !== 'RESOLVED') problems.push(`DEFER-016 status must stay RESOLVED: ${JSON.stringify(c16.status)}`);
   if (c16.name !== b16.name) problems.push(`DEFER-016 name drifted: ${b16.name} -> ${c16.name}`);
   // Exact historical fields: resolved_by_batch and resolution are immutable
@@ -157,15 +151,13 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
 
-  // Fully frozen registries must not change relative to the accepted B002
-  // base. deferred-parameters.json is NOT in FROZEN_REGISTRY_PATHS anymore:
-  // its DEFER-016 record is under exact controlled evolution below, while the
-  // registry protection for decisions.json / supersessions.json stays on.
+  // All three authority registries are fully frozen relative to the accepted
+  // B004 base. B003's controlled DEFER-016 evolution is already closed.
   const frozenDiff = git(ctx.repo, ['diff', '--name-only', BASE_COMMIT, '--', ...FROZEN_REGISTRY_PATHS]);
   const frozenChanged = frozenDiff.stdout.split('\n').filter(Boolean);
   if (frozenChanged.length > 0) {
     fail(`frozen registries modified: ${frozenChanged.join(', ')}`);
-  } else ok('decisions.json / supersessions.json unchanged vs base (fully frozen)');
+  } else ok('decisions.json / supersessions.json / deferred-parameters.json unchanged vs accepted B004 base (fully frozen)');
 
   const baseText = git(ctx.repo, ['show', `${BASE_COMMIT}:${DEFERRED_PATH}`]).stdout;
   const currentPath = path.join(ctx.repo, DEFERRED_PATH);
@@ -188,8 +180,8 @@ export function run(ctx) {
   } else ok('parameter ID set unchanged (DEFER-001..DEFER-016)');
 
   // DEFER-001..DEFER-015 must be byte-semantically unchanged from the
-  // accepted B002 base; only DEFER-016 may evolve, and only into the exact
-  // controlled RESOLVED shape.
+  // accepted B004 base; DEFER-016 additionally receives exact closed-shape
+  // semantic validation of the frozen B003 result.
   let unchangedCount = 0;
   let controlledOk = true;
   for (const id of baseIds) {
@@ -218,10 +210,10 @@ export function run(ctx) {
     }
   }
   if (unchangedCount === 15) {
-    ok('DEFER-001..DEFER-015 byte-semantically unchanged from the accepted B002 base');
+    ok('DEFER-001..DEFER-015 byte-semantically unchanged from the accepted B004 base');
   }
   if (controlledOk) {
-    ok('DEFER-016 matches the exact controlled RESOLVED evolution (closed 10-key shape; Go 1.26.6 + Node 24.19.0 + pnpm 11.4.0 + PostgreSQL 18.4; resolved_by_batch = AIPT-M0-B001; resolution tools/toolchain.lock.json; exact B003 security requalification provenance: batch AIPT-M0-B003, previous Go 1.26.5 -> current Go 1.26.6, verified_at 2026-08-20T04:16:01Z, advisory set GO-2026-6090 / GO-2026-6088 / GO-2026-5972)');
+    ok('DEFER-016 preserves the exact frozen B003 RESOLVED result at the accepted B004 base (closed 10-key shape; Go 1.26.6 + Node 24.19.0 + pnpm 11.4.0 + PostgreSQL 18.4; resolved_by_batch = AIPT-M0-B001; exact B003 security requalification provenance)');
   }
 
   // No other parameter may be RESOLVED/CLOSED.

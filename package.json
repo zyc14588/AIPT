@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B003 (storage scope), iteration 6a: delivers the fail-closed PostgreSQL storage validator (scripts/ci/validate/storage.mjs, pnpm run check:storage) for the forward-only embedded migration runner, the append-only hash-chain ledger (Append/VerifyStream) and their integration-test contract, the qualified pgx v5.10.0 Go runtime closure (go.mod direct github.com/jackc/pgx/v5 v5.10.0 plus five indirect modules; MIT for the jackc modules and BSD-3-Clause for golang.org/x modules recorded in tools/supply-chain/licenses.json with go=6/pnpm=0), the evolved B003 supply-chain and deterministic SPDX 2.3 SBOM gates (exact versions, Go h1/SHA-256 checksum semantics, direct/transitive runtime relationships AIPT DEPENDS_ON pgx and pgx DEPENDS_ON the five indirect modules, and focused mutation probes), the toolchain-lock gate evolved from the B001 zero-Go-dependency bootstrap rule to the exact pgx v5.10.0 closure (replace/exclude/retract rejected, exact zip + /go.mod h1 pins; every B001 toolchain pin and the historical selected_by_batch=AIPT-M0-B001 fact preserved), and the storage/supply-chain documentation; the B003 batch remains IN_PROGRESS under construction — this report is not a merge/closeout claim; prior closed history: B000 bootstrap, B001 toolchain/supply-chain foundation, B002 protocol scope (canonical JSON Schema 2020-12 protocol schema, deterministic wire envelopes, dependency-free protocol-assets validator, first-party TypeScript Adapter SDK @aipt/adapter-sdk 1.0.0, dependency-free Go protocol contract consumer internal/protocol, and the B002 public CI workflow evolution) are merged and closed.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B004 builds the fail-closed Go Launcher and Core lifecycle shell, a strict shared development/production configuration foundation, B003 PostgreSQL connectivity and migration wiring, signal-aware reverse shutdown, and the runtime-shell CI/SBOM/supply-chain gates. The real launch order is fixed at CONFIG, POSTGRESQL, MIGRATIONS, MODEL, HARNESS, CORE, IPC, WEB; execution stops at the unimplemented MODEL gate and never claims runtime readiness. B004 adds no third-party dependency and retains the qualified B003 pgx v5.10.0 closure. B000 through B003 are merged/closed immutable history; B004 remains IN_PROGRESS and AIPT-M0-B005 is not authorized or started.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -13,6 +13,7 @@
     "check:protocol-assets": "node scripts/ci/validate/protocol-assets.mjs",
     "check:adapter-sdk": "node scripts/ci/validate/adapter-sdk.mjs",
     "check:storage": "node scripts/ci/validate/storage.mjs",
+    "check:runtime-shell": "node scripts/ci/validate/runtime-shell.mjs",
     "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
     "test:protocol-go": "go test ./internal/protocol -count=1",
     "check:retro": "node scripts/ci/validate/b000-retro.mjs",

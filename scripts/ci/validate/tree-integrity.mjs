@@ -1,99 +1,66 @@
-// B003 tree-integrity validator: self-anchored two-layer scope (accepted base
-// through the fixed implementation merge under the registered B003 allowlist,
-// then the implementation merge through closeout under six exact authority
-// paths), Markdown links, JSON parse, and secret / private-path / prompt-body
-// hygiene for the current tree (including the executable scripts/ci sources), plus a
-// temporary-fixture regression proving the hygiene scan really covers .mjs
-// files under a scripts/ci-shaped path. The imported pathMatchesAllowed is
-// and pathMatchesCloseoutAllowed are additionally regression-probed in-process
-// against independent hard-coded scope literals.
+#!/usr/bin/env node
+// AIPT-M0-B004 candidate tree-integrity and scope validator.
 //
-// Markdown rules for B003: no brittle fixed total document count (later
-// approved documents of the accepted base must not be rejected by a count) —
-// instead every Markdown document of the accepted base must still be present
-// and every current relative link must resolve.
+// The candidate is always diffed directly from the immutable B003 closeout
+// base. Exact path admission is self-anchored here, dependency/toolchain and
+// authority registries remain byte-frozen, and unsafe nodes, merge commits,
+// repository-local worktrees, broken links, secrets, model endpoints, and
+// public prompt bodies fail closed.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
   ALLOWED_PATHS,
-  B003,
+  B003_CLOSEOUT,
+  B004_CONSTRUCTION_CHECKPOINT,
   BASE_COMMIT,
   BASE_TREE,
-  CLOSEOUT_ALLOWED_PATHS,
   EXPECTED_MIT_LICENSE,
   FORBIDDEN_PREFIXES,
   FROZEN_REGISTRY_PATHS,
   normalizeText,
   pathMatchesAllowed,
-  pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
-import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
+import {
+  collectMarkdownLinkIssues,
+  scanTreeForHazards,
+  walkFiles,
+} from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 
-// Independent literal self-anchors for the B003 per-iteration scope: the
-// exact ordered 31-path B003 allowlist and the exact ordered 16-entry
-// forbidden-prefix list, hard-coded here and compared against the imported
-// constants BEFORE any candidate scope is evaluated. Drifting constants.mjs
-// together with the candidate can therefore never make a scope change pass
-// silently. The B003 security-requalification iteration admits the Go
-// identity pins (.go-version, tools/toolchain.lock.json, tools/ci-actions
-// .lock.json), the controlled DEFER-016 registry + deferred-parameters
-// human doc, the defer-016 validator, and the four stale-reference
-// synchronization paths (docs/authority/README.md, docs/protocol/README.md,
-// internal/toolchainsmoke/toolchainsmoke_test.go, tools/ci-actions.lock.json)
-// by exact literal only — no broad glob is introduced.
 const ALLOWED_PATHS_LITERAL = [
+  'cmd/aipt/**',
+  'internal/config/**',
+  'internal/core/**',
+  'internal/launcher/**',
+  'schemas/config/v1/**',
+  'docs/runtime/**',
   'README.md',
-  '.go-version',
   'docs/authority/PROJECT_STATUS.md',
-  'docs/authority/README.md',
-  'docs/authority/DECISION_MATRIX.md',
-  'docs/authority/DEFERRED_PARAMETERS.md',
-  'docs/authority/registry/deferred-parameters.json',
   'docs/authority/registry/project-status.json',
-  'docs/storage/**',
-  'docs/protocol/README.md',
-  'package.json',
   'go.mod',
   'go.sum',
-  'internal/storage/postgres/**',
-  'internal/toolchainsmoke/toolchainsmoke_test.go',
+  'package.json',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
-  'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/defer-016.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/toolchain-lock.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
   'scripts/ci/validate/storage.mjs',
   'scripts/ci/validate/supply-chain.mjs',
   'scripts/ci/validate/sbom.mjs',
-  // AIPT-M0-B003-SCOPE-EXPANSION-001: the exact additional B003 path (the
-  // toolchain-lock gate evolved to the approved pgx v5.10.0 closure).
-  'scripts/ci/validate/toolchain-lock.mjs',
+  'scripts/ci/validate/runtime-shell.mjs',
+  'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/sbom/generate-sbom.mjs',
   'tools/supply-chain/licenses.json',
-  'tools/toolchain.lock.json',
-  'tools/ci-actions.lock.json',
   'docs/supply-chain/README.md',
   '.github/workflows/ci.yml',
 ];
 
-// Independent exact B003 closeout scope. These are the only paths allowed to
-// differ from the fixed implementation merge; unlike the implementation
-// allowlist, this contract intentionally has no wildcard entries.
-const CLOSEOUT_ALLOWED_PATHS_LITERAL = [
-  'README.md',
-  'docs/authority/PROJECT_STATUS.md',
-  'docs/authority/registry/project-status.json',
-  'scripts/ci/lib/constants.mjs',
-  'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/tree-integrity.mjs',
-];
-
 const FORBIDDEN_PREFIXES_LITERAL = [
   'api/',
-  'cmd/',
   'migrations/',
   'deploy/',
   'runtime/',
@@ -106,361 +73,329 @@ const FORBIDDEN_PREFIXES_LITERAL = [
   'docs/security/',
   'docs/evidence/',
   'internal/protocol/',
+  'internal/storage/postgres/',
+  'internal/harness/',
+  'internal/model/',
+  'internal/web/',
+  'internal/ipc/',
+  'internal/campaign/',
+  '.go-version',
+  'pnpm-lock.yaml',
   'LICENSE',
+  'tools/toolchain.lock.json',
+  'tools/ci-actions.lock.json',
   'tools/supply-chain/policy.json',
 ];
 
-// Independent ordered literal for the frozen authority registries, hard-coded
-// here and compared against the imported FROZEN_REGISTRY_PATHS before probes.
-// decisions.json and supersessions.json stay fully frozen; deferred-parameters
-// .json moved out of the frozen set in the B003 security-requalification
-// iteration because its DEFER-016 record is under exact controlled evolution.
 const FROZEN_REGISTRY_PATHS_LITERAL = [
   'docs/authority/registry/decisions.json',
   'docs/authority/registry/supersessions.json',
+  'docs/authority/registry/deferred-parameters.json',
 ];
 
-// One representative path per FORBIDDEN_PREFIXES_LITERAL entry (directory
-// prefixes get a child path; exact-file prefixes get the file itself).
-const FORBIDDEN_PREFIX_REPRESENTATIVES = [
-  'api/server.js',
-  'cmd/tool/main.go',
-  'migrations/0001_init.sql',
-  'deploy/k8s.yaml',
-  'runtime/engine.js',
-  'packages/core/index.js',
-  'schemas/protocol/request.json',
-  'testdata/protocol/case.json',
-  'docs/architecture/overview.md',
-  'docs/integration/guide.md',
-  'docs/test-model/model.md',
-  'docs/security/notes.md',
-  'docs/evidence/audit.md',
-  'internal/protocol/types.go',
+const FROZEN_FILES = [
+  '.go-version',
   'LICENSE',
+  'pnpm-lock.yaml',
+  'tools/ci-actions.lock.json',
+  'tools/toolchain.lock.json',
   'tools/supply-chain/policy.json',
+  ...FROZEN_REGISTRY_PATHS_LITERAL,
 ];
+
+const FALSE_ALLOWLIST_PROBES = [
+  'cmd/aiptx/main.go',
+  'cmd/other/main.go',
+  'internal/configuration/config.go',
+  'internal/corex/core.go',
+  'internal/launch/main.go',
+  'internal/harness/adapter.go',
+  'internal/model/client.go',
+  'internal/storage/postgres/ledger.go',
+  'schemas/config/v2/config.json',
+  'schemas/config/v1.json',
+  'docs/runtimeevil/README.md',
+  'README.md.bak',
+  'go.mod.bak',
+  'go.sum.bak',
+  'package.json.bak',
+  'scripts/ci/validate/toolchain-lock.mjs.bak',
+  'scripts/ci/validate/runtime-shell.mjs.bak',
+  'scripts/ci/validate/standalone-entrypoints.mjs.bak',
+  'scripts/ci/validate/defer-016.mjs.bak',
+  'tools/toolchain.lock.json',
+  'AIPT-M0-B005/adapter.go',
+];
+
+function sameStrings(actual, expected) {
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
 
 export function run(ctx) {
   const details = [];
   let pass = true;
-  const ok = (msg) => details.push(`ok: ${msg}`);
-  const fail = (msg) => {
+  const ok = (message) => details.push('ok: ' + message);
+  const fail = (message) => {
     pass = false;
-    details.push(`FAIL: ${msg}`);
+    details.push('FAIL: ' + message);
   };
 
-  // ---- independent literal self-anchors (before candidate scope) ----
-  // Every identity the candidate scope depends on is hard-coded in this gate
-  // and compared against the imported constants BEFORE any Git/history or
-  // candidate-scope validation runs. Drifting constants.mjs together with the
-  // candidate can therefore never make the accepted base or the registered
-  // scope change pass silently: each imported field/list must equal its fixed
-  // literal (ordered equality for the scope lists).
-  const verifyAnchor = (label, actual, expected) => {
-    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-      fail(`${label} drifted from its independent literal self-anchor: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);
-      return false;
+  const anchor = (label, actual, expected) => {
+    if (!sameStrings(actual, expected)) {
+      fail(label + ' drifted from its independent literal');
+    } else {
+      ok(label + ' matches its independent literal');
     }
-    ok(`${label} anchored to literal ${JSON.stringify(expected)}`);
-    return true;
   };
-  verifyAnchor('BASE_COMMIT', BASE_COMMIT, '45a96087d75a61f2910cb5ce99134e3ca777bca8');
-  verifyAnchor('BASE_TREE', BASE_TREE, '8b16b599c261879406f0435e80c878e092683a50');
-  verifyAnchor('B003.candidate', B003.candidate, 'fbe1363acd977759c4effa2687483c0b78b63ab6');
-  verifyAnchor('B003.tree', B003.tree, '60bcdd0df2c29391c2564bfeae17013c07723cd3');
-  verifyAnchor('B003.merge_commit', B003.merge_commit, '725fc005185412d115307b594aa64e84acfabf67');
-  verifyAnchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
-  verifyAnchor('CLOSEOUT_ALLOWED_PATHS', CLOSEOUT_ALLOWED_PATHS, CLOSEOUT_ALLOWED_PATHS_LITERAL);
-  verifyAnchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
-  verifyAnchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
+  if (BASE_COMMIT !== '6d7225828b45b69ecc44d5bb51a04c40f0865aba') {
+    fail('BASE_COMMIT literal drifted');
+  } else {
+    ok('BASE_COMMIT independently anchored');
+  }
+  if (BASE_TREE !== 'f557a9f54cbac11474f2d56f78e2d983a7d6a7be') {
+    fail('BASE_TREE literal drifted');
+  } else {
+    ok('BASE_TREE independently anchored');
+  }
+  if (
+    B003_CLOSEOUT.commit !== '6d7225828b45b69ecc44d5bb51a04c40f0865aba' ||
+    B003_CLOSEOUT.tree !== 'f557a9f54cbac11474f2d56f78e2d983a7d6a7be' ||
+    B003_CLOSEOUT.parent !== '725fc005185412d115307b594aa64e84acfabf67'
+  ) {
+    fail('B003 closeout identity drifted');
+  } else {
+    ok('B003 closeout identity independently anchored');
+  }
+  if (
+    B004_CONSTRUCTION_CHECKPOINT.commit !== '59230daae0113d35896f192a255633ba2cc1dec7' ||
+    B004_CONSTRUCTION_CHECKPOINT.tree !== 'bab4289817a26a07553da4bfcccaac82dbb04319'
+  ) {
+    fail('B004 preserved construction checkpoint literal drifted');
+  } else {
+    const checkpointCommit = git(ctx.repo, ['rev-parse', B004_CONSTRUCTION_CHECKPOINT.commit + '^{commit}'], { check: false });
+    const checkpointTree = git(ctx.repo, ['rev-parse', B004_CONSTRUCTION_CHECKPOINT.commit + '^{tree}'], { check: false });
+    const checkpointAncestor = git(ctx.repo, ['merge-base', '--is-ancestor', B004_CONSTRUCTION_CHECKPOINT.commit, 'HEAD'], { check: false });
+    if (
+      checkpointCommit.status !== 0 ||
+      checkpointCommit.stdout.trim() !== B004_CONSTRUCTION_CHECKPOINT.commit ||
+      checkpointTree.status !== 0 ||
+      checkpointTree.stdout.trim() !== B004_CONSTRUCTION_CHECKPOINT.tree ||
+      checkpointAncestor.status !== 0
+    ) {
+      fail('B004 dependency repair must descend append-only from the preserved 59230daa construction checkpoint/tree');
+    } else {
+      ok('B004 preserved construction checkpoint/tree resolve and remain an ancestor of HEAD');
+    }
+  }
+  anchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
+  anchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
+  anchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
 
-  // ---- pathMatchesAllowed regression probes (pure in-process) ----
-  // Drift-resistant behavioral probes for the imported matcher: every probe
-  // is a pure string call against pathMatchesAllowed — no filesystem, Git,
-  // or temporary-clone access. Each mismatch fails path-specifically with
-  // expected and actual, and the single success detail below is emitted only
-  // when all 55 probes match: 29 exact allowlist entries, 4 wildcard
-  // descendants (direct and nested children under both wildcard directories),
-  // 4 lookalikes, 16 forbidden-prefix representatives, and 2 frozen registry
-  // paths.
   let probeCount = 0;
-  let probeMismatches = 0;
-  const probe = (p, expected) => {
+  let probeFailures = 0;
+  const probe = (relative, expected) => {
     probeCount += 1;
-    const actual = pathMatchesAllowed(p);
+    const actual = pathMatchesAllowed(relative);
     if (actual !== expected) {
-      probeMismatches += 1;
-      fail(`pathMatchesAllowed probe mismatch for path ${JSON.stringify(p)}: expected ${expected}, actual ${actual}`);
+      probeFailures += 1;
+      fail('pathMatchesAllowed mismatch for ' + JSON.stringify(relative));
     }
   };
-  for (const p of ALLOWED_PATHS_LITERAL) {
-    if (!p.includes('/**')) probe(p, true); // the 19 exact (non-wildcard) entries
-  }
-  probe('docs/storage/x', true); // direct child under docs/storage/**
-  probe('docs/storage/nested/x', true); // nested child under docs/storage/**
-  probe('internal/storage/postgres/x', true); // direct child under internal/storage/postgres/**
-  probe('internal/storage/postgres/nested/x', true); // nested child under internal/storage/postgres/**
-  probe('docs/storageevil/x', false); // lookalike of docs/storage/**
-  probe('internal/storage/postgresql/x', false); // lookalike of internal/storage/postgres/**
-  probe('go.mod.bak', false); // lookalike of go.mod
-  probe('README.md.bak', false); // lookalike of README.md
-  for (const p of FORBIDDEN_PREFIX_REPRESENTATIVES) probe(p, false);
-  for (const p of FROZEN_REGISTRY_PATHS_LITERAL) probe(p, false);
-  if (probeMismatches === 0) {
-    ok(`pathMatchesAllowed regression: all ${probeCount} probes matched (29 exact allowlist, 4 wildcard descendants, 4 lookalikes, 16 forbidden-prefix representatives, 2 frozen registry paths)`);
-  }
-
-  // The closeout matcher must be exact: every authorized literal passes, and
-  // representative suffix/prefix/directory lookalikes fail.
-  let closeoutProbeCount = 0;
-  let closeoutProbeMismatches = 0;
-  const closeoutProbe = (p, expected) => {
-    closeoutProbeCount += 1;
-    const actual = pathMatchesCloseoutAllowed(p);
-    if (actual !== expected) {
-      closeoutProbeMismatches += 1;
-      fail(`pathMatchesCloseoutAllowed probe mismatch for path ${JSON.stringify(p)}: expected ${expected}, actual ${actual}`);
+  for (const pattern of ALLOWED_PATHS_LITERAL) {
+    if (pattern.endsWith('/**')) {
+      const root = pattern.slice(0, -3);
+      probe(root + '/direct.txt', true);
+      probe(root + '/nested/deep.txt', true);
+    } else {
+      probe(pattern, true);
     }
-  };
-  for (const p of CLOSEOUT_ALLOWED_PATHS_LITERAL) closeoutProbe(p, true);
-  closeoutProbe('README.md.bak', false);
-  closeoutProbe('scripts/ci/lib/constants.mjs/child', false);
-  closeoutProbe('internal/storage/postgres/ledger.go', false);
-  if (closeoutProbeMismatches === 0) {
-    ok(`pathMatchesCloseoutAllowed regression: all ${closeoutProbeCount} exact and lookalike probes matched`);
+  }
+  for (const relative of FALSE_ALLOWLIST_PROBES) probe(relative, false);
+  for (const relative of FORBIDDEN_PREFIXES_LITERAL) {
+    const representative = relative.endsWith('/') ? relative + 'probe.txt' : relative;
+    probe(representative, false);
+  }
+  if (probeFailures === 0) {
+    ok('all ' + probeCount + ' allowlist and lookalike probes matched');
   }
 
-  // ---- accepted base and implementation identities ----
-  const resolveCommit = (label, commit) => {
-    const probe = git(ctx.repo, ['rev-parse', `${commit}^{commit}`], { check: false });
-    const resolved = probe.stdout.trim();
-    if (probe.status !== 0 || resolved !== commit) {
-      fail(`${label} does not resolve to fixed commit ${commit}: ${JSON.stringify(resolved)}`);
-      return false;
-    }
-    ok(`${label} resolves to fixed commit ${commit}`);
-    return true;
-  };
-  const verifyTree = (label, commit, expectedTree) => {
-    const probe = git(ctx.repo, ['rev-parse', `${commit}^{tree}`], { check: false });
-    const resolved = probe.stdout.trim();
-    if (probe.status !== 0 || resolved !== expectedTree) {
-      fail(`${label} tree drifted: ${JSON.stringify(resolved)} != ${expectedTree}`);
-      return false;
-    }
-    ok(`${label} tree = ${expectedTree}`);
-    return true;
-  };
-  resolveCommit('accepted base', BASE_COMMIT);
-  verifyTree('accepted base', BASE_COMMIT, BASE_TREE);
-  resolveCommit('B003 Candidate', B003.candidate);
-  verifyTree('B003 Candidate', B003.candidate, B003.tree);
-  resolveCommit('B003 implementation merge', B003.merge_commit);
-  verifyTree('B003 implementation merge', B003.merge_commit, B003.tree);
-  const headProbe = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
-  const ancestryProbe = git(ctx.repo, ['merge-base', '--is-ancestor', B003.merge_commit, 'HEAD'], { check: false });
-  if (headProbe.status !== 0 || ancestryProbe.status !== 0) {
-    fail(`current HEAD ${JSON.stringify(headProbe.stdout.trim())} does not descend from B003 implementation merge ${B003.merge_commit}`);
-  } else ok(`current HEAD descends from B003 implementation merge ${B003.merge_commit}`);
+  const baseCommit = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{commit}'], { check: false });
+  const baseTree = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{tree}'], { check: false });
+  if (baseCommit.status !== 0 || baseCommit.stdout.trim() !== BASE_COMMIT) {
+    fail('accepted B004 base commit does not resolve');
+  } else if (baseTree.status !== 0 || baseTree.stdout.trim() !== BASE_TREE) {
+    fail('accepted B004 base tree drifted');
+  } else {
+    ok('accepted B004 base commit/tree verified');
+  }
+  const ancestry = git(ctx.repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], { check: false });
+  if (ancestry.status !== 0) fail('HEAD does not descend from the accepted B004 base');
+  else ok('HEAD descends from the accepted B004 base');
 
-  // ---- two-layer scope ----
-  // Layer 1 is the immutable B003 implementation diff. Layer 2 is only the
-  // current closeout delta. --no-renames keeps both sides of a rename in each
-  // changed-path set, so a rename can never hide an unauthorized path.
-  const implementationDiff = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT, B003.merge_commit])
-    .stdout.split('\n')
-    .filter(Boolean);
-  const closeoutDiff = git(ctx.repo, ['diff', '--name-only', '--no-renames', B003.merge_commit])
-    .stdout.split('\n')
-    .filter(Boolean);
-  // Regenerable package-manager install output is not candidate source: the
-  // repository carries no .gitignore (adding one is outside the B003 allowed
-  // path set), so filter the generated node_modules tree here.
+  const trackedChanged = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT])
+    .stdout.split('\n').filter(Boolean);
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'])
     .stdout.split('\n')
-    .filter((p) => p && p !== 'node_modules' && !p.startsWith('node_modules/'));
-  const closeoutChanged = [...new Set([...closeoutDiff, ...untracked])].sort();
-  const changed = [...new Set([...implementationDiff, ...closeoutChanged])].sort();
-  if (implementationDiff.length === 0) fail('no B003 implementation paths found between accepted base and implementation merge');
-  else ok(`${implementationDiff.length} B003 implementation paths between accepted base and implementation merge`);
-  for (const p of implementationDiff) {
-    if (!pathMatchesAllowed(p)) fail(`path outside AIPT-M0-B003 allowed set: ${p}`);
-    for (const prefix of FORBIDDEN_PREFIXES) {
-      if (p.startsWith(prefix)) fail(`forbidden prefix changed: ${p}`);
+    .filter((relative) =>
+      relative &&
+      relative !== 'node_modules' &&
+      !relative.startsWith('node_modules/') &&
+      relative !== '.b001-toolcache' &&
+      !relative.startsWith('.b001-toolcache/'));
+  const changed = [...new Set([...trackedChanged, ...untracked])].sort();
+  if (changed.length === 0) fail('B004 candidate has no changed paths');
+  else ok(changed.length + ' candidate paths differ from the accepted B004 base');
+
+  let scopeFailures = 0;
+  for (const relative of changed) {
+    if (!pathMatchesAllowed(relative)) {
+      scopeFailures += 1;
+      fail('path outside AIPT-M0-B004 allowed set: ' + relative);
     }
-    if (FROZEN_REGISTRY_PATHS.includes(p)) fail(`frozen registry modified: ${p}`);
+    const forbidden = FORBIDDEN_PREFIXES.find((prefix) => relative.startsWith(prefix));
+    if (forbidden) {
+      scopeFailures += 1;
+      fail('forbidden B004 path changed (' + forbidden + '): ' + relative);
+    }
+    if (FROZEN_REGISTRY_PATHS.includes(relative)) {
+      scopeFailures += 1;
+      fail('frozen authority registry changed: ' + relative);
+    }
   }
-  if (implementationDiff.every((p) => pathMatchesAllowed(p) && !FORBIDDEN_PREFIXES.some((x) => p.startsWith(x)) && !FROZEN_REGISTRY_PATHS.includes(p))) {
-    ok('all implementation paths remain within the registered B003 per-iteration scope');
+  if (scopeFailures === 0) ok('all changed paths remain inside the exact B004 scope');
+
+  const merges = git(ctx.repo, ['rev-list', '--merges', BASE_COMMIT + '..HEAD'], { check: false })
+    .stdout.split('\n').filter(Boolean);
+  if (merges.length > 0) fail('merge commits introduced after the B004 base: ' + merges.join(', '));
+  else ok('no merge commits introduced after the B004 base');
+
+  const rawDiff = git(ctx.repo, ['diff', '--raw', '--no-abbrev', '--no-renames', BASE_COMMIT])
+    .stdout.split('\n').filter(Boolean);
+  for (const line of rawDiff) {
+    const modes = /^:(\d{6}) (\d{6}) /.exec(line);
+    if (modes && [modes[1], modes[2]].some((mode) => mode === '120000' || mode === '160000')) {
+      fail('changed path uses unsafe symlink/gitlink mode: ' + line);
+    }
   }
-  if (closeoutChanged.length === 0) {
-    fail('no B003 closeout paths found after the implementation merge');
-  } else {
-    ok(`${closeoutChanged.length} B003 closeout paths after the implementation merge`);
-  }
-  for (const p of closeoutChanged) {
-    if (!pathMatchesCloseoutAllowed(p)) fail(`path outside exact AIPT-M0-B003 closeout set: ${p}`);
-  }
-  if (JSON.stringify(closeoutChanged) !== JSON.stringify([...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort())) {
-    fail(`B003 closeout changed-path set must be exactly ${JSON.stringify([...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort())}, got ${JSON.stringify(closeoutChanged)}`);
-  } else {
-    ok('B003 closeout changed-path set is exactly the six authorized paths');
+  const indexEntries = git(ctx.repo, ['ls-files', '-s'], { check: false })
+    .stdout.split('\n').filter(Boolean);
+  for (const line of indexEntries) {
+    const mode = line.split(/\s+/, 1)[0];
+    if (mode === '120000' || mode === '160000') {
+      fail('tracked tree contains unsafe symlink/gitlink mode: ' + line);
+    }
   }
 
-  // ---- changed-worktree node safety ----
-  // Probe every changed path in the worktree with lstat so symbolic links
-  // (including broken links) are inspected as links rather than followed.
-  // ENOENT is the only tolerated lstat error: a changed path missing from the
-  // worktree is an allowed deletion versus BASE_COMMIT. Every other lstat
-  // error and every changed symbolic link is a path-specific failure, and the
-  // success detail below is emitted only when both counts are zero.
-  let lstatErrors = 0;
-  let changedSymlinks = 0;
-  for (const p of changed) {
+  let nodeFailures = 0;
+  for (const relative of changed) {
     try {
-      const st = fs.lstatSync(path.join(ctx.repo, p));
-      if (st.isSymbolicLink()) {
-        changedSymlinks += 1;
-        fail(`changed worktree path is a symbolic link: ${p}`);
+      const stat = fs.lstatSync(path.join(ctx.repo, relative));
+      if (stat.isSymbolicLink()) {
+        nodeFailures += 1;
+        fail('changed worktree path is a symbolic link: ' + relative);
+      } else if (!stat.isFile() && !stat.isDirectory()) {
+        nodeFailures += 1;
+        fail('changed worktree path is not a regular file/directory: ' + relative);
       }
-    } catch (err) {
-      if (err && err.code === 'ENOENT') continue; // allowed deletion vs BASE_COMMIT
-      lstatErrors += 1;
-      fail(`changed worktree path lstat failed: ${p}: ${err && err.message ? err.message : err}`);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        nodeFailures += 1;
+        fail('lstat failed for changed path ' + relative + ': ' + error.message);
+      }
     }
   }
-  if (lstatErrors === 0 && changedSymlinks === 0) {
-    ok(`changed-worktree node safety: ${changed.length} changed paths probed, no lstat errors, no symbolic links`);
+  if (nodeFailures === 0) ok('changed worktree nodes are regular and symlink-free');
+
+  const localWorktrees = fs.readdirSync(ctx.repo)
+    .filter((name) => name.startsWith('.wt-'));
+  const trackedLocalWorktrees = git(ctx.repo, ['ls-files', '.wt-*'], { check: false })
+    .stdout.split('\n').filter(Boolean);
+  if (localWorktrees.length > 0 || trackedLocalWorktrees.length > 0) {
+    fail('repository-local .wt-* worktree content is forbidden');
+  } else {
+    ok('no repository-local .wt-* worktree content');
   }
 
-  // LICENSE untouched vs base.
-  const licDiff = git(ctx.repo, ['diff', BASE_COMMIT, '--', 'LICENSE']).stdout;
-  if (licDiff.trim() !== '') fail('LICENSE modified by candidate');
-  else {
-    const lic = fs.readFileSync(path.join(ctx.repo, 'LICENSE'), 'utf8');
-    if (normalizeText(lic) !== normalizeText(EXPECTED_MIT_LICENSE)) fail('LICENSE does not carry the exact MIT text');
-    else ok('LICENSE untouched, exact MIT text');
-  }
-
-  // ---- Markdown links (no blanket scripts/ci skip: every Markdown document
-  // in the tree participates). No fixed total count: instead, every base
-  // Markdown document must remain present, and every current relative link
-  // must resolve — a later approved protocol document of the accepted base
-  // must not be rejected by a brittle count. ----
-  const baseFiles = git(ctx.repo, ['ls-tree', '-r', '--name-only', BASE_COMMIT]).stdout.split('\n').filter(Boolean);
-  const baseMd = baseFiles.filter((f) => f.endsWith('.md'));
-  const missingBaseMd = baseMd.filter((f) => !fs.existsSync(path.join(ctx.repo, f)));
-  if (missingBaseMd.length > 0) {
-    for (const f of missingBaseMd) fail(`base Markdown document no longer present: ${f}`);
-  } else ok(`every base Markdown document remains (${baseMd.length} documents from the accepted base)`);
-  const { mdCount, issues: linkIssues } = collectMarkdownLinkIssues(ctx.repo);
-  if (linkIssues.length > 0) {
-    for (const issue of linkIssues.slice(0, 20)) {
-      fail(`broken relative link: ${issue.file} -> ${issue.target} (${issue.reason})`);
+  for (const relative of FROZEN_FILES) {
+    const base = git(ctx.repo, ['show', BASE_COMMIT + ':' + relative], { check: false });
+    let current;
+    try {
+      current = fs.readFileSync(path.join(ctx.repo, relative));
+    } catch (error) {
+      fail('frozen file is unreadable: ' + relative + ': ' + error.message);
+      continue;
     }
-  } else ok(`${mdCount} Markdown documents in the tree, all relative links resolve`);
+    if (base.status !== 0) {
+      fail('cannot read frozen base blob: ' + relative);
+    } else if (!current.equals(Buffer.from(base.stdout))) {
+      fail('frozen file differs byte-for-byte from the B004 base: ' + relative);
+    } else {
+      ok('frozen file unchanged: ' + relative);
+    }
+  }
 
-  // ---- JSON parse ----
-  let jsonCount = 0;
-  let jsonFailures = [];
-  for (const file of walkFiles(ctx.repo, (f) => f.endsWith('.json'))) {
-    jsonCount += 1;
+  const license = fs.readFileSync(path.join(ctx.repo, 'LICENSE'), 'utf8');
+  if (normalizeText(license) !== normalizeText(EXPECTED_MIT_LICENSE)) {
+    fail('LICENSE content drifted from the exact MIT text');
+  } else {
+    ok('LICENSE remains the exact MIT text');
+  }
+
+  const baseMarkdown = git(ctx.repo, ['ls-tree', '-r', '--name-only', BASE_COMMIT])
+    .stdout.split('\n').filter((relative) => relative.endsWith('.md'));
+  const missingMarkdown = baseMarkdown.filter((relative) => !fs.existsSync(path.join(ctx.repo, relative)));
+  if (missingMarkdown.length > 0) {
+    for (const relative of missingMarkdown) fail('accepted-base Markdown document removed: ' + relative);
+  } else {
+    ok('all accepted-base Markdown documents remain present');
+  }
+  const markdown = collectMarkdownLinkIssues(ctx.repo);
+  if (markdown.issues.length > 0) {
+    for (const issue of markdown.issues) {
+      fail('Markdown link issue: ' + JSON.stringify(issue));
+    }
+  } else {
+    ok(markdown.mdCount + ' Markdown documents have repository-contained resolvable links');
+  }
+
+  let jsonFailures = 0;
+  for (const file of walkFiles(ctx.repo, (candidate) => candidate.endsWith('.json'))) {
     try {
       JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (err) {
-      jsonFailures.push(`${path.relative(ctx.repo, file)}: ${err.message}`);
+    } catch (error) {
+      jsonFailures += 1;
+      fail('JSON parse failed for ' + path.relative(ctx.repo, file) + ': ' + error.message);
     }
   }
-  if (jsonFailures.length > 0) {
-    for (const f of jsonFailures) fail(`invalid JSON: ${f}`);
-  } else ok(`${jsonCount} JSON files parse`);
+  if (jsonFailures === 0) ok('all tracked-source JSON documents parse');
 
-  // ---- secret / private-path / prompt-body hygiene ----
-  // No blanket skip for scripts/ci: the executable public scripts are scanned
-  // too. This is safe because every hazard literal in lib/scan.mjs is
-  // assembled from fragments, so the scanner cannot flag its own source.
   const hazards = scanTreeForHazards(ctx.repo);
   if (hazards.length > 0) {
-    for (const h of hazards.slice(0, 20)) {
-      fail(`hazard ${h.hazard} in ${h.file}: ${JSON.stringify(h.sample)}`);
-    }
-  } else ok('no credential material, private absolute paths, model endpoints or prompt bodies (scripts/ci included)');
-
-  // ---- hygiene regression (B001-GPT-001): a forbidden hazard inside a
-  // temporary .mjs file under a scripts/ci-shaped path MUST be detected ----
-  const probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aipt-hygiene-probe-'));
-  try {
-    const probeRel = path.join('scripts', 'ci', 'probe.mjs');
-    const probeFile = path.join(probeDir, probeRel);
-    fs.mkdirSync(path.dirname(probeFile), { recursive: true });
-    // The forbidden endpoint is assembled from fragments at runtime, so this
-    // validator source never contains the literal hazard string.
-    fs.writeFileSync(
-      probeFile,
-      `// temporary hygiene negative probe\nexport const probeEndpoint = 'https://${['api', 'deepseek', 'com'].join('.')}/v1';\n`,
-    );
-    const probeFindings = scanTreeForHazards(probeDir);
-    const detected = probeFindings.some(
-      (f) => f.file === 'scripts/ci/probe.mjs' && f.hazard === 'DEEPSEEK_ENDPOINT',
-    );
-    if (!detected) {
-      fail('hygiene regression: runtime-assembled forbidden endpoint in temp scripts/ci/probe.mjs was NOT detected (.mjs support or script-tree coverage regressed)');
-    } else ok('hygiene regression: .mjs negative probe under scripts/ci/ detected (script-tree coverage intact)');
-  } finally {
-    fs.rmSync(probeDir, { recursive: true, force: true });
-  }
-
-  // ---- index mode scan (fail-closed) ----
-  // Every tracked index entry must be a regular file (or executable): mode
-  // 120000 (symlink) and mode 160000 (gitlink) are rejected. Metadata is
-  // parsed only up to the first TAB; the entire remainder is the path, so
-  // ordinary spaces in paths are preserved. Malformed output is a failure,
-  // and a nonzero git exit status is a failure.
-  const indexProbe = git(ctx.repo, ['ls-files', '--stage'], { check: false });
-  let entryCount = 0;
-  let parseErrors = 0;
-  const unsafeEntries = [];
-  if (indexProbe.status !== 0) {
-    fail(`git ls-files --stage failed with status ${indexProbe.status}: ${(indexProbe.stderr || '').trim()}`);
+    for (const finding of hazards) fail('public-tree hygiene finding: ' + JSON.stringify(finding));
   } else {
-    for (const line of indexProbe.stdout.split('\n')) {
-      if (line === '') continue;
-      entryCount += 1;
-      const tab = line.indexOf('\t');
-      if (tab === -1) {
-        parseErrors += 1;
-        fail(`malformed index entry (no tab separating metadata from path): ${JSON.stringify(line)}`);
-        continue;
-      }
-      const metadata = line.slice(0, tab);
-      const filePath = line.slice(tab + 1);
-      if (filePath === '') {
-        parseErrors += 1;
-        fail(`malformed index entry (empty path after metadata): ${JSON.stringify(line)}`);
-        continue;
-      }
-      // Metadata must be exactly '<mode> <object> <stage>' with six octal
-      // mode digits, an object id of exactly 40 or 64 lowercase hex digits,
-      // and a stage of exactly one digit 0..3.
-      const metaMatch = /^([0-7]{6}) ([0-9a-f]{40}|[0-9a-f]{64}) ([0-3])$/.exec(metadata);
-      if (!metaMatch) {
-        parseErrors += 1;
-        fail(`malformed index entry metadata (expected six octal mode digits, 40/64 lowercase hex object id, one stage digit 0..3): ${JSON.stringify(metadata)}`);
-        continue;
-      }
-      const [, mode] = metaMatch;
-      if (mode === '120000' || mode === '160000') {
-        unsafeEntries.push({ mode, filePath });
-        fail(`unsafe index entry: mode ${mode} (${mode === '120000' ? 'symlink' : 'gitlink'}) at ${filePath}`);
-      }
-    }
-  }
-  if (indexProbe.status === 0 && parseErrors === 0 && unsafeEntries.length === 0) {
-    ok(`all ${entryCount} tracked index entries are regular files (no 120000 symlink / 160000 gitlink modes)`);
+    ok('public tree contains no credential, private path, model endpoint, or prompt-body hazard');
   }
 
-  return { name: 'tree-integrity', result: pass ? 'PASS' : 'FAIL', details };
+  const probeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aipt-b004-hygiene-'));
+  try {
+    const scriptDir = path.join(probeRoot, 'scripts', 'ci');
+    fs.mkdirSync(scriptDir, { recursive: true });
+    fs.writeFileSync(path.join(scriptDir, 'probe.mjs'), 'const value = "' + 'sk-' + 'A'.repeat(24) + '";\n');
+    const probeFindings = scanTreeForHazards(probeRoot);
+    if (!probeFindings.some((finding) => finding.hazard === 'API_KEY_LIKE')) {
+      fail('hygiene regression probe did not scan a scripts/ci .mjs file');
+    } else {
+      ok('hygiene regression probe covers executable scripts/ci sources');
+    }
+  } finally {
+    fs.rmSync(probeRoot, { recursive: true, force: true });
+  }
+
+  return {
+    result: pass ? 'PASS' : 'FAIL',
+    details,
+    changed_paths: changed,
+  };
 }
 
 runAsMain(import.meta.url, 'tree-integrity', run);
