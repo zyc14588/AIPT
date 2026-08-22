@@ -2,7 +2,7 @@
 
 > B001 依据 `R4-Q023`（固定版本、锁文件、SBOM、许可证、漏洞、来源、升级资格的完整供应链门禁）建立的公共工程基础。
 > 机器规则为 [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json)；本页是可读解释。
-> **AIPT-M0-B004 安全再资格化施工中**：B003 已合并关闭；其原始选择（pgx v5.10.0、x/sync v0.17.0、x/text v0.29.0）和 Go 1.26.6 security requalification 是不可变历史。`AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001` 因可达漏洞 GO-2026-5970 将当前 x/text 精确提升到 v0.39.0；pgx 仍冻结为 v5.10.0。B004 runtime shell 没有新增业务依赖，当前运行时清单仍为 go=6/pnpm=0，并另记录两个只参与 selected module graph 的 tooling identity。冻结的 `policy.json` 仍是不可变 B001 基线。本页不是 B004 merge/closeout 声明。
+> **AIPT-M0-B004 安全再资格化已随批次 `MERGED_CLOSED`**：B003 原始选择（pgx v5.10.0、x/sync v0.17.0、x/text v0.29.0）和 Go 1.26.6 security requalification 是不可变历史。`AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001` 因可达漏洞 GO-2026-5970 将当前 x/text 精确提升到 v0.39.0，结论 `RESOLVED_BY_X_TEXT_V0_39_0`；MVS 当前选择 x/sync v0.21.0、x/mod v0.37.0、x/tools v0.47.0，pgx 仍冻结为 v5.10.0。B004 runtime shell 没有新增业务依赖，当前运行时清单仍为 go=6/pnpm=0，并另记录两个只参与 selected module graph 的 tooling identity。repair CI run `32558813381` 的 fresh govulncheck 为 PASS、reachable vulnerabilities = 0；冻结的 `policy.json` 仍是不可变 B001 基线。
 
 ## 冻结工具链（`DEFER-016` 已 RESOLVED）
 

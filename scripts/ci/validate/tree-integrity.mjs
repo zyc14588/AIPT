@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // AIPT-M0-B004 lifecycle-aware tree-integrity and scope validator.
 //
-// Every lifecycle stage is diffed directly from the immutable B003 closeout
-// base. Candidate history admits no merge commits. Once the exact authorized
-// B004 implementation merge is an ancestor of HEAD, it is the sole admitted
-// merge and its object tree / ordered parents are re-read from Git. Exact path
-// admission is self-anchored here; all other historical, scope, filesystem,
-// link, JSON, and public-tree hygiene gates remain fail closed.
+// Candidate history is diffed from the immutable B003 closeout base and
+// admits no merge commits. Post-merge history admits only the exact authorized
+// B004 implementation merge, the exact two-file validator repair, and the
+// exact closeout authority surface. Git objects, ordered parents, and every
+// lifecycle path set are re-read from Git. All other historical, scope,
+// filesystem, link, JSON, and public-tree hygiene gates remain fail closed.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,13 +16,16 @@ import {
   B004_CANDIDATE,
   B004_CONSTRUCTION_CHECKPOINT,
   B004_IMPLEMENTATION_MERGE,
+  B004_POST_MERGE_REPAIR,
   BASE_COMMIT,
   BASE_TREE,
+  CLOSEOUT_ALLOWED_PATHS,
   EXPECTED_MIT_LICENSE,
   FORBIDDEN_PREFIXES,
   FROZEN_REGISTRY_PATHS,
   normalizeText,
   pathMatchesAllowed,
+  pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import {
   collectMarkdownLinkIssues,
@@ -143,6 +146,34 @@ const B004_IMPLEMENTATION_MERGE_LITERAL = {
   parent1: '6d7225828b45b69ecc44d5bb51a04c40f0865aba',
   parent2: '4810d2cfec6146db7c161506ba7f37ab0a4ce69c',
 };
+
+const B004_POST_MERGE_REPAIR_LITERAL = {
+  directive: 'AIPT-M0-B004-POSTMERGE-TREE-INTEGRITY-REPAIR-001',
+  initial_ci_run: 32557930038,
+  initial_ci_conclusion: 'failure',
+  failure: 'AIPT-B004-TREE-INTEGRITY-LIFECYCLE-001',
+  commit: 'bd0c06867da58f89e82a35d82ce1d798c1ec9cae',
+  tree: '02e53e65ea194236e0b34a96768f9a848ecfd3a7',
+  parent: 'd07c0c3817620ada47b3ae7344d8ee423ace3b12',
+  ci_run: 32558813381,
+  ci_conclusion: 'success',
+};
+
+const B004_REPAIR_PATHS_LITERAL = [
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
+
+const CLOSEOUT_ALLOWED_PATHS_LITERAL = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/runtime/README.md',
+  'docs/supply-chain/README.md',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
 
 function sameStrings(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
@@ -443,7 +474,13 @@ export function run(ctx) {
     B004_IMPLEMENTATION_MERGE,
     B004_IMPLEMENTATION_MERGE_LITERAL,
   );
+  anchor(
+    'B004_POST_MERGE_REPAIR',
+    B004_POST_MERGE_REPAIR,
+    B004_POST_MERGE_REPAIR_LITERAL,
+  );
   anchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
+  anchor('CLOSEOUT_ALLOWED_PATHS', CLOSEOUT_ALLOWED_PATHS, CLOSEOUT_ALLOWED_PATHS_LITERAL);
   anchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
   anchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
 
@@ -473,6 +510,25 @@ export function run(ctx) {
   }
   if (probeFailures === 0) {
     ok('all ' + probeCount + ' allowlist and lookalike probes matched');
+  }
+
+  let closeoutProbeCount = 0;
+  let closeoutProbeFailures = 0;
+  const closeoutProbe = (relative, expected) => {
+    closeoutProbeCount += 1;
+    const actual = pathMatchesCloseoutAllowed(relative);
+    if (actual !== expected) {
+      closeoutProbeFailures += 1;
+      fail('pathMatchesCloseoutAllowed mismatch for ' + JSON.stringify(relative));
+    }
+  };
+  for (const relative of CLOSEOUT_ALLOWED_PATHS_LITERAL) closeoutProbe(relative, true);
+  closeoutProbe('README.md.bak', false);
+  closeoutProbe('docs/runtime/README.md/child', false);
+  closeoutProbe('cmd/aipt/main.go', false);
+  closeoutProbe('internal/launcher/launcher.go', false);
+  if (closeoutProbeFailures === 0) {
+    ok('all ' + closeoutProbeCount + ' closeout allowlist and lookalike probes matched');
   }
 
   const baseCommit = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{commit}'], { check: false });
@@ -599,6 +655,145 @@ export function run(ctx) {
     ok('authorized B004 implementation merge Git object has exact tree and ordered parents');
   } else {
     ok('candidate history contains no merge commits after the B004 base');
+  }
+
+  if (topology.phase === 'POST_MERGE') {
+    const repairCommit = git(
+      ctx.repo,
+      ['rev-parse', B004_POST_MERGE_REPAIR.commit + '^{commit}'],
+      { check: false },
+    );
+    const repairTree = git(
+      ctx.repo,
+      ['rev-parse', B004_POST_MERGE_REPAIR.commit + '^{tree}'],
+      { check: false },
+    );
+    const repairParents = git(
+      ctx.repo,
+      ['rev-list', '--parents', '-n', '1', B004_POST_MERGE_REPAIR.commit],
+      { check: false },
+    );
+    const repairAncestor = git(
+      ctx.repo,
+      ['merge-base', '--is-ancestor', B004_POST_MERGE_REPAIR.commit, 'HEAD'],
+      { check: false },
+    );
+    const repairParentTokens = repairParents.status === 0
+      ? repairParents.stdout.trim().split(/\s+/).filter(Boolean)
+      : [];
+    if (
+      repairCommit.status !== 0 ||
+      repairCommit.stdout.trim() !== B004_POST_MERGE_REPAIR.commit ||
+      repairTree.status !== 0 ||
+      repairTree.stdout.trim() !== B004_POST_MERGE_REPAIR.tree ||
+      !sameStrings(
+        repairParentTokens,
+        [B004_POST_MERGE_REPAIR.commit, B004_POST_MERGE_REPAIR.parent],
+      ) ||
+      repairAncestor.status !== 0
+    ) {
+      fail('B004 post-merge repair Git object/tree/parent/ancestry drifted');
+    } else {
+      ok('B004 post-merge repair has the exact tree, single parent, and ancestry');
+    }
+
+    const implementationChanged = git(
+      ctx.repo,
+      [
+        'diff',
+        '--name-only',
+        '--no-renames',
+        BASE_COMMIT,
+        B004_IMPLEMENTATION_MERGE.commit,
+      ],
+    ).stdout.split('\n').filter(Boolean).sort();
+    const implementationScopeProblems = implementationChanged.filter((relative) =>
+      !pathMatchesAllowed(relative) ||
+      FORBIDDEN_PREFIXES.some((prefix) => relative.startsWith(prefix)) ||
+      FROZEN_REGISTRY_PATHS.includes(relative));
+    if (implementationScopeProblems.length > 0) {
+      for (const relative of implementationScopeProblems) {
+        fail('immutable B004 implementation path violates its construction scope: ' + relative);
+      }
+    } else {
+      ok('immutable B004 implementation merge remains inside the exact construction scope');
+    }
+
+    const repairChanged = git(
+      ctx.repo,
+      [
+        'diff',
+        '--name-only',
+        '--no-renames',
+        B004_IMPLEMENTATION_MERGE.commit,
+        B004_POST_MERGE_REPAIR.commit,
+      ],
+    ).stdout.split('\n').filter(Boolean).sort();
+    const expectedRepairChanged = [...B004_REPAIR_PATHS_LITERAL].sort();
+    if (!sameStrings(repairChanged, expectedRepairChanged)) {
+      fail(
+        'B004 repair changed-path set must be exactly ' +
+          JSON.stringify(expectedRepairChanged) +
+          ', got ' +
+          JSON.stringify(repairChanged),
+      );
+    } else {
+      ok('B004 repair changed-path set is exactly the two authorized validator files');
+    }
+
+    const postMergeTracked = git(
+      ctx.repo,
+      ['diff', '--name-only', '--no-renames', B004_IMPLEMENTATION_MERGE.commit],
+    ).stdout.split('\n').filter(Boolean);
+    const postMergeChanged = [...new Set([...postMergeTracked, ...untracked])].sort();
+    const postMergeScopeProblems = postMergeChanged.filter(
+      (relative) => !pathMatchesCloseoutAllowed(relative),
+    );
+    if (postMergeScopeProblems.length > 0) {
+      for (const relative of postMergeScopeProblems) {
+        fail('path outside exact B004 post-merge repair/closeout set: ' + relative);
+      }
+    } else {
+      ok('all post-merge paths are confined to the exact repair/closeout authority surface');
+    }
+
+    const closeoutTracked = git(
+      ctx.repo,
+      ['diff', '--name-only', '--no-renames', B004_POST_MERGE_REPAIR.commit],
+    ).stdout.split('\n').filter(Boolean);
+    const closeoutChanged = [...new Set([...closeoutTracked, ...untracked])].sort();
+    const expectedCloseoutChanged = [...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort();
+    if (!sameStrings(closeoutChanged, expectedCloseoutChanged)) {
+      fail(
+        'B004 closeout changed-path set must be exactly ' +
+          JSON.stringify(expectedCloseoutChanged) +
+          ', got ' +
+          JSON.stringify(closeoutChanged),
+      );
+    } else {
+      ok('B004 closeout changed-path set is exactly the eight necessary authorized files');
+    }
+
+    const closeoutHistory = git(
+      ctx.repo,
+      ['rev-list', '--reverse', '--parents', B004_POST_MERGE_REPAIR.commit + '..HEAD'],
+      { check: false },
+    );
+    const closeoutLines = closeoutHistory.status === 0
+      ? closeoutHistory.stdout.split('\n').filter(Boolean)
+      : [];
+    if (closeoutHistory.status !== 0 || closeoutLines.length > 1) {
+      fail('B004 closeout history must contain at most one ordinary commit after the repair');
+    } else if (closeoutLines.length === 1) {
+      const tokens = closeoutLines[0].trim().split(/\s+/).filter(Boolean);
+      if (tokens.length !== 2 || tokens[1] !== B004_POST_MERGE_REPAIR.commit) {
+        fail('B004 closeout commit must have the repair commit as its sole parent');
+      } else {
+        ok('B004 closeout commit has the repair commit as its sole parent');
+      }
+    } else {
+      ok('pre-commit closeout worktree is based directly on the repair commit');
+    }
   }
 
   const topologyProbes = runMergeTopologyProbes();

@@ -1,4 +1,4 @@
-// Shared B004 validator constants and construction identities.
+// Shared B004 validator constants and closeout identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
@@ -10,14 +10,14 @@
 // anchors. B000, B001, B002, and B003 keep their own original commit/tree
 // identities instead of aliasing the current base.
 
-// The batch whose implementation and closeout are validated by this suite.
-// This is AIPT-M0-B004 while B004 construction is in progress, so B004
-// reports and identities cannot masquerade as B003 or B005 work.
+// The batch whose implementation, repair, and closeout are validated by this
+// suite. This remains AIPT-M0-B004 after closeout so B004 reports and
+// immutable identities cannot masquerade as B005 work.
 export const CURRENT_BATCH = 'AIPT-M0-B004';
 
-// The machine authority has exactly one active construction batch:
-// AIPT-M0-B004. B005 is not authorized and is explicitly not started.
-export const ACTIVE_BATCH = 'AIPT-M0-B004';
+// B004 is closed, so the machine authority has no active construction batch.
+// B005 is authorized only to prepare and is explicitly not started.
+export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -27,8 +27,8 @@ export const ACTIVE_BATCH = 'AIPT-M0-B004';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B004 construction snapshot (machine + human docs).
-export const STATUS_DATE = '2026-08-20';
+// Public status date of the B004 closeout snapshot (machine + human docs).
+export const STATUS_DATE = '2026-08-22';
 
 // Immutable closed-batch identities — historical state, never updated by
 // later batches and never aliased to the current base.
@@ -143,6 +143,21 @@ export const B004_IMPLEMENTATION_MERGE = {
   tree: 'f35365d0ad47fdd513fbecb84a03b1559026637e',
   parent1: '6d7225828b45b69ecc44d5bb51a04c40f0865aba',
   parent2: '4810d2cfec6146db7c161506ba7f37ab0a4ce69c',
+};
+
+// Immutable post-merge validator repair. The initial failed CI remains
+// immutable failure evidence; this ordinary single-parent commit repaired the
+// lifecycle gate without changing the accepted B004 implementation tree.
+export const B004_POST_MERGE_REPAIR = {
+  directive: 'AIPT-M0-B004-POSTMERGE-TREE-INTEGRITY-REPAIR-001',
+  initial_ci_run: 32557930038,
+  initial_ci_conclusion: 'failure',
+  failure: 'AIPT-B004-TREE-INTEGRITY-LIFECYCLE-001',
+  commit: 'bd0c06867da58f89e82a35d82ce1d798c1ec9cae',
+  tree: '02e53e65ea194236e0b34a96768f9a848ecfd3a7',
+  parent: 'd07c0c3817620ada47b3ae7344d8ee423ace3b12',
+  ci_run: 32558813381,
+  ci_conclusion: 'success',
 };
 
 // Exact B004 dependency-security requalification. The B003-selected runtime
@@ -427,6 +442,20 @@ export const STATUS_TRANSITION_PATHS = [
   'scripts/ci/validate/tree-integrity.mjs',
 ];
 
+// Exact B004 closeout path contract. The implementation tree is frozen at
+// B004_IMPLEMENTATION_MERGE.commit. These are the only files that may differ
+// from the accepted post-merge repair at B004 closeout.
+export const CLOSEOUT_ALLOWED_PATHS = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/runtime/README.md',
+  'docs/supply-chain/README.md',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
+
 // Forbidden prefixes/files for the CURRENT B004 iteration (non-conflicting
 // historical frozen paths retained). cmd/ is NOT a blanket forbidden prefix:
 // the master-contract B004 scope admits cmd/aipt/** by exact wildcard, and
@@ -530,4 +559,8 @@ export function pathMatchesAllowed(p) {
 
 export function pathMatchesStatusTransition(p) {
   return STATUS_TRANSITION_PATHS.includes(p);
+}
+
+export function pathMatchesCloseoutAllowed(p) {
+  return CLOSEOUT_ALLOWED_PATHS.includes(p);
 }

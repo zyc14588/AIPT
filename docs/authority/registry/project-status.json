@@ -1,21 +1,22 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-20",
-  "authority_snapshot_id": "AIPT-M0-B004-CONSTRUCTION-001",
+  "as_of": "2026-08-22",
+  "authority_snapshot_id": "AIPT-M0-B004-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-M0-B004",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "AIPT-M0-B005",
-      "next_batch_state": "NOT_AUTHORIZED",
-      "next_batch_authorized": false,
+      "next_batch_state": "AUTHORIZED_TO_PREPARE",
+      "next_batch_authorized": true,
       "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
         "AIPT-M0-B001": "MERGED_CLOSED",
         "AIPT-M0-B002": "MERGED_CLOSED",
-        "AIPT-M0-B003": "MERGED_CLOSED"
+        "AIPT-M0-B003": "MERGED_CLOSED",
+        "AIPT-M0-B004": "MERGED_CLOSED"
       },
       "external_serial_predecessor": {
         "id": "UNREGISTERED-AIPT-P0-B001",
@@ -24,7 +25,7 @@
         "closeout_ci_run": 32194224161,
         "closeout_ci_conclusion": "success"
       },
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -35,9 +36,9 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "6d7225828b45b69ecc44d5bb51a04c40f0865aba",
-      "verified_tree": "f557a9f54cbac11474f2d56f78e2d983a7d6a7be",
-      "verified_state": "AIPT-M0-B004 IN_PROGRESS from accepted B003 closeout 6d7225828b45b69ecc44d5bb51a04c40f0865aba (tree f557a9f54cbac11474f2d56f78e2d983a7d6a7be); immutable AIPT-M0-B003 MERGED_CLOSED history: Candidate fbe1363acd977759c4effa2687483c0b78b63ab6 (tree 60bcdd0df2c29391c2564bfeae17013c07723cd3, CI run 32334341279 success), implementation merge 725fc005185412d115307b594aa64e84acfabf67 (tree 60bcdd0df2c29391c2564bfeae17013c07723cd3), post-merge CI run 32336615560 success, Go 1.26.6 security requalification AIPT-M0-B003-SECURITY-TOOLCHAIN-QUAL-001 PASS; B000/B001/B002/B003 remain MERGED_CLOSED; construction IN_PROGRESS with current_batch AIPT-M0-B004 and global WIP 1; next serial batch AIPT-M0-B005 is NOT_AUTHORIZED and not started"
+      "verified_head": "d07c0c3817620ada47b3ae7344d8ee423ace3b12",
+      "verified_tree": "f35365d0ad47fdd513fbecb84a03b1559026637e",
+      "verified_state": "AIPT-M0-B004 MERGED_CLOSED: Candidate 4810d2cfec6146db7c161506ba7f37ab0a4ce69c (tree f35365d0ad47fdd513fbecb84a03b1559026637e, CI run 32392886647 success); implementation merge d07c0c3817620ada47b3ae7344d8ee423ace3b12 (tree f35365d0ad47fdd513fbecb84a03b1559026637e); initial post-merge CI run 32557930038 failure, immutable cause AIPT-B004-TREE-INTEGRITY-LIFECYCLE-001; post-merge repair directive AIPT-M0-B004-POSTMERGE-TREE-INTEGRITY-REPAIR-001, commit bd0c06867da58f89e82a35d82ce1d798c1ec9cae, CI run 32558813381 success; accepted post-merge gate PASS; dependency security requalification AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001 PASS, GO-2026-5970 RESOLVED_BY_X_TEXT_V0_39_0; B000/B001/B002/B003/B004 remain MERGED_CLOSED; construction IDLE_WAITING_NEXT_BATCH with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch AIPT-M0-B005 is AUTHORIZED_TO_PREPARE and not started"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",

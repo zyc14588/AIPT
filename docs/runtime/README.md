@@ -1,6 +1,6 @@
 # B004 Runtime Shell
 
-`AIPT-M0-B004` 提供 Go Launcher、严格共享配置基础与 Core lifecycle shell。它是一个**失败关闭的施工批次**，不是完整运行时：真实启动会完成配置、PostgreSQL 连接和 B003 迁移，然后在首个尚未实现的强制 `MODEL` 门禁返回稳定错误 `AIPT_LAUNCH_GATE_NOT_IMPLEMENTED`。
+`AIPT-M0-B004` 已 `MERGED_CLOSED`，交付 Go Launcher、严格共享配置基础与 Core lifecycle shell。它仍是一个**失败关闭的 runtime shell**，不是完整运行时：真实启动会完成配置、PostgreSQL 连接和 B003 迁移，然后在首个尚未实现的强制 `MODEL` 门禁返回稳定错误 `AIPT_LAUNCH_GATE_NOT_IMPLEMENTED`。accepted implementation identity 是 merge `d07c0c3817620ada47b3ae7344d8ee423ace3b12`、tree `f35365d0ad47fdd513fbecb84a03b1559026637e`；后续 validator repair/closeout 不改变该身份。
 
 ## 固定启动计划
 
@@ -72,4 +72,4 @@ pnpm run check:runtime-shell
 
 ## 明确不在 B004
 
-B004 不实现 Harness Adapter、stdio Harness smoke、llama.cpp/DeepSeek runtime 调用、Web/UI、Unix socket、campaign queue、evidence exporter、game adapter 或完整动作管线。`AIPT-M0-B005` 未获授权且未启动。
+B004 不实现 Harness Adapter、stdio Harness smoke、llama.cpp/DeepSeek runtime 调用、Web/UI、Unix socket、campaign queue、evidence exporter、game adapter 或完整动作管线。`AIPT-M0-B005` 仅为 `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`），`next_batch_started = false`；本 closeout 不启动 B005 implementation。
