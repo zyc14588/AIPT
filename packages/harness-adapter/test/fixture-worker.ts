@@ -1,5 +1,4 @@
-import { runProcessHarnessAdapter } from '../src/process-worker.ts';
-import { createFixtureBackend, type FixtureBackendMode } from './fixture-backend.ts';
+import type { FixtureBackendMode } from './fixture-backend.ts';
 
 const rawMode = process.argv[2];
 const modes = new Set([
@@ -19,6 +18,10 @@ if (!rawMode || !modes.has(rawMode)) {
   process.once('SIGINT', onInterrupt);
   process.once('SIGTERM', onTerminate);
   try {
+    const [{ runProcessHarnessAdapter }, { createFixtureBackend }] = await Promise.all([
+      import('../src/process-worker.ts'),
+      import('./fixture-backend.ts'),
+    ]);
     const backend = await createFixtureBackend(rawMode as FixtureBackendMode);
     const result = await runProcessHarnessAdapter(backend, { signal: controller.signal });
     process.exitCode = terminationCode ?? (result.ok ? 0 : 1);
