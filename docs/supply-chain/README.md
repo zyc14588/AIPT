@@ -4,7 +4,7 @@
 > 机器规则为 [../../tools/supply-chain/policy.json](../../tools/supply-chain/policy.json)；本页是可读解释。
 > **AIPT-M0-B004 安全再资格化已随批次 `MERGED_CLOSED`**：B003 原始选择（pgx v5.10.0、x/sync v0.17.0、x/text v0.29.0）和 Go 1.26.6 security requalification 是不可变历史。`AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001` 因可达漏洞 GO-2026-5970 将当前 x/text 精确提升到 v0.39.0，结论 `RESOLVED_BY_X_TEXT_V0_39_0`；MVS 当前选择 x/sync v0.21.0、x/mod v0.37.0、x/tools v0.47.0，pgx 仍冻结为 v5.10.0。B004 runtime shell 没有新增业务依赖，当前运行时清单仍为 go=6/pnpm=0，并另记录两个只参与 selected module graph 的 tooling identity。repair CI run `32558813381` 的 fresh govulncheck 为 PASS、reachable vulnerabilities = 0；冻结的 `policy.json` 仍是不可变 B001 基线。
 
-> **AIPT-M0-B005 正在施工**：新增 MIT 一方包 `@aipt/harness-adapter@0.1.0`，它只有一个 `@aipt/adapter-sdk: workspace:*` 依赖，锁文件精确解析为 `link:../adapter-sdk`；没有 npm registry package，pnpm 第三方运行时计数仍为 0。许可证清单与 SBOM 各增加一个一方身份；SBOM 必须同时表示 `SPDXRef-harness-adapter PACKAGE_OF SPDXRef-AIPT` 与 `SPDXRef-harness-adapter DEPENDS_ON SPDXRef-adapter-sdk`，绝不表示为 `DEV_TOOL_OF`。
+> **AIPT-M0-B005 已 `MERGED_CLOSED`**：Approved Candidate `d9e24cbac30a1472c41cc8719848acbbc2426fa5`（tree `c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5`，CI `32565305803` success）经 implementation merge `8652a92c51b86a3bf66aee725c0f1b7be4c60654` 合入，post-merge CI `32569995492` success。交付的 MIT 一方包 `@aipt/harness-adapter@0.1.0` 只有一个 `@aipt/adapter-sdk: workspace:*` 依赖，锁文件精确解析为 `link:../adapter-sdk`；没有 npm registry package，pnpm 第三方运行时计数仍为 0。许可证清单与 SBOM 各增加一个一方身份；SBOM 必须同时表示 `SPDXRef-harness-adapter PACKAGE_OF SPDXRef-AIPT` 与 `SPDXRef-harness-adapter DEPENDS_ON SPDXRef-adapter-sdk`，绝不表示为 `DEV_TOOL_OF`。
 
 ## 冻结工具链（`DEFER-016` 已 RESOLVED）
 
@@ -25,12 +25,12 @@
 - 所有第三方 Action `uses:` 必须是**完整 40 hex Commit SHA**（tag 只作为行尾可读注释）；映射登记在 [../../tools/ci-actions.lock.json](../../tools/ci-actions.lock.json)。
 - 容器镜像必须 **digest pin**（PostgreSQL 以多架构 digest 拉取）。
 - runner：`ubuntu-26.04`（参考环境）与 `ubuntu-24.04`（GA）；runner 镜像版本/OS 信息写入 CI 日志。
-- 四个 required jobs：
+- 五个实际 required jobs（以下四类，其中 `toolchain` matrix 展开为两个 job）：
   - `b000-retro`：用 B001 验证器对固定历史提交 `777a3f39ba78c1ef3168597890c61abf7a55d962` 做只读展开并追溯验证 B000（MIT 许可、454 条决策、35 条 supersession、16 项延期参数以 B000 自身状态为准、17 篇 Markdown 相对链接、JSON 解析、无凭据/私有路径/Prompt 正文、merge tree == `f5f845b860ba0944ef104b4679fa074ad6efecbb`）。
   - `toolchain`：在 `ubuntu-24.04` 与 `ubuntu-26.04` 上验证精确 Go/Node/pnpm、`gofmt`、`go vet`、`go test`、`pnpm install --frozen-lockfile`、B001–B005 聚合验证器、focused `check:runtime-shell`、`check:harness-adapter` 与 `test:harness-adapter`，并执行 PostgreSQL Official Image digest pull/run（`postgres --version` 精确 18.4）。
   - `supply-chain`：锁文件存在性与完整性、Action SHA pin、容器 digest pin、依赖清单/许可证覆盖（三层 PostgreSQL 许可模型机器校验 + 负向回归）、确定性 + SPDX 2.3/组件语义 SBOM 校验（生成两次 byte-identical 并输出 SHA-256；三层许可模型、组合关系（镜像 `CONTAINS` 主软件 / `GENERATED_FROM` 打包源）、精确 digest 语义校验与全部负向探针必须通过）、Go 漏洞扫描、`pnpm audit`、来源溯源元数据、无秘密/无真实模型网络配置扫描。
   - `storage-postgres`：使用 digest-pinned、loopback-only PostgreSQL 18.4 临时容器，硬启用 B003 storage 与 B004 Launcher 的完整集成和适用 race 测试；不触碰生产数据库。
-- 全部 required jobs PASS 是当前 Candidate 进入验收的前提；不自动 deploy/publish。
+- 全部 required jobs PASS 是 Candidate、implementation merge 与 closeout 的硬门禁；不自动 deploy/publish。
 
 ## 许可证清单
 

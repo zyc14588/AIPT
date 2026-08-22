@@ -5,10 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   ALLOWED_PATHS, B004_CANDIDATE, B004_CLOSEOUT, B004_CONSTRUCTION_CHECKPOINT,
-  B004_IMPLEMENTATION_MERGE,
-  B004_POST_MERGE_REPAIR, B005_MERGE_SUBJECT, BASE_COMMIT, BASE_TREE,
+  B004_IMPLEMENTATION_MERGE, B004_POST_MERGE_REPAIR, B005_CANDIDATE,
+  B005_CANDIDATE_HISTORY, B005_CLOSEOUT_SUBJECT, B005_IMPLEMENTATION_MERGE,
+  B005_MERGE_SUBJECT, BASE_COMMIT, BASE_TREE, CLOSEOUT_ALLOWED_PATHS,
   EXPECTED_MIT_LICENSE, FORBIDDEN_PREFIXES, FROZEN_REGISTRY_PATHS,
-  normalizeText, pathMatchesAllowed,
+  normalizeText, pathMatchesAllowed, pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -42,6 +43,22 @@ const FROZEN_REGISTRY_PATHS_LITERAL = [
   'docs/authority/registry/supersessions.json',
   'docs/authority/registry/deferred-parameters.json',
 ];
+const CLOSEOUT_ALLOWED_PATHS_LITERAL = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/harness/README.md',
+  'docs/harness/compatibility.json',
+  'docs/supply-chain/README.md',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
+const B005_CANDIDATE_HISTORY_LITERAL = [
+  'cae7c38a57da0b52e9a19e713ca8abeb9074698c',
+  'ca8951529adb179c7e5f9e5a407aabb2ffa791f9',
+  'd9e24cbac30a1472c41cc8719848acbbc2426fa5',
+];
 const FROZEN_FILES = [
   '.go-version', 'go.mod', 'go.sum', 'LICENSE', 'tools/ci-actions.lock.json',
   'tools/toolchain.lock.json', 'tools/supply-chain/policy.json',
@@ -54,6 +71,13 @@ const FALSE_ALLOWLIST_PROBES = [
   'schemas/evidence/v1/evidence.json', 'internal/evidence/export.go',
   'internal/harness/adapter.go', 'internal/model/client.go', 'internal/web/server.go',
   'README.md.bak', 'pnpm-lock.yaml.bak', 'scripts/ci/validate/harness-adapter.mjs.bak',
+];
+const FALSE_CLOSEOUT_ALLOWLIST_PROBES = [
+  'packages/harness-adapter/src/worker.ts', 'packages/adapter-sdk/src/index.ts',
+  'schemas/protocol/v1/aipt-protocol.schema.json', 'testdata/protocol/v1/minimal-fixture/manifest.json',
+  'internal/launcher/launcher.go', 'go.mod', 'go.sum', 'pnpm-lock.yaml',
+  'package.json', '.github/workflows/ci.yml', 'scripts/ci/validate/harness-adapter.mjs',
+  'docs/harness/compatibility.json.bak',
 ];
 
 function same(actual, expected) {
@@ -72,6 +96,9 @@ export function evaluateB005Lifecycle(input) {
   if (input?.baseTree !== BASE_TREE) problems.push('base tree drifted');
   if (input?.ancestryKnown !== true) problems.push('HEAD ancestry is unknown');
   if (input?.baseIsAncestor !== true) problems.push('HEAD does not descend from the base');
+  if (!same(input?.candidateHistory, B005_CANDIDATE_HISTORY)) {
+    problems.push('Candidate history drifted');
+  }
   if (!Array.isArray(input?.mergeCommits)) problems.push('merge list is unreadable');
   if (problems.length > 0) return { result: 'FAIL', phase: 'UNKNOWN', problems };
 
@@ -81,28 +108,44 @@ export function evaluateB005Lifecycle(input) {
   if (input.mergeCommits.length !== 1) problems.push('exactly one post-base merge is permitted');
   const merge = input.merge;
   if (!merge || typeof merge !== 'object') problems.push('authorized merge object is missing');
-  if (merge && input.mergeCommits[0] !== merge.commit) problems.push('merge identity mismatch');
+  if (input.mergeCommits[0] !== B005_IMPLEMENTATION_MERGE.commit) {
+    problems.push('post-base merge is not the authorized B005 implementation merge');
+  }
+  if (merge?.commit !== B005_IMPLEMENTATION_MERGE.commit) problems.push('merge identity mismatch');
   if (!Array.isArray(merge?.parents) || merge.parents.length !== 2) {
     problems.push('authorized merge must have exactly two parents');
   } else {
-    if (merge.parents[0] !== BASE_COMMIT) problems.push('merge first parent is not the B005 base');
-    if (merge.parents[1] !== merge.secondParent) problems.push('merge second parent identity drifted');
+    if (merge.parents[0] !== B005_IMPLEMENTATION_MERGE.parent1) {
+      problems.push('merge first parent is not the B005 base');
+    }
+    if (merge.parents[1] !== B005_IMPLEMENTATION_MERGE.parent2) {
+      problems.push('merge second parent is not the approved Candidate');
+    }
   }
+  if (merge?.secondParent !== B005_CANDIDATE.commit) problems.push('merge second parent identity drifted');
   if (merge?.candidateDescendsFromBase !== true) problems.push('second parent does not descend from base');
   if (!Array.isArray(merge?.candidateMergeCommits) || merge.candidateMergeCommits.length !== 0) {
     problems.push('candidate history contains a merge');
   }
-  if (merge?.tree !== merge?.secondParentTree) problems.push('merge tree differs from second-parent tree');
+  if (merge?.secondParentTree !== B005_CANDIDATE.tree) problems.push('Candidate tree drifted');
+  if (merge?.tree !== B005_IMPLEMENTATION_MERGE.tree) problems.push('merge tree drifted');
+  if (merge?.tree !== merge?.secondParentTree) problems.push('merge tree differs from Candidate tree');
   if (merge?.treeDiffQuiet !== true) problems.push('merge introduced tree changes');
   if (merge?.subject !== B005_MERGE_SUBJECT) problems.push('merge subject drifted');
   if (!Array.isArray(input?.ordinaryDescendants)) problems.push('later history is unreadable');
   else {
+    if (input.ordinaryDescendants.length > 1) {
+      problems.push('more than one closeout descendant is not permitted');
+    }
     let expectedParent = merge?.commit;
     for (const entry of input.ordinaryDescendants) {
       if (!Array.isArray(entry?.parents) || entry.parents.length !== 1) {
         problems.push('later descendant is not single-parent');
       } else if (entry.parents[0] !== expectedParent) {
         problems.push('later descendants are not one linear chain');
+      }
+      if (entry?.subject !== B005_CLOSEOUT_SUBJECT) {
+        problems.push('closeout subject drifted');
       }
       expectedParent = entry?.commit;
     }
@@ -113,31 +156,74 @@ export function evaluateB005Lifecycle(input) {
 function topologyProbes() {
   const base = {
     baseCommit: BASE_COMMIT, baseTree: BASE_TREE, ancestryKnown: true,
-    baseIsAncestor: true, mergeCommits: [], ordinaryDescendants: [],
+    baseIsAncestor: true, candidateHistory: B005_CANDIDATE_HISTORY,
+    mergeCommits: [], ordinaryDescendants: [],
   };
   const exactMerge = {
-    commit: 'm', parents: [BASE_COMMIT, 'c'], secondParent: 'c',
+    commit: B005_IMPLEMENTATION_MERGE.commit,
+    parents: [B005_IMPLEMENTATION_MERGE.parent1, B005_IMPLEMENTATION_MERGE.parent2],
+    secondParent: B005_CANDIDATE.commit,
     candidateDescendsFromBase: true, candidateMergeCommits: [],
-    tree: 'tree-c', secondParentTree: 'tree-c', treeDiffQuiet: true,
+    tree: B005_IMPLEMENTATION_MERGE.tree, secondParentTree: B005_CANDIDATE.tree,
+    treeDiffQuiet: true,
     subject: B005_MERGE_SUBJECT,
   };
   return [
     ['candidate PASS', base, 'PASS'],
-    ['candidate merge FAIL', { ...base, mergeCommits: ['x'], merge: { ...exactMerge, commit: 'x', parents: ['p', 'q'] } }, 'FAIL'],
-    ['exact merge PASS', { ...base, mergeCommits: ['m'], merge: exactMerge }, 'PASS'],
-    ['bad first parent FAIL', { ...base, mergeCommits: ['m'], merge: { ...exactMerge, parents: ['wrong', 'c'] } }, 'FAIL'],
-    ['bad second tree FAIL', { ...base, mergeCommits: ['m'], merge: { ...exactMerge, secondParentTree: 'wrong' } }, 'FAIL'],
-    ['merge changes tree FAIL', { ...base, mergeCommits: ['m'], merge: { ...exactMerge, treeDiffQuiet: false } }, 'FAIL'],
-    ['second merge FAIL', { ...base, mergeCommits: ['m', 'n'], merge: exactMerge }, 'FAIL'],
-    ['merge plus ordinary descendants PASS', {
-      ...base, mergeCommits: ['m'], merge: exactMerge,
-      ordinaryDescendants: [
-        { commit: 'r', parents: ['m'] }, { commit: 'z', parents: ['r'] },
-      ],
+    ['Candidate history drift FAIL', { ...base, candidateHistory: B005_CANDIDATE_HISTORY.slice(1) }, 'FAIL'],
+    ['unauthorized merge FAIL', { ...base, mergeCommits: ['x'], merge: { ...exactMerge, commit: 'x' } }, 'FAIL'],
+    ['exact merge PASS', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit], merge: exactMerge,
     }, 'PASS'],
+    ['bad first parent FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit],
+      merge: { ...exactMerge, parents: ['wrong', B005_CANDIDATE.commit] },
+    }, 'FAIL'],
+    ['bad Candidate parent FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit],
+      merge: { ...exactMerge, parents: [BASE_COMMIT, 'wrong'] },
+    }, 'FAIL'],
+    ['bad Candidate tree FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit],
+      merge: { ...exactMerge, secondParentTree: 'wrong' },
+    }, 'FAIL'],
+    ['bad merge tree FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit],
+      merge: { ...exactMerge, tree: 'wrong' },
+    }, 'FAIL'],
+    ['merge changes tree FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit],
+      merge: { ...exactMerge, treeDiffQuiet: false },
+    }, 'FAIL'],
+    ['second merge FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit, 'n'], merge: exactMerge,
+    }, 'FAIL'],
+    ['merge plus exact closeout PASS', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit], merge: exactMerge,
+      ordinaryDescendants: [{
+        commit: 'closeout', parents: [B005_IMPLEMENTATION_MERGE.commit],
+        subject: B005_CLOSEOUT_SUBJECT,
+      }],
+    }, 'PASS'],
+    ['second ordinary descendant FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit], merge: exactMerge,
+      ordinaryDescendants: [
+        { commit: 'closeout', parents: [B005_IMPLEMENTATION_MERGE.commit], subject: B005_CLOSEOUT_SUBJECT },
+        { commit: 'extra', parents: ['closeout'], subject: B005_CLOSEOUT_SUBJECT },
+      ],
+    }, 'FAIL'],
     ['later merge FAIL', {
-      ...base, mergeCommits: ['m'], merge: exactMerge,
-      ordinaryDescendants: [{ commit: 'r', parents: ['m', 'other'] }],
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit], merge: exactMerge,
+      ordinaryDescendants: [{
+        commit: 'closeout', parents: [B005_IMPLEMENTATION_MERGE.commit, 'other'],
+        subject: B005_CLOSEOUT_SUBJECT,
+      }],
+    }, 'FAIL'],
+    ['bad closeout subject FAIL', {
+      ...base, mergeCommits: [B005_IMPLEMENTATION_MERGE.commit], merge: exactMerge,
+      ordinaryDescendants: [{
+        commit: 'closeout', parents: [B005_IMPLEMENTATION_MERGE.commit], subject: 'wrong',
+      }],
     }, 'FAIL'],
   ];
 }
@@ -154,6 +240,8 @@ export function run(ctx) {
   anchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
   anchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
   anchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
+  anchor('CLOSEOUT_ALLOWED_PATHS', CLOSEOUT_ALLOWED_PATHS, CLOSEOUT_ALLOWED_PATHS_LITERAL);
+  anchor('B005_CANDIDATE_HISTORY', B005_CANDIDATE_HISTORY, B005_CANDIDATE_HISTORY_LITERAL);
 
   let pathProbeFailures = 0;
   let pathProbeCount = 0;
@@ -171,6 +259,23 @@ export function run(ctx) {
   }
   for (const relative of FALSE_ALLOWLIST_PROBES) pathProbe(relative, false);
   if (pathProbeFailures === 0) ok('all ' + pathProbeCount + ' allowlist/lookalike probes matched');
+
+  let closeoutPathProbeFailures = 0;
+  for (const relative of CLOSEOUT_ALLOWED_PATHS_LITERAL) {
+    if (!pathMatchesCloseoutAllowed(relative)) {
+      closeoutPathProbeFailures += 1;
+      fail('closeout allowlist rejected exact path: ' + relative);
+    }
+  }
+  for (const relative of FALSE_CLOSEOUT_ALLOWLIST_PROBES) {
+    if (pathMatchesCloseoutAllowed(relative)) {
+      closeoutPathProbeFailures += 1;
+      fail('closeout allowlist accepted forbidden/lookalike path: ' + relative);
+    }
+  }
+  if (closeoutPathProbeFailures === 0) {
+    ok('all exact closeout allowlist/lookalike probes matched');
+  }
 
   const baseCommit = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{commit}'], { check: false });
   const baseTree = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{tree}'], { check: false });
@@ -198,6 +303,21 @@ export function run(ctx) {
   const mergeTreeDiff = git(ctx.repo, ['diff', '--quiet', B004_CANDIDATE.commit, B004_IMPLEMENTATION_MERGE.commit], { check: false });
   if (mergeTreeDiff.status !== 0) fail('B004 accepted merge no longer shares the Candidate tree');
   else ok('B004 accepted merge still shares the Candidate tree');
+
+  const b005Historical = [
+    ['B005 Candidate', B005_CANDIDATE.commit, B005_CANDIDATE.tree],
+    ['B005 implementation merge', B005_IMPLEMENTATION_MERGE.commit, B005_IMPLEMENTATION_MERGE.tree],
+  ];
+  for (const [label, commit, tree] of b005Historical) {
+    const resolvedTree = git(ctx.repo, ['rev-parse', commit + '^{tree}'], { check: false });
+    if (resolvedTree.status !== 0 || resolvedTree.stdout.trim() !== tree) fail(label + ' tree drifted');
+    else ok(label + ' tree verified');
+  }
+  const candidateHistoryProbe = git(ctx.repo, [
+    'rev-list', '--reverse', '--first-parent', BASE_COMMIT + '..' + B005_CANDIDATE.commit,
+  ], { check: false });
+  const candidateHistory = candidateHistoryProbe.status === 0
+    ? candidateHistoryProbe.stdout.split('\n').filter(Boolean) : null;
 
   const trackedChanged = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT])
     .stdout.split('\n').filter(Boolean);
@@ -262,13 +382,18 @@ export function run(ctx) {
     const later = git(ctx.repo, ['rev-list', '--reverse', '--ancestry-path', '--parents', commit + '..HEAD'], { check: false });
     ordinaryDescendants = later.status === 0
       ? later.stdout.split('\n').filter(Boolean).map((line) => {
-          const parts = line.trim().split(/\s+/); return { commit: parts[0], parents: parts.slice(1) };
+          const parts = line.trim().split(/\s+/);
+          return {
+            commit: parts[0], parents: parts.slice(1),
+            subject: git(ctx.repo, ['show', '-s', '--format=%s', parts[0]], { check: false }).stdout.trim(),
+          };
         }) : null;
   }
   const lifecycle = evaluateB005Lifecycle({
     baseCommit: BASE_COMMIT, baseTree: BASE_TREE,
     ancestryKnown: ancestry.status === 0 || ancestry.status === 1,
-    baseIsAncestor: ancestry.status === 0, mergeCommits, merge, ordinaryDescendants,
+    baseIsAncestor: ancestry.status === 0, candidateHistory,
+    mergeCommits, merge, ordinaryDescendants,
   });
   if (lifecycle.result === 'FAIL') for (const problem of lifecycle.problems) fail('B005 lifecycle: ' + problem);
   else ok(lifecycle.phase === 'CANDIDATE'
@@ -282,6 +407,18 @@ export function run(ctx) {
     if (actual !== expected) { topologyFailures += 1; fail(label + ': expected ' + expected + ', got ' + actual); }
   }
   if (topologyFailures === 0) ok('all ' + probes.length + ' lifecycle mutation probes matched');
+
+  const closeoutTracked = git(ctx.repo, [
+    'diff', '--name-only', '--no-renames', B005_IMPLEMENTATION_MERGE.commit,
+  ]).stdout.split('\n').filter(Boolean);
+  const closeoutChanged = [...new Set([...closeoutTracked, ...untracked])].sort();
+  const expectedCloseoutChanged = [...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort();
+  if (!same(closeoutChanged, expectedCloseoutChanged)) {
+    fail('closeout changed-path set is not exact: ' + JSON.stringify(closeoutChanged));
+  } else ok('closeout changed-path set is the exact nine-path authority surface');
+  for (const relative of closeoutChanged) {
+    if (!pathMatchesCloseoutAllowed(relative)) fail('path outside B005 closeout scope: ' + relative);
+  }
 
   for (const line of git(ctx.repo, ['diff', '--raw', '--no-abbrev', '--no-renames', BASE_COMMIT]).stdout.split('\n').filter(Boolean)) {
     const modes = /^:(\d{6}) (\d{6}) /.exec(line);

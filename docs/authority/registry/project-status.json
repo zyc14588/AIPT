@@ -1,22 +1,23 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-22",
-  "authority_snapshot_id": "AIPT-M0-B005-CONSTRUCTION-001",
+  "authority_snapshot_id": "AIPT-M0-B005-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-M0-B005",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "AIPT-M0-B006",
-      "next_batch_state": "NOT_AUTHORIZED",
-      "next_batch_authorized": false,
+      "next_batch_state": "AUTHORIZED_TO_PREPARE",
+      "next_batch_authorized": true,
       "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
         "AIPT-M0-B001": "MERGED_CLOSED",
         "AIPT-M0-B002": "MERGED_CLOSED",
         "AIPT-M0-B003": "MERGED_CLOSED",
-        "AIPT-M0-B004": "MERGED_CLOSED"
+        "AIPT-M0-B004": "MERGED_CLOSED",
+        "AIPT-M0-B005": "MERGED_CLOSED"
       },
       "external_serial_predecessor": {
         "id": "UNREGISTERED-AIPT-P0-B001",
@@ -25,7 +26,7 @@
         "closeout_ci_run": 32194224161,
         "closeout_ci_conclusion": "success"
       },
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -36,9 +37,9 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "8005dd3bec8b367a6d97dcd9397158f1d8618f3e",
-      "verified_tree": "d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b",
-      "verified_state": "AIPT-M0-B005 IN_PROGRESS from accepted B004 closeout 8005dd3bec8b367a6d97dcd9397158f1d8618f3e (tree d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b); immutable B004 Candidate 4810d2cfec6146db7c161506ba7f37ab0a4ce69c (tree f35365d0ad47fdd513fbecb84a03b1559026637e, CI run 32392886647 success), implementation merge d07c0c3817620ada47b3ae7344d8ee423ace3b12, initial post-merge CI run 32557930038 failure with immutable cause AIPT-B004-TREE-INTEGRITY-LIFECYCLE-001, repair bd0c06867da58f89e82a35d82ce1d798c1ec9cae with CI run 32558813381 success, and AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001 remain historical facts; B000/B001/B002/B003/B004 remain MERGED_CLOSED; construction IN_PROGRESS with current_batch AIPT-M0-B005 and global WIP 1; next serial batch AIPT-M0-B006 is NOT_AUTHORIZED and not started; platform integration remains frozen"
+      "verified_head": "8652a92c51b86a3bf66aee725c0f1b7be4c60654",
+      "verified_tree": "c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5",
+      "verified_state": "AIPT-M0-B005 MERGED_CLOSED: base 8005dd3bec8b367a6d97dcd9397158f1d8618f3e (tree d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b); Candidate d9e24cbac30a1472c41cc8719848acbbc2426fa5 (tree c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5, CI run 32565305803 success); implementation merge 8652a92c51b86a3bf66aee725c0f1b7be4c60654 (tree c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5, parents 8005dd3bec8b367a6d97dcd9397158f1d8618f3e and d9e24cbac30a1472c41cc8719848acbbc2426fa5), post-merge CI run 32569995492 success; @aipt/harness-adapter@0.1.0 stdio smoke PASS (23/23 real-child tests), zero third-party pnpm packages, no remote model call; Harness upgrade AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001 OWNER_GATE_RATIFIED on 2026-08-22 with prior authorization timing independently verified false, previous 47f943859bef60e4160492346772ded9b24f765a, current 141eb6fef83422698aef7a981029e843e8161534, release dsh-v0.1.0-rc.8; B000/B001/B002/B003/B004/B005 remain MERGED_CLOSED; construction IDLE_WAITING_NEXT_BATCH with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch AIPT-M0-B006 is AUTHORIZED_TO_PREPARE and not started; platform integration remains frozen"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",
@@ -49,7 +50,7 @@
     }
   },
   "runtime": {
-    "status": "harness adapter under construction",
+    "status": "harness adapter merged/closed",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

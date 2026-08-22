@@ -1,4 +1,4 @@
-// Shared B005 validator constants and immutable predecessor identities.
+// Shared B005 closeout validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
@@ -11,7 +11,8 @@
 
 export const CURRENT_BATCH = 'AIPT-M0-B005';
 
-export const ACTIVE_BATCH = 'AIPT-M0-B005';
+// B005 is closed. B006 is authorized only to prepare and is not active.
+export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -166,6 +167,39 @@ export const B004_CLOSEOUT = {
 export const B005_BASE_COMMIT = '8005dd3bec8b367a6d97dcd9397158f1d8618f3e';
 export const B005_BASE_TREE = 'd0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b';
 
+export const B005_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B005';
+export const B005_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-M0-B005';
+
+export const B005_CANDIDATE_HISTORY = [
+  'cae7c38a57da0b52e9a19e713ca8abeb9074698c',
+  'ca8951529adb179c7e5f9e5a407aabb2ffa791f9',
+  'd9e24cbac30a1472c41cc8719848acbbc2426fa5',
+];
+
+// Immutable B005 Candidate accepted by the Owner light gate. The Candidate
+// and its public push CI remain distinct from the implementation merge and
+// the later closeout authority commit.
+export const B005_CANDIDATE = {
+  commit: 'd9e24cbac30a1472c41cc8719848acbbc2426fa5',
+  tree: 'c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5',
+  ci_run: 32565305803,
+  ci_conclusion: 'success',
+};
+
+// Exact two-parent implementation merge authorized by
+// AIPT-M0-B005-MERGE-001. The verified implementation identity remains this
+// commit/tree after closeout; the closeout commit must never replace it.
+export const B005_IMPLEMENTATION_MERGE = {
+  directive: 'AIPT-M0-B005-MERGE-001',
+  commit: '8652a92c51b86a3bf66aee725c0f1b7be4c60654',
+  tree: 'c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5',
+  parent1: '8005dd3bec8b367a6d97dcd9397158f1d8618f3e',
+  parent2: 'd9e24cbac30a1472c41cc8719848acbbc2426fa5',
+  subject: B005_MERGE_SUBJECT,
+  post_merge_ci_run: 32569995492,
+  post_merge_ci_conclusion: 'success',
+};
+
 // The Owner-authorized 2026-08-22 DSH deployment upgrade. The previous
 // frozen commit remains explicit historical provenance; B005 qualifies only
 // the currently clean source checkout/tag as its external compatibility seam.
@@ -175,6 +209,15 @@ export const HARNESS_SOURCE = {
   commit: '141eb6fef83422698aef7a981029e843e8161534',
   release: 'dsh-v0.1.0-rc.8',
   upgrade_authority: 'AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001',
+};
+
+// Owner-gate ratification records the disposition known at closeout without
+// inventing an independently verified pre-construction timing fact.
+export const HARNESS_UPGRADE_RATIFICATION = {
+  directive: 'AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001',
+  disposition: 'OWNER_GATE_RATIFIED',
+  ratified_on: '2026-08-22',
+  prior_authorization_timing_independently_verified: false,
 };
 
 // Exact B004 dependency-security requalification. The B003-selected runtime
@@ -439,7 +482,19 @@ export const STATUS_TRANSITION_PATHS = [
   'scripts/ci/validate/tree-integrity.mjs',
 ];
 
-export const B005_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B005';
+// Exact B005 closeout authority surface. No implementation, lockfile,
+// workflow, package, schema, fixture, or supply-chain inventory may change.
+export const CLOSEOUT_ALLOWED_PATHS = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/harness/README.md',
+  'docs/harness/compatibility.json',
+  'docs/supply-chain/README.md',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
 
 // Frozen implementation areas and future B006 evidence/audit surfaces.
 export const FORBIDDEN_PREFIXES = [
@@ -541,4 +596,8 @@ export function pathMatchesAllowed(p) {
 
 export function pathMatchesStatusTransition(p) {
   return STATUS_TRANSITION_PATHS.includes(p);
+}
+
+export function pathMatchesCloseoutAllowed(p) {
+  return CLOSEOUT_ALLOWED_PATHS.includes(p);
 }
