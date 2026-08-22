@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// B004 validator suite entry (`pnpm run check`).
+// B005 validator suite entry (`pnpm run check`).
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
@@ -21,6 +21,7 @@ import { run as runRuntimeShell } from './validate/runtime-shell.mjs';
 import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
 import { run as runProtocol } from './validate/protocol-assets.mjs';
 import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
+import { run as runHarnessAdapter } from './validate/harness-adapter.mjs';
 import { CURRENT_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
@@ -38,16 +39,17 @@ const checks = await Promise.all([
   runRuntimeShell(ctx),
   runStandalone(ctx),
   runAdapterSdk(ctx),
+  runHarnessAdapter(ctx),
 ]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
 const report = {
-  schema: 'aipt.public.b004-validator-run/v1',
+  schema: 'aipt.public.b005-validator-run/v1',
   task_id: CURRENT_BATCH,
   // AIPT-M0-B004 is under construction (IN_PROGRESS, GLOBAL_WIP = 1). This
   // report carries B004 task metadata but is explicitly NOT a closeout: the
   // batch is not accepted or merged until the controller closes it.
-  note: 'AIPT-M0-B004 construction IN_PROGRESS — validator-run report, not a merge/closeout claim',
+  note: 'AIPT-M0-B005 construction IN_PROGRESS — validator-run report, not a merge/closeout claim; AIPT-M0-B006 NOT_AUTHORIZED',
   repo: ctx.repo,
   result,
   checks,

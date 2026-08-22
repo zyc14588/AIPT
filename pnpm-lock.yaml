@@ -9,3 +9,9 @@ importers:
   .: {}
 
   packages/adapter-sdk: {}
+
+  packages/harness-adapter:
+    dependencies:
+      '@aipt/adapter-sdk':
+        specifier: workspace:*
+        version: link:../adapter-sdk

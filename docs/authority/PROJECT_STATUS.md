@@ -1,13 +1,13 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-08-22**；权威快照 ID：`AIPT-M0-B004-CLOSEOUT-001`。
+> 状态日期：**2026-08-22**；权威快照 ID：`AIPT-M0-B005-CONSTRUCTION-001`。
 
 ## 工作轨
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；施工状态 `IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`；`AIPT-M0-B000`、`AIPT-M0-B001`、`AIPT-M0-B002`、`AIPT-M0-B003`、`AIPT-M0-B004` 为不可变 `MERGED/CLOSED` 历史 |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；施工状态 `IN_PROGRESS`，`current_batch = AIPT-M0-B005`，`GLOBAL_WIP = 1`；`AIPT-M0-B000`、`AIPT-M0-B001`、`AIPT-M0-B002`、`AIPT-M0-B003`、`AIPT-M0-B004` 为不可变 `MERGED/CLOSED` 历史 |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
@@ -19,14 +19,14 @@
 - `AIPT-M0-B003` = **MERGED/CLOSED**：Candidate `fbe1363acd977759c4effa2687483c0b78b63ab6`，Candidate tree `60bcdd0df2c29391c2564bfeae17013c07723cd3`，Candidate CI run `32334341279` success；implementation merge `725fc005185412d115307b594aa64e84acfabf67`，implementation tree `60bcdd0df2c29391c2564bfeae17013c07723cd3`，post-merge CI run `32336615560` success。实施交付 PostgreSQL 18.4 forward-only migrations、append-only hash chain、VerifyStream、并发/篡改门禁与 pgx v5.10.0 精确闭包。当前 Go 工具链身份为 **1.26.6**（security requalification `AIPT-M0-B003-SECURITY-TOOLCHAIN-QUAL-001` PASS；B001 初始资格 Go 1.26.5 的历史 provenance 保留；`DEFER-016` 仍为 `RESOLVED` 且 `resolved_by_batch = AIPT-M0-B001`，`DEFER-001..015` 与 `decisions.json`/`supersessions.json` 不变）。
 - `AIPT-M0-B004` = **MERGED/CLOSED**：Candidate `4810d2cfec6146db7c161506ba7f37ab0a4ce69c`，Candidate tree `f35365d0ad47fdd513fbecb84a03b1559026637e`，Candidate CI run `32392886647` success；accepted implementation merge `d07c0c3817620ada47b3ae7344d8ee423ace3b12`，implementation tree `f35365d0ad47fdd513fbecb84a03b1559026637e`。初始 post-merge CI run `32557930038` 是 immutable failure，原因 `AIPT-B004-TREE-INTEGRITY-LIFECYCLE-001`；授权 `AIPT-M0-B004-POSTMERGE-TREE-INTEGRITY-REPAIR-001` 产生普通 repair commit `bd0c06867da58f89e82a35d82ce1d798c1ec9cae`，repair CI run `32558813381` success，accepted post-merge gate PASS。依赖安全再资格化 `AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001` PASS，`GO-2026-5970` = `RESOLVED_BY_X_TEXT_V0_39_0`；B003 原始 x/text v0.29.0 / x/sync v0.17.0 历史保留，当前 x/text v0.39.0、x/sync v0.21.0、x/mod v0.37.0、x/tools v0.47.0，pgx v5.10.0 不变。
 - 外部串行前驱 `UNREGISTERED-AIPT-P0-B001` = **MERGED/CLOSED**：closeout commit `a37b284bf5ec35895f436abe71d22599edb6da53`，公共 CI run `32194224161` success。
-- 施工状态：`IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`。M0 串行链下一项 `AIPT-M0-B005` = `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`，`next_batch_started = false`）；仅获准准备，不在本 closeout 中启动实施。
+- `AIPT-M0-B005` = **IN_PROGRESS**：从 B004 closeout `8005dd3bec8b367a6d97dcd9397158f1d8618f3e`（tree `d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b`）开始，`GLOBAL_WIP = 1`；范围为 Harness Adapter、stdio runtime、测试专用确定性 fixture backend、真实子进程 smoke 及配套 CI/供应链门禁。外部 DSH 兼容目标经 `AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001` 固定为 `dsh-v0.1.0-rc.8` / `141eb6fef83422698aef7a981029e843e8161534`，历史提交 `47f943859bef60e4160492346772ded9b24f765a` 不被改写。M0 串行链下一项 `AIPT-M0-B006` = `NOT_AUTHORIZED`（`next_batch_authorized = false`，`next_batch_started = false`），不得开始 Evidence/Audit Schema 或导出层。
 - 详见 [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) 与 [../milestones/M0.md](../milestones/M0.md)。
 
 ## 仓库
 
 | 仓库 | 说明 |
 |---|---|
-| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；已验证 B004 implementation merge `d07c0c3817620ada47b3ae7344d8ee423ace3b12`（树 `f35365d0ad47fdd513fbecb84a03b1559026637e`）；repair/closeout 提交不冒充 implementation identity；`AIPT-M0-B004` 已 `MERGED/CLOSED`，当前无活跃实施批次 |
+| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；B004 verified implementation merge `d07c0c3817620ada47b3ae7344d8ee423ace3b12`（树 `f35365d0ad47fdd513fbecb84a03b1559026637e`）与 repair/closeout provenance 保持不可变；当前从 B005 基线 `8005dd3bec8b367a6d97dcd9397158f1d8618f3e`（树 `d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b`）施工 `AIPT-M0-B005` |
 | 《未登记》UNREGISTERED | <https://github.com/zyc14588/UNREGISTERED>，默认分支 `main`；规划快照 `3e4a28bba1caf44828412f90bb6715b6955e3604`；就绪等级 `PLAYTESTABLE_DRAFT` |
 
 ## 运行环境与模型（设计基线）
@@ -34,7 +34,7 @@
 - 参考环境：Ubuntu 26.04 LTS（`ENV-F001`）；Bash 启动 + 本地 Web（`ENV-F002`）。
 - 主远端模型：`deepseek-v4-pro`（`ENV-F003`），完整 Campaign 使用该模型（`R14-Q023`）。
 - 本地模型：`UNASSIGNED`；GGUF 选型与性能阈值延期（`DEFER-002`、`DEFER-003`）。
-- 以上是**设计基线**：完整桌测运行时尚未建设。B001 建立工程与 CI，B002 交付协议/SDK/Go 契约消费者，B003 交付 PostgreSQL 存储，B004 交付失败关闭的 Launcher 与 Core runtime shell；真实模型、Harness Adapter、IPC listener 与 Web 仍未实现，且 B005 尚未启动。
+- 以上是**设计基线**：完整桌测运行时尚未建设。B001 建立工程与 CI，B002 交付协议/SDK/Go 契约消费者，B003 交付 PostgreSQL 存储，B004 交付失败关闭的 Launcher 与 Core runtime shell；B005 仅施工 Harness Adapter stdio 边界与无模型 fixture smoke，真实模型、IPC listener 与 Web 仍未实现。
 
 ## 审计状态
 
@@ -53,9 +53,9 @@
 
 ## 下一步
 
-- `AIPT-M0-B004` 已 `MERGED/CLOSED`；`AIPT-M0-B000`、`AIPT-M0-B001`、`AIPT-M0-B002`、`AIPT-M0-B003`、`AIPT-M0-B004` 为不可变已关闭历史。当前 `current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`，施工状态 `IDLE_WAITING_NEXT_BATCH`。
+- `AIPT-M0-B004` 已 `MERGED/CLOSED`；`AIPT-M0-B000`、`AIPT-M0-B001`、`AIPT-M0-B002`、`AIPT-M0-B003`、`AIPT-M0-B004` 为不可变已关闭历史。当前 `current_batch = AIPT-M0-B005`，`GLOBAL_WIP = 1`，施工状态 `IN_PROGRESS`。
 - B004 verified implementation identity 固定为 merge `d07c0c3817620ada47b3ae7344d8ee423ace3b12` 与 tree `f35365d0ad47fdd513fbecb84a03b1559026637e`；初始失败 CI 与成功 repair CI 的 provenance 均保留，不得将 repair/closeout commit 冒充实现身份。
-- M0 串行链下一项 `AIPT-M0-B005` = `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`），尚未启动（`next_batch_started = false`）；不要开始 B005 implementation。
+- M0 串行链下一项 `AIPT-M0-B006` = `NOT_AUTHORIZED`（`next_batch_authorized = false`，`next_batch_started = false`）；不要开始 B006 implementation。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。
 
 ## 相邻文档

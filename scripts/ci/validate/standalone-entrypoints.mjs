@@ -99,6 +99,7 @@ export function run(ctx) {
     { name: 'status-transition', label: 'status-transition', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'runtime-shell', label: 'runtime-shell', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'adapter-sdk', label: 'adapter-sdk', args: ['--repo', ctx.repo], result: 'PASS' },
+    { name: 'harness-adapter', label: 'harness-adapter', args: ['--repo', ctx.repo], result: 'PASS' },
   ];
   for (const c of positives) {
     const cp = spawnEntrypoint(c.name, c.args, ctx.repo);

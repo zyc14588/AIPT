@@ -56,8 +56,8 @@ jobs:
 
   # ------------------------------------------------------------------
   # Exact toolchain qualification on GA and reference runner images,
-  # plus the explicit B002 protocol and B004 runtime-shell gates on every
-  # matrix runner (pnpm run check is the B001+B002+B003+B004 aggregate).
+  # plus the explicit B002 protocol, B004 runtime-shell, and B005 Harness
+  # Adapter gates on every matrix runner.
   # ------------------------------------------------------------------
   toolchain:
     name: toolchain (${{ matrix.os }})
@@ -122,7 +122,11 @@ jobs:
         run: pnpm run test:protocol-go
       - name: "B004 runtime shell: fixed gate order + config + Core + Launcher + CLI mutation probes"
         run: pnpm run check:runtime-shell
-      - name: B001+B002+B003+B004 aggregate validators (pnpm run check)
+      - name: "B005 Harness Adapter contract: thin stdio runtime + security mutation probes"
+        run: pnpm run check:harness-adapter
+      - name: B005 Harness Adapter real-child stdio smoke tests
+        run: pnpm run test:harness-adapter
+      - name: B001+B002+B003+B004+B005 aggregate validators (pnpm run check)
         run: pnpm run check
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |
