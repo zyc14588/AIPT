@@ -1,18 +1,21 @@
 #!/usr/bin/env node
-// AIPT-M0-B004 candidate tree-integrity and scope validator.
+// AIPT-M0-B004 lifecycle-aware tree-integrity and scope validator.
 //
-// The candidate is always diffed directly from the immutable B003 closeout
-// base. Exact path admission is self-anchored here, dependency/toolchain and
-// authority registries remain byte-frozen, and unsafe nodes, merge commits,
-// repository-local worktrees, broken links, secrets, model endpoints, and
-// public prompt bodies fail closed.
+// Every lifecycle stage is diffed directly from the immutable B003 closeout
+// base. Candidate history admits no merge commits. Once the exact authorized
+// B004 implementation merge is an ancestor of HEAD, it is the sole admitted
+// merge and its object tree / ordered parents are re-read from Git. Exact path
+// admission is self-anchored here; all other historical, scope, filesystem,
+// link, JSON, and public-tree hygiene gates remain fail closed.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
   ALLOWED_PATHS,
   B003_CLOSEOUT,
+  B004_CANDIDATE,
   B004_CONSTRUCTION_CHECKPOINT,
+  B004_IMPLEMENTATION_MERGE,
   BASE_COMMIT,
   BASE_TREE,
   EXPECTED_MIT_LICENSE,
@@ -127,8 +130,255 @@ const FALSE_ALLOWLIST_PROBES = [
   'AIPT-M0-B005/adapter.go',
 ];
 
+const B004_CANDIDATE_LITERAL = {
+  commit: '4810d2cfec6146db7c161506ba7f37ab0a4ce69c',
+  tree: 'f35365d0ad47fdd513fbecb84a03b1559026637e',
+  ci_run: 32392886647,
+};
+
+const B004_IMPLEMENTATION_MERGE_LITERAL = {
+  directive: 'AIPT-M0-B004-MERGE-001',
+  commit: 'd07c0c3817620ada47b3ae7344d8ee423ace3b12',
+  tree: 'f35365d0ad47fdd513fbecb84a03b1559026637e',
+  parent1: '6d7225828b45b69ecc44d5bb51a04c40f0865aba',
+  parent2: '4810d2cfec6146db7c161506ba7f37ab0a4ce69c',
+};
+
 function sameStrings(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+export function evaluateB004MergeTopology(input) {
+  const problems = [];
+  const candidate = input?.candidate;
+  const implementationMerge = input?.implementationMerge;
+  const resolvedCandidate = input?.resolvedCandidate;
+  const resolvedMerge = input?.resolvedMerge;
+  const mergeCommits = input?.mergeCommits;
+  const ordinaryDescendants = input?.ordinaryDescendants;
+  const ancestryKnown = input?.implementationMergeAncestryKnown === true;
+  const postMerge = input?.implementationMergeIsAncestor === true;
+
+  if (!candidate || typeof candidate !== 'object') {
+    problems.push('approved B004 Candidate identity is missing');
+  }
+  if (!implementationMerge || typeof implementationMerge !== 'object') {
+    problems.push('approved B004 implementation merge identity is missing');
+  }
+  if (!Array.isArray(mergeCommits)) {
+    problems.push('merge commit set could not be read');
+  }
+  if (!ancestryKnown) {
+    problems.push('approved B004 implementation merge ancestry could not be determined');
+  }
+  if (!resolvedCandidate || typeof resolvedCandidate !== 'object') {
+    problems.push('approved B004 Candidate Git object is missing');
+  }
+  if (!resolvedMerge || typeof resolvedMerge !== 'object') {
+    problems.push('approved B004 implementation merge Git object is missing');
+  }
+
+  if (
+    candidate &&
+    resolvedCandidate &&
+    (resolvedCandidate.commit !== candidate.commit || resolvedCandidate.tree !== candidate.tree)
+  ) {
+    problems.push('approved B004 Candidate Git object commit/tree mismatch');
+  }
+
+  if (candidate && implementationMerge) {
+    if (implementationMerge.tree !== candidate.tree) {
+      problems.push('approved B004 implementation merge tree does not equal the Candidate tree');
+    }
+    if (implementationMerge.parent2 !== candidate.commit) {
+      problems.push('approved B004 implementation merge parent2 does not equal the Candidate commit');
+    }
+  }
+
+  if (implementationMerge && resolvedMerge) {
+    if (resolvedMerge.commit !== implementationMerge.commit) {
+      problems.push('approved B004 implementation merge Git object commit mismatch');
+    }
+    if (resolvedMerge.tree !== implementationMerge.tree) {
+      problems.push('approved B004 implementation merge Git object tree mismatch');
+    }
+    if (!Array.isArray(resolvedMerge.parents) || resolvedMerge.parents.length !== 2) {
+      problems.push('approved B004 implementation merge Git object parent count is not exactly two');
+    } else {
+      if (resolvedMerge.parents[0] !== implementationMerge.parent1) {
+        problems.push('approved B004 implementation merge Git object parent1 mismatch');
+      }
+      if (resolvedMerge.parents[1] !== implementationMerge.parent2) {
+        problems.push('approved B004 implementation merge Git object parent2 mismatch');
+      }
+    }
+    if (candidate && resolvedMerge.tree !== candidate.tree) {
+      problems.push('implementation merge Git object tree does not equal the approved Candidate tree');
+    }
+  }
+
+  if (Array.isArray(mergeCommits) && implementationMerge) {
+    if (postMerge) {
+      if (!sameStrings(mergeCommits, [implementationMerge.commit])) {
+        problems.push(
+          'post-merge history must contain exactly the authorized B004 implementation merge: ' +
+            JSON.stringify(mergeCommits),
+        );
+      }
+    } else if (mergeCommits.length > 0) {
+      problems.push(
+        'candidate history contains merge commits after the B004 base: ' + mergeCommits.join(', '),
+      );
+    }
+  }
+
+  if (postMerge) {
+    if (!Array.isArray(ordinaryDescendants)) {
+      problems.push('ordinary post-merge descendant topology could not be read');
+    } else {
+      for (const descendant of ordinaryDescendants) {
+        if (!Array.isArray(descendant?.parents) || descendant.parents.length !== 1) {
+          problems.push(
+            'post-merge descendant is not an ordinary single-parent commit: ' +
+              JSON.stringify(descendant?.commit ?? null),
+          );
+        }
+      }
+    }
+  }
+
+  return {
+    phase: postMerge ? 'POST_MERGE' : 'CANDIDATE',
+    result: problems.length === 0 ? 'PASS' : 'FAIL',
+    problems,
+  };
+}
+
+function runMergeTopologyProbes() {
+  const exactResolvedCandidate = {
+    commit: B004_CANDIDATE_LITERAL.commit,
+    tree: B004_CANDIDATE_LITERAL.tree,
+  };
+  const exactResolvedMerge = {
+    commit: B004_IMPLEMENTATION_MERGE_LITERAL.commit,
+    tree: B004_IMPLEMENTATION_MERGE_LITERAL.tree,
+    parents: [
+      B004_IMPLEMENTATION_MERGE_LITERAL.parent1,
+      B004_IMPLEMENTATION_MERGE_LITERAL.parent2,
+    ],
+  };
+  const specimen = (overrides = {}) => ({
+    candidate: B004_CANDIDATE_LITERAL,
+    implementationMerge: B004_IMPLEMENTATION_MERGE_LITERAL,
+    implementationMergeAncestryKnown: true,
+    implementationMergeIsAncestor: true,
+    mergeCommits: [B004_IMPLEMENTATION_MERGE_LITERAL.commit],
+    ordinaryDescendants: [],
+    resolvedCandidate: exactResolvedCandidate,
+    resolvedMerge: exactResolvedMerge,
+    ...overrides,
+  });
+  const otherMerge = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const wrongParent = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  const wrongTree = 'cccccccccccccccccccccccccccccccccccccccc';
+  const probes = [
+    {
+      label: 'candidate topology with zero merge commits',
+      input: specimen({ implementationMergeIsAncestor: false, mergeCommits: [] }),
+      expected: 'PASS',
+    },
+    {
+      label: 'candidate history containing any merge commit',
+      input: specimen({ implementationMergeIsAncestor: false }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'exact authorized implementation merge topology',
+      input: specimen(),
+      expected: 'PASS',
+    },
+    {
+      label: 'merge SHA is not the authorized implementation merge',
+      input: specimen({ mergeCommits: [otherMerge] }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized implementation merge identity missing',
+      input: specimen({ implementationMerge: null }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized merge parent1 wrong',
+      input: specimen({
+        resolvedMerge: {
+          ...exactResolvedMerge,
+          parents: [wrongParent, B004_IMPLEMENTATION_MERGE_LITERAL.parent2],
+        },
+      }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized merge parent2 wrong',
+      input: specimen({
+        resolvedMerge: {
+          ...exactResolvedMerge,
+          parents: [B004_IMPLEMENTATION_MERGE_LITERAL.parent1, wrongParent],
+        },
+      }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized merge tree wrong',
+      input: specimen({ resolvedMerge: { ...exactResolvedMerge, tree: wrongTree } }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized merge parent count is not two',
+      input: specimen({
+        resolvedMerge: {
+          ...exactResolvedMerge,
+          parents: [B004_IMPLEMENTATION_MERGE_LITERAL.parent1],
+        },
+      }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized merge plus a second merge commit',
+      input: specimen({ mergeCommits: [otherMerge, B004_IMPLEMENTATION_MERGE_LITERAL.commit] }),
+      expected: 'FAIL',
+    },
+    {
+      label: 'authorized merge plus ordinary repair commit',
+      input: specimen({
+        ordinaryDescendants: [
+          { commit: 'dddddddddddddddddddddddddddddddddddddddd', parents: [B004_IMPLEMENTATION_MERGE_LITERAL.commit] },
+        ],
+      }),
+      expected: 'PASS',
+    },
+    {
+      label: 'authorized merge plus ordinary repair and closeout-like commits',
+      input: specimen({
+        ordinaryDescendants: [
+          {
+            commit: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+            parents: ['dddddddddddddddddddddddddddddddddddddddd'],
+          },
+          {
+            commit: 'dddddddddddddddddddddddddddddddddddddddd',
+            parents: [B004_IMPLEMENTATION_MERGE_LITERAL.commit],
+          },
+        ],
+      }),
+      expected: 'PASS',
+    },
+  ];
+
+  return probes.map((probe) => ({
+    label: probe.label,
+    expected: probe.expected,
+    actual: evaluateB004MergeTopology(probe.input).result,
+  }));
 }
 
 export function run(ctx) {
@@ -187,6 +437,12 @@ export function run(ctx) {
       ok('B004 preserved construction checkpoint/tree resolve and remain an ancestor of HEAD');
     }
   }
+  anchor('B004_CANDIDATE', B004_CANDIDATE, B004_CANDIDATE_LITERAL);
+  anchor(
+    'B004_IMPLEMENTATION_MERGE',
+    B004_IMPLEMENTATION_MERGE,
+    B004_IMPLEMENTATION_MERGE_LITERAL,
+  );
   anchor('ALLOWED_PATHS', ALLOWED_PATHS, ALLOWED_PATHS_LITERAL);
   anchor('FORBIDDEN_PREFIXES', FORBIDDEN_PREFIXES, FORBIDDEN_PREFIXES_LITERAL);
   anchor('FROZEN_REGISTRY_PATHS', FROZEN_REGISTRY_PATHS, FROZEN_REGISTRY_PATHS_LITERAL);
@@ -264,10 +520,103 @@ export function run(ctx) {
   }
   if (scopeFailures === 0) ok('all changed paths remain inside the exact B004 scope');
 
-  const merges = git(ctx.repo, ['rev-list', '--merges', BASE_COMMIT + '..HEAD'], { check: false })
-    .stdout.split('\n').filter(Boolean);
-  if (merges.length > 0) fail('merge commits introduced after the B004 base: ' + merges.join(', '));
-  else ok('no merge commits introduced after the B004 base');
+  const mergeList = git(ctx.repo, ['rev-list', '--merges', BASE_COMMIT + '..HEAD'], { check: false });
+  const mergeCommits = mergeList.status === 0
+    ? mergeList.stdout.split('\n').filter(Boolean)
+    : null;
+  const mergeAncestor = git(
+    ctx.repo,
+    ['merge-base', '--is-ancestor', B004_IMPLEMENTATION_MERGE.commit, 'HEAD'],
+    { check: false },
+  );
+  const candidateCommit = git(
+    ctx.repo,
+    ['rev-parse', B004_CANDIDATE.commit + '^{commit}'],
+    { check: false },
+  );
+  const candidateTree = git(
+    ctx.repo,
+    ['rev-parse', B004_CANDIDATE.commit + '^{tree}'],
+    { check: false },
+  );
+  const mergeCommit = git(
+    ctx.repo,
+    ['rev-parse', B004_IMPLEMENTATION_MERGE.commit + '^{commit}'],
+    { check: false },
+  );
+  const mergeTree = git(
+    ctx.repo,
+    ['rev-parse', B004_IMPLEMENTATION_MERGE.commit + '^{tree}'],
+    { check: false },
+  );
+  const mergeParents = git(
+    ctx.repo,
+    ['rev-list', '--parents', '-n', '1', B004_IMPLEMENTATION_MERGE.commit],
+    { check: false },
+  );
+  const ordinaryDescendantList = git(
+    ctx.repo,
+    ['rev-list', '--parents', B004_IMPLEMENTATION_MERGE.commit + '..HEAD'],
+    { check: false },
+  );
+  const parentTokens = mergeParents.status === 0
+    ? mergeParents.stdout.trim().split(/\s+/).filter(Boolean)
+    : [];
+  const resolvedCandidate = candidateCommit.status === 0 && candidateTree.status === 0
+    ? { commit: candidateCommit.stdout.trim(), tree: candidateTree.stdout.trim() }
+    : null;
+  const resolvedMerge =
+    mergeCommit.status === 0 && mergeTree.status === 0 && parentTokens.length > 0
+      ? {
+          commit: mergeCommit.stdout.trim(),
+          tree: mergeTree.stdout.trim(),
+          parents: parentTokens.slice(1),
+      }
+      : null;
+  const ordinaryDescendants = ordinaryDescendantList.status === 0
+    ? ordinaryDescendantList.stdout
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          const tokens = line.trim().split(/\s+/).filter(Boolean);
+          return { commit: tokens[0], parents: tokens.slice(1) };
+        })
+    : null;
+  const topology = evaluateB004MergeTopology({
+    candidate: B004_CANDIDATE,
+    implementationMerge: B004_IMPLEMENTATION_MERGE,
+    implementationMergeAncestryKnown: mergeAncestor.status === 0 || mergeAncestor.status === 1,
+    implementationMergeIsAncestor: mergeAncestor.status === 0,
+    mergeCommits,
+    ordinaryDescendants,
+    resolvedCandidate,
+    resolvedMerge,
+  });
+  if (topology.result === 'FAIL') {
+    for (const problem of topology.problems) fail('B004 merge topology: ' + problem);
+  } else if (topology.phase === 'POST_MERGE') {
+    ok('post-merge history contains exactly the authorized B004 implementation merge');
+    ok('authorized B004 implementation merge Git object has exact tree and ordered parents');
+  } else {
+    ok('candidate history contains no merge commits after the B004 base');
+  }
+
+  const topologyProbes = runMergeTopologyProbes();
+  const topologyProbeFailures = topologyProbes.filter((probe) => probe.actual !== probe.expected);
+  if (topologyProbeFailures.length > 0) {
+    for (const probe of topologyProbeFailures) {
+      fail(
+        'merge-topology probe mismatch for ' +
+          JSON.stringify(probe.label) +
+          ': expected ' +
+          probe.expected +
+          ', got ' +
+          probe.actual,
+      );
+    }
+  } else {
+    ok('all ' + topologyProbes.length + ' merge-topology lifecycle probes matched');
+  }
 
   const rawDiff = git(ctx.repo, ['diff', '--raw', '--no-abbrev', '--no-renames', BASE_COMMIT])
     .stdout.split('\n').filter(Boolean);

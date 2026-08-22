@@ -124,6 +124,27 @@ export const B004_CONSTRUCTION_CHECKPOINT = {
   tree: 'bab4289817a26a07553da4bfcccaac82dbb04319',
 };
 
+// Immutable B004 Candidate identity accepted by the Owner light gate. The
+// Candidate and its public push CI remain distinct from the later main merge
+// and from all validator-repair / closeout commits.
+export const B004_CANDIDATE = {
+  commit: '4810d2cfec6146db7c161506ba7f37ab0a4ce69c',
+  tree: 'f35365d0ad47fdd513fbecb84a03b1559026637e',
+  ci_run: 32392886647,
+};
+
+// Exact two-parent merge authorized by AIPT-M0-B004-MERGE-001. This identity
+// is the sole merge commit permitted after the immutable B004 base. Later
+// validator-repair and closeout commits must remain ordinary single-parent
+// descendants and must never replace this verified implementation identity.
+export const B004_IMPLEMENTATION_MERGE = {
+  directive: 'AIPT-M0-B004-MERGE-001',
+  commit: 'd07c0c3817620ada47b3ae7344d8ee423ace3b12',
+  tree: 'f35365d0ad47fdd513fbecb84a03b1559026637e',
+  parent1: '6d7225828b45b69ecc44d5bb51a04c40f0865aba',
+  parent2: '4810d2cfec6146db7c161506ba7f37ab0a4ce69c',
+};
+
 // Exact B004 dependency-security requalification. The B003-selected runtime
 // identities remain historical facts; this records the current selected
 // versions and every deterministic MVS consequence under Go 1.26.6.
