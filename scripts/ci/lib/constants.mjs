@@ -1,18 +1,16 @@
-// Shared B005 closeout validator constants and immutable predecessor identities.
+// Shared B006 construction validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
-// acceptances. Nothing is computed at runtime from the candidate itself, so
+// acceptances and B004/B005 closeouts. Nothing is computed at runtime from the candidate itself, so
 // the candidate cannot validate itself into acceptance.
 //
-// BASE_* is the accepted main base the B005 candidate must diff against: the
-// AIPT-M0-B004 closeout commit and its tree, held as independent literal
+// BASE_* is the accepted main base the B006 candidate must diff against: the
+// AIPT-M0-B005 closeout commit and its tree, held as independent literal
 // anchors. Every predecessor keeps its own original identity.
 
-export const CURRENT_BATCH = 'AIPT-M0-B005';
-
-// B005 is closed. B006 is authorized only to prepare and is not active.
-export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
+export const CURRENT_BATCH = 'AIPT-M0-B006';
+export const ACTIVE_BATCH = 'AIPT-M0-B006';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -22,7 +20,7 @@ export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B005 construction snapshot (machine + human docs).
+// Public status date of the B006 construction snapshot (machine + human docs).
 export const STATUS_DATE = '2026-08-22';
 
 // Immutable closed-batch identities — historical state, never updated by
@@ -200,6 +198,21 @@ export const B005_IMPLEMENTATION_MERGE = {
   post_merge_ci_conclusion: 'success',
 };
 
+// Immutable B005 closeout is the independently supplied B006 base. It is a
+// single-parent authority commit after the accepted B005 implementation merge
+// and must never replace that merge as the verified B005 implementation.
+export const B005_CLOSEOUT = {
+  commit: '10d0232bd2e3e42601bbb00cedc753f842e219db',
+  tree: '922115b9a75a7eca8dd97475f3f228bc7d3d2c10',
+  parent: '8652a92c51b86a3bf66aee725c0f1b7be4c60654',
+  ci_run: 32571092786,
+  ci_conclusion: 'success',
+};
+
+export const B006_BASE_COMMIT = B005_CLOSEOUT.commit;
+export const B006_BASE_TREE = B005_CLOSEOUT.tree;
+export const B006_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B006';
+
 // The Owner-authorized 2026-08-22 DSH deployment upgrade. The previous
 // frozen commit remains explicit historical provenance; B005 qualifies only
 // the currently clean source checkout/tag as its external compatibility seam.
@@ -329,8 +342,8 @@ export const B004_DEPENDENCY_SECURITY_REQUALIFICATION = {
   ],
 };
 
-export const BASE_COMMIT = B005_BASE_COMMIT;
-export const BASE_TREE = B005_BASE_TREE;
+export const BASE_COMMIT = B006_BASE_COMMIT;
+export const BASE_TREE = B006_BASE_TREE;
 
 export const TOOLCHAIN = {
   go: '1.26.6',
@@ -442,31 +455,28 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// Exact AIPT-M0-B005 construction surface. Protocol/SDK/Go-core truth stays
-// frozen: this batch adds only the thin Harness Adapter, its deterministic
-// fixture/smoke, compatibility docs, and the gates/metadata needed to admit it.
+// Exact AIPT-M0-B006 construction surface. Protocol/SDK, B003 storage,
+// B004 runtime, B005 Harness Adapter, toolchains, dependencies and licenses
+// stay frozen. B006 adds only the public Evidence/Audit schema, minimal native
+// RAW_CAPTURE exporter/verifier, synthetic fixtures, docs, and their gates.
 export const ALLOWED_PATHS = [
-  'packages/harness-adapter/**',
-  'docs/harness/**',
-  'scripts/ci/smoke/**',
+  'schemas/evidence/v1/**',
+  'internal/evidence/**',
+  'testdata/evidence/v1/**',
+  'docs/evidence/**',
+  'docs/harness/README.md',
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/supply-chain/README.md',
   'package.json',
-  'pnpm-lock.yaml',
-  'pnpm-workspace.yaml',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
-  'scripts/ci/validate/supply-chain.mjs',
-  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/validate/evidence.mjs',
   'scripts/ci/validate/harness-adapter.mjs',
   'scripts/ci/validate/standalone-entrypoints.mjs',
-  'scripts/ci/sbom/generate-sbom.mjs',
-  'tools/supply-chain/licenses.json',
   '.github/workflows/ci.yml',
 ];
 
@@ -477,26 +487,13 @@ export const STATUS_TRANSITION_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'scripts/ci/lib/constants.mjs',
-  'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/tree-integrity.mjs',
-];
-
-// Exact B005 closeout authority surface. No implementation, lockfile,
-// workflow, package, schema, fixture, or supply-chain inventory may change.
-export const CLOSEOUT_ALLOWED_PATHS = [
-  'README.md',
-  'docs/authority/PROJECT_STATUS.md',
-  'docs/authority/registry/project-status.json',
   'docs/harness/README.md',
-  'docs/harness/compatibility.json',
-  'docs/supply-chain/README.md',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
 ];
 
-// Frozen implementation areas and future B006 evidence/audit surfaces.
+// Frozen predecessor implementation and future-product areas.
 export const FORBIDDEN_PREFIXES = [
   'api/',
   'migrations/',
@@ -509,10 +506,8 @@ export const FORBIDDEN_PREFIXES = [
   'docs/integration/',
   'docs/test-model/',
   'docs/security/',
-  'docs/evidence/',
-  'schemas/evidence/',
-  'internal/evidence/',
   'packages/evidence/',
+  'packages/harness-adapter/',
   'internal/protocol/',
   'internal/storage/postgres/',
   'internal/harness/',
@@ -527,13 +522,16 @@ export const FORBIDDEN_PREFIXES = [
   'tools/toolchain.lock.json',
   'tools/ci-actions.lock.json',
   'tools/supply-chain/policy.json',
+  'tools/supply-chain/licenses.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
 ];
 
 // Frozen authority registries: byte-for-byte immutability is enforced
 // against the accepted main base. decisions.json, supersessions.json, and
-// deferred-parameters.json are all fully frozen for B004 (the B003
+// deferred-parameters.json are all fully frozen for B006 (the B003
 // security-requalification controlled evolution of deferred-parameters.json
-// is closed; B004 performs no deferred-parameters work).
+// is closed; B006 performs no deferred-parameters work).
 export const FROZEN_REGISTRY_PATHS = [
   'docs/authority/registry/decisions.json',
   'docs/authority/registry/supersessions.json',
@@ -596,8 +594,4 @@ export function pathMatchesAllowed(p) {
 
 export function pathMatchesStatusTransition(p) {
   return STATUS_TRANSITION_PATHS.includes(p);
-}
-
-export function pathMatchesCloseoutAllowed(p) {
-  return CLOSEOUT_ALLOWED_PATHS.includes(p);
 }

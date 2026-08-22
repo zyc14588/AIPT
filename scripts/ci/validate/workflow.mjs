@@ -141,6 +141,8 @@ const STORAGE_FULL_TEST = "go test ./internal/storage/postgres -run '^TestPostgr
 const STORAGE_RACE_TEST = "go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends)$' -count=1 -v";
 const STORAGE_LAUNCHER_FULL_TEST = "go test ./internal/launcher -run '^TestPostgresIntegrationLauncher' -count=1 -v";
 const STORAGE_LAUNCHER_RACE_TEST = "go test -race ./internal/launcher -run '^TestPostgresIntegrationLauncher' -count=1 -v";
+const STORAGE_EVIDENCE_FULL_TEST = "go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
+const STORAGE_EVIDENCE_RACE_TEST = "go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
 
 // The closed-world storage-postgres job is exactly these nine ordered named
 // steps. Step names are parsed NORMALIZED (`- name:`, `- 'name':`,
@@ -154,8 +156,8 @@ const STORAGE_POSTGRES_STEPS = [
   'Verify exact Go version',
   'Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)',
   'Verify PostgreSQL 18.4 readiness and server version',
-  'PostgreSQL integration tests (B003 storage + B004 runtime shell, test-only DSN)',
-  'PostgreSQL integration race coverage (B003 concurrency + B004 runtime shell)',
+  'PostgreSQL integration tests (B003 storage + B004 runtime shell + B006 Evidence, test-only DSN)',
+  'PostgreSQL integration race coverage (B003 concurrency + B004 runtime shell + B006 Evidence)',
   'Remove ephemeral PostgreSQL container (CI-only cleanup, never production)',
 ];
 
@@ -202,7 +204,15 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run test:harness-adapter',
     nameTokens: ['b005', 'harness adapter', 'real-child', 'stdio', 'smoke tests'],
   },
-  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005', 'aggregate'] },
+  {
+    command: 'pnpm run check:evidence',
+    nameTokens: ['b006', 'evidence', 'schema', 'raw_capture', 'contract', 'security', 'mutation probes'],
+  },
+  {
+    command: 'pnpm run test:evidence-go',
+    nameTokens: ['b006', 'evidence', 'go', 'exporter', 'verifier', 'deterministic', 'tamper tests'],
+  },
+  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006', 'aggregate'] },
 ];
 
 // Retained single-line gate commands: each must be exactly one real inline
@@ -407,23 +417,25 @@ const BLOCK_GATES = {
       ],
     },
     {
-      label: 'the full B003 storage + B004 runtime-shell PostgreSQL integration commands (test-only DSN, required flag)',
+      label: 'the full B003 storage + B004 runtime-shell + B006 Evidence PostgreSQL integration commands (test-only DSN, required flag)',
       anchor: STORAGE_FULL_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
         STORAGE_REQUIRE_FLAG,
         STORAGE_FULL_TEST,
         STORAGE_LAUNCHER_FULL_TEST,
+        STORAGE_EVIDENCE_FULL_TEST,
       ],
     },
     {
-      label: 'the B003 concurrency + B004 runtime-shell PostgreSQL integration race commands',
+      label: 'the B003 concurrency + B004 runtime-shell + B006 Evidence PostgreSQL integration race commands',
       anchor: STORAGE_RACE_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
         STORAGE_REQUIRE_FLAG,
         STORAGE_RACE_TEST,
         STORAGE_LAUNCHER_RACE_TEST,
+        STORAGE_EVIDENCE_RACE_TEST,
       ],
     },
     {
@@ -1610,7 +1622,7 @@ export function run(ctx) {
   if (main.result !== 'PASS') pass = false;
 
   const fullTestStepName =
-    '      - name: PostgreSQL integration tests (B003 storage + B004 runtime shell, test-only DSN)';
+    '      - name: PostgreSQL integration tests (B003 storage + B004 runtime shell + B006 Evidence, test-only DSN)';
   const probes = [
     {
       label: 'storage-postgres job removed',
@@ -1675,7 +1687,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full integration command removed',
-      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1686,7 +1698,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full integration command altered (dropped -count=1)',
-      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1697,7 +1709,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres race coverage command removed',
-      reason: /must keep the B003 concurrency \+ B004 runtime-shell PostgreSQL integration race commands/,
+      reason: /must keep the B003 concurrency \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_RACE_TEST, 'go test -race ./internal/storage/postgres')),
@@ -1706,7 +1718,7 @@ export function run(ctx) {
     },
     {
       label: 'B004 launcher full PostgreSQL integration command removed',
-      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1717,7 +1729,7 @@ export function run(ctx) {
     },
     {
       label: 'B004 launcher PostgreSQL integration race command removed',
-      reason: /must keep the B003 concurrency \+ B004 runtime-shell PostgreSQL integration race commands/,
+      reason: /must keep the B003 concurrency \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1727,8 +1739,30 @@ export function run(ctx) {
         ),
     },
     {
+      label: 'B006 Evidence PostgreSQL integration command removed',
+      reason: /must keep the full B003 storage \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_EVIDENCE_FULL_TEST, 'go test ./internal/evidence'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B006 Evidence PostgreSQL race command removed',
+      reason: /must keep the B003 concurrency \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_EVIDENCE_RACE_TEST, 'go test -race ./internal/evidence'),
+          ),
+          lock,
+        ),
+    },
+    {
       label: 'storage-postgres full command masked with || true',
-      reason: /must keep the full B003 storage \+ B004 runtime-shell PostgreSQL integration commands/,
+      reason: /must keep the full B003 storage \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_FULL_TEST, `${STORAGE_FULL_TEST} || true`)),
@@ -1809,6 +1843,28 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run test:harness-adapter', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B006 Evidence focused validator removed from toolchain',
+      reason: /check:evidence.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:evidence', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B006 Evidence Go tests removed from toolchain',
+      reason: /test:evidence-go.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:evidence-go', '        run: node --version'),
           ),
           lock,
         ),
