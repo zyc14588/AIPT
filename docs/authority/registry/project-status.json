@@ -1,15 +1,15 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-22",
-  "authority_snapshot_id": "AIPT-M0-B006-CONSTRUCTION-001",
+  "as_of": "2026-08-23",
+  "authority_snapshot_id": "AIPT-M0-B006-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-M0-B006",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "UNREGISTERED-AIPT-P0-B002",
-      "next_batch_state": "NOT_AUTHORIZED",
-      "next_batch_authorized": false,
+      "next_batch_state": "AUTHORIZED_TO_PREPARE",
+      "next_batch_authorized": true,
       "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
@@ -17,7 +17,8 @@
         "AIPT-M0-B002": "MERGED_CLOSED",
         "AIPT-M0-B003": "MERGED_CLOSED",
         "AIPT-M0-B004": "MERGED_CLOSED",
-        "AIPT-M0-B005": "MERGED_CLOSED"
+        "AIPT-M0-B005": "MERGED_CLOSED",
+        "AIPT-M0-B006": "MERGED_CLOSED"
       },
       "external_serial_predecessor": {
         "id": "UNREGISTERED-AIPT-P0-B001",
@@ -26,7 +27,7 @@
         "closeout_ci_run": 32194224161,
         "closeout_ci_conclusion": "success"
       },
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -37,9 +38,9 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "10d0232bd2e3e42601bbb00cedc753f842e219db",
-      "verified_tree": "922115b9a75a7eca8dd97475f3f228bc7d3d2c10",
-      "verified_state": "AIPT-M0-B006 IN_PROGRESS from accepted B005 closeout 10d0232bd2e3e42601bbb00cedc753f842e219db (tree 922115b9a75a7eca8dd97475f3f228bc7d3d2c10); immutable B005 Candidate d9e24cbac30a1472c41cc8719848acbbc2426fa5 (tree c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5, CI run 32565305803 success), implementation merge 8652a92c51b86a3bf66aee725c0f1b7be4c60654 (same tree, post-merge CI run 32569995492 success), and closeout CI run 32571092786 remain historical facts; Harness identity 141eb6fef83422698aef7a981029e843e8161534 / dsh-v0.1.0-rc.8 / OWNER_GATE_RATIFIED with prior authorization timing independently verified false remains unchanged; B000/B001/B002/B003/B004/B005 remain MERGED_CLOSED; construction IN_PROGRESS with current_batch AIPT-M0-B006 and global WIP 1; next serial batch UNREGISTERED-AIPT-P0-B002 is NOT_AUTHORIZED and not started; platform integration remains frozen"
+      "verified_head": "35acba9fb629f50087def3b720df304fadfd2158",
+      "verified_tree": "4271a3fb71236a8b003b4d9ddc84727c6fec8d46",
+      "verified_state": "AIPT-M0-B006 MERGED_CLOSED: Base 10d0232bd2e3e42601bbb00cedc753f842e219db (tree 922115b9a75a7eca8dd97475f3f228bc7d3d2c10); Candidate 3987b8d4c26ac079d01c214ba90e113eeffd5713 (tree 4271a3fb71236a8b003b4d9ddc84727c6fec8d46, Candidate CI run 32577246851 success); Implementation merge 35acba9fb629f50087def3b720df304fadfd2158 (tree 4271a3fb71236a8b003b4d9ddc84727c6fec8d46, parents 10d0232bd2e3e42601bbb00cedc753f842e219db and 3987b8d4c26ac079d01c214ba90e113eeffd5713, subject merge: integrate AIPT-M0-B006), Post-merge CI run 32578143923 success; Evidence Schema PASS; RAW_CAPTURE exporter PASS; verifier PASS; PostgreSQL Evidence source PASS; determinism PASS; tamper detection PASS; root algorithm SHA-256(manifest.json exact bytes); AUDIT_READY generator NOT_IMPLEMENTED; AUDIT_RESULT generator NOT_IMPLEMENTED; signing/encryption/chunking NOT_IMPLEMENTED; construction Harness initial route CODEX_HARNESS, failure HARNESS_INPUT_TOKEN_BUDGET, observed input 190183, gate 180000, worker patch none, final route CODEX_ONLY, split-memory manual edit false; B000/B001/B002/B003/B004/B005/B006 remain MERGED_CLOSED; construction IDLE_WAITING_NEXT_BATCH with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch UNREGISTERED-AIPT-P0-B002 is AUTHORIZED_TO_PREPARE and not started; platform integration remains frozen"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",
@@ -50,7 +51,7 @@
     }
   },
   "runtime": {
-    "status": "minimal RAW_CAPTURE evidence exporter under construction",
+    "status": "minimal RAW_CAPTURE evidence exporter merged/closed",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

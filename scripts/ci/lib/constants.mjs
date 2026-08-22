@@ -1,4 +1,4 @@
-// Shared B006 construction validator constants and immutable predecessor identities.
+// Shared B006 closeout validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
@@ -10,7 +10,10 @@
 // anchors. Every predecessor keeps its own original identity.
 
 export const CURRENT_BATCH = 'AIPT-M0-B006';
-export const ACTIVE_BATCH = 'AIPT-M0-B006';
+
+// B006 is closed. The cross-repository P0-B002 item is authorized only to
+// prepare and is not active; starting it requires a separate Owner start.
+export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -20,8 +23,8 @@ export const ACTIVE_BATCH = 'AIPT-M0-B006';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B006 construction snapshot (machine + human docs).
-export const STATUS_DATE = '2026-08-22';
+// Public status date of the B006 closeout snapshot (machine + human docs).
+export const STATUS_DATE = '2026-08-23';
 
 // Immutable closed-batch identities — historical state, never updated by
 // later batches and never aliased to the current base.
@@ -212,6 +215,48 @@ export const B005_CLOSEOUT = {
 export const B006_BASE_COMMIT = B005_CLOSEOUT.commit;
 export const B006_BASE_TREE = B005_CLOSEOUT.tree;
 export const B006_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B006';
+export const B006_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-M0-B006';
+
+export const B006_CANDIDATE_HISTORY = [
+  '3987b8d4c26ac079d01c214ba90e113eeffd5713',
+];
+
+// Immutable B006 Candidate accepted by the Owner light gate. Its exact tree
+// and successful public push CI remain distinct from the implementation merge
+// and from the later single-parent closeout authority commit.
+export const B006_CANDIDATE = {
+  commit: '3987b8d4c26ac079d01c214ba90e113eeffd5713',
+  tree: '4271a3fb71236a8b003b4d9ddc84727c6fec8d46',
+  ci_run: 32577246851,
+  ci_conclusion: 'success',
+};
+
+// Exact two-parent implementation merge authorized by
+// AIPT-M0-B006-MERGE-001. This commit/tree remains the verified B006
+// implementation identity after closeout.
+export const B006_IMPLEMENTATION_MERGE = {
+  directive: 'AIPT-M0-B006-MERGE-001',
+  commit: '35acba9fb629f50087def3b720df304fadfd2158',
+  tree: '4271a3fb71236a8b003b4d9ddc84727c6fec8d46',
+  parent1: '10d0232bd2e3e42601bbb00cedc753f842e219db',
+  parent2: '3987b8d4c26ac079d01c214ba90e113eeffd5713',
+  subject: B006_MERGE_SUBJECT,
+  post_merge_ci_run: 32578143923,
+  post_merge_ci_conclusion: 'success',
+};
+
+// Construction-routing telemetry is provenance, not a product runtime
+// failure. The Bridge-owned split-memory profile remains outside repository
+// authority and was not manually edited.
+export const B006_CONSTRUCTION_HARNESS = {
+  initial_route: 'CODEX_HARNESS',
+  failure: 'HARNESS_INPUT_TOKEN_BUDGET',
+  observed_input_tokens: 190183,
+  input_token_limit: 180000,
+  patch_produced: false,
+  final_route: 'CODEX_ONLY',
+  split_memory_manual_edit: false,
+};
 
 // The Owner-authorized 2026-08-22 DSH deployment upgrade. The previous
 // frozen commit remains explicit historical provenance; B005 qualifies only
@@ -480,14 +525,24 @@ export const ALLOWED_PATHS = [
   '.github/workflows/ci.yml',
 ];
 
-// Exact first-leaf authority/status surface. It is retained separately from
-// the full construction allowlist so the transition validator can prove that
-// the status mutation itself remained bounded.
+// Exact B006 closeout authority surface. No implementation, dependency,
+// workflow, package, tool, cross-repository, or split-memory path is allowed.
+export const CLOSEOUT_ALLOWED_PATHS = [
+  'README.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/evidence/README.md',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+];
+
+// The status transition uses the same exact seven-path closeout surface.
 export const STATUS_TRANSITION_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/harness/README.md',
+  'docs/evidence/README.md',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
@@ -590,6 +645,10 @@ export function pathMatchesAllowed(p) {
     }
   }
   return false;
+}
+
+export function pathMatchesCloseoutAllowed(p) {
+  return CLOSEOUT_ALLOWED_PATHS.includes(p);
 }
 
 export function pathMatchesStatusTransition(p) {

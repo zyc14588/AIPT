@@ -2,6 +2,7 @@
 
 > 公开证据流水线设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
 > B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema；其余能力仍按下表明确标记为未实现。B000 使用简化的 Bootstrap 证据路径（见文末）。
+> `B006 = MERGED_CLOSED`：Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，CI `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree），post-merge CI `32578143923` success。
 
 ## B006 能力矩阵
 
