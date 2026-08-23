@@ -1,15 +1,15 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-23",
-  "authority_snapshot_id": "AIPT-M0-B007-CONSTRUCTION-001",
+  "authority_snapshot_id": "AIPT-M0-B007-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-M0-B007",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "INT-AIPT-UNREGISTERED-001",
-      "next_batch_state": "NOT_AUTHORIZED",
-      "next_batch_authorized": false,
+      "next_batch_state": "AUTHORIZED_TO_PREPARE",
+      "next_batch_authorized": true,
       "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
@@ -19,7 +19,7 @@
         "AIPT-M0-B004": "MERGED_CLOSED",
         "AIPT-M0-B005": "MERGED_CLOSED",
         "AIPT-M0-B006": "MERGED_CLOSED",
-        "AIPT-M0-B007": "IN_PROGRESS"
+        "AIPT-M0-B007": "MERGED_CLOSED"
       },
       "external_serial_predecessor": {
         "id": "UNREGISTERED-AIPT-P0-B003",
@@ -52,7 +52,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -63,9 +63,9 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "35acba9fb629f50087def3b720df304fadfd2158",
-      "verified_tree": "4271a3fb71236a8b003b4d9ddc84727c6fec8d46",
-      "verified_state": "AIPT-M0-B007 IN_PROGRESS: fixed Base e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8 (tree 326def92334a43f6d63cd77b40f0eae9af31b375); repositories.AIPT verified implementation remains immutable B006 merge 35acba9fb629f50087def3b720df304fadfd2158 (tree 4271a3fb71236a8b003b4d9ddc84727c6fec8d46); local-only read-only Web Dashboard construction with exact Config/Health/Queue/Run/StatusTable/Report panels; Queue/Run/Status backend and Report UI export/generators NOT_IMPLEMENTED; installed bridge identity did not match the prior qualification baseline and fresh Q1 failed before provider use, so final construction route CODEX_ONLY with zero provider calls and split-memory manual edit false; external serial predecessor UNREGISTERED-AIPT-P0-B003 MERGED_CLOSED at closeout 358d6d9d08a86818e34fd0c0d9a62bfe66e73abe (tree 5585271c78d1fe5cd8357c7b36a501bee34f0240, closeout CI 32621464543 success); B000/B001/B002/B003/B004/B005/B006 remain MERGED_CLOSED; construction IN_PROGRESS with current_batch AIPT-M0-B007 and global WIP 1; next serial batch INT-AIPT-UNREGISTERED-001 is NOT_AUTHORIZED and not started; platform integration remains frozen"
+      "verified_head": "e05179a223f9dd0ff1b317e78c0e466e1146f6bb",
+      "verified_tree": "35a5cc261fef75df8d25102015670bcb1d6fbd92",
+      "verified_state": "AIPT-M0-B007 MERGED_CLOSED: Base e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8 (tree 326def92334a43f6d63cd77b40f0eae9af31b375); Original Candidate 5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92 (tree d4cc34e8fcbec8ea4f864f22aa7503cc1dcdffcd); Repair commit/final Candidate 561e43f9bc646c43da0b48c8485f820f73941df9 (tree 35a5cc261fef75df8d25102015670bcb1d6fbd92, Candidate CI run 32634972911 success); Implementation merge e05179a223f9dd0ff1b317e78c0e466e1146f6bb (tree 35a5cc261fef75df8d25102015670bcb1d6fbd92, parents e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8 and 561e43f9bc646c43da0b48c8485f820f73941df9, subject merge: integrate AIPT-M0-B007), Post-merge CI run 32636449574 success; Web Host PASS; bind 127.0.0.1; dynamic port true; Host guard PASS; Origin guard PASS; CSRF PASS; Config no DSN/credential; six truthful panels PASS; zero new third-party pnpm dependencies; Queue/Run/Status backend NOT_IMPLEMENTED; RAW_CAPTURE IMPLEMENTED_LIBRARY_ONLY; Report UI export NOT_IMPLEMENTED; AUDIT_READY/AUDIT_RESULT generators NOT_IMPLEMENTED; Launcher order unchanged; repair finding AIPT-B007-SUPPLY-CHAIN-DOC-CONSISTENCY-001 CLOSED by 561e43f9bc646c43da0b48c8485f820f73941df9 with semantic code changes false; external serial predecessor UNREGISTERED-AIPT-P0-B003 MERGED_CLOSED at closeout 358d6d9d08a86818e34fd0c0d9a62bfe66e73abe (tree 5585271c78d1fe5cd8357c7b36a501bee34f0240, closeout CI 32621464543 success); B000/B001/B002/B003/B004/B005/B006/B007 remain MERGED_CLOSED; construction IDLE_WAITING_NEXT_BATCH with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch INT-AIPT-UNREGISTERED-001 is AUTHORIZED_TO_PREPARE and not started; platform integration remains frozen"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",
@@ -81,7 +81,7 @@
     }
   },
   "runtime": {
-    "status": "AIPT-M0-B007 local Web dashboard construction in progress",
+    "status": "secure local Web dashboard merged/closed",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

@@ -1,13 +1,13 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-08-23**；权威快照 ID：`AIPT-M0-B007-CONSTRUCTION-001`。
+> 状态日期：**2026-08-23**；权威快照 ID：`AIPT-M0-B007-CLOSEOUT-001`。
 
 ## 工作轨
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IN_PROGRESS`，`current_batch = AIPT-M0-B007`，`GLOBAL_WIP = 1`；`AIPT-M0-B000` 至 `AIPT-M0-B006` 均为不可变 `MERGED_CLOSED` 历史，`AIPT-M0-B007 = IN_PROGRESS` |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`；`AIPT-M0-B000` 至 `AIPT-M0-B007` 均为不可变 `MERGED_CLOSED` 历史 |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
@@ -21,14 +21,14 @@
 - 外部串行前驱 `UNREGISTERED-AIPT-P0-B001` = **MERGED/CLOSED**：closeout commit `a37b284bf5ec35895f436abe71d22599edb6da53`，公共 CI run `32194224161` success。
 - `AIPT-M0-B005` = **MERGED_CLOSED**：base `8005dd3bec8b367a6d97dcd9397158f1d8618f3e`（tree `d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b`）；Approved Candidate `d9e24cbac30a1472c41cc8719848acbbc2426fa5`（tree `c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5`，Candidate CI `32565305803` success）；implementation merge `8652a92c51b86a3bf66aee725c0f1b7be4c60654`（相同 tree；父 1 为 base、父 2 为 Candidate），post-merge CI `32569995492` success；closeout `10d0232bd2e3e42601bbb00cedc753f842e219db`（tree `922115b9a75a7eca8dd97475f3f228bc7d3d2c10`），closeout CI `32571092786` success。`@aipt/harness-adapter` `0.1.0` 的真实子进程 stdio smoke 为 `23/23` PASS，第三方 pnpm package 为 0，remote model call 为 false。外部 Harness 升级 `AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001` 的 disposition 为 `OWNER_GATE_RATIFIED`，previous `47f943859bef60e4160492346772ded9b24f765a`，current `141eb6fef83422698aef7a981029e843e8161534`，release `dsh-v0.1.0-rc.8`，`prior_authorization_timing_independently_verified = false`。
 - `AIPT-M0-B006` = **MERGED/CLOSED**：Base `10d0232bd2e3e42601bbb00cedc753f842e219db`（tree `922115b9a75a7eca8dd97475f3f228bc7d3d2c10`）；Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，Candidate CI run `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree，parents 为 Base 与 Candidate，subject `merge: integrate AIPT-M0-B006`），post-merge CI run `32578143923` success。Evidence Schema、最小 `RAW_CAPTURE` exporter/verifier、只读 PostgreSQL 18.4 source、确定性与篡改检测均 PASS；根算法为 `SHA-256(manifest.json exact bytes)`。`AUDIT_READY`/`AUDIT_RESULT` generator、签名、加密和分块均为 `NOT_IMPLEMENTED`。Harness 施工尝试因 `HARNESS_INPUT_TOKEN_BUDGET`（`190183 > 180000`）未产生 patch，最终 `CODEX_ONLY`，未手工编辑 split-memory；这是施工遥测而非 product runtime failure。
-- `AIPT-M0-B007` = **IN_PROGRESS**：固定 Base `e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8`（tree `326def92334a43f6d63cd77b40f0eae9af31b375`）；建设本地只读 Web Host 与六面板 TypeScript Dashboard。Web 仅绑定 `127.0.0.1:0`，强制 Host/Origin/CSRF；不暴露 DSN/credential；Queue/Run/Status backend 与 Report UI export/generator 均保持明确 `NOT_IMPLEMENTED`。当前外部串行前序为 `UNREGISTERED-AIPT-P0-B003`：Candidate `a304070b2a31c8717b6bacbb2a2c3b7aa5e49ad4`（tree `aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc`），implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`，closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`（tree `5585271c78d1fe5cd8357c7b36a501bee34f0240`），closeout CI `32621464543` success。
+- `AIPT-M0-B007` = **MERGED_CLOSED**：Base `e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8`（tree `326def92334a43f6d63cd77b40f0eae9af31b375`）；Original Candidate `5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92`（tree `d4cc34e8fcbec8ea4f864f22aa7503cc1dcdffcd`）；repair/final Candidate `561e43f9bc646c43da0b48c8485f820f73941df9`（tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`，Candidate CI `32634972911` success）；implementation merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb`（相同 tree，parents 为 Base 与 final Candidate，subject `merge: integrate AIPT-M0-B007`），post-merge CI `32636449574` success。Web Host、动态 loopback bind、Host/Origin/CSRF、安全头与六个 truthful panels 均 PASS；Config 不暴露 DSN/credential，新增第三方 pnpm 依赖为 0。Queue/Run/Status backend、Report UI export 与 `AUDIT_READY`/`AUDIT_RESULT` generators 均为 `NOT_IMPLEMENTED`，`RAW_CAPTURE` 为 `IMPLEMENTED_LIBRARY_ONLY`，Launcher 顺序不变且 MODEL/HARNESS/IPC 继续失败关闭。finding `AIPT-B007-SUPPLY-CHAIN-DOC-CONSISTENCY-001` 已由 repair commit 关闭，无语义代码变更。外部串行前序 `UNREGISTERED-AIPT-P0-B003` 继续绑定 implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`、closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`（tree `5585271c78d1fe5cd8357c7b36a501bee34f0240`，CI `32621464543` success）。
 - 详见 [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) 与 [../milestones/M0.md](../milestones/M0.md)。
 
 ## 仓库
 
 | 仓库 | 说明 |
 |---|---|
-| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；verified implementation identity 仍为 B006 merge `35acba9fb629f50087def3b720df304fadfd2158` 与 tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，不得提前指向 B007 construction；更早 provenance 保持不可变 |
+| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；verified implementation identity 固定为 B007 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb` 与 tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`，不得用 closeout commit 冒充实现身份；更早 provenance 保持不可变 |
 | 《未登记》UNREGISTERED | <https://github.com/zyc14588/UNREGISTERED>，默认分支 `main`；P0-B003 verified implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`、tree `aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc`，closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`；规划快照与实现权威明确分离；就绪等级 `PLAYTESTABLE_DRAFT` |
 
 ## 运行环境与模型（设计基线）
@@ -36,7 +36,7 @@
 - 参考环境：Ubuntu 26.04 LTS（`ENV-F001`）；Bash 启动 + 本地 Web（`ENV-F002`）。
 - 主远端模型：`deepseek-v4-pro`（`ENV-F003`），完整 Campaign 使用该模型（`R14-Q023`）。
 - 本地模型：`UNASSIGNED`；GGUF 选型与性能阈值延期（`DEFER-002`、`DEFER-003`）。
-- 以上是**设计基线**：完整桌测运行时尚未建设。B001 建立工程与 CI，B002 交付协议/SDK/Go 契约消费者，B003 交付 PostgreSQL 存储，B004 交付失败关闭的 Launcher 与 Core runtime shell，B005 交付 Harness Adapter stdio 边界与无模型 fixture smoke，B006 已交付公开 Evidence/Audit Schema 与最小原生 `RAW_CAPTURE` exporter/verifier；B007 正在建设本地只读 Web 可视化。真实模型、IPC listener、Queue/Run backend 与后续审计 generator 仍未实现。
+- 以上是**设计基线**：完整桌测运行时尚未建设。B001 建立工程与 CI，B002 交付协议/SDK/Go 契约消费者，B003 交付 PostgreSQL 存储，B004 交付失败关闭的 Launcher 与 Core runtime shell，B005 交付 Harness Adapter stdio 边界与无模型 fixture smoke，B006 交付公开 Evidence/Audit Schema 与最小原生 `RAW_CAPTURE` exporter/verifier，B007 交付本地只读 Web 可视化。真实模型、IPC listener、Queue/Run backend 与后续审计 generator 仍未实现。
 
 ## 审计状态
 
@@ -55,9 +55,9 @@
 
 ## 下一步
 
-- `AIPT-M0-B000` 至 `AIPT-M0-B006` 均已 `MERGED_CLOSED`；当前 `AIPT-M0-B007 = IN_PROGRESS`，`construction = IN_PROGRESS`，`current_batch = AIPT-M0-B007`，`GLOBAL_WIP = 1`。
-- B006 verified implementation identity 固定为 merge `35acba9fb629f50087def3b720df304fadfd2158` 与 tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`；不得将 closeout commit 冒充实现身份。B005/B004 的 immutable provenance 同样保留。
-- 下一串行项 `INT-AIPT-UNREGISTERED-001` = `NOT_AUTHORIZED`（`next_batch_authorized = false`，`next_batch_started = false`）；本批不得开始该集成项，也不得开始 B008。
+- `AIPT-M0-B000` 至 `AIPT-M0-B007` 均已 `MERGED_CLOSED`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`。
+- B007 verified implementation identity 固定为 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb` 与 tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`；不得将 closeout commit 冒充实现身份。B006/B005/B004 的 immutable provenance 同样保留。
+- 下一串行项 `INT-AIPT-UNREGISTERED-001` = `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`，`next_batch_started = false`）；尚未执行 Integration，也不得开始 B008。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。
 
 ## 相邻文档

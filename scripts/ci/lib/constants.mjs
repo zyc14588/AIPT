@@ -1,4 +1,4 @@
-// Shared B007 construction validator constants and immutable predecessor identities.
+// Shared B007 closeout validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
@@ -11,9 +11,9 @@
 
 export const CURRENT_BATCH = 'AIPT-M0-B007';
 
-// B007 is the sole active construction. The separately named unregistered
-// integration item and B008 remain explicitly unauthorized.
-export const ACTIVE_BATCH = 'AIPT-M0-B007';
+// B007 is closed. The separately named read-only Integration is authorized
+// only to prepare and is not active; starting it requires separate authority.
+export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -23,7 +23,7 @@ export const ACTIVE_BATCH = 'AIPT-M0-B007';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B007 construction snapshot (machine + human docs).
+// Public status date of the B007 closeout snapshot (machine + human docs).
 export const STATUS_DATE = '2026-08-23';
 
 // Immutable closed-batch identities — historical state, never updated by
@@ -260,6 +260,63 @@ export const B007_BASE_COMMIT = B006_CLOSEOUT.commit;
 export const B007_BASE_TREE = B006_CLOSEOUT.tree;
 export const B007_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B007';
 export const B007_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-M0-B007';
+
+// Exact linear Candidate history from the immutable B006 closeout base. No
+// commit in this history is a merge; the final entry is the approved repair.
+export const B007_CANDIDATE_HISTORY = [
+  '61a3675d0675a09c9c299a787fdffa51a448bb54',
+  '41c4396471da775659f68d43c5dae49301606b0a',
+  'd6a4308288c17360fcc41e37b26b764518bbe9e8',
+  'e92428300afcbe7c8d21f83724eb9d9d89bb4cf3',
+  '0d8dca82daf93ce83512146c9741653ae6ed628e',
+  '9577adeb3484ada1f7c0af2a2f74e57e1b59edb1',
+  '2e3d08a1609d725f00985f6ab2f1ac8eb8748b1a',
+  '5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92',
+  '561e43f9bc646c43da0b48c8485f820f73941df9',
+];
+
+// Immutable original Candidate before the documentation-only supply-chain
+// repair. Its commit and tree remain separately auditable facts.
+export const B007_ORIGINAL_CANDIDATE = {
+  commit: '5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92',
+  tree: 'd4cc34e8fcbec8ea4f864f22aa7503cc1dcdffcd',
+};
+
+// Owner-accepted repair: a single-parent child of the original Candidate,
+// touching only two validator comments/diagnostics with no semantic change.
+export const B007_REPAIR = {
+  finding: 'AIPT-B007-SUPPLY-CHAIN-DOC-CONSISTENCY-001',
+  status: 'CLOSED',
+  commit: '561e43f9bc646c43da0b48c8485f820f73941df9',
+  parent: B007_ORIGINAL_CANDIDATE.commit,
+  changed_paths: [
+    'scripts/ci/validate/sbom.mjs',
+    'scripts/ci/validate/supply-chain.mjs',
+  ],
+  semantic_code_changes: false,
+};
+
+// Approved final Candidate and its exact successful remote CI identity.
+export const B007_CANDIDATE = {
+  commit: B007_REPAIR.commit,
+  tree: '35a5cc261fef75df8d25102015670bcb1d6fbd92',
+  ci_run: 32634972911,
+  ci_conclusion: 'success',
+};
+
+// Exact two-parent implementation merge authorized by
+// AIPT-M0-B007-MERGE-001. Closeout must retain this commit/tree as the
+// verified implementation identity and may add only one ordinary descendant.
+export const B007_IMPLEMENTATION_MERGE = {
+  directive: 'AIPT-M0-B007-MERGE-001',
+  commit: 'e05179a223f9dd0ff1b317e78c0e466e1146f6bb',
+  tree: B007_CANDIDATE.tree,
+  parent1: B007_BASE_COMMIT,
+  parent2: B007_CANDIDATE.commit,
+  subject: B007_MERGE_SUBJECT,
+  post_merge_ci_run: 32636449574,
+  post_merge_ci_conclusion: 'success',
+};
 
 // Current cross-repository serial predecessor required by B007. Candidate,
 // merge and closeout identities remain separately auditable facts.
