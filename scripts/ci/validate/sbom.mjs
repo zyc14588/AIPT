@@ -85,15 +85,16 @@ const DOCUMENT_SPDXID = 'SPDXRef-DOCUMENT';
 const AIPT_SPDXID = 'SPDXRef-AIPT';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
 const HARNESS_ADAPTER_SPDXID = 'SPDXRef-harness-adapter';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b005';
+const WEB_UI_SPDXID = 'SPDXRef-web-ui';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b007';
 // The static pre-R5 B001 namespace reused by distinct R3/R4 documents; still
 // forbidden — a B004 document must never fall back to it.
 const LEGACY_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
-const PREVIOUS_NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b004';
-const EXPECTED_DOCUMENT_NAME = 'AIPT-M0-B005-supply-chain-sbom';
-const EXPECTED_AIPT_VERSION = 'M0-B005';
-const EXPECTED_CREATED = '2026-08-22T00:00:00Z';
-const EXPECTED_CREATOR = 'Tool: AIPT-M0-B005 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)';
+const PREVIOUS_NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b005';
+const EXPECTED_DOCUMENT_NAME = 'AIPT-M0-B007-supply-chain-sbom';
+const EXPECTED_AIPT_VERSION = 'M0-B007';
+const EXPECTED_CREATED = '2026-08-23T00:00:00Z';
+const EXPECTED_CREATOR = 'Tool: AIPT-M0-B007 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
 // 6a). h1hex is the frozen SHA-256 (64 lowercase hex) that the go.sum zip
@@ -145,6 +146,7 @@ const REQUIRED_PACKAGES = [
   { name: 'AIPT', spdxId: AIPT_SPDXID },
   { name: '@aipt/adapter-sdk', spdxId: SDK_SPDXID },
   { name: '@aipt/harness-adapter', spdxId: HARNESS_ADAPTER_SPDXID },
+  { name: '@aipt/web-ui', spdxId: WEB_UI_SPDXID },
   { name: 'Go toolchain', spdxId: 'SPDXRef-Toolchain-Go' },
   { name: 'Node.js', spdxId: 'SPDXRef-Toolchain-Node' },
   { name: 'pnpm', spdxId: 'SPDXRef-Toolchain-pnpm' },
@@ -177,6 +179,7 @@ const EXPECTED_PACKAGE_LICENSES = {
   AIPT: 'MIT',
   '@aipt/adapter-sdk': 'MIT',
   '@aipt/harness-adapter': 'MIT',
+  '@aipt/web-ui': 'MIT',
   'Go toolchain': 'BSD-3-Clause',
   'Node.js': 'MIT',
   pnpm: 'MIT',
@@ -200,6 +203,7 @@ const EXPECTED_PACKAGE_LICENSES = {
 // The exact npm purl of the first-party SDK package (percent-encoded scope).
 const SDK_NPM_PURL = 'pkg:npm/%40aipt/adapter-sdk@1.0.0';
 const HARNESS_ADAPTER_NPM_PURL = 'pkg:npm/%40aipt/harness-adapter@0.1.0';
+const WEB_UI_NPM_PURL = 'pkg:npm/%40aipt/web-ui@0.1.0';
 
 // Canonical JSON: arrays in order, object keys sorted recursively. Mirrors
 // the generator's serializer (independent copy, so a generator defect cannot
@@ -441,7 +445,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`documentNamespace is the legacy static pre-R5 namespace ${JSON.stringify(LEGACY_NAMESPACE)} (already reused by distinct R3/R4 documents); a version-unique hash suffix is required`);
   }
   if (typeof doc.documentNamespace === 'string' && doc.documentNamespace.startsWith(PREVIOUS_NAMESPACE_BASE + '/')) {
-    fail('documentNamespace reuses the prior B004 namespace family; B005 requires its own content-addressed namespace family');
+    fail('documentNamespace reuses the prior B005 namespace family; B007 requires its own content-addressed namespace family');
   }
   const expectedNamespace = computeExpectedNamespace(doc);
   if (doc.documentNamespace !== expectedNamespace) {
@@ -455,11 +459,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`document name must be ${EXPECTED_DOCUMENT_NAME}, got ${JSON.stringify(doc.name)}`);
   } else ok(`document name = ${EXPECTED_DOCUMENT_NAME}`);
   if (doc.creationInfo?.created !== EXPECTED_CREATED) {
-    fail(`creationInfo.created must be deterministic B005 time ${EXPECTED_CREATED}, got ${JSON.stringify(doc.creationInfo?.created)}`);
+    fail(`creationInfo.created must be deterministic B007 time ${EXPECTED_CREATED}, got ${JSON.stringify(doc.creationInfo?.created)}`);
   } else ok(`creationInfo.created = ${EXPECTED_CREATED}`);
   if (!Array.isArray(doc.creationInfo?.creators) || !doc.creationInfo.creators.includes(EXPECTED_CREATOR)) {
-    fail('creationInfo.creators must carry the exact B005 generator identity');
-  } else ok('creationInfo.creators carries the exact B005 generator identity');
+    fail('creationInfo.creators must carry the exact B007 generator identity');
+  } else ok('creationInfo.creators carries the exact B007 generator identity');
 
   // ---- packages: unique, well-formed SPDXIDs ----
   if (!Array.isArray(doc.packages) || doc.packages.length === 0) {
@@ -479,10 +483,10 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`AIPT versionInfo must be ${EXPECTED_AIPT_VERSION}, got ${JSON.stringify(aiptPackage?.versionInfo)}`);
   } else ok(`AIPT versionInfo = ${EXPECTED_AIPT_VERSION}`);
   if (!aiptPackage || typeof aiptPackage.comment !== 'string' ||
-      !aiptPackage.comment.includes('AIPT-M0-B005 fail-closed Harness Adapter stdio runtime') ||
+      !aiptPackage.comment.includes('AIPT-M0-B007 secure loopback Web Host and dependency-free TypeScript Dashboard') ||
       !aiptPackage.comment.includes('no new third-party dependency')) {
-    fail('AIPT package comment must describe B005 Harness Adapter scope and zero new third-party dependencies');
-  } else ok('AIPT package comment records B005 Harness Adapter scope and zero new third-party dependencies');
+    fail('AIPT package comment must describe B007 Web scope and zero new third-party dependencies');
+  } else ok('AIPT package comment records B007 Web scope and zero new third-party dependencies');
 
   // ---- exact required package set (zero third-party deps) ----
   const byName = new Map(doc.packages.map((p) => [p.name, p]));
@@ -497,11 +501,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       requiredOk = false;
     }
   }
-  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (retained identities + two first-party workspace packages + Go closure)`);
+  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (retained identities + three first-party workspace packages + Go closure)`);
   const unknown = doc.packages.filter((p) => !byName.has(p.name) || !REQUIRED_PACKAGES.some((r) => r.name === p.name));
   if (doc.packages.length !== REQUIRED_PACKAGES.length || unknown.length > 0) {
     fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required packages (no package outside the approved identities), got ${doc.packages.length}`);
-  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities, including the B005 Harness Adapter and zero registry package`);
+  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities, including B007 Web UI and zero registry package`);
   const depIds = ids.filter((id) => id.startsWith('SPDXRef-GoDep-') || id.startsWith('SPDXRef-PnpmDep-'));
   if (depIds.length > 0) fail(`SBOM carries legacy GoDep/PnpmDep dependency packages: ${depIds.join(', ')}`);
   else ok('no legacy GoDep/PnpmDep dependency packages in the SBOM');
@@ -567,6 +571,33 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   )) fail(`${HARNESS_ADAPTER_SPDXID} must never be DEV_TOOL_OF AIPT`);
   else ok('@aipt/harness-adapter is never classified as DEV_TOOL_OF');
 
+  // ---- first-party dependency-free @aipt/web-ui package model (B007) ----
+  const webPkg = byName.get('@aipt/web-ui');
+  if (webPkg) {
+    if (webPkg.versionInfo !== '0.1.0') {
+      fail(`@aipt/web-ui versionInfo must be 0.1.0, got ${JSON.stringify(webPkg.versionInfo)}`);
+    } else ok('@aipt/web-ui versionInfo = 0.1.0');
+    const webPurl = (webPkg.externalRefs ?? []).find((r) => r?.referenceType === 'purl');
+    if (!webPurl || webPurl.referenceLocator !== WEB_UI_NPM_PURL) {
+      fail(`@aipt/web-ui npm purl must be exactly ${WEB_UI_NPM_PURL}`);
+    } else ok('@aipt/web-ui carries the exact npm purl');
+    const comment = webPkg.comment ?? '';
+    if (!comment.includes('dependency-free') || !comment.includes('AIPT/root MIT license record') ||
+        !comment.includes('PACKAGE_OF') || !comment.includes('zero npm registry') ||
+        !comment.includes('never classified as DEV_TOOL_OF')) {
+      fail('@aipt/web-ui comment must document root MIT coverage, dependency-free PACKAGE_OF and zero registry identity');
+    } else ok('@aipt/web-ui comment records exact B007 first-party dependency-free coverage');
+  }
+  const webPackageOf = doc.relationships.some(
+    (r) => r.spdxElementId === WEB_UI_SPDXID && r.relationshipType === 'PACKAGE_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+  );
+  if (!webPackageOf) fail(`missing first-party relationship: ${WEB_UI_SPDXID} PACKAGE_OF ${AIPT_SPDXID}`);
+  else ok('first-party relationship present: SPDXRef-web-ui PACKAGE_OF SPDXRef-AIPT');
+  if (doc.relationships.some(
+    (r) => r.spdxElementId === WEB_UI_SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+  )) fail(`${WEB_UI_SPDXID} must never be DEV_TOOL_OF AIPT`);
+  else ok('@aipt/web-ui is never classified as DEV_TOOL_OF');
+
   // ---- SPDX license values for every current package ----
   // Exact-match against the expected B001 SPDX license value; arbitrary
   // strings (including the human full name "PostgreSQL License" on the main
@@ -586,7 +617,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       }
     }
   }
-  if (licenseOk) ok('every package license matches its exact SPDX value, including both MIT first-party workspace packages');
+  if (licenseOk) ok('every package license matches its exact SPDX value, including all three MIT first-party workspace packages');
 
   // ---- app-level dependency invariants (go.mod closure / pnpm-lock) ----
   // go.mod must carry EXACTLY the six approved Go runtime modules (1 direct +
@@ -923,6 +954,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     AIPT_SPDXID,
     SDK_SPDXID,
     HARNESS_ADAPTER_SPDXID,
+    WEB_UI_SPDXID,
     ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module)),
     ...GO_MODULE_GRAPH_TOOLING.map((m) => goModuleSpdxId(m.module)),
   ]);
@@ -961,9 +993,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`documentDescribes must include the first-party ${SDK_SPDXID}`);
   } else if (!doc.documentDescribes.includes(HARNESS_ADAPTER_SPDXID)) {
     fail(`documentDescribes must include the first-party ${HARNESS_ADAPTER_SPDXID}`);
+  } else if (!doc.documentDescribes.includes(WEB_UI_SPDXID)) {
+    fail(`documentDescribes must include the first-party ${WEB_UI_SPDXID}`);
   } else if (doc.documentDescribes.some((id) => !knownIds.has(id))) {
     fail('documentDescribes references an unresolved SPDXID');
-  } else ok('documentDescribes resolves and includes AIPT plus both first-party workspace packages');
+  } else ok('documentDescribes resolves and includes AIPT plus all three first-party workspace packages');
 
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
@@ -1087,22 +1121,22 @@ export function run(ctx) {
     else ok('negative-probe PASS: version-defining mutation invalidates the retained namespace (content-addressed namespace binding enforced)');
   }
 
-  // B005 identity must be enforced independently of the namespace binding.
+  // B007 identity must be enforced independently of the namespace binding.
   const batchIdentityProbe = JSON.parse(JSON.stringify(doc));
   const batchIdentityAipt = batchIdentityProbe.packages.find((p) => p.SPDXID === AIPT_SPDXID);
   if (!batchIdentityAipt) {
-    fail('negative B005 identity probe could not run: AIPT package missing from SBOM');
+    fail('negative B007 identity probe could not run: AIPT package missing from SBOM');
     return { name: 'sbom', result: 'FAIL', details };
   }
-  batchIdentityAipt.versionInfo = 'M0-B004';
+  batchIdentityAipt.versionInfo = 'M0-B005';
   batchIdentityProbe.documentNamespace = computeExpectedNamespace(batchIdentityProbe);
   const batchIdentityResult = validateSbomSemantics(batchIdentityProbe, { repo: ctx.repo, toolchainLock, actionsLock });
   if (batchIdentityResult.result !== 'FAIL') {
-    fail('negative B005 identity probe was NOT rejected (M0-B004 root version accepted)');
-  } else if (!batchIdentityResult.details.some((d) => d.includes('AIPT versionInfo must be M0-B005'))) {
-    fail('B005 identity probe failed for an unexpected reason');
+    fail('negative B007 identity probe was NOT rejected (M0-B005 root version accepted)');
+  } else if (!batchIdentityResult.details.some((d) => d.includes('AIPT versionInfo must be M0-B007'))) {
+    fail('B007 identity probe failed for an unexpected reason');
   } else {
-    ok('negative-probe PASS: AIPT M0-B004 root version rejected even with a recomputed content-addressed namespace');
+    ok('negative-probe PASS: AIPT M0-B005 root version rejected even with a recomputed content-addressed namespace');
   }
 
   // 6. Negative probe: the legacy static pre-R5 namespace must be rejected
@@ -1123,11 +1157,11 @@ export function run(ctx) {
   previousNamespaceProbe.documentNamespace = PREVIOUS_NAMESPACE_BASE + '/' + suffix;
   const previousNamespaceResult = validateSbomSemantics(previousNamespaceProbe, { repo: ctx.repo, toolchainLock, actionsLock });
   if (previousNamespaceResult.result !== 'FAIL') {
-    fail('negative prior-B004 namespace probe was NOT rejected');
-  } else if (!previousNamespaceResult.details.some((d) => d.includes('prior B004 namespace family'))) {
-    fail('prior-B004 namespace probe failed for an unexpected reason');
+    fail('negative prior-B005 namespace probe was NOT rejected');
+  } else if (!previousNamespaceResult.details.some((d) => d.includes('prior B005 namespace family'))) {
+    fail('prior-B005 namespace probe failed for an unexpected reason');
   } else {
-    ok('negative-probe PASS: prior B004 namespace family explicitly rejected for the B005 document');
+    ok('negative-probe PASS: prior B005 namespace family explicitly rejected for the B007 document');
   }
 
   // 5-10. Negative probes (B001-GPT-003 regressions): the three-layer
@@ -1412,6 +1446,65 @@ export function run(ctx) {
     else if (!probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d))) {
       fail(`negative ${def.label} probe failed for an unexpected reason`);
     } else ok(`negative-probe PASS: ${def.label} rejected by the B005 first-party dependency model`);
+  }
+
+  const webPackageProbes = [
+    {
+      label: 'Web UI package deleted from the SBOM',
+      reason: /required package missing: @aipt\/web-ui/,
+      mutate: (probeDoc) => {
+        probeDoc.packages = probeDoc.packages.filter((p) => p.SPDXID !== WEB_UI_SPDXID);
+      },
+    },
+    {
+      label: 'Web UI package wrongly licensed',
+      reason: /MIT/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === WEB_UI_SPDXID);
+        p.licenseConcluded = 'Apache-2.0';
+        p.licenseDeclared = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'Web UI npm purl drifted',
+      reason: /web-ui npm purl/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === WEB_UI_SPDXID);
+        p.externalRefs[0].referenceLocator = 'pkg:npm/%40aipt/web-ui@9.9.9';
+      },
+    },
+    {
+      label: 'Web UI PACKAGE_OF relationship deleted',
+      reason: /missing first-party relationship: SPDXRef-web-ui PACKAGE_OF SPDXRef-AIPT/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(r.spdxElementId === WEB_UI_SPDXID && r.relationshipType === 'PACKAGE_OF'),
+        );
+      },
+    },
+    {
+      label: 'Web UI PACKAGE_OF relationship retyped to DEV_TOOL_OF',
+      reason: /missing first-party relationship: SPDXRef-web-ui PACKAGE_OF SPDXRef-AIPT|must never be DEV_TOOL_OF/,
+      mutate: (probeDoc) => {
+        const rel = probeDoc.relationships.find(
+          (r) => r.spdxElementId === WEB_UI_SPDXID && r.relationshipType === 'PACKAGE_OF',
+        );
+        rel.relationshipType = 'DEV_TOOL_OF';
+      },
+    },
+  ];
+  for (const def of webPackageProbes) {
+    const probeDoc = JSON.parse(JSON.stringify(doc));
+    if (!probeDoc.packages.some((x) => x.SPDXID === WEB_UI_SPDXID)) {
+      fail(`negative ${def.label} probe could not run: Web UI package missing`);
+      continue;
+    }
+    def.mutate(probeDoc);
+    const probeResult = validateSbomSemantics(probeDoc, { repo: ctx.repo, toolchainLock, actionsLock });
+    if (probeResult.result !== 'FAIL') fail(`negative ${def.label} probe was NOT rejected`);
+    else if (!probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d))) {
+      fail(`negative ${def.label} probe failed for an unexpected reason`);
+    } else ok(`negative-probe PASS: ${def.label} rejected by the B007 Web UI first-party model`);
   }
 
   // 20-30. Negative probes (AIPT-M0-B003 iteration 6a): the six Go runtime

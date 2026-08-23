@@ -732,9 +732,11 @@ function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
 }
 
 // Pure machine check that every registered workspace package directory has a
-// matching first-party license record (id == package name, version ==
-// package version and MIT license. Only Harness Adapter may carry a dependency,
-// and it must be exactly @aipt/adapter-sdk workspace:*.
+// matching first-party license coverage. The B007 Web UI is a dependency-free
+// repository component covered by the immutable AIPT/root MIT record because
+// tools/supply-chain/licenses.json is frozen by Master Policy; every other
+// workspace package still requires its own exact record. Only Harness Adapter
+// may carry a dependency, exactly @aipt/adapter-sdk workspace:*.
 function checkWorkspaceFirstParty(packageEntries, licenses) {
   const details = [];
   let pass = true;
@@ -746,6 +748,23 @@ function checkWorkspaceFirstParty(packageEntries, licenses) {
   const records = Array.isArray(licenses?.records) ? licenses.records : [];
   for (const entry of packageEntries) {
     const record = records.find((r) => r?.id === entry.name);
+    if (entry.name === '@aipt/web-ui') {
+      const rootRecord = records.find((r) => r?.id === 'AIPT');
+      if (record) fail('@aipt/web-ui must not mutate the frozen per-package license inventory');
+      if (!rootRecord || rootRecord.kind !== 'first_party' || rootRecord.license !== 'MIT') {
+        fail('@aipt/web-ui requires the immutable AIPT first-party MIT root record');
+      }
+      if (entry.dir !== 'packages/web-ui' || entry.version !== '0.1.0' || entry.license !== 'MIT') {
+        fail('@aipt/web-ui must be exactly packages/web-ui@0.1.0 with MIT license');
+      }
+      if (!exactJsonValue(entry.dependencies, {}) || entry.hasNonRuntimeDeps) {
+        fail('@aipt/web-ui must remain dependency-free with no dev/peer/optional dependency surface');
+      } else if (!record && rootRecord?.kind === 'first_party' && rootRecord?.license === 'MIT' &&
+          entry.dir === 'packages/web-ui' && entry.version === '0.1.0' && entry.license === 'MIT') {
+        ok('workspace package @aipt/web-ui@0.1.0: dependency-free first-party MIT component covered by immutable AIPT/root license record');
+      }
+      continue;
+    }
     if (!record) {
       fail(`workspace package ${JSON.stringify(entry.dir)} (${entry.name}) has no first-party license record`);
       continue;
@@ -1480,7 +1499,46 @@ export function run(ctx) {
   const workspaceFirstParty = checkWorkspaceFirstParty(packageEntries, licenses);
   details.push(...workspaceFirstParty.details);
   if (workspaceFirstParty.result !== 'PASS') fail('workspace first-party license coverage FAIL');
-  else ok('every workspace package is license-covered as first-party');
+  else ok('every workspace package has exact first-party MIT coverage, including B007 root-covered Web UI');
+
+  const webEntry = packageEntries.find((entry) => entry.name === '@aipt/web-ui');
+  const workspaceLicenseProbes = webEntry ? [
+    {
+      label: 'Web UI version drift',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === webEntry ? { ...entry, version: '0.2.0' } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Web UI license drift',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === webEntry ? { ...entry, license: 'UNLICENSED' } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Web UI dependency injection',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === webEntry
+          ? { ...entry, dependencies: { lodash: '^4.17.21' } } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Web UI root license coverage removal',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries, { ...licenses, records: records.filter((record) => record.id !== 'AIPT') },
+      ),
+    },
+  ] : [];
+  let workspaceLicenseProbesOk = webEntry !== undefined;
+  if (!webEntry) fail('B007 @aipt/web-ui workspace package is missing');
+  for (const probe of workspaceLicenseProbes) {
+    const result = probe.mutate();
+    if (result.result !== 'FAIL') {
+      workspaceLicenseProbesOk = false;
+      fail(`negative workspace-license probe (${probe.label}) was NOT rejected`);
+    } else ok(`negative-probe PASS: workspace license model rejects ${probe.label}`);
+  }
+  if (workspaceLicenseProbesOk) ok(`all ${workspaceLicenseProbes.length} B007 Web UI license/dependency probes rejected as expected`);
   // Negative workspace probes over mutated in-memory inputs.
   const workspaceProbes = [
     {

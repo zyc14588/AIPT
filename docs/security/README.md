@@ -1,7 +1,7 @@
 # 安全（SECURITY）
 
 > 公开安全设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> **本节全部为设计目标，B000 未实现任何运行时代码。**
+> 除下列明确标注的 B007 Web 控制外，本节仍是冻结设计合同；不得把设计目标误报为已实现能力。
 
 ## 信任边界
 
@@ -38,7 +38,10 @@
 
 ## 本地端点与界面
 
-- AIPT Web UI 仅绑定 `127.0.0.1`，无登录认证；仍强制 Origin/CSRF 等 Web 安全控制（`R4-Q019`）。
+- B007 AIPT Web Host 已实现且绑定策略不可配置：只使用 `tcp4` `127.0.0.1:0`，OS 选择动态端口，并验证实际 listener 仍是 IPv4 loopback；没有非 loopback fallback。
+- 所有请求都要求 `Host` 精确等于实际选择的 `127.0.0.1:<port>`。携带 `Origin` 时必须精确同源；`POST`/`PUT`/`PATCH`/`DELETE` 必须同时携带精确同源 `Origin` 与进程内通过 `crypto/rand` 生成的临时 CSRF token。token 不导出、不写盘、不进入 URL 或响应 DTO。合法安全前置条件通过后，当前只读路由仍以 `405 Method Not Allowed` 拒绝 mutation。
+- 全部响应设置严格 CSP（仅 `self`，禁止 object/base/frame/form，connect 仅同源）、`nosniff`、`DENY`、`no-referrer`、same-origin CORP 与 `no-store`。不启用 CORS wildcard，不加载外部资产，不提供 WebSocket/SSE/telemetry。
+- Dashboard Config 投影绝不包含 DSN/credential；错误与 HTTP server log 不回显底层敏感原因。Queue/Run/Status backend 与 Report UI export/generator 明确 `NOT_IMPLEMENTED`，没有伪造状态或 mutation endpoint。（`R4-Q019`）
 - llama.cpp 本地模型端点默认仅 **Loopback**（`R6-Q020`）；Launcher 为其分配动态 Loopback 端口（`R7-Q014`）。
 - loopback llama.cpp 首版不设置 API Key（`R7-Q017`）。
 
@@ -52,7 +55,7 @@ Commit/Tree、哈希/签名、凭据、隐藏信息、权威状态、账本完�
 
 ## 设计状态声明
 
-以上均为**冻结设计合同**，安全能力由后续批次实现；B000 仅安装本文档。
+除“本地端点与界面”中明确列出的 B007 Web 控制已实现外，以上能力均为**冻结设计合同**，仍由后续获授权批次实现。
 
 ## 相邻文档
 

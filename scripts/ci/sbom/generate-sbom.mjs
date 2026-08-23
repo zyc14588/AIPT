@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B005.
+// Deterministic SPDX 2.3 JSON SBOM generator for AIPT-M0-B007.
 //
 // Node.js standard library only (no third-party dependency). The same inputs
 // produce byte-identical output: fixed timestamps, sorted arrays, no
@@ -10,13 +10,13 @@
 // payload (the whole document minus documentNamespace) is canonically
 // serialized (sorted object keys) and SHA-256 hashed, and the 64 lowercase
 // hex characters become the namespace suffix under
-// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b005/. Any change to a
+// https://github.com/zyc14588/AIPT/spdx/aipt-m0-b007/. Any change to a
 // version-defining field therefore yields a different, version-unique
 // namespace; the historical static pre-R5 B001 namespace is never reused.
 //
-// Coverage: AIPT root package, the first-party workspace package
-// @aipt/adapter-sdk (B002 iteration 4, PACKAGE_OF AIPT — never a
-// DEV_TOOL_OF dependency), the six approved third-party Go runtime modules of
+// Coverage: AIPT root package, all three first-party workspace packages
+// (@aipt/adapter-sdk, @aipt/harness-adapter and dependency-free @aipt/web-ui;
+// PACKAGE_OF AIPT — never DEV_TOOL_OF), the six approved Go runtime modules of
 // the pgx v5.10.0 closure (AIPT-M0-B003 iteration 6a), CI action fixed
 // commits, supply-chain ephemeral scanner/tool identities, toolchain
 // versions, and the three-layer PostgreSQL model (AIPT-M0-B001-R6):
@@ -50,10 +50,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CREATED = '2026-08-22T00:00:00Z';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b005';
+const CREATED = '2026-08-23T00:00:00Z';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b007';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
 const HARNESS_ADAPTER_SPDXID = 'SPDXRef-harness-adapter';
+const WEB_UI_SPDXID = 'SPDXRef-web-ui';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
 // 6a), pinned in the generator and cross-checked against go.mod/go.sum so a
@@ -310,15 +311,15 @@ export function buildSbom(repoRoot) {
       name: 'AIPT',
       SPDXID: 'SPDXRef-AIPT',
       downloadLocation: 'https://github.com/zyc14588/AIPT',
-      versionInfo: 'M0-B005',
+      versionInfo: 'M0-B007',
       licenseConcluded: 'MIT',
       licenseDeclared: 'MIT',
       copyrightText: 'Copyright (c) 2026 AIPT contributors',
       filesAnalyzed: false,
       comment:
-        'AIPT-M0-B005 fail-closed Harness Adapter stdio runtime; no new third-party dependency identity was introduced. ' +
+        'AIPT-M0-B007 secure loopback Web Host and dependency-free TypeScript Dashboard; no new third-party dependency identity was introduced. ' +
         'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.6 — B003 security requalification), private npm root package aipt@0.0.0, ' +
-        `and first-party workspace packages @aipt/adapter-sdk@1.0.0 and @aipt/harness-adapter@0.1.0 (both PACKAGE_OF AIPT). ` +
+        `and first-party workspace packages @aipt/adapter-sdk@1.0.0, @aipt/harness-adapter@0.1.0 and @aipt/web-ui@0.1.0 (all PACKAGE_OF AIPT). ` +
         `B004 security-requalifies the B003 runtime closure: go=${goModules.length}, selected-module-graph tooling=${goGraphTooling.length}, pnpm=${pnpmPackages.length} ` +
         `(six approved Go runtime modules: pgx v5.10.0 direct + five transitive, recorded in ` +
         `tools/supply-chain/licenses.json with exact versions/licenses/directness; x/text v0.29.0 -> v0.39.0 resolves GO-2026-5970, ` +
@@ -361,6 +362,22 @@ export function buildSbom(repoRoot) {
         'SPDXRef-adapter-sdk through the exact workspace:* -> link:../adapter-sdk edge. ' +
         'No npm registry or other third-party package; never classified as DEV_TOOL_OF.',
       externalRefs: [purl('npm', '%40aipt/harness-adapter@0.1.0')],
+    },
+    {
+      name: '@aipt/web-ui',
+      SPDXID: WEB_UI_SPDXID,
+      downloadLocation: 'NOASSERTION',
+      versionInfo: '0.1.0',
+      licenseConcluded: 'MIT',
+      licenseDeclared: 'MIT',
+      copyrightText: 'Copyright (c) 2026 AIPT contributors',
+      filesAnalyzed: false,
+      comment:
+        'First-party B007 dependency-free TypeScript Web Dashboard (packages/web-ui), covered by the immutable ' +
+        'AIPT/root MIT license record while tools/supply-chain/licenses.json remains frozen. ' +
+        'SPDXRef-web-ui PACKAGE_OF SPDXRef-AIPT; zero npm registry, runtime, dev, peer or optional dependencies; ' +
+        'never classified as DEV_TOOL_OF.',
+      externalRefs: [purl('npm', '%40aipt/web-ui@0.1.0')],
     },
     {
       name: 'Go toolchain',
@@ -564,6 +581,7 @@ export function buildSbom(repoRoot) {
     'SPDXRef-AIPT',
     SDK_SPDXID,
     HARNESS_ADAPTER_SPDXID,
+    WEB_UI_SPDXID,
     ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module)),
     ...GO_MODULE_GRAPH_TOOLING.map((m) => goModuleSpdxId(m.module)),
   ]);
@@ -583,6 +601,11 @@ export function buildSbom(repoRoot) {
       spdxElementId: HARNESS_ADAPTER_SPDXID,
       relationshipType: 'DEPENDS_ON',
       relatedSpdxElement: SDK_SPDXID,
+    },
+    {
+      spdxElementId: WEB_UI_SPDXID,
+      relationshipType: 'PACKAGE_OF',
+      relatedSpdxElement: 'SPDXRef-AIPT',
     },
     {
       // First-party workspace package: part of the AIPT repository itself,
@@ -643,14 +666,14 @@ export function buildSbom(repoRoot) {
     spdxVersion: 'SPDX-2.3',
     dataLicense: 'CC0-1.0',
     SPDXID: 'SPDXRef-DOCUMENT',
-    name: 'AIPT-M0-B005-supply-chain-sbom',
+    name: 'AIPT-M0-B007-supply-chain-sbom',
     creationInfo: {
       created: CREATED,
-      creators: ['Tool: AIPT-M0-B005 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
+      creators: ['Tool: AIPT-M0-B007 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)'],
       comment:
         'Deterministic SBOM: identical inputs produce byte-identical output (CI generates twice and compares). ' +
-        'AIPT-M0-B005 adds the first-party Harness Adapter and zero third-party package identity while preserving the exact B004 security-requalified pgx closure. ' +
-        'The first-party workspace packages @aipt/adapter-sdk and @aipt/harness-adapter are modeled as PACKAGE_OF AIPT (never DEV_TOOL_OF); Harness Adapter DEPENDS_ON Adapter SDK. ' +
+        'AIPT-M0-B007 adds the secure loopback Web Host plus dependency-free @aipt/web-ui and zero third-party package identity while preserving the exact B004 security-requalified pgx closure. ' +
+        'The first-party workspace packages @aipt/adapter-sdk, @aipt/harness-adapter and @aipt/web-ui are modeled as PACKAGE_OF AIPT (never DEV_TOOL_OF); Harness Adapter DEPENDS_ON Adapter SDK. ' +
         'The six approved pgx v5.10.0 Go runtime modules are modeled as application runtime dependencies: ' +
         'AIPT DEPENDS_ON github.com/jackc/pgx/v5 and pgx DEPENDS_ON the five indirect modules (never DEV_TOOL_OF). ' +
         'x/text v0.39.0 DEPENDS_ON x/sync v0.21.0 plus graph-only x/mod v0.37.0 and x/tools v0.47.0; the two graph-only modules are BUILD_TOOL_OF AIPT, never runtime dependencies. ' +
@@ -659,7 +682,7 @@ export function buildSbom(repoRoot) {
     },
     packages,
     relationships,
-    documentDescribes: ['SPDXRef-AIPT', SDK_SPDXID, HARNESS_ADAPTER_SPDXID],
+    documentDescribes: ['SPDXRef-AIPT', SDK_SPDXID, HARNESS_ADAPTER_SPDXID, WEB_UI_SPDXID],
   };
 
   // Version-unique, content-addressed namespace: the hash is computed over

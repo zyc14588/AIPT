@@ -101,6 +101,7 @@ export function run(ctx) {
     { name: 'adapter-sdk', label: 'adapter-sdk', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'harness-adapter', label: 'harness-adapter', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'evidence', label: 'evidence', args: ['--repo', ctx.repo], result: 'PASS' },
+    { name: 'web-ui', label: 'web-ui', args: ['--repo', ctx.repo], result: 'PASS' },
   ];
   for (const c of positives) {
     const cp = spawnEntrypoint(c.name, c.args, ctx.repo);
