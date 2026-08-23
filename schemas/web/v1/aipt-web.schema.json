@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/web/v1/aipt-web.schema.json",
+  "title": "AIPT local Web dashboard v1",
+  "description": "Strict read-only snapshot for the six B007 dashboard panels. It is a derived view, never authority or a command surface.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "config",
+    "health",
+    "queue",
+    "run",
+    "status_table",
+    "report"
+  ],
+  "properties": {
+    "schema": {
+      "const": "aipt.web-dashboard/v1"
+    },
+    "config": {
+      "$ref": "#/$defs/config"
+    },
+    "health": {
+      "$ref": "#/$defs/health"
+    },
+    "queue": {
+      "$ref": "#/$defs/queue"
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "status_table": {
+      "$ref": "#/$defs/status_table"
+    },
+    "report": {
+      "$ref": "#/$defs/report"
+    }
+  },
+  "$defs": {
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "profile",
+        "database_identity",
+        "database_namespace",
+        "evidence_namespace"
+      ],
+      "properties": {
+        "schema": {
+          "const": "aipt.config/v1"
+        },
+        "profile": {
+          "enum": ["development", "production"]
+        },
+        "database_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+        },
+        "database_namespace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+        },
+        "evidence_namespace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z][a-z0-9_]*([.-][a-z0-9_]+)*$"
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serving_status", "runtime_readiness"],
+      "properties": {
+        "serving_status": {
+          "const": "SERVING"
+        },
+        "runtime_readiness": {
+          "const": "NOT_ASSERTED"
+        }
+      }
+    },
+    "queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend_authority", "implementation_status", "items"],
+      "properties": {
+        "backend_authority": {
+          "const": "POSTGRESQL"
+        },
+        "implementation_status": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 0,
+          "items": false
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_status", "active_run"],
+      "properties": {
+        "implementation_status": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "active_run": {
+          "type": "null"
+        }
+      }
+    },
+    "status_table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_status", "seats"],
+      "properties": {
+        "implementation_status": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "seats": {
+          "type": "array",
+          "maxItems": 0,
+          "items": false
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_capture",
+        "ui_export_action",
+        "audit_ready_generator",
+        "audit_result_generator",
+        "signing",
+        "encryption",
+        "chunking"
+      ],
+      "properties": {
+        "raw_capture": {
+          "const": "IMPLEMENTED_LIBRARY_ONLY"
+        },
+        "ui_export_action": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "audit_ready_generator": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "audit_result_generator": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "signing": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "encryption": {
+          "const": "NOT_IMPLEMENTED"
+        },
+        "chunking": {
+          "const": "NOT_IMPLEMENTED"
+        }
+      }
+    }
+  }
+}
