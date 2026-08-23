@@ -96,6 +96,19 @@ func recordingComponent(log *eventLog, gate Gate, expired *atomic.Bool) Componen
 	}
 }
 
+func recordingWebComponent(log *eventLog, expired *atomic.Bool) WebStart {
+	return func(context.Context, WebStartState) (StopFunc, error) {
+		log.add("start:" + string(GateWeb))
+		return func(ctx context.Context) error {
+			if ctx.Err() != nil && expired != nil {
+				expired.Store(true)
+			}
+			log.add("stop:" + string(GateWeb))
+			return nil
+		}, nil
+	}
+}
+
 func successfulDependencies(t *testing.T, log *eventLog, timeout time.Duration) (Dependencies, *fakePool) {
 	t.Helper()
 	loaded := launcherTestConfig(t, 1000)
@@ -123,7 +136,7 @@ func successfulDependencies(t *testing.T, log *eventLog, timeout time.Duration) 
 	dependencies.StartHarness = recordingComponent(log, GateHarness, nil)
 	dependencies.StartCore = recordingComponent(log, GateCore, nil)
 	dependencies.StartIPC = recordingComponent(log, GateIPC, nil)
-	dependencies.StartWeb = recordingComponent(log, GateWeb, nil)
+	dependencies.StartWeb = recordingWebComponent(log, nil)
 	return dependencies, pool
 }
 
@@ -173,7 +186,7 @@ func TestFixedGateOrderAndPlanAreImmutable(t *testing.T) {
 		}
 		wantImplementation := NotImplemented
 		if gate.Gate == GateConfig || gate.Gate == GatePostgreSQL ||
-			gate.Gate == GateMigrations || gate.Gate == GateCore {
+			gate.Gate == GateMigrations || gate.Gate == GateCore || gate.Gate == GateWeb {
 			wantImplementation = Implemented
 		}
 		if gate.Implementation != wantImplementation {
@@ -259,7 +272,10 @@ func TestRunExactOrderAndReverseShutdown(t *testing.T) {
 	dependencies.StartIPC = recordingComponent(log, GateIPC, &expired)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	dependencies.StartWeb = func(context.Context) (StopFunc, error) {
+	var webState WebStartState
+	dependencies.StartWeb = func(_ context.Context, state WebStartState) (StopFunc, error) {
+		webState = state
+		state.PriorStartedGates[0] = GateWeb
 		log.add("start:" + string(GateWeb))
 		cancel()
 		return func(stopContext context.Context) error {
@@ -277,6 +293,16 @@ func TestRunExactOrderAndReverseShutdown(t *testing.T) {
 	}
 	if expired.Load() {
 		t.Fatal("signal cancellation leaked into independent cleanup context")
+	}
+	if webState.Config == nil || webState.Config.Schema() != config.SchemaMarker {
+		t.Fatal("WEB did not receive the validated Config")
+	}
+	wantPrior := []Gate{GateConfig, GatePostgreSQL, GateMigrations, GateModel, GateHarness, GateCore, GateIPC}
+	if !reflect.DeepEqual(webState.PriorStartedGates, append([]Gate{GateWeb}, wantPrior[1:]...)) {
+		t.Fatalf("WEB test did not observe its intentional local mutation: %v", webState.PriorStartedGates)
+	}
+	if got := FixedGateOrder(); !reflect.DeepEqual(got, append(wantPrior, GateWeb)) {
+		t.Fatalf("WEB mutated package-owned gate order: %v", got)
 	}
 	want := []string{
 		"start:CONFIG",
@@ -580,7 +606,7 @@ func TestShutdownTimeoutIsBoundedAndLaterStopsStillRun(t *testing.T) {
 	const timeout = 25 * time.Millisecond
 	dependencies, _ := successfulDependencies(t, log, timeout)
 	ctx, cancel := context.WithCancel(context.Background())
-	dependencies.StartWeb = func(context.Context) (StopFunc, error) {
+	dependencies.StartWeb = func(context.Context, WebStartState) (StopFunc, error) {
 		log.add("start:" + string(GateWeb))
 		cancel()
 		return func(stopContext context.Context) error {

@@ -33,9 +33,9 @@ func FixedGateOrder() []Gate {
 	return order
 }
 
-// Implementation describes whether B004 contains a production implementation
-// for a gate. An implemented later gate does not permit an earlier mandatory
-// unimplemented gate to be skipped.
+// Implementation describes whether the current construction contains a
+// production implementation for a gate. An implemented later gate does not
+// permit an earlier mandatory unimplemented gate to be skipped.
 type Implementation string
 
 const (
@@ -62,16 +62,16 @@ const planSchema = "aipt.launch.plan/v1"
 
 func productionImplementation(gate Gate) Implementation {
 	switch gate {
-	case GateConfig, GatePostgreSQL, GateMigrations, GateCore:
+	case GateConfig, GatePostgreSQL, GateMigrations, GateCore, GateWeb:
 		return Implemented
-	case GateModel, GateHarness, GateIPC, GateWeb:
+	case GateModel, GateHarness, GateIPC:
 		return NotImplemented
 	default:
 		return NotImplemented
 	}
 }
 
-// Plan returns the fixed B004 production plan. RuntimeReady is deliberately
+// Plan returns the fixed B007 production plan. RuntimeReady is deliberately
 // false because MODEL is the first mandatory gate without an implementation.
 func Plan() LaunchPlan {
 	gates := make([]PlanGate, 0, len(fixedGateOrder))

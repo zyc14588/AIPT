@@ -11,6 +11,7 @@ import (
 	"github.com/zyc14588/AIPT/internal/config"
 	"github.com/zyc14588/AIPT/internal/core"
 	"github.com/zyc14588/AIPT/internal/storage/postgres"
+	"github.com/zyc14588/AIPT/internal/web"
 )
 
 // PostgresPool is the minimum pool surface owned by the launcher. The
@@ -28,9 +29,22 @@ type StopFunc func(context.Context) error
 // ComponentStart starts one dependency-injected component gate.
 type ComponentStart func(context.Context) (StopFunc, error)
 
+// WebStartState is the state-aware boundary for the final WEB gate. Config is
+// the same validated immutable value loaded by CONFIG. PriorStartedGates is a
+// defensive snapshot of every successfully completed earlier gate, including
+// non-stoppable CONFIG and MIGRATIONS.
+type WebStartState struct {
+	Config            *config.Config
+	PriorStartedGates []Gate
+}
+
+// WebStart starts the final Web component from validated prior state.
+type WebStart func(context.Context, WebStartState) (StopFunc, error)
+
 // Dependencies are implementations only; they cannot supply, omit, or reorder
 // gates. DefaultDependencies wires the real CONFIG, POSTGRESQL, MIGRATIONS,
-// and Core shell and installs fail-closed placeholders elsewhere.
+// Core, and WEB components and installs fail-closed MODEL/HARNESS/IPC
+// placeholders.
 type Dependencies struct {
 	LoadConfig   func(string) (*config.Config, error)
 	OpenPostgres func(context.Context, string) (PostgresPool, error)
@@ -39,14 +53,16 @@ type Dependencies struct {
 	StartHarness ComponentStart
 	StartCore    ComponentStart
 	StartIPC     ComponentStart
-	StartWeb     ComponentStart
+	StartWeb     WebStart
 }
 
 // DefaultShutdownTimeout bounds both launcher reverse cleanup and the Core
 // shell used by NewDefault.
 const DefaultShutdownTimeout = 10 * time.Second
 
-// DefaultDependencies returns the production B004 wiring.
+// DefaultDependencies returns the production B007 wiring. MODEL, HARNESS, and
+// IPC remain fail-closed placeholders; WEB is real but cannot be reached by
+// the production launcher until every mandatory predecessor succeeds.
 func DefaultDependencies(shutdownTimeout time.Duration) Dependencies {
 	if shutdownTimeout <= 0 {
 		shutdownTimeout = DefaultShutdownTimeout
@@ -67,7 +83,7 @@ func DefaultDependencies(shutdownTimeout time.Duration) Dependencies {
 		StartHarness: unimplementedComponent(GateHarness),
 		StartCore:    coreComponent(shutdownTimeout),
 		StartIPC:     unimplementedComponent(GateIPC),
-		StartWeb:     unimplementedComponent(GateWeb),
+		StartWeb:     webComponent(),
 	}
 }
 
@@ -77,8 +93,30 @@ func unimplementedComponent(gate Gate) ComponentStart {
 			CodeGateNotImplemented,
 			gate,
 			"start",
-			fmt.Errorf("%s is mandatory but not implemented in AIPT-M0-B004", gate),
+			fmt.Errorf("%s is mandatory but not implemented in AIPT-M0-B007", gate),
 		)
+	}
+}
+
+func webComponent() WebStart {
+	return func(ctx context.Context, state WebStartState) (StopFunc, error) {
+		if state.Config == nil {
+			return nil, errors.New("validated config is unavailable at WEB")
+		}
+		expected := fixedGateOrder[:len(fixedGateOrder)-1]
+		if len(state.PriorStartedGates) != len(expected) {
+			return nil, errors.New("WEB prior gate snapshot is incomplete")
+		}
+		for index, gate := range expected {
+			if state.PriorStartedGates[index] != gate {
+				return nil, errors.New("WEB prior gate snapshot order is invalid")
+			}
+		}
+		host, err := web.Start(ctx, state.Config)
+		if err != nil {
+			return nil, err
+		}
+		return host.Stop, nil
 	}
 }
 

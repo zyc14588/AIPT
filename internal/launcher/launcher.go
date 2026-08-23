@@ -22,7 +22,7 @@ type Launcher struct {
 	shutdownTimeout time.Duration
 }
 
-// NewDefault constructs the production B004 launcher. Its real execution
+// NewDefault constructs the production B007 launcher. Its real execution
 // reaches CONFIG, POSTGRESQL, and MIGRATIONS, then fails closed at MODEL.
 func NewDefault(configPath string) (*Launcher, error) {
 	return New(configPath, Options{
@@ -101,6 +101,7 @@ func (l *Launcher) Run(ctx context.Context) error {
 
 	state := &runState{}
 	started := make([]startedGate, 0, len(fixedGateOrder))
+	completed := make([]Gate, 0, len(fixedGateOrder))
 	for _, gate := range fixedGateOrder {
 		if err := ctx.Err(); err != nil {
 			return l.failAndCleanup(
@@ -109,20 +110,21 @@ func (l *Launcher) Run(ctx context.Context) error {
 			)
 		}
 
-		stop, err := l.startGate(ctx, gate, state)
+		stop, err := l.startGate(ctx, gate, state, completed)
 		if stop != nil {
 			started = append(started, startedGate{gate: gate, stop: stop})
 		}
 		if err != nil {
 			return l.failAndCleanup(l.normalizeStartError(ctx, gate, err), started)
 		}
+		completed = append(completed, gate)
 	}
 
 	<-ctx.Done()
 	return l.cleanup(started)
 }
 
-func (l *Launcher) startGate(ctx context.Context, gate Gate, state *runState) (StopFunc, error) {
+func (l *Launcher) startGate(ctx context.Context, gate Gate, state *runState, completed []Gate) (StopFunc, error) {
 	switch gate {
 	case GateConfig:
 		loaded, err := l.dependencies.LoadConfig(l.configPath)
@@ -178,7 +180,11 @@ func (l *Launcher) startGate(ctx context.Context, gate Gate, state *runState) (S
 	case GateIPC:
 		return l.dependencies.StartIPC(ctx)
 	case GateWeb:
-		return l.dependencies.StartWeb(ctx)
+		prior := append([]Gate(nil), completed...)
+		return l.dependencies.StartWeb(ctx, WebStartState{
+			Config:            state.config,
+			PriorStartedGates: prior,
+		})
 	default:
 		return nil, errors.New("unknown launch gate")
 	}
