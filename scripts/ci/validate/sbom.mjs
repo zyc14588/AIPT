@@ -1,8 +1,9 @@
 // SBOM validator (AIPT-M0-B001-REPAIR-R6 foundation, evolved by B002
 // iteration 4 and AIPT-M0-B003 iteration 6a): the gate enforces deterministic
 // output AND SPDX 2.3 / component semantics — including the three-layer
-// PostgreSQL license model, the first-party @aipt/adapter-sdk package model
-// (own SPDX 2.3 package, MIT, version 1.0.0, npm purl, PACKAGE_OF AIPT —
+// PostgreSQL license model, all three first-party workspace package models
+// (@aipt/adapter-sdk, @aipt/harness-adapter, and dependency-free
+// @aipt/web-ui; each has its own MIT SPDX 2.3 package and is PACKAGE_OF AIPT,
 // never DEV_TOOL_OF), and (AIPT-M0-B003 iteration 6a) the six approved
 // third-party Go runtime modules of the pgx v5.10.0 closure with exact known
 // licenses (MIT/BSD-3-Clause, never NOASSERTION), golang purls, SHA-256
@@ -42,16 +43,19 @@
 //   1. semantic validation passes (SPDX-2.3, CC0-1.0, version-unique
 //      content-addressed documentNamespace — SHA-256 of the canonical
 //      version-defining payload — with the legacy static B001 namespace
-//      explicitly rejected, unique package SPDXIDs, the exact B003 required
-//      package set (all 11 B001 identities preserved plus the first-party
-//      @aipt/adapter-sdk package plus the six approved Go runtime modules),
+//      explicitly rejected, unique package SPDXIDs, and the exact B007
+//      22-package set: AIPT root; adapter-sdk, harness-adapter, and web-ui;
+//      three toolchains; PostgreSQL main software, packaging source, and
+//      image; govulncheck; three GitHub actions; six approved Go runtime
+//      modules; and two selected graph-tooling modules,
 //      SPDX license values for every current package (the three-layer
 //      PostgreSQL model: main software = PostgreSQL, packaging source = MIT,
-//      composite image = NOASSERTION; adapter-sdk = MIT; pgx closure = exact
-//      known MIT/BSD-3-Clause values),
+//      composite image = NOASSERTION; all three first-party workspace
+//      packages = MIT; pgx closure = exact known MIT/BSD-3-Clause values),
 //      the exact composition relationships (image CONTAINS main software,
 //      image GENERATED_FROM packaging source — never CONTAINS the packaging
-//      source; adapter-sdk PACKAGE_OF AIPT — never DEV_TOOL_OF; AIPT
+//      source; adapter-sdk, harness-adapter, and web-ui PACKAGE_OF AIPT —
+//      never DEV_TOOL_OF; harness-adapter DEPENDS_ON adapter-sdk; AIPT
 //      DEPENDS_ON pgx; pgx DEPENDS_ON the five indirect modules — runtime
 //      modules never DEV_TOOL_OF),
 //      toolchain/action versions matching the lock files, resolvable
@@ -88,7 +92,7 @@ const HARNESS_ADAPTER_SPDXID = 'SPDXRef-harness-adapter';
 const WEB_UI_SPDXID = 'SPDXRef-web-ui';
 const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b007';
 // The static pre-R5 B001 namespace reused by distinct R3/R4 documents; still
-// forbidden — a B004 document must never fall back to it.
+// forbidden — a B007 document must never fall back to it.
 const LEGACY_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
 const PREVIOUS_NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b005';
 const EXPECTED_DOCUMENT_NAME = 'AIPT-M0-B007-supply-chain-sbom';
@@ -136,11 +140,11 @@ const SPDX23_RELATIONSHIP_TYPES = new Set([
   'TEST_TOOL_OF', 'VARIANT_OF',
 ]);
 
-// The exact required package identities (B001's 11 identities preserved,
-// plus the first-party B002 workspace package @aipt/adapter-sdk, the six
-// approved third-party Go runtime modules of the pgx v5.10.0 closure, and
-// the two B004-qualified selected-module-graph tooling identities). The SBOM
-// package set is exactly these 20 identities — no PnpmDep package and no Go
+// The exact required package set contains 22 identities: AIPT root;
+// adapter-sdk, harness-adapter, and web-ui; three toolchains; PostgreSQL main
+// software, packaging source, and image; govulncheck; three GitHub actions;
+// six approved Go runtime modules from the pgx v5.10.0 closure; and two
+// selected graph-tooling modules. There is no PnpmDep package and no Go
 // identity outside the approved runtime/graph closure.
 const REQUIRED_PACKAGES = [
   { name: 'AIPT', spdxId: AIPT_SPDXID },
@@ -171,7 +175,8 @@ const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
 //   - PostgreSQL Docker Official Image (composite container of multiple
 //     sources/components) carries `NOASSERTION` for BOTH fields — asserting
 //     `PostgreSQL` or `MIT` for the whole image is rejected.
-// B002 iteration 4 adds the first-party @aipt/adapter-sdk package: MIT.
+// B002 iteration 4 adds the first-party @aipt/adapter-sdk package (MIT), B005
+// adds @aipt/harness-adapter (MIT), and B007 adds @aipt/web-ui (MIT).
 // AIPT-M0-B003 iteration 6a adds the six approved Go runtime modules with
 // their exact known SPDX licenses (MIT for the jackc modules, BSD-3-Clause
 // for the golang.org/x modules) — never NOASSERTION.
@@ -947,9 +952,10 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   );
   if (!describes) fail(`missing ${DOCUMENT_SPDXID} DESCRIBES ${AIPT_SPDXID} relationship`);
   else ok(`document DESCRIBES ${AIPT_SPDXID}`);
-  // Every package that is neither AIPT nor the first-party SDK nor a Go
-  // runtime module (the runtime closure is modeled as DEPENDS_ON, never
-  // DEV_TOOL_OF) must have a DEV_TOOL_OF relationship to AIPT.
+  // Every package that is neither AIPT, a first-party workspace package, a Go
+  // runtime module, nor selected graph tooling must have a DEV_TOOL_OF
+  // relationship to AIPT. Runtime modules use DEPENDS_ON; selected graph
+  // tooling uses BUILD_TOOL_OF.
   const nonDevTool = new Set([
     AIPT_SPDXID,
     SDK_SPDXID,
@@ -963,7 +969,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     (p) => !doc.relationships.some((r) => r.spdxElementId === p.SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID),
   );
   if (missingDevTool.length > 0) fail(`packages missing DEV_TOOL_OF relationship to AIPT: ${missingDevTool.map((p) => p.SPDXID).join(', ')}`);
-  else ok('every generic tooling/CI/infrastructure package has DEV_TOOL_OF AIPT; SDK, runtime modules, and explicit graph-tooling BUILD_TOOL_OF packages are correctly excluded');
+  else ok('every generic tooling/CI/infrastructure package has DEV_TOOL_OF AIPT; first-party workspace packages, runtime modules, and explicit graph-tooling BUILD_TOOL_OF packages are correctly excluded');
 
   // ---- three-layer PostgreSQL composition: the composite image CONTAINS
   // the main software (a component inside the container) and GENERATED_FROM
