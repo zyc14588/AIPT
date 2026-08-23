@@ -1,6 +1,6 @@
-# B004 Runtime Shell
+# Runtime Shell 与 B007 本地 Web
 
-`AIPT-M0-B004` 已 `MERGED_CLOSED`，交付 Go Launcher、严格共享配置基础与 Core lifecycle shell。它仍是一个**失败关闭的 runtime shell**，不是完整运行时：真实启动会完成配置、PostgreSQL 连接和 B003 迁移，然后在首个尚未实现的强制 `MODEL` 门禁返回稳定错误 `AIPT_LAUNCH_GATE_NOT_IMPLEMENTED`。accepted implementation identity 是 merge `d07c0c3817620ada47b3ae7344d8ee423ace3b12`、tree `f35365d0ad47fdd513fbecb84a03b1559026637e`；后续 validator repair/closeout 不改变该身份。
+`AIPT-M0-B004` 已 `MERGED_CLOSED`，交付 Go Launcher、严格共享配置基础与 Core lifecycle shell。`AIPT-M0-B007` 在不改变固定门禁顺序的前提下实现最终 `WEB` 组件，但整个 runtime 仍然**失败关闭且尚未 ready**：真实启动会完成配置、PostgreSQL 连接和 B003 迁移，然后在首个尚未实现的强制 `MODEL` 门禁返回稳定错误 `AIPT_LAUNCH_GATE_NOT_IMPLEMENTED`。更晚的已实现 Web 不能绕过这个前序门禁。
 
 ## 固定启动计划
 
@@ -13,7 +13,7 @@
 5. `HARNESS` — 未实现；
 6. `CORE` — lifecycle shell 已实现，但真实路径不能绕过更早的 `MODEL`；通过依赖注入测试验证；
 7. `IPC` — 未实现；
-8. `WEB` — 未实现。
+8. `WEB` — B007 已实现安全的本地只读 Host；只有全部前序门禁成功后才可启动。
 
 `aipt plan` 输出确定性 JSON，并明确给出 `runtime_ready: false` 与 `first_blocking_gate: "MODEL"`。计划只是声明，不是启动成功证据。
 
@@ -43,6 +43,21 @@ Production 必须提供独立文件，使用 `profile: "production"`，并显式
 
 DSN 是敏感值。配置错误、`String`、格式化和 JSON 输出都不会回显 DSN；只有 Launcher 专用的 `Database.DSN()` 访问器可以取得原值。不要把带凭据的配置提交到仓库。
 
+## B007 Web Host 与只读路由
+
+Web 绑定策略不可配置：只允许 `tcp4` 的 `127.0.0.1:0`，由 OS 选择动态端口，并在开始服务前再次验证 listener 确实是 IPv4 loopback。`Host.URL()` 只返回形如 `http://127.0.0.1:<dynamic-port>` 的诊断 URL，不包含 CSRF token、DSN 或 credential。
+
+固定路由只有：
+
+- `GET|HEAD /`；
+- `GET|HEAD /assets/app.js` 与 `/assets/styles.css`；
+- `GET|HEAD /healthz`；
+- `GET|HEAD /api/v1/dashboard`。
+
+Dashboard 是非权威派生读模型，严格只有 Config、Health、Queue、Run、Status/Table、Reports 六个面板。Config 只投影 profile、database identity/namespace 与 evidence namespace，绝不投影 DSN。Queue、Run、Status/Table 后端均为 `NOT_IMPLEMENTED`，数组必须为空且 active run 必须为 `null`；不得伪造 live 状态。Reports 只如实声明既有 `RAW_CAPTURE` 为 `IMPLEMENTED_LIBRARY_ONLY`，UI export、`AUDIT_READY`/`AUDIT_RESULT` generator、签名、加密、分块均为 `NOT_IMPLEMENTED`。B007 没有新增 queue migration、queue backend 或 mutation API。
+
+所有未知路由返回 404；只读路由上的非 GET/HEAD 方法在通过安全前置门禁后返回 405。没有 CORS wildcard、外部静态资源、遥测、浏览器持久化、WebSocket、SSE 或远端模型调用。
+
 ### B003 迁移命名空间边界
 
 B003 已冻结的迁移在每个目标数据库内使用 `aipt` SQL schema。B004 不复制、不重写也不参数化该迁移层。B004 配置中的 `database.namespace` 是共享配置和跨 profile 隔离的显式基础字段；当前迁移调用仍以**独立数据库 identity**提供实际开发/生产隔离，不能把该字段理解为已重映射 B003 的 `aipt` schema。
@@ -66,10 +81,14 @@ Core 状态为 `NEW → STARTING → RUNNING → STOPPING → STOPPED`，启动�
 go test ./...
 go test -race ./internal/config/... ./internal/core/... ./internal/launcher/... ./cmd/aipt/...
 pnpm run check:runtime-shell
+pnpm run check:web-ui
+pnpm run test:web-ui
+pnpm run test:web-go
+pnpm run smoke:web-ui
 ```
 
 设置 `AIPT_REQUIRE_POSTGRES_INTEGRATION=1` 后，缺少或错误的 `AIPT_POSTGRES_DSN` 会硬失败，不能降级为 skip。CI 验证连接、迁移、二次迁移 no-op、checksum drift、数据库不可用、Launcher 的 later-gate stop，以及 B003/B004 适用的 race 覆盖。
 
-## 明确不在 B004
+## B007 明确边界
 
-B004 不实现 Harness Adapter、stdio Harness smoke、llama.cpp/DeepSeek runtime 调用、Web/UI、Unix socket、campaign queue、evidence exporter、game adapter 或完整动作管线。`AIPT-M0-B005` 仅为 `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`），`next_batch_started = false`；本 closeout 不启动 B005 implementation。
+B007 不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine、game adapter 或完整动作管线。下一串行项 `INT-AIPT-UNREGISTERED-001` 为 `NOT_AUTHORIZED`（`next_batch_authorized = false`，`next_batch_started = false`）；B008 同样未开始。

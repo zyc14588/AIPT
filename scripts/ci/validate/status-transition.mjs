@@ -1,25 +1,25 @@
 #!/usr/bin/env node
-// AIPT-M0-B006 closeout/status-transition validator.
+// AIPT-M0-B007 construction/status-transition validator.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   ACTIVE_BATCH, B000, B001, B002, B002_CLOSEOUT, B003, B003_CLOSEOUT,
   B004_CANDIDATE, B004_CLOSEOUT, B004_IMPLEMENTATION_MERGE,
   B004_POST_MERGE_REPAIR, B005_CANDIDATE, B005_CLOSEOUT,
-  B005_IMPLEMENTATION_MERGE, B006_CANDIDATE, B006_CANDIDATE_HISTORY,
-  B006_CONSTRUCTION_HARNESS, B006_IMPLEMENTATION_MERGE, BASE_COMMIT,
-  BASE_TREE, CURRENT_BATCH, EXTERNAL_SERIAL_PREDECESSOR,
-  FROZEN_REGISTRY_PATHS, HARNESS_SOURCE, STATUS_DATE,
-  STATUS_TRANSITION_PATHS,
+  B005_IMPLEMENTATION_MERGE, B006_CANDIDATE, B006_CLOSEOUT,
+  B006_IMPLEMENTATION_MERGE, B007_BASE_COMMIT, B007_BASE_TREE,
+  B007_CONSTRUCTION_HARNESS, B007_EXTERNAL_SERIAL_PREDECESSOR,
+  CURRENT_BATCH, EXTERNAL_SERIAL_HISTORY, FROZEN_REGISTRY_PATHS,
+  HARNESS_SOURCE, STATUS_DATE, STATUS_TRANSITION_PATHS,
 } from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 
 const SCHEMA = 'aipt.public.project-status/v1';
-const SNAPSHOT_ID = 'AIPT-M0-B006-CLOSEOUT-001';
+const SNAPSHOT_ID = 'AIPT-M0-B007-CONSTRUCTION-001';
 const DESIGN = 'FROZEN_R0_R16_DCA_BOOTSTRAP';
-const CONSTRUCTION = 'IDLE_WAITING_NEXT_BATCH';
-const NEXT_BATCH = 'UNREGISTERED-AIPT-P0-B002';
-const NEXT_STATE = 'AUTHORIZED_TO_PREPARE';
+const CONSTRUCTION = 'IN_PROGRESS';
+const NEXT_BATCH = 'INT-AIPT-UNREGISTERED-001';
+const NEXT_STATE = 'NOT_AUTHORIZED';
 const PLATFORM = 'FROZEN_WAITING_M1_ENGINE';
 const CLOSED_BATCH_IDS = [
   'AIPT-M0-B000', 'AIPT-M0-B001', 'AIPT-M0-B002', 'AIPT-M0-B003',
@@ -31,17 +31,22 @@ const ROOT_KEYS = [
 ];
 const STANDALONE_KEYS = [
   'batch_history', 'construction', 'current_batch', 'design',
-  'external_serial_predecessor', 'global_wip', 'next_batch_authorized',
-  'next_batch_started', 'next_batch_state', 'next_serial_batch',
+  'external_batch_history', 'external_serial_predecessor', 'global_wip',
+  'next_batch_authorized', 'next_batch_started', 'next_batch_state',
+  'next_serial_batch',
 ];
 const PREDECESSOR_KEYS = [
-  'closeout_ci_conclusion', 'closeout_ci_run', 'closeout_commit', 'id', 'status',
+  'candidate_commit', 'candidate_tree', 'closeout_ci_conclusion',
+  'closeout_ci_run', 'closeout_commit', 'closeout_tree', 'id',
+  'implementation_merge', 'status',
 ];
 const AIPT_REPOSITORY_KEYS = [
   'default_branch', 'url', 'verified_head', 'verified_state', 'verified_tree',
 ];
 const UNREGISTERED_REPOSITORY_KEYS = [
   'default_branch', 'formal_name_zh', 'planning_snapshot', 'readiness', 'url',
+  'verified_batch', 'verified_closeout', 'verified_closeout_tree',
+  'verified_head', 'verified_tree',
 ];
 const RUNTIME_KEYS = [
   'deepseek_harness_commit', 'deepseek_harness_previous_commit',
@@ -53,35 +58,26 @@ const STATUS_PATHS_LITERAL = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/evidence/README.md',
+  'docs/runtime/README.md',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
 ];
 const EXPECTED_VERIFIED_STATE =
-  'AIPT-M0-B006 MERGED_CLOSED: Base ' + BASE_COMMIT + ' (tree ' + BASE_TREE +
-  '); Candidate ' + B006_CANDIDATE.commit + ' (tree ' + B006_CANDIDATE.tree +
-  ', Candidate CI run ' + B006_CANDIDATE.ci_run + ' ' + B006_CANDIDATE.ci_conclusion +
-  '); Implementation merge ' + B006_IMPLEMENTATION_MERGE.commit + ' (tree ' +
-  B006_IMPLEMENTATION_MERGE.tree + ', parents ' + B006_IMPLEMENTATION_MERGE.parent1 +
-  ' and ' + B006_IMPLEMENTATION_MERGE.parent2 + ', subject ' +
-  B006_IMPLEMENTATION_MERGE.subject + '), Post-merge CI run ' +
-  B006_IMPLEMENTATION_MERGE.post_merge_ci_run + ' ' +
-  B006_IMPLEMENTATION_MERGE.post_merge_ci_conclusion +
-  '; Evidence Schema PASS; RAW_CAPTURE exporter PASS; verifier PASS; PostgreSQL Evidence ' +
-  'source PASS; determinism PASS; tamper detection PASS; root algorithm ' +
-  'SHA-256(manifest.json exact bytes); AUDIT_READY generator NOT_IMPLEMENTED; ' +
-  'AUDIT_RESULT generator NOT_IMPLEMENTED; signing/encryption/chunking NOT_IMPLEMENTED; ' +
-  'construction Harness initial route ' + B006_CONSTRUCTION_HARNESS.initial_route +
-  ', failure ' + B006_CONSTRUCTION_HARNESS.failure + ', observed input ' +
-  B006_CONSTRUCTION_HARNESS.observed_input_tokens + ', gate ' +
-  B006_CONSTRUCTION_HARNESS.input_token_limit + ', worker patch ' +
-  (B006_CONSTRUCTION_HARNESS.patch_produced ? 'present' : 'none') + ', final route ' +
-  B006_CONSTRUCTION_HARNESS.final_route + ', split-memory manual edit ' +
-  String(B006_CONSTRUCTION_HARNESS.split_memory_manual_edit) +
-  '; B000/B001/B002/B003/B004/B005/B006 remain MERGED_CLOSED; construction ' +
-  CONSTRUCTION + ' with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch ' +
-  NEXT_BATCH + ' is ' + NEXT_STATE + ' and not started; platform integration remains frozen';
+  'AIPT-M0-B007 IN_PROGRESS: fixed Base ' + B007_BASE_COMMIT + ' (tree ' + B007_BASE_TREE +
+  '); repositories.AIPT verified implementation remains immutable B006 merge ' +
+  B006_IMPLEMENTATION_MERGE.commit + ' (tree ' + B006_IMPLEMENTATION_MERGE.tree +
+  '); local-only read-only Web Dashboard construction with exact Config/Health/Queue/Run/StatusTable/Report panels; ' +
+  'Queue/Run/Status backend and Report UI export/generators NOT_IMPLEMENTED; installed bridge identity did not match ' +
+  'the prior qualification baseline and fresh Q1 failed before provider use, so final construction route ' +
+  B007_CONSTRUCTION_HARNESS.final_route + ' with zero provider calls and split-memory manual edit ' +
+  String(B007_CONSTRUCTION_HARNESS.split_memory_manual_edit) + '; external serial predecessor ' +
+  B007_EXTERNAL_SERIAL_PREDECESSOR.batch + ' MERGED_CLOSED at closeout ' +
+  B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_commit + ' (tree ' +
+  B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_tree + ', closeout CI ' +
+  B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_run + ' success); B000/B001/B002/B003/B004/B005/B006 remain ' +
+  'MERGED_CLOSED; construction IN_PROGRESS with current_batch AIPT-M0-B007 and global WIP 1; next serial batch ' +
+  NEXT_BATCH + ' is NOT_AUTHORIZED and not started; platform integration remains frozen';
 
 function same(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -90,6 +86,29 @@ function same(a, b) {
 function exactKeys(value, expected) {
   return value && typeof value === 'object' && !Array.isArray(value) &&
     same(Object.keys(value).sort(), [...expected].sort());
+}
+
+function expectedExternalHistory() {
+  return [
+    {
+      id: EXTERNAL_SERIAL_HISTORY[0].batch,
+      status: EXTERNAL_SERIAL_HISTORY[0].status,
+      closeout_commit: EXTERNAL_SERIAL_HISTORY[0].closeout_commit,
+      closeout_ci_run: EXTERNAL_SERIAL_HISTORY[0].closeout_ci_run,
+      closeout_ci_conclusion: EXTERNAL_SERIAL_HISTORY[0].closeout_ci_conclusion,
+    },
+    {
+      id: EXTERNAL_SERIAL_HISTORY[1].batch,
+      status: EXTERNAL_SERIAL_HISTORY[1].status,
+      candidate_commit: EXTERNAL_SERIAL_HISTORY[1].candidate,
+      candidate_tree: EXTERNAL_SERIAL_HISTORY[1].candidate_tree,
+      implementation_merge: EXTERNAL_SERIAL_HISTORY[1].merge_commit,
+      closeout_commit: EXTERNAL_SERIAL_HISTORY[1].closeout_commit,
+      closeout_tree: EXTERNAL_SERIAL_HISTORY[1].closeout_tree,
+      closeout_ci_run: EXTERNAL_SERIAL_HISTORY[1].closeout_ci_run,
+      closeout_ci_conclusion: EXTERNAL_SERIAL_HISTORY[1].closeout_ci_conclusion,
+    },
+  ];
 }
 
 export function checkStatusDocument(status) {
@@ -105,30 +124,36 @@ export function checkStatusDocument(status) {
   if (status?.authority_snapshot_id !== SNAPSHOT_ID) problems.push('snapshot id drifted');
   if (!exactKeys(standalone, STANDALONE_KEYS)) problems.push('standalone keys are not exact');
   if (standalone?.design !== DESIGN) problems.push('standalone design drifted');
-  if (standalone?.construction !== CONSTRUCTION) problems.push('construction is not ' + CONSTRUCTION);
-  if (standalone?.current_batch !== ACTIVE_BATCH || ACTIVE_BATCH !== 'NO_ACTIVE_BATCH') {
-    problems.push('current/active batch is not NO_ACTIVE_BATCH');
-  }
-  if (standalone?.global_wip !== 0) problems.push('GLOBAL_WIP is not zero');
+  if (standalone?.construction !== CONSTRUCTION) problems.push('construction is not IN_PROGRESS');
+  if (standalone?.current_batch !== ACTIVE_BATCH || ACTIVE_BATCH !== CURRENT_BATCH ||
+      CURRENT_BATCH !== 'AIPT-M0-B007') problems.push('current/active batch is not exact B007');
+  if (standalone?.global_wip !== 1) problems.push('GLOBAL_WIP is not one');
   if (standalone?.next_serial_batch !== NEXT_BATCH || standalone?.next_batch_state !== NEXT_STATE) {
     problems.push('next serial batch/state drifted');
   }
-  if (standalone?.next_batch_authorized !== true) problems.push('next batch is not authorized to prepare');
+  if (standalone?.next_batch_authorized !== false) problems.push('next batch was authorized');
   if (standalone?.next_batch_started !== false) problems.push('next batch was started');
-  if (!exactKeys(standalone?.batch_history, CLOSED_BATCH_IDS)) problems.push('batch history keys are not exact');
+  const expectedHistoryKeys = [...CLOSED_BATCH_IDS, CURRENT_BATCH];
+  if (!exactKeys(standalone?.batch_history, expectedHistoryKeys)) problems.push('batch history keys are not exact');
   for (const id of CLOSED_BATCH_IDS) {
     if (standalone?.batch_history?.[id] !== 'MERGED_CLOSED') problems.push(id + ' is not MERGED_CLOSED');
   }
-  if (CURRENT_BATCH !== 'AIPT-M0-B006' || standalone?.batch_history?.[CURRENT_BATCH] !== 'MERGED_CLOSED') {
-    problems.push('B006 is not the exact closed current task identity');
-  }
+  if (standalone?.batch_history?.[CURRENT_BATCH] !== 'IN_PROGRESS') problems.push('B007 is not IN_PROGRESS');
   if (!exactKeys(predecessor, PREDECESSOR_KEYS)) problems.push('external predecessor keys are not exact');
-  if (predecessor?.id !== EXTERNAL_SERIAL_PREDECESSOR.batch ||
-      predecessor?.status !== EXTERNAL_SERIAL_PREDECESSOR.status ||
-      predecessor?.closeout_commit !== EXTERNAL_SERIAL_PREDECESSOR.closeout_commit ||
-      predecessor?.closeout_ci_run !== EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_run ||
-      predecessor?.closeout_ci_conclusion !== EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_conclusion) {
-    problems.push('external predecessor provenance drifted');
+  const expectedPredecessor = {
+    id: B007_EXTERNAL_SERIAL_PREDECESSOR.batch,
+    status: B007_EXTERNAL_SERIAL_PREDECESSOR.status,
+    candidate_commit: B007_EXTERNAL_SERIAL_PREDECESSOR.candidate,
+    candidate_tree: B007_EXTERNAL_SERIAL_PREDECESSOR.candidate_tree,
+    implementation_merge: B007_EXTERNAL_SERIAL_PREDECESSOR.merge_commit,
+    closeout_commit: B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_commit,
+    closeout_tree: B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_tree,
+    closeout_ci_run: B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_run,
+    closeout_ci_conclusion: B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_ci_conclusion,
+  };
+  if (!same(predecessor, expectedPredecessor)) problems.push('external predecessor provenance drifted');
+  if (!same(standalone?.external_batch_history, expectedExternalHistory())) {
+    problems.push('external serial history drifted');
   }
   if (!exactKeys(platform, ['status', 'unfreeze_authorized']) ||
       platform?.status !== PLATFORM || platform?.unfreeze_authorized !== false) {
@@ -145,9 +170,13 @@ export function checkStatusDocument(status) {
       unregistered?.url !== 'https://github.com/zyc14588/UNREGISTERED' ||
       unregistered?.default_branch !== 'main' ||
       unregistered?.planning_snapshot !== '3e4a28bba1caf44828412f90bb6715b6955e3604' ||
-      unregistered?.readiness !== 'PLAYTESTABLE_DRAFT' ||
-      unregistered?.formal_name_zh !== '《未登记》') {
-    problems.push('UNREGISTERED repository status was modified');
+      unregistered?.verified_batch !== B007_EXTERNAL_SERIAL_PREDECESSOR.batch ||
+      unregistered?.verified_head !== B007_EXTERNAL_SERIAL_PREDECESSOR.merge_commit ||
+      unregistered?.verified_tree !== B007_EXTERNAL_SERIAL_PREDECESSOR.candidate_tree ||
+      unregistered?.verified_closeout !== B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_commit ||
+      unregistered?.verified_closeout_tree !== B007_EXTERNAL_SERIAL_PREDECESSOR.closeout_tree ||
+      unregistered?.readiness !== 'PLAYTESTABLE_DRAFT' || unregistered?.formal_name_zh !== '《未登记》') {
+    problems.push('UNREGISTERED repository status drifted');
   }
   if (!exactKeys(status?.runtime, RUNTIME_KEYS)) problems.push('runtime keys are not exact');
   if (status?.runtime?.deepseek_harness_commit !== HARNESS_SOURCE.commit ||
@@ -155,8 +184,8 @@ export function checkStatusDocument(status) {
       status?.runtime?.deepseek_harness_release !== HARNESS_SOURCE.release ||
       status?.runtime?.deepseek_harness_upgrade_authority !== HARNESS_SOURCE.upgrade_authority ||
       status?.runtime?.harness_installation !== HARNESS_SOURCE.installation ||
-      status?.runtime?.status !== 'minimal RAW_CAPTURE evidence exporter merged/closed') {
-    problems.push('runtime/Harness identity or B006 closeout status drifted');
+      status?.runtime?.status !== 'AIPT-M0-B007 local Web dashboard construction in progress') {
+    problems.push('runtime/Harness identity or B007 status drifted');
   }
   return problems;
 }
@@ -179,9 +208,10 @@ function identityChecks(repo) {
     ['B004 closeout', B004_CLOSEOUT.commit, B004_CLOSEOUT.tree],
     ['B005 Candidate', B005_CANDIDATE.commit, B005_CANDIDATE.tree],
     ['B005 merge', B005_IMPLEMENTATION_MERGE.commit, B005_IMPLEMENTATION_MERGE.tree],
-    ['B005 closeout/B006 base', B005_CLOSEOUT.commit, B005_CLOSEOUT.tree],
+    ['B005 closeout', B005_CLOSEOUT.commit, B005_CLOSEOUT.tree],
     ['B006 Candidate', B006_CANDIDATE.commit, B006_CANDIDATE.tree],
-    ['B006 implementation merge', B006_IMPLEMENTATION_MERGE.commit, B006_IMPLEMENTATION_MERGE.tree],
+    ['B006 merge', B006_IMPLEMENTATION_MERGE.commit, B006_IMPLEMENTATION_MERGE.tree],
+    ['B006 closeout/B007 base', B006_CLOSEOUT.commit, B006_CLOSEOUT.tree],
   ];
   return checks.map(([label, commit, tree]) => {
     const actual = git(repo, ['rev-parse', commit + '^{tree}'], { check: false });
@@ -194,9 +224,6 @@ export function run(ctx) {
   let pass = true;
   const ok = (message) => details.push('ok: ' + message);
   const fail = (message) => { pass = false; details.push('FAIL: ' + message); };
-  const anchor = (label, actual, expected) => {
-    if (actual === expected) ok(label + ' anchored'); else fail(label + ' drifted');
-  };
   let status;
   try {
     status = JSON.parse(fs.readFileSync(path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8'));
@@ -205,101 +232,53 @@ export function run(ctx) {
     return { result: 'FAIL', details };
   }
   for (const problem of checkStatusDocument(status)) fail(problem);
-  if (pass) ok('machine status is the exact B006 MERGED_CLOSED transition');
-
+  if (pass) ok('machine status is the exact B007 IN_PROGRESS construction state');
   if (!same(STATUS_TRANSITION_PATHS, STATUS_PATHS_LITERAL)) fail('STATUS_TRANSITION_PATHS drifted');
-  else ok('seven-path closeout status surface is exact');
-
-  const anchors = [
-    ['B006 Candidate commit', B006_CANDIDATE.commit, '3987b8d4c26ac079d01c214ba90e113eeffd5713'],
-    ['B006 Candidate tree', B006_CANDIDATE.tree, '4271a3fb71236a8b003b4d9ddc84727c6fec8d46'],
-    ['B006 Candidate CI', B006_CANDIDATE.ci_run, 32577246851],
-    ['B006 Candidate CI conclusion', B006_CANDIDATE.ci_conclusion, 'success'],
-    ['B006 merge directive', B006_IMPLEMENTATION_MERGE.directive, 'AIPT-M0-B006-MERGE-001'],
-    ['B006 implementation merge', B006_IMPLEMENTATION_MERGE.commit, '35acba9fb629f50087def3b720df304fadfd2158'],
-    ['B006 post-merge CI', B006_IMPLEMENTATION_MERGE.post_merge_ci_run, 32578143923],
-    ['B006 post-merge CI conclusion', B006_IMPLEMENTATION_MERGE.post_merge_ci_conclusion, 'success'],
-    ['Harness observed input', B006_CONSTRUCTION_HARNESS.observed_input_tokens, 190183],
-    ['Harness input limit', B006_CONSTRUCTION_HARNESS.input_token_limit, 180000],
-    ['Harness final route', B006_CONSTRUCTION_HARNESS.final_route, 'CODEX_ONLY'],
-    ['Harness split-memory manual edit', B006_CONSTRUCTION_HARNESS.split_memory_manual_edit, false],
-  ];
-  for (const item of anchors) anchor(...item);
+  else ok('future seven-path closeout status surface is exact');
 
   for (const [label, good] of identityChecks(ctx.repo)) {
     if (good) ok(label + ' immutable tree verified'); else fail(label + ' immutable tree drifted');
   }
-  const baseParents = git(ctx.repo, ['rev-list', '--parents', '-n', '1', B005_CLOSEOUT.commit], { check: false });
-  if (baseParents.status !== 0 || baseParents.stdout.trim() !== B005_CLOSEOUT.commit + ' ' + B005_CLOSEOUT.parent) {
-    fail('B005 closeout parent drifted');
-  } else ok('B005 closeout is the exact single-parent B006 base');
-
-  const candidateHistory = git(ctx.repo, [
-    'rev-list', '--reverse', '--first-parent', BASE_COMMIT + '..' + B006_CANDIDATE.commit,
-  ], { check: false });
-  const actualHistory = candidateHistory.status === 0
-    ? candidateHistory.stdout.split('\n').filter(Boolean) : null;
-  if (!same(actualHistory, B006_CANDIDATE_HISTORY)) fail('B006 Candidate history drifted');
-  else ok('B006 Candidate history is the exact one-commit linear history');
-
-  const mergeParents = git(ctx.repo, [
-    'rev-list', '--parents', '-n', '1', B006_IMPLEMENTATION_MERGE.commit,
-  ], { check: false });
-  const expectedMerge = [
-    B006_IMPLEMENTATION_MERGE.commit,
-    B006_IMPLEMENTATION_MERGE.parent1,
-    B006_IMPLEMENTATION_MERGE.parent2,
-  ].join(' ');
-  if (mergeParents.status !== 0 || mergeParents.stdout.trim() !== expectedMerge) {
-    fail('B006 implementation merge parents drifted');
-  } else ok('B006 implementation merge has the exact ordered parents');
-  const mergeSubject = git(ctx.repo, [
-    'show', '-s', '--format=%s', B006_IMPLEMENTATION_MERGE.commit,
-  ], { check: false });
-  if (mergeSubject.status !== 0 || mergeSubject.stdout.trim() !== B006_IMPLEMENTATION_MERGE.subject) {
-    fail('B006 implementation merge subject drifted');
-  } else ok('B006 implementation merge subject is exact');
-  const mergeDiff = git(ctx.repo, [
-    'diff', '--quiet', B006_CANDIDATE.commit, B006_IMPLEMENTATION_MERGE.commit,
-  ], { check: false });
-  if (mergeDiff.status !== 0) fail('B006 implementation merge differs from the accepted Candidate tree');
-  else ok('B006 Candidate and implementation merge share the accepted tree');
+  const closeoutParents = git(ctx.repo, ['rev-list', '--parents', '-n', '1', B006_CLOSEOUT.commit], { check: false });
+  if (closeoutParents.status !== 0 ||
+      closeoutParents.stdout.trim() !== B006_CLOSEOUT.commit + ' ' + B006_CLOSEOUT.parent) {
+    fail('B006 closeout parent drifted');
+  } else ok('B006 closeout is the exact single-parent B007 base');
 
   for (const relative of FROZEN_REGISTRY_PATHS) {
-    const base = git(ctx.repo, ['show', BASE_COMMIT + ':' + relative], { check: false });
+    const base = git(ctx.repo, ['show', B007_BASE_COMMIT + ':' + relative], { check: false });
     const current = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
     if (base.status !== 0 || base.stdout !== current) fail('frozen registry changed: ' + relative);
     else ok('frozen registry unchanged: ' + relative);
   }
 
   const docs = [
-    ['README.md', [SNAPSHOT_ID, 'current_batch = NO_ACTIVE_BATCH', 'GLOBAL_WIP = 0', NEXT_BATCH, NEXT_STATE, 'next_batch_started = false']],
-    ['docs/authority/PROJECT_STATUS.md', [SNAPSHOT_ID, 'current_batch = NO_ACTIVE_BATCH', 'GLOBAL_WIP = 0', NEXT_BATCH, NEXT_STATE]],
-    ['docs/evidence/README.md', ['B006 = MERGED_CLOSED', String(B006_CANDIDATE.ci_run), String(B006_IMPLEMENTATION_MERGE.post_merge_ci_run)]],
+    ['README.md', [SNAPSHOT_ID, 'AIPT-M0-B007', 'IN_PROGRESS', NEXT_BATCH, NEXT_STATE, 'next_batch_started = false']],
+    ['docs/authority/PROJECT_STATUS.md', [SNAPSHOT_ID, 'AIPT-M0-B007', 'GLOBAL_WIP = 1', NEXT_BATCH, NEXT_STATE]],
   ];
   for (const [relative, needles] of docs) {
-    const text = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
-    const missing = needles.filter((needle) => !text.includes(needle));
-    if (missing.length) fail(relative + ' misses B006 closeout tokens: ' + missing.join(', '));
-    else ok(relative + ' carries the B006 closeout boundary');
+    const body = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
+    const missing = needles.filter((needle) => !body.includes(needle));
+    if (missing.length) fail(relative + ' misses B007 construction tokens: ' + missing.join(', '));
+    else ok(relative + ' carries the B007 construction boundary');
   }
 
   const mutations = [
-    ['construction reopened', (s) => { s.tracks['AIPT-STANDALONE'].construction = 'IN_PROGRESS'; }],
-    ['active batch invented', (s) => { s.tracks['AIPT-STANDALONE'].current_batch = 'AIPT-M0-B006'; }],
-    ['GLOBAL_WIP nonzero', (s) => { s.tracks['AIPT-STANDALONE'].global_wip = 1; }],
-    ['next batch authorization removed', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_authorized = false; }],
+    ['construction closed', (s) => { s.tracks['AIPT-STANDALONE'].construction = 'IDLE_WAITING_NEXT_BATCH'; }],
+    ['active batch changed', (s) => { s.tracks['AIPT-STANDALONE'].current_batch = 'AIPT-M0-B008'; }],
+    ['GLOBAL_WIP zero', (s) => { s.tracks['AIPT-STANDALONE'].global_wip = 0; }],
+    ['next batch authorized', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
     ['next batch started', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_started = true; }],
-    ['next batch state drift', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_state = 'IN_PROGRESS'; }],
-    ['B006 reopened', (s) => { s.tracks['AIPT-STANDALONE'].batch_history['AIPT-M0-B006'] = 'IN_PROGRESS'; }],
+    ['B007 falsely closed', (s) => { s.tracks['AIPT-STANDALONE'].batch_history[CURRENT_BATCH] = 'MERGED_CLOSED'; }],
+    ['predecessor tree drift', (s) => { s.tracks['AIPT-STANDALONE'].external_serial_predecessor.candidate_tree = 'wrong'; }],
+    ['external history removed', (s) => { s.tracks['AIPT-STANDALONE'].external_batch_history.pop(); }],
     ['platform unfrozen', (s) => { s.tracks['AIPT-PLATFORM-INTEGRATION'].unfreeze_authorized = true; }],
-    ['verified head changed to closeout base', (s) => { s.repositories.AIPT.verified_head = BASE_COMMIT; }],
-    ['verified tree changed to base', (s) => { s.repositories.AIPT.verified_tree = BASE_TREE; }],
+    ['verified head changed to construction', (s) => { s.repositories.AIPT.verified_head = B007_BASE_COMMIT; }],
     ['verified state drift', (s) => { s.repositories.AIPT.verified_state += ' drift'; }],
     ['Harness identity drift', (s) => { s.runtime.deepseek_harness_commit = HARNESS_SOURCE.previous_commit; }],
-    ['runtime reopened', (s) => { s.runtime.status = 'minimal RAW_CAPTURE evidence exporter under construction'; }],
-    ['UNREGISTERED status mutation', (s) => { s.repositories.UNREGISTERED.readiness = 'IN_PROGRESS'; }],
-    ['unknown root field', (s) => { s.unregistered_started = true; }],
+    ['runtime closed', (s) => { s.runtime.status = 'closed'; }],
+    ['UNREGISTERED implementation drift', (s) => { s.repositories.UNREGISTERED.verified_head = 'wrong'; }],
+    ['unknown root field', (s) => { s.b008_started = true; }],
   ];
   let rejected = 0;
   for (const [, mutate] of mutations) {

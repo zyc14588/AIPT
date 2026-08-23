@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>AIPT — Local dashboard</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">AIPT</div>
+      <div class="heading">
+        <h1>Local dashboard</h1>
+        <p>Read-only capability view</p>
+      </div>
+    </header>
+    <main id="aipt-dashboard" class="dashboard" aria-label="AIPT capability panels" aria-live="polite">
+      <p class="loading">Loading local snapshot…</p>
+    </main>
+    <noscript>This local dashboard requires JavaScript to validate and render its read-only snapshot.</noscript>
+    <script type="module" src="/assets/app.js"></script>
+  </body>
+</html>

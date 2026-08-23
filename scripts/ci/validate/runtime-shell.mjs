@@ -1,9 +1,9 @@
-// AIPT-M0-B004 runtime-shell validator.
+// AIPT-M0-B007 runtime-shell validator.
 //
 // This is a dependency-free, fail-closed source/contract gate. It binds the
 // immutable launch order, real CONFIG/PostgreSQL/B003 migration wiring, first
 // mandatory unimplemented MODEL failure, reverse cleanup, redacted errors,
-// Core lifecycle shell, signal-aware CLI, strict shared config schema, and
+// Core lifecycle shell, final state-aware Web gate, signal-aware CLI, strict shared config schema, and
 // required unit/integration test inventory. Focused in-memory mutations prove
 // each critical check rejects drift without editing the working tree.
 import fs from 'node:fs';
@@ -39,6 +39,10 @@ const SOURCE_PATHS = [
   'internal/launcher/launcher.go',
   'internal/launcher/launcher_test.go',
   'internal/launcher/launcher_integration_test.go',
+  'internal/web/security.go',
+  'internal/web/server.go',
+  'internal/web/routes.go',
+  'internal/web/smoke_test.go',
   'cmd/aipt/command.go',
   'cmd/aipt/command_test.go',
   'cmd/aipt/main.go',
@@ -70,6 +74,7 @@ const REQUIRED_TESTS = [
   'TestRunExactOrderAndReverseShutdown',
   'TestRunFailFastAtEveryImplementedBoundary',
   'TestProductionModelGateFailsClosed',
+  'TestLiveLoopbackSmoke',
   'TestStartupRootErrorPrecedesAndSurvivesCleanupError',
   'TestCoreGateUsesRealCoreShellThroughDependencyInjection',
   'TestPostgresIntegrationLauncherConnectionMigrationAndNoOp',
@@ -132,7 +137,7 @@ export function checkRuntimeSources(files, schema) {
     if (typeof files[required] !== 'string') fail('required runtime-shell source missing: ' + required);
   }
   if (!pass) return { name: 'runtime-shell', result: 'FAIL', details };
-  ok('all required B004 runtime-shell sources and tests are present');
+  ok('all required B007 runtime-shell sources and tests are present');
 
   const gates = files['internal/launcher/gates.go'];
   const orderMatch = /var fixedGateOrder = \[\.\.\.\]Gate\{([\s\S]*?)\n\}/.exec(gates);
@@ -142,10 +147,10 @@ export function checkRuntimeSources(files, schema) {
   } else {
     fail('fixed gate order drifted: ' + JSON.stringify(parsedOrder));
   }
-  expectText(gates, /case GateConfig, GatePostgreSQL, GateMigrations, GateCore:\s*return Implemented/,
-    'production implementation map marks exactly CONFIG/PostgreSQL/MIGRATIONS/Core implemented');
-  expectText(gates, /case GateModel, GateHarness, GateIPC, GateWeb:\s*return NotImplemented/,
-    'production implementation map keeps MODEL/HARNESS/IPC/WEB unimplemented');
+  expectText(gates, /case GateConfig, GatePostgreSQL, GateMigrations, GateCore, GateWeb:\s*return Implemented/,
+    'production implementation map marks exactly CONFIG/PostgreSQL/MIGRATIONS/Core/WEB implemented');
+  expectText(gates, /case GateModel, GateHarness, GateIPC:\s*return NotImplemented/,
+    'production implementation map keeps MODEL/HARNESS/IPC unimplemented');
   expectText(gates, /RuntimeReady:\s+false/, 'runtime plan is explicitly not ready');
   expectText(gates, /FirstBlockingGate:\s+firstBlocking/, 'runtime plan exposes its first blocking gate');
   expectText(gates, /firstBlocking == "" && implementation == NotImplemented/,
@@ -159,6 +164,14 @@ export function checkRuntimeSources(files, schema) {
     'MODEL production gate fails closed as unimplemented');
   expectText(dependencies, /StartCore:\s+coreComponent\(shutdownTimeout\)/,
     'Core production dependency uses the B004 lifecycle shell');
+  expectText(dependencies, /StartWeb:\s+webComponent\(\)/,
+    'WEB production dependency uses the real B007 secure loopback component');
+  expectText(dependencies, /type WebStartState struct \{[\s\S]*Config\s+\*config\.Config[\s\S]*PriorStartedGates \[\]Gate/,
+    'WEB receives only validated config and a defensive prior-gate snapshot');
+  expectText(dependencies, /expected := fixedGateOrder\[:len\(fixedGateOrder\)-1\]/,
+    'WEB verifies every mandatory predecessor in immutable order');
+  expectText(dependencies, /host, err := web\.Start\(ctx, state\.Config\)/,
+    'WEB starts through the secure internal/web host boundary');
 
   const launcher = files['internal/launcher/launcher.go'];
   expectText(launcher, /for _, gate := range fixedGateOrder \{/, 'Run walks only the immutable fixed gate order');
@@ -276,9 +289,9 @@ export function checkRuntimeSources(files, schema) {
     /exec\.Command\s*\(/,
   ];
   if (forbiddenRuntimeCalls.some((pattern) => pattern.test(productionGo))) {
-    fail('B004 production shell starts a network listener or external process');
+    fail('non-Web production shell starts an unauthorized network listener or external process');
   } else {
-    ok('B004 production shell starts no network listener or external process');
+    ok('non-Web production shell starts no additional network listener or external process');
   }
 
   const allTests = SOURCE_PATHS.filter((file) => file.endsWith('_test.go')).map((file) => files[file]).join('\n');
@@ -346,8 +359,8 @@ export function run(ctx) {
       mutate(files) {
         files['internal/launcher/gates.go'] = replaceOnce(
           files['internal/launcher/gates.go'],
-          'case GateModel, GateHarness, GateIPC, GateWeb:',
-          'case GateHarness, GateIPC, GateWeb:',
+          'case GateModel, GateHarness, GateIPC:',
+          'case GateHarness, GateIPC:',
         );
       },
     },
@@ -419,7 +432,7 @@ export function run(ctx) {
     },
     {
       label: 'network listener added',
-      reason: /starts a network listener or external process/,
+      reason: /unauthorized network listener or external process/,
       mutate(files) {
         files['cmd/aipt/main.go'] += '\nfunc forbiddenProbe() { net.Listen("tcp", ":0") }\n';
       },

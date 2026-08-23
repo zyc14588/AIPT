@@ -1,15 +1,15 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-23",
-  "authority_snapshot_id": "AIPT-M0-B006-CLOSEOUT-001",
+  "authority_snapshot_id": "AIPT-M0-B007-CONSTRUCTION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "UNREGISTERED-AIPT-P0-B002",
-      "next_batch_state": "AUTHORIZED_TO_PREPARE",
-      "next_batch_authorized": true,
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-M0-B007",
+      "next_serial_batch": "INT-AIPT-UNREGISTERED-001",
+      "next_batch_state": "NOT_AUTHORIZED",
+      "next_batch_authorized": false,
       "next_batch_started": false,
       "batch_history": {
         "AIPT-M0-B000": "MERGED_CLOSED",
@@ -18,16 +18,41 @@
         "AIPT-M0-B003": "MERGED_CLOSED",
         "AIPT-M0-B004": "MERGED_CLOSED",
         "AIPT-M0-B005": "MERGED_CLOSED",
-        "AIPT-M0-B006": "MERGED_CLOSED"
+        "AIPT-M0-B006": "MERGED_CLOSED",
+        "AIPT-M0-B007": "IN_PROGRESS"
       },
       "external_serial_predecessor": {
-        "id": "UNREGISTERED-AIPT-P0-B001",
+        "id": "UNREGISTERED-AIPT-P0-B003",
         "status": "MERGED_CLOSED",
-        "closeout_commit": "a37b284bf5ec35895f436abe71d22599edb6da53",
-        "closeout_ci_run": 32194224161,
+        "candidate_commit": "a304070b2a31c8717b6bacbb2a2c3b7aa5e49ad4",
+        "candidate_tree": "aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc",
+        "implementation_merge": "5d25dad0dbcb648de565ea723027f999ec5b3a37",
+        "closeout_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+        "closeout_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+        "closeout_ci_run": 32621464543,
         "closeout_ci_conclusion": "success"
       },
-      "global_wip": 0
+      "external_batch_history": [
+        {
+          "id": "UNREGISTERED-AIPT-P0-B001",
+          "status": "MERGED_CLOSED",
+          "closeout_commit": "a37b284bf5ec35895f436abe71d22599edb6da53",
+          "closeout_ci_run": 32194224161,
+          "closeout_ci_conclusion": "success"
+        },
+        {
+          "id": "UNREGISTERED-AIPT-P0-B002",
+          "status": "MERGED_CLOSED",
+          "candidate_commit": "284c50eeab65c0713a6776198004245895724cba",
+          "candidate_tree": "781220f10f7c2f72e58ba2d6d214b58833045a13",
+          "implementation_merge": "5c12c0b5a126e8dfa891eae6d13f7d472781e87a",
+          "closeout_commit": "7ae44d12b3637e49f0883049a09423dd4f385341",
+          "closeout_tree": "84c5abd8ca74fca7c00ccf77b798481de8f3d7f7",
+          "closeout_ci_run": 32589300293,
+          "closeout_ci_conclusion": "success"
+        }
+      ],
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -40,18 +65,23 @@
       "default_branch": "main",
       "verified_head": "35acba9fb629f50087def3b720df304fadfd2158",
       "verified_tree": "4271a3fb71236a8b003b4d9ddc84727c6fec8d46",
-      "verified_state": "AIPT-M0-B006 MERGED_CLOSED: Base 10d0232bd2e3e42601bbb00cedc753f842e219db (tree 922115b9a75a7eca8dd97475f3f228bc7d3d2c10); Candidate 3987b8d4c26ac079d01c214ba90e113eeffd5713 (tree 4271a3fb71236a8b003b4d9ddc84727c6fec8d46, Candidate CI run 32577246851 success); Implementation merge 35acba9fb629f50087def3b720df304fadfd2158 (tree 4271a3fb71236a8b003b4d9ddc84727c6fec8d46, parents 10d0232bd2e3e42601bbb00cedc753f842e219db and 3987b8d4c26ac079d01c214ba90e113eeffd5713, subject merge: integrate AIPT-M0-B006), Post-merge CI run 32578143923 success; Evidence Schema PASS; RAW_CAPTURE exporter PASS; verifier PASS; PostgreSQL Evidence source PASS; determinism PASS; tamper detection PASS; root algorithm SHA-256(manifest.json exact bytes); AUDIT_READY generator NOT_IMPLEMENTED; AUDIT_RESULT generator NOT_IMPLEMENTED; signing/encryption/chunking NOT_IMPLEMENTED; construction Harness initial route CODEX_HARNESS, failure HARNESS_INPUT_TOKEN_BUDGET, observed input 190183, gate 180000, worker patch none, final route CODEX_ONLY, split-memory manual edit false; B000/B001/B002/B003/B004/B005/B006 remain MERGED_CLOSED; construction IDLE_WAITING_NEXT_BATCH with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch UNREGISTERED-AIPT-P0-B002 is AUTHORIZED_TO_PREPARE and not started; platform integration remains frozen"
+      "verified_state": "AIPT-M0-B007 IN_PROGRESS: fixed Base e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8 (tree 326def92334a43f6d63cd77b40f0eae9af31b375); repositories.AIPT verified implementation remains immutable B006 merge 35acba9fb629f50087def3b720df304fadfd2158 (tree 4271a3fb71236a8b003b4d9ddc84727c6fec8d46); local-only read-only Web Dashboard construction with exact Config/Health/Queue/Run/StatusTable/Report panels; Queue/Run/Status backend and Report UI export/generators NOT_IMPLEMENTED; installed bridge identity did not match the prior qualification baseline and fresh Q1 failed before provider use, so final construction route CODEX_ONLY with zero provider calls and split-memory manual edit false; external serial predecessor UNREGISTERED-AIPT-P0-B003 MERGED_CLOSED at closeout 358d6d9d08a86818e34fd0c0d9a62bfe66e73abe (tree 5585271c78d1fe5cd8357c7b36a501bee34f0240, closeout CI 32621464543 success); B000/B001/B002/B003/B004/B005/B006 remain MERGED_CLOSED; construction IN_PROGRESS with current_batch AIPT-M0-B007 and global WIP 1; next serial batch INT-AIPT-UNREGISTERED-001 is NOT_AUTHORIZED and not started; platform integration remains frozen"
     },
     "UNREGISTERED": {
       "url": "https://github.com/zyc14588/UNREGISTERED",
       "default_branch": "main",
       "planning_snapshot": "3e4a28bba1caf44828412f90bb6715b6955e3604",
+      "verified_batch": "UNREGISTERED-AIPT-P0-B003",
+      "verified_head": "5d25dad0dbcb648de565ea723027f999ec5b3a37",
+      "verified_tree": "aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc",
+      "verified_closeout": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+      "verified_closeout_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
       "readiness": "PLAYTESTABLE_DRAFT",
       "formal_name_zh": "《未登记》"
     }
   },
   "runtime": {
-    "status": "minimal RAW_CAPTURE evidence exporter merged/closed",
+    "status": "AIPT-M0-B007 local Web dashboard construction in progress",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

@@ -178,7 +178,7 @@ const STORAGE_STEP_KEYS = [
   ['name', 'run'],
 ];
 
-// The three explicit B002 contract gates plus the retained aggregate
+// The retained focused gates through B007 plus the aggregate
 // `pnpm run check`. Each must be exactly one real unconditional inline
 // `run:` step of the toolchain job, positioned after the single frozen
 // install step, with the auditable coverage tokens on that same step's name.
@@ -212,7 +212,23 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run test:evidence-go',
     nameTokens: ['b006', 'evidence', 'go', 'exporter', 'verifier', 'deterministic', 'tamper tests'],
   },
-  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006', 'aggregate'] },
+  {
+    command: 'pnpm run check:web-ui',
+    nameTokens: ['b007', 'strict web validator', 'loopback', 'host/origin/csrf', 'six truthful panels', 'embedded artifact'],
+  },
+  {
+    command: 'pnpm run test:web-ui',
+    nameTokens: ['b007', 'typescript dashboard', 'node 24', 'native type stripping'],
+  },
+  {
+    command: 'pnpm run test:web-go',
+    nameTokens: ['b007', 'go web host', 'unit', 'security tests'],
+  },
+  {
+    command: 'pnpm run smoke:web-ui',
+    nameTokens: ['b007', 'live loopback web smoke test', 'dynamic 127.0.0.1 port'],
+  },
+  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007', 'aggregate'] },
 ];
 
 // Retained single-line gate commands: each must be exactly one real inline
@@ -1865,6 +1881,50 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run test:evidence-go', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B007 strict Web validator removed from toolchain',
+      reason: /check:web-ui.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:web-ui', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B007 TypeScript Dashboard tests removed from toolchain',
+      reason: /test:web-ui.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:web-ui', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B007 Go Web Host tests removed from toolchain',
+      reason: /test:web-go.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:web-go', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B007 live loopback smoke removed from toolchain',
+      reason: /smoke:web-ui.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run smoke:web-ui', '        run: node --version'),
           ),
           lock,
         ),

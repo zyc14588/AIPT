@@ -1,19 +1,19 @@
-// Shared B006 closeout validator constants and immutable predecessor identities.
+// Shared B007 construction validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
-// acceptances and B004/B005 closeouts. Nothing is computed at runtime from the candidate itself, so
+// acceptances and B004/B005/B006 closeouts. Nothing is computed at runtime from the candidate itself, so
 // the candidate cannot validate itself into acceptance.
 //
-// BASE_* is the accepted main base the B006 candidate must diff against: the
-// AIPT-M0-B005 closeout commit and its tree, held as independent literal
+// BASE_* is the accepted main base the B007 candidate must diff against: the
+// AIPT-M0-B006 closeout commit and its tree, held as independent literal
 // anchors. Every predecessor keeps its own original identity.
 
-export const CURRENT_BATCH = 'AIPT-M0-B006';
+export const CURRENT_BATCH = 'AIPT-M0-B007';
 
-// B006 is closed. The cross-repository P0-B002 item is authorized only to
-// prepare and is not active; starting it requires a separate Owner start.
-export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
+// B007 is the sole active construction. The separately named unregistered
+// integration item and B008 remain explicitly unauthorized.
+export const ACTIVE_BATCH = 'AIPT-M0-B007';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -23,7 +23,7 @@ export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B006 closeout snapshot (machine + human docs).
+// Public status date of the B007 construction snapshot (machine + human docs).
 export const STATUS_DATE = '2026-08-23';
 
 // Immutable closed-batch identities — historical state, never updated by
@@ -245,6 +245,74 @@ export const B006_IMPLEMENTATION_MERGE = {
   post_merge_ci_conclusion: 'success',
 };
 
+// Immutable B006 closeout: the independently supplied B007 base. It is a
+// single-parent authority commit after the accepted B006 implementation
+// merge and its exact public CI result is historical evidence.
+export const B006_CLOSEOUT = {
+  commit: 'e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8',
+  tree: '326def92334a43f6d63cd77b40f0eae9af31b375',
+  parent: '35acba9fb629f50087def3b720df304fadfd2158',
+  ci_run: 32579049539,
+  ci_conclusion: 'success',
+};
+
+export const B007_BASE_COMMIT = B006_CLOSEOUT.commit;
+export const B007_BASE_TREE = B006_CLOSEOUT.tree;
+export const B007_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B007';
+export const B007_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-M0-B007';
+
+// Current cross-repository serial predecessor required by B007. Candidate,
+// merge and closeout identities remain separately auditable facts.
+export const B007_EXTERNAL_SERIAL_PREDECESSOR = {
+  batch: 'UNREGISTERED-AIPT-P0-B003',
+  status: 'MERGED_CLOSED',
+  candidate: 'a304070b2a31c8717b6bacbb2a2c3b7aa5e49ad4',
+  candidate_tree: 'aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc',
+  candidate_ci_run: 32619196472,
+  candidate_ci_conclusion: 'success',
+  merge_commit: '5d25dad0dbcb648de565ea723027f999ec5b3a37',
+  merge_ci_run: 32621232115,
+  merge_ci_conclusion: 'success',
+  closeout_commit: '358d6d9d08a86818e34fd0c0d9a62bfe66e73abe',
+  closeout_tree: '5585271c78d1fe5cd8357c7b36a501bee34f0240',
+  closeout_ci_run: 32621464543,
+  closeout_ci_conclusion: 'success',
+};
+
+export const EXTERNAL_SERIAL_HISTORY = [
+  EXTERNAL_SERIAL_PREDECESSOR,
+  {
+    batch: 'UNREGISTERED-AIPT-P0-B002',
+    status: 'MERGED_CLOSED',
+    candidate: '284c50eeab65c0713a6776198004245895724cba',
+    candidate_tree: '781220f10f7c2f72e58ba2d6d214b58833045a13',
+    merge_commit: '5c12c0b5a126e8dfa891eae6d13f7d472781e87a',
+    closeout_commit: '7ae44d12b3637e49f0883049a09423dd4f385341',
+    closeout_tree: '84c5abd8ca74fca7c00ccf77b798481de8f3d7f7',
+    closeout_ci_run: 32589300293,
+    closeout_ci_conclusion: 'success',
+  },
+];
+
+// B007 construction qualification telemetry. The installed Bridge exact
+// identity did not match the reusable baseline and the fresh Q1 provider
+// synchronization failed before any model call, so policy selected Codex-only.
+export const B007_CONSTRUCTION_HARNESS = {
+  bridge_version: '0.6.5',
+  bridge_hotfix: 'security-audit-repair-r1',
+  harness_source_commit: '141eb6fef83422698aef7a981029e843e8161534',
+  baseline_identity_match: false,
+  qualification_evidence_reused: false,
+  qualification_result: 'UNQUALIFIED_OR_WITHDRAWN',
+  qualification_failure: 'BRIDGE_PROGRESSIVE_TOOL_SYNCHRONIZATION',
+  api_calls: 0,
+  patch_produced: false,
+  final_route: 'CODEX_ONLY',
+  maximum_workers: 2,
+  observed_peak_workers: 0,
+  split_memory_manual_edit: false,
+};
+
 // Construction-routing telemetry is provenance, not a product runtime
 // failure. The Bridge-owned split-memory profile remains outside repository
 // authority and was not manually edited.
@@ -387,8 +455,8 @@ export const B004_DEPENDENCY_SECURITY_REQUALIFICATION = {
   ],
 };
 
-export const BASE_COMMIT = B006_BASE_COMMIT;
-export const BASE_TREE = B006_BASE_TREE;
+export const BASE_COMMIT = B007_BASE_COMMIT;
+export const BASE_TREE = B007_BASE_TREE;
 
 export const TOOLCHAIN = {
   go: '1.26.6',
@@ -500,38 +568,46 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// Exact AIPT-M0-B006 construction surface. Protocol/SDK, B003 storage,
-// B004 runtime, B005 Harness Adapter, toolchains, dependencies and licenses
-// stay frozen. B006 adds only the public Evidence/Audit schema, minimal native
-// RAW_CAPTURE exporter/verifier, synthetic fixtures, docs, and their gates.
+// Exact AIPT-M0-B007 construction surface. Protocol/SDK, storage, Evidence,
+// toolchains, dependency identities, license policy, queue persistence and all
+// future-product surfaces stay frozen. B007 adds only the secure loopback Web
+// host, dependency-free dashboard/read model, launcher seam, docs and gates.
 export const ALLOWED_PATHS = [
-  'schemas/evidence/v1/**',
-  'internal/evidence/**',
-  'testdata/evidence/v1/**',
-  'docs/evidence/**',
-  'docs/harness/README.md',
+  '.github/workflows/ci.yml',
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
+  'docs/runtime/README.md',
+  'docs/security/README.md',
+  'internal/launcher/dependencies.go',
+  'internal/launcher/gates.go',
+  'internal/launcher/launcher.go',
+  'internal/launcher/launcher_test.go',
+  'internal/web/**',
   'package.json',
+  'packages/web-ui/**',
+  'pnpm-lock.yaml',
+  'schemas/web/v1/**',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
-  'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/tree-integrity.mjs',
-  'scripts/ci/validate/workflow.mjs',
-  'scripts/ci/validate/evidence.mjs',
-  'scripts/ci/validate/harness-adapter.mjs',
+  'scripts/ci/sbom/generate-sbom.mjs',
+  'scripts/ci/validate/runtime-shell.mjs',
+  'scripts/ci/validate/sbom.mjs',
   'scripts/ci/validate/standalone-entrypoints.mjs',
-  '.github/workflows/ci.yml',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/supply-chain.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+  'scripts/ci/validate/web-ui.mjs',
+  'scripts/ci/validate/workflow.mjs',
 ];
 
-// Exact B006 closeout authority surface. No implementation, dependency,
+// Future B007 closeout authority surface. No implementation, dependency,
 // workflow, package, tool, cross-repository, or split-memory path is allowed.
 export const CLOSEOUT_ALLOWED_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/evidence/README.md',
+  'docs/runtime/README.md',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
@@ -542,7 +618,7 @@ export const STATUS_TRANSITION_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/evidence/README.md',
+  'docs/runtime/README.md',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
@@ -560,14 +636,12 @@ export const FORBIDDEN_PREFIXES = [
   'docs/architecture/',
   'docs/integration/',
   'docs/test-model/',
-  'docs/security/',
   'packages/evidence/',
   'packages/harness-adapter/',
   'internal/protocol/',
   'internal/storage/postgres/',
   'internal/harness/',
   'internal/model/',
-  'internal/web/',
   'internal/ipc/',
   'internal/campaign/',
   '.go-version',
@@ -578,15 +652,14 @@ export const FORBIDDEN_PREFIXES = [
   'tools/ci-actions.lock.json',
   'tools/supply-chain/policy.json',
   'tools/supply-chain/licenses.json',
-  'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
 ];
 
 // Frozen authority registries: byte-for-byte immutability is enforced
 // against the accepted main base. decisions.json, supersessions.json, and
-// deferred-parameters.json are all fully frozen for B006 (the B003
+// deferred-parameters.json are all fully frozen for B007 (the B003
 // security-requalification controlled evolution of deferred-parameters.json
-// is closed; B006 performs no deferred-parameters work).
+// is closed; B007 performs no deferred-parameters work).
 export const FROZEN_REGISTRY_PATHS = [
   'docs/authority/registry/decisions.json',
   'docs/authority/registry/supersessions.json',

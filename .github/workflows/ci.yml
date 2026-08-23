@@ -57,7 +57,7 @@ jobs:
   # ------------------------------------------------------------------
   # Exact toolchain qualification on GA and reference runner images,
   # plus the explicit B002 protocol, B004 runtime-shell, and B005 Harness
-  # Adapter and B006 Evidence gates on every matrix runner.
+  # Adapter, B006 Evidence, and B007 Web gates on every matrix runner.
   # ------------------------------------------------------------------
   toolchain:
     name: toolchain (${{ matrix.os }})
@@ -130,7 +130,15 @@ jobs:
         run: pnpm run check:evidence
       - name: "B006 Evidence Go exporter/verifier deterministic and tamper tests"
         run: pnpm run test:evidence-go
-      - name: B001+B002+B003+B004+B005+B006 aggregate validators (pnpm run check)
+      - name: "B007 strict Web validator: loopback Host/Origin/CSRF + six truthful panels + embedded artifact"
+        run: pnpm run check:web-ui
+      - name: B007 TypeScript Dashboard contract tests (Node 24 native type stripping)
+        run: pnpm run test:web-ui
+      - name: B007 Go Web Host unit and security tests
+        run: pnpm run test:web-go
+      - name: B007 live loopback Web smoke test (dynamic 127.0.0.1 port)
+        run: pnpm run smoke:web-ui
+      - name: B001+B002+B003+B004+B005+B006+B007 aggregate validators (pnpm run check)
         run: pnpm run check
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |

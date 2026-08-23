@@ -6,10 +6,13 @@
 // dependency inventory/license coverage (machine SPDX license values —
 // three-layer PostgreSQL model: main software = PostgreSQL, packaging source
 // = MIT, composite Docker Official Image = NOASSERTION with both frozen
-// digests), a hardened licenses.json baseline, the first-party pnpm workspace
-// model (exact importer set {root, packages/adapter-sdk}, zero dependency
-// specifiers, zero third-party packages), negative regressions on mutated
-// in-memory copies, deterministic SBOM inputs, and the secret-free /
+// digests), a hardened licenses.json baseline, and the first-party pnpm
+// workspace model: exactly {., packages/adapter-sdk,
+// packages/harness-adapter, packages/web-ui}; root, Adapter SDK, and Web UI
+// importers are empty; Harness Adapter has exactly one workspace dependency
+// (@aipt/adapter-sdk workspace:* -> link:../adapter-sdk); and there are zero
+// third-party package records. The gate also covers negative regressions on
+// mutated in-memory copies, deterministic SBOM inputs, and the secret-free /
 // no-real-model-config rules.
 //
 // AIPT-M0-B003 iteration 6a evolution (explicit model):
@@ -42,10 +45,13 @@
 //     current go version, wrong verified_at, top-level verified_at not the
 //     B003 time, extra key in security_requalification, ambiguous go_version
 //     key).
-// The B001 "root importer only" snapshot is superseded by the exact two-
-// importer workspace model; the exact-set validation is kept and extended,
-// never deleted. The frozen policy.json remains an immutable B001 baseline and
-// is never rewritten.
+// Workspace history is intentionally unambiguous:
+//   - B001: root-only bootstrap snapshot;
+//   - B002: root + adapter-sdk;
+//   - B005: + harness-adapter;
+//   - B007: + dependency-free web-ui.
+// Exact-set validation is kept and extended, never deleted. The frozen
+// policy.json remains an immutable B001 baseline and is never rewritten.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -113,7 +119,11 @@ const EXPECTED_SELECTED_MODULE_GRAPH = {
 //   - postgresql-docker-official-image (composite container of multiple
 //     sources/components): NOASSERTION — PostgreSQL or MIT for the whole
 //     image is rejected.
-// B002 iteration 4 adds the first-party @aipt/adapter-sdk record (MIT);
+// B002 iteration 4 adds the first-party @aipt/adapter-sdk record (MIT), and
+// B005 adds the first-party @aipt/harness-adapter record (MIT). B007 adds
+// @aipt/web-ui as a first-party MIT component covered by the immutable AIPT
+// root MIT record: it intentionally adds no licenses.json record and is
+// independently represented in the SBOM.
 // AIPT-M0-B003 iteration 6a adds the six third-party Go runtime records
 // (MIT for the four jackc modules, BSD-3-Clause for the two golang.org/x
 // modules).
@@ -141,10 +151,13 @@ const EXPECTED_SPDX_LICENSES = {
   'golang.org/x/tools': 'BSD-3-Clause',
 };
 
-// Exact expected record kinds for the current inventory: the exact
-// first-party set {AIPT, @aipt/adapter-sdk} plus the exact approved
-// tooling/CI/infrastructure set preserved from B001 plus the six approved
-// third-party Go runtime modules.
+// Exact expected record kinds for the current 21-record inventory: the exact
+// first-party license-record set {AIPT, @aipt/adapter-sdk,
+// @aipt/harness-adapter}, the approved tooling/CI/infrastructure records
+// preserved from B001, the six approved third-party Go runtime modules, and
+// the two B004-selected graph-tooling modules. The first-party MIT Web UI is
+// covered by the immutable AIPT root record and independently represented in
+// the SBOM, so it intentionally has no additional licenses.json record.
 const EXPECTED_RECORD_KINDS = {
   AIPT: 'first_party',
   '@aipt/adapter-sdk': 'first_party',
@@ -298,10 +311,10 @@ function readBuildPackageGraph(repo) {
 }
 
 // Pure machine check over a parsed licenses.json inventory: record sanity
-// (records must be a non-empty array with unique ids), the exact 20-identity
-// record set (exact first-party set + exact B001 tooling/CI/infrastructure
-// set + exact B003 six-module Go runtime closure + two B004-selected graph
-// tooling identities), exact SPDX license values,
+// (records must be a non-empty array with unique ids), the exact 21-identity
+// record set (three first-party license records + exact B001
+// tooling/CI/infrastructure set + exact B003 six-module Go runtime closure +
+// two B004-selected graph-tooling identities), exact SPDX license values,
 // exact record kinds, the truthful SDK record metadata, the truthful B003 Go
 // runtime record metadata (version/directness/role/selection), the frozen
 // PostgreSQL digests on the composite-image record, and the exact
@@ -398,8 +411,8 @@ function checkLicenseInventory(licenses) {
     fail(`go toolchain license record selected_by_batch must be ${SUPPLY_CHAIN_BASELINE_BATCH} (historical B001 initial qualification, never rewritten)`);
   }
   // Machine-check every expected inventory record against its expected SPDX
-  // license value and kind — all 18 expected identities (12 prior + six B003
-  // Go runtime modules) must exist and match exactly.
+  // license value and kind — all 21 current identities must exist and match
+  // exactly.
   let identityOk = true;
   for (const [id, expected] of Object.entries(EXPECTED_SPDX_LICENSES)) {
     const rec = records.find((r) => r?.id === id);
@@ -419,7 +432,7 @@ function checkLicenseInventory(licenses) {
     }
   }
   if (identityOk) {
-    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (first-party + B001 tooling/CI/infrastructure + B003 runtime closure + B004 graph tooling)`);
+    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (three first-party records + B001 tooling/CI/infrastructure + B003 runtime closure + B004 graph tooling)`);
   }
   // Exact-set model: no unrecorded third-party identity may exist.
   const known = new Set(Object.keys(EXPECTED_SPDX_LICENSES));
@@ -429,7 +442,9 @@ function checkLicenseInventory(licenses) {
   } else if (records.length > 0 && records.length === known.size) {
     ok(`license record set is exactly the ${known.size} expected identities (zero unrecorded third-party packages)`);
   }
-  // Exact first-party set: exactly AIPT + @aipt/adapter-sdk.
+  // Exact first-party license-record set: AIPT + @aipt/adapter-sdk +
+  // @aipt/harness-adapter. The B007 Web UI is covered by the immutable AIPT
+  // root MIT record and is independently represented in the SBOM.
   const firstParty = records.filter((r) => r?.kind === 'first_party').map((r) => r?.id).sort();
   if (JSON.stringify(firstParty) !== JSON.stringify([...EXPECTED_FIRST_PARTY_IDS].sort())) {
     fail(`first-party set must be exactly ${EXPECTED_FIRST_PARTY_IDS.join(' + ')}, got ${JSON.stringify(firstParty)}`);
@@ -660,10 +675,11 @@ function checkLicenseInventory(licenses) {
 }
 
 // Pure machine check of the first-party pnpm workspace model.
-//   - exact importer set: root + adapter-sdk + harness-adapter;
-//   - root and SDK are empty; Harness Adapter has exactly one workspace SDK edge;
+//   - exact importer set: . + adapter-sdk + harness-adapter + web-ui;
+//   - root, Adapter SDK, and Web UI are empty;
+//   - Harness Adapter has exactly one workspace SDK edge;
 //   - zero third-party packages (no `packages:` section);
-//   - pnpm-workspace.yaml declares packages/* and its prose names the SDK.
+//   - pnpm-workspace.yaml declares packages/* and documents the SDK edge.
 function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
   const details = [];
   let pass = true;
@@ -720,21 +736,23 @@ function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
       importerShapeOk = false;
     }
   }
-  if (importerShapeOk) ok('root/SDK importers are empty and Harness Adapter has the exact first-party workspace SDK edge');
+  if (importerShapeOk) ok('root/SDK/Web UI importers are empty; Harness Adapter has the exact first-party SDK edge');
   if (typeof workspaceYaml === 'string') {
     if (!workspaceYaml.includes('"packages/*"')) fail('pnpm-workspace.yaml must keep the packages/* workspace glob');
     else if (!workspaceYaml.includes('packages/adapter-sdk')) fail('pnpm-workspace.yaml prose must name the registered first-party package packages/adapter-sdk');
     else if (!workspaceYaml.includes('@aipt/harness-adapter')) fail('pnpm-workspace.yaml prose must name @aipt/harness-adapter');
     else if (!workspaceYaml.includes('workspace dependency')) fail('pnpm-workspace.yaml must document the first-party workspace dependency');
-    else ok('pnpm-workspace.yaml declares packages/* and documents both first-party packages');
+    else ok('pnpm-workspace.yaml declares packages/* and documents the Adapter SDK/Harness Adapter first-party workspace edge');
   }
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
 // Pure machine check that every registered workspace package directory has a
-// matching first-party license record (id == package name, version ==
-// package version and MIT license. Only Harness Adapter may carry a dependency,
-// and it must be exactly @aipt/adapter-sdk workspace:*.
+// matching first-party license coverage. The B007 Web UI is a dependency-free
+// repository component covered by the immutable AIPT/root MIT record because
+// tools/supply-chain/licenses.json is frozen by Master Policy; every other
+// workspace package still requires its own exact record. Only Harness Adapter
+// may carry a dependency, exactly @aipt/adapter-sdk workspace:*.
 function checkWorkspaceFirstParty(packageEntries, licenses) {
   const details = [];
   let pass = true;
@@ -746,6 +764,23 @@ function checkWorkspaceFirstParty(packageEntries, licenses) {
   const records = Array.isArray(licenses?.records) ? licenses.records : [];
   for (const entry of packageEntries) {
     const record = records.find((r) => r?.id === entry.name);
+    if (entry.name === '@aipt/web-ui') {
+      const rootRecord = records.find((r) => r?.id === 'AIPT');
+      if (record) fail('@aipt/web-ui must not mutate the frozen per-package license inventory');
+      if (!rootRecord || rootRecord.kind !== 'first_party' || rootRecord.license !== 'MIT') {
+        fail('@aipt/web-ui requires the immutable AIPT first-party MIT root record');
+      }
+      if (entry.dir !== 'packages/web-ui' || entry.version !== '0.1.0' || entry.license !== 'MIT') {
+        fail('@aipt/web-ui must be exactly packages/web-ui@0.1.0 with MIT license');
+      }
+      if (!exactJsonValue(entry.dependencies, {}) || entry.hasNonRuntimeDeps) {
+        fail('@aipt/web-ui must remain dependency-free with no dev/peer/optional dependency surface');
+      } else if (!record && rootRecord?.kind === 'first_party' && rootRecord?.license === 'MIT' &&
+          entry.dir === 'packages/web-ui' && entry.version === '0.1.0' && entry.license === 'MIT') {
+        ok('workspace package @aipt/web-ui@0.1.0: dependency-free first-party MIT component covered by immutable AIPT/root license record');
+      }
+      continue;
+    }
     if (!record) {
       fail(`workspace package ${JSON.stringify(entry.dir)} (${entry.name}) has no first-party license record`);
       continue;
@@ -1480,7 +1515,46 @@ export function run(ctx) {
   const workspaceFirstParty = checkWorkspaceFirstParty(packageEntries, licenses);
   details.push(...workspaceFirstParty.details);
   if (workspaceFirstParty.result !== 'PASS') fail('workspace first-party license coverage FAIL');
-  else ok('every workspace package is license-covered as first-party');
+  else ok('every workspace package has exact first-party MIT coverage, including B007 root-covered Web UI');
+
+  const webEntry = packageEntries.find((entry) => entry.name === '@aipt/web-ui');
+  const workspaceLicenseProbes = webEntry ? [
+    {
+      label: 'Web UI version drift',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === webEntry ? { ...entry, version: '0.2.0' } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Web UI license drift',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === webEntry ? { ...entry, license: 'UNLICENSED' } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Web UI dependency injection',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === webEntry
+          ? { ...entry, dependencies: { lodash: '^4.17.21' } } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Web UI root license coverage removal',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries, { ...licenses, records: records.filter((record) => record.id !== 'AIPT') },
+      ),
+    },
+  ] : [];
+  let workspaceLicenseProbesOk = webEntry !== undefined;
+  if (!webEntry) fail('B007 @aipt/web-ui workspace package is missing');
+  for (const probe of workspaceLicenseProbes) {
+    const result = probe.mutate();
+    if (result.result !== 'FAIL') {
+      workspaceLicenseProbesOk = false;
+      fail(`negative workspace-license probe (${probe.label}) was NOT rejected`);
+    } else ok(`negative-probe PASS: workspace license model rejects ${probe.label}`);
+  }
+  if (workspaceLicenseProbesOk) ok(`all ${workspaceLicenseProbes.length} B007 Web UI license/dependency probes rejected as expected`);
   // Negative workspace probes over mutated in-memory inputs.
   const workspaceProbes = [
     {

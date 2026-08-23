@@ -15,3 +15,5 @@ importers:
       '@aipt/adapter-sdk':
         specifier: workspace:*
         version: link:../adapter-sdk
+
+  packages/web-ui: {}
