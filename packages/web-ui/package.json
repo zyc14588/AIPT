@@ -1,0 +1,19 @@
+{
+  "name": "@aipt/web-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AIPT-M0-B007 dependency-free local dashboard UI with strict runtime snapshot validation and six truthful read-only capability panels.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/dashboard.ts",
+  "types": "src/dashboard.ts",
+  "exports": {
+    ".": "./src/dashboard.ts"
+  },
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}
