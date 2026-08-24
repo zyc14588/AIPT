@@ -184,6 +184,15 @@ function validateChangedPaths(changed) {
   return problems;
 }
 
+// `pnpm install --frozen-lockfile` creates untracked workspace metadata and
+// first-party links below node_modules before this CI gate runs. Those
+// disposable install artifacts are not Candidate source changes; tracked
+// node_modules content would still be present in the Base..HEAD diff and fail
+// the exact allowlist below.
+function isGeneratedWorktreeArtifact(relative) {
+  return relative.split('/').includes('node_modules');
+}
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -308,7 +317,8 @@ export function run(ctx) {
   const tracked = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT], { check: false });
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'], { check: false });
   const changed = [...new Set([
-    ...tracked.stdout.split('\n'), ...untracked.stdout.split('\n'),
+    ...tracked.stdout.split('\n'),
+    ...untracked.stdout.split('\n').filter((relative) => !isGeneratedWorktreeArtifact(relative)),
   ].filter(Boolean))].sort();
   for (const problem of validateChangedPaths(changed)) fail(problem);
   for (const relative of REQUIRED_CHANGED_PATHS) {
