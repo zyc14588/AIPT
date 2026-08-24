@@ -178,7 +178,7 @@ const STORAGE_STEP_KEYS = [
   ['name', 'run'],
 ];
 
-// The retained focused gates through B007 plus the aggregate
+// The retained focused gates through B008 plus the aggregate
 // `pnpm run check`. Each must be exactly one real unconditional inline
 // `run:` step of the toolchain job, positioned after the single frozen
 // install step, with the auditable coverage tokens on that same step's name.
@@ -228,7 +228,11 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run smoke:web-ui',
     nameTokens: ['b007', 'live loopback web smoke test', 'dynamic 127.0.0.1 port'],
   },
-  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007', 'aggregate'] },
+  {
+    command: 'pnpm run check:m0-development-pass',
+    nameTokens: ['b008', 'm0 development pass', 'candidate', 'not_yet_granted', 'negative probes'],
+  },
+  { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
 
 // Retained single-line gate commands: each must be exactly one real inline
@@ -1925,6 +1929,17 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run smoke:web-ui', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'B008 M0 Development Pass Candidate gate removed from toolchain',
+      reason: /check:m0-development-pass.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:m0-development-pass', '        run: node --version'),
           ),
           lock,
         ),

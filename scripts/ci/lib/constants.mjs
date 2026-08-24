@@ -1,19 +1,19 @@
-// Shared B007 closeout validator constants and immutable predecessor identities.
+// Shared B008 Candidate validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
-// closed AIPT-M0-B000 / AIPT-M0-B001 / AIPT-M0-B002 / AIPT-M0-B003
-// acceptances and B004/B005/B006 closeouts. Nothing is computed at runtime from the candidate itself, so
-// the candidate cannot validate itself into acceptance.
+// closed AIPT-M0-B000 through AIPT-M0-B007 acceptances. Nothing in the
+// milestone record may rewrite those accepted identities or validate the
+// B008 Candidate into an effective Development Pass.
 //
-// BASE_* is the accepted main base the B007 candidate must diff against: the
-// AIPT-M0-B006 closeout commit and its tree, held as independent literal
+// BASE_* is the accepted main base the B008 Candidate must diff against: the
+// AIPT-M0-B007 closeout commit and its tree, held as independent literal
 // anchors. Every predecessor keeps its own original identity.
 
-export const CURRENT_BATCH = 'AIPT-M0-B007';
+export const CURRENT_BATCH = 'AIPT-M0-B008';
 
-// B007 is closed. The separately named read-only Integration is authorized
-// only to prepare and is not active; starting it requires separate authority.
-export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
+// B008 alone is active. No later batch is named or authorized by this
+// Candidate construction.
+export const ACTIVE_BATCH = CURRENT_BATCH;
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -23,8 +23,8 @@ export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 // task, so it cannot be confused with CURRENT_BATCH.
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
-// Public status date of the B007 closeout snapshot (machine + human docs).
-export const STATUS_DATE = '2026-08-23';
+// Public status date of the B008 Candidate snapshot (machine + human docs).
+export const STATUS_DATE = '2026-08-25';
 
 // Immutable closed-batch identities — historical state, never updated by
 // later batches and never aliased to the current base.
@@ -318,6 +318,22 @@ export const B007_IMPLEMENTATION_MERGE = {
   post_merge_ci_conclusion: 'success',
 };
 
+// Immutable B007 closeout and exact B008 source base. This ordinary
+// single-parent authority commit does not replace the accepted B007
+// implementation identity above.
+export const B007_CLOSEOUT = {
+  commit: '656154ff37f8cff0daff46d6f4b7dfe68254853c',
+  tree: '4781236e62a112132e00c21bd5f5b407d73178ab',
+  parent: B007_IMPLEMENTATION_MERGE.commit,
+  ci_run: 32637552873,
+  ci_conclusion: 'success',
+};
+
+export const B008_BASE_COMMIT = B007_CLOSEOUT.commit;
+export const B008_BASE_TREE = B007_CLOSEOUT.tree;
+export const B008_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B008';
+export const B008_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-M0-B008';
+
 // Current cross-repository serial predecessor required by B007. Candidate,
 // merge and closeout identities remain separately auditable facts.
 export const B007_EXTERNAL_SERIAL_PREDECESSOR = {
@@ -512,8 +528,8 @@ export const B004_DEPENDENCY_SECURITY_REQUALIFICATION = {
   ],
 };
 
-export const BASE_COMMIT = B007_BASE_COMMIT;
-export const BASE_TREE = B007_BASE_TREE;
+export const BASE_COMMIT = B008_BASE_COMMIT;
+export const BASE_TREE = B008_BASE_TREE;
 
 export const TOOLCHAIN = {
   go: '1.26.6',
@@ -625,91 +641,79 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// Exact AIPT-M0-B007 construction surface. Protocol/SDK, storage, Evidence,
-// toolchains, dependency identities, license policy, queue persistence and all
-// future-product surfaces stay frozen. B007 adds only the secure loopback Web
-// host, dependency-free dashboard/read model, launcher seam, docs and gates.
+// Exact AIPT-M0-B008 Candidate surface. Runtime/product implementation,
+// schemas, dependencies, lockfiles, toolchains, SBOM and supply-chain sources
+// remain frozen. B008 adds only the proposed milestone record, truthful
+// authority status, and fail-closed CI validation for that proposal.
 export const ALLOWED_PATHS = [
   '.github/workflows/ci.yml',
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/runtime/README.md',
-  'docs/security/README.md',
-  'internal/launcher/dependencies.go',
-  'internal/launcher/gates.go',
-  'internal/launcher/launcher.go',
-  'internal/launcher/launcher_test.go',
-  'internal/web/**',
+  'docs/milestones/M0.md',
+  'docs/milestones/M0_DEVELOPMENT_PASS.md',
+  'docs/milestones/m0-development-pass.json',
   'package.json',
-  'packages/web-ui/**',
-  'pnpm-lock.yaml',
-  'schemas/web/v1/**',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
-  'scripts/ci/sbom/generate-sbom.mjs',
-  'scripts/ci/validate/runtime-shell.mjs',
-  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/validate/m0-development-pass.mjs',
   'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/supply-chain.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
-  'scripts/ci/validate/web-ui.mjs',
   'scripts/ci/validate/workflow.mjs',
 ];
 
-// Future B007 closeout authority surface. No implementation, dependency,
-// workflow, package, tool, cross-repository, or split-memory path is allowed.
+// A later Owner-authorized B008 closeout may evolve only milestone/status
+// authority and their validators. This Candidate does not exercise that phase.
 export const CLOSEOUT_ALLOWED_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/runtime/README.md',
+  'docs/milestones/M0.md',
+  'docs/milestones/M0_DEVELOPMENT_PASS.md',
+  'docs/milestones/m0-development-pass.json',
+  'package.json',
   'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/m0-development-pass.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
 ];
 
-// The status transition uses the same exact seven-path closeout surface.
+// Exact machine/human status transition surface used during Candidate
+// construction. Milestone record validation is owned by its dedicated gate.
 export const STATUS_TRANSITION_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
-  'docs/runtime/README.md',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
-  'scripts/ci/validate/tree-integrity.mjs',
 ];
 
-// Frozen predecessor implementation and future-product areas.
+// Frozen predecessor implementation, dependency and future-product areas.
 export const FORBIDDEN_PREFIXES = [
-  'api/',
-  'migrations/',
-  'deploy/',
-  'runtime/',
-  'packages/adapter-sdk/',
-  'schemas/protocol/',
-  'testdata/protocol/',
+  'cmd/',
+  'internal/',
+  'packages/',
+  'schemas/',
+  'testdata/',
+  'tools/',
+  'scripts/ci/sbom/',
+  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/validate/supply-chain.mjs',
   'docs/architecture/',
   'docs/integration/',
   'docs/test-model/',
-  'packages/evidence/',
-  'packages/harness-adapter/',
-  'internal/protocol/',
-  'internal/storage/postgres/',
-  'internal/harness/',
-  'internal/model/',
-  'internal/ipc/',
-  'internal/campaign/',
   '.go-version',
   'go.mod',
   'go.sum',
   'LICENSE',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
   'tools/toolchain.lock.json',
   'tools/ci-actions.lock.json',
   'tools/supply-chain/policy.json',
   'tools/supply-chain/licenses.json',
-  'pnpm-workspace.yaml',
 ];
 
 // Frozen authority registries: byte-for-byte immutability is enforced

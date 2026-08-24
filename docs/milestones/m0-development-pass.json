@@ -1,0 +1,95 @@
+{
+  "schema": "aipt.m0.development-pass/v1",
+  "task_id": "AIPT-M0-B008",
+  "record_state": "CANDIDATE_PROPOSAL",
+  "authority": {
+    "directive_id": "AIPT-M0-B008-GPT-PASS-AND-FINALIZE-001",
+    "authorization_scope": "IMPLEMENT_AND_FREEZE_CANDIDATE_ONLY",
+    "branch": "task/AIPT-M0-B008",
+    "merge_authorized": false
+  },
+  "lifecycle": {
+    "construction": "IN_PROGRESS",
+    "current_batch": "AIPT-M0-B008",
+    "global_wip": 1,
+    "batch_history": {
+      "AIPT-M0-B000": "MERGED_CLOSED",
+      "AIPT-M0-B001": "MERGED_CLOSED",
+      "AIPT-M0-B002": "MERGED_CLOSED",
+      "AIPT-M0-B003": "MERGED_CLOSED",
+      "AIPT-M0-B004": "MERGED_CLOSED",
+      "AIPT-M0-B005": "MERGED_CLOSED",
+      "AIPT-M0-B006": "MERGED_CLOSED",
+      "AIPT-M0-B007": "MERGED_CLOSED",
+      "AIPT-M0-B008": "IN_PROGRESS"
+    },
+    "next_serial_batch": "NONE",
+    "next_batch_state": "NOT_AUTHORIZED",
+    "next_batch_authorized": false,
+    "next_batch_started": false
+  },
+  "milestone_state": {
+    "gpt_audit": "PASS",
+    "m0_development_pass": "PROPOSED_PENDING_B008_MERGED_CLOSED"
+  },
+  "proposal": {
+    "proposed_result": "M0_DEVELOPMENT_PASS",
+    "current_effective_status": "NOT_YET_GRANTED",
+    "effective_after": "AIPT-M0-B008_MERGED_CLOSED"
+  },
+  "source_bindings": {
+    "aipt": {
+      "source_b007_closeout": {
+        "commit": "656154ff37f8cff0daff46d6f4b7dfe68254853c",
+        "tree": "4781236e62a112132e00c21bd5f5b407d73178ab"
+      },
+      "accepted_m0_implementation": {
+        "commit": "e05179a223f9dd0ff1b317e78c0e466e1146f6bb",
+        "tree": "35a5cc261fef75df8d25102015670bcb1d6fbd92"
+      }
+    },
+    "unregistered": {
+      "closeout": {
+        "commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+        "tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240"
+      },
+      "accepted_implementation": {
+        "commit": "5d25dad0dbcb648de565ea723027f999ec5b3a37",
+        "tree": "aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc"
+      }
+    },
+    "integration": {
+      "id": "INT-AIPT-UNREGISTERED-001",
+      "result": "PASS",
+      "state": "CLOSED",
+      "root_sha256": "329c98d00600ede1e9bdd7830b30f7968cc3de4d458b57bb3f6730a0bfedac91"
+    }
+  },
+  "audit_binding": {
+    "audit_ready_archive_sha256": "0eb777d62c8045acc29b0a80216951b4aeb36f856bf690d2cd394019a1f7119d",
+    "audit_ready_root_sha256": "33becf9c765902442ec7d7445c50d3ac00737c50bccfc33b5bb4f56e2bdaa90b",
+    "gpt_audit_result_sha256": "d35fca102f28387c0e4c7045d65da8418ffc947189500bf639d4edb11bbba207",
+    "gpt_result": "PASS",
+    "gpt_open_findings": [],
+    "closed_stage_a_r1_findings": [
+      "AIPT-B008-AUDIT-EVIDENCE-SELF-CONTAINMENT-001",
+      "AIPT-B008-SOURCE-TREE-DIGEST-001",
+      "AIPT-B008-SOURCE-TREE-SUMMARY-FACT-001"
+    ]
+  },
+  "batch_identity_ledger": {
+    "archive_member": "AUDIT_READY/BATCH_IDENTITY_LEDGER.json",
+    "schema": "aipt.m0.batch-identity-ledger/v1",
+    "sha256": "e294002e426e157c4eb765b4944568d853bdd4cd4a34afc763073ae21c85a88e",
+    "bound_by_audit_ready_root_sha256": "33becf9c765902442ec7d7445c50d3ac00737c50bccfc33b5bb4f56e2bdaa90b"
+  },
+  "boundaries": {
+    "production_qualification": "NOT_GRANTED",
+    "release_qualification": "NOT_GRANTED",
+    "mvp_development_pass": "NOT_GRANTED",
+    "human_equivalence": "NOT_CLAIMED",
+    "real_playtest_completion": "NOT_CLAIMED",
+    "platform_integration": "FROZEN_WAITING_M1_ENGINE",
+    "automatic_next_batch": "NONE"
+  }
+}

@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B007 builds a secure loopback-only Web Host and dependency-free six-panel TypeScript Dashboard. Queue/Run/Status backend and Report UI export/generators remain NOT_IMPLEMENTED; INT-AIPT-UNREGISTERED-001 and B008 are not started.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B008 constructs only a proposed M0 Development Pass Candidate; the pass is not effective before B008 is merged and closed, and no later batch is authorized.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -17,6 +17,7 @@
     "check:harness-adapter": "node scripts/ci/validate/harness-adapter.mjs",
     "check:evidence": "node scripts/ci/validate/evidence.mjs",
     "check:web-ui": "node scripts/ci/validate/web-ui.mjs",
+    "check:m0-development-pass": "node scripts/ci/validate/m0-development-pass.mjs",
     "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
     "test:protocol-go": "go test ./internal/protocol -count=1",
     "test:harness-adapter": "pnpm --filter @aipt/harness-adapter test",
