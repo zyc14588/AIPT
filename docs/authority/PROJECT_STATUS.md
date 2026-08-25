@@ -1,13 +1,13 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-08-23**；权威快照 ID：`AIPT-M0-B007-CLOSEOUT-001`。
+> 状态日期：**2026-08-25**；权威快照 ID：`AIPT-M0-B008-CANDIDATE-001`。
 
 ## 工作轨
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`；`AIPT-M0-B000` 至 `AIPT-M0-B007` 均为不可变 `MERGED_CLOSED` 历史 |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IN_PROGRESS`，`current_batch = AIPT-M0-B008`，`GLOBAL_WIP = 1`；`AIPT-M0-B000` 至 `AIPT-M0-B007` 均为不可变 `MERGED_CLOSED` 历史，B008 为 Candidate |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
@@ -22,13 +22,14 @@
 - `AIPT-M0-B005` = **MERGED_CLOSED**：base `8005dd3bec8b367a6d97dcd9397158f1d8618f3e`（tree `d0f32b7ac1c3f6e5ddb258aaa2ee030844b1eb2b`）；Approved Candidate `d9e24cbac30a1472c41cc8719848acbbc2426fa5`（tree `c1b0b3e3c5218a46c4f3d9501b52a2618cfe20f5`，Candidate CI `32565305803` success）；implementation merge `8652a92c51b86a3bf66aee725c0f1b7be4c60654`（相同 tree；父 1 为 base、父 2 为 Candidate），post-merge CI `32569995492` success；closeout `10d0232bd2e3e42601bbb00cedc753f842e219db`（tree `922115b9a75a7eca8dd97475f3f228bc7d3d2c10`），closeout CI `32571092786` success。`@aipt/harness-adapter` `0.1.0` 的真实子进程 stdio smoke 为 `23/23` PASS，第三方 pnpm package 为 0，remote model call 为 false。外部 Harness 升级 `AIPT-M0-B005-EXTERNAL-HARNESS-UPGRADE-001` 的 disposition 为 `OWNER_GATE_RATIFIED`，previous `47f943859bef60e4160492346772ded9b24f765a`，current `141eb6fef83422698aef7a981029e843e8161534`，release `dsh-v0.1.0-rc.8`，`prior_authorization_timing_independently_verified = false`。
 - `AIPT-M0-B006` = **MERGED/CLOSED**：Base `10d0232bd2e3e42601bbb00cedc753f842e219db`（tree `922115b9a75a7eca8dd97475f3f228bc7d3d2c10`）；Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，Candidate CI run `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree，parents 为 Base 与 Candidate，subject `merge: integrate AIPT-M0-B006`），post-merge CI run `32578143923` success。Evidence Schema、最小 `RAW_CAPTURE` exporter/verifier、只读 PostgreSQL 18.4 source、确定性与篡改检测均 PASS；根算法为 `SHA-256(manifest.json exact bytes)`。`AUDIT_READY`/`AUDIT_RESULT` generator、签名、加密和分块均为 `NOT_IMPLEMENTED`。Harness 施工尝试因 `HARNESS_INPUT_TOKEN_BUDGET`（`190183 > 180000`）未产生 patch，最终 `CODEX_ONLY`，未手工编辑 split-memory；这是施工遥测而非 product runtime failure。
 - `AIPT-M0-B007` = **MERGED_CLOSED**：Base `e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8`（tree `326def92334a43f6d63cd77b40f0eae9af31b375`）；Original Candidate `5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92`（tree `d4cc34e8fcbec8ea4f864f22aa7503cc1dcdffcd`）；repair/final Candidate `561e43f9bc646c43da0b48c8485f820f73941df9`（tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`，Candidate CI `32634972911` success）；implementation merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb`（相同 tree，parents 为 Base 与 final Candidate，subject `merge: integrate AIPT-M0-B007`），post-merge CI `32636449574` success。Web Host、动态 loopback bind、Host/Origin/CSRF、安全头与六个 truthful panels 均 PASS；Config 不暴露 DSN/credential，新增第三方 pnpm 依赖为 0。Queue/Run/Status backend、Report UI export 与 `AUDIT_READY`/`AUDIT_RESULT` generators 均为 `NOT_IMPLEMENTED`，`RAW_CAPTURE` 为 `IMPLEMENTED_LIBRARY_ONLY`，Launcher 顺序不变且 MODEL/HARNESS/IPC 继续失败关闭。finding `AIPT-B007-SUPPLY-CHAIN-DOC-CONSISTENCY-001` 已由 repair commit 关闭，无语义代码变更。外部串行前序 `UNREGISTERED-AIPT-P0-B003` 继续绑定 implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`、closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`（tree `5585271c78d1fe5cd8357c7b36a501bee34f0240`，CI `32621464543` success）。
+- `AIPT-M0-B008` = **IN_PROGRESS Candidate**：source base 为 B007 closeout `656154ff37f8cff0daff46d6f4b7dfe68254853c`（tree `4781236e62a112132e00c21bd5f5b407d73178ab`）；GPT M0 development audit 为 `PASS`、open findings 为空。B008 仅提出 `M0_DEVELOPMENT_PASS`，当前里程碑状态为 `PROPOSED_PENDING_B008_MERGED_CLOSED`，`current_effective_status = NOT_YET_GRANTED`，`effective_after = AIPT-M0-B008_MERGED_CLOSED`。这不是 Merge/closeout、MVP Development Pass、生产/发布资格、真人等价或真实桌测声明；MODEL/HARNESS/IPC 生产门仍未实现。机器与人类记录见 [M0 Development Pass Candidate](../milestones/M0_DEVELOPMENT_PASS.md)。
 - 详见 [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) 与 [../milestones/M0.md](../milestones/M0.md)。
 
 ## 仓库
 
 | 仓库 | 说明 |
 |---|---|
-| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；verified implementation identity 固定为 B007 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb` 与 tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`，不得用 closeout commit 冒充实现身份；更早 provenance 保持不可变 |
+| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；verified implementation identity 固定为 B007 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb` 与 tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`，不得用 B007 closeout 或 B008 Candidate 冒充实现身份；pending Candidate 为 `task/AIPT-M0-B008`，base `656154ff37f8cff0daff46d6f4b7dfe68254853c`，仍未获 Merge 授权 |
 | 《未登记》UNREGISTERED | <https://github.com/zyc14588/UNREGISTERED>，默认分支 `main`；P0-B003 verified implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`、tree `aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc`，closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`；规划快照与实现权威明确分离；就绪等级 `PLAYTESTABLE_DRAFT` |
 
 ## 运行环境与模型（设计基线）
@@ -42,7 +43,7 @@
 
 | 项 | 状态 |
 |---|---|
-| 主审计 | GPT（`R10-F003`） |
+| 主审计 | GPT（`R10-F003`）：M0 development audit `PASS`，open findings `[]` |
 | 包准备 | 本地 Codex CLI，产出 `AUDIT_READY`（`R9-F001`） |
 | 第二审计 | Anthropic Claude Web；本批次不要求 |
 | 第二审计 Profile | `Fable 5`、`Opus 5`、`Opus 4.8`（`DCA-Q003`） |
@@ -55,12 +56,12 @@
 
 ## 下一步
 
-- `AIPT-M0-B000` 至 `AIPT-M0-B007` 均已 `MERGED_CLOSED`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`。
-- B007 verified implementation identity 固定为 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb` 与 tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`；不得将 closeout commit 冒充实现身份。B006/B005/B004 的 immutable provenance 同样保留。
-- 下一串行项 `INT-AIPT-UNREGISTERED-001` = `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`，`next_batch_started = false`）；尚未执行 Integration，也不得开始 B008。
+- `AIPT-M0-B000` 至 `AIPT-M0-B007` 均已 `MERGED_CLOSED`；B008 为唯一活动 Candidate：`construction = IN_PROGRESS`，`current_batch = AIPT-M0-B008`，`GLOBAL_WIP = 1`。
+- B007 verified implementation identity 固定为 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb` 与 tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`；B008 不替换该身份，也不把 Development Pass 提前写成生效。
+- `next_serial_batch = NONE`、`next_batch_state = NOT_AUTHORIZED`、`next_batch_authorized = false`、`next_batch_started = false`；不得自动启动 M1、MVP 或平台集成。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。
 
 ## 相邻文档
 
-- [README.md](README.md)（Authority Index） · [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) · [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md) · [../protocol/README.md](../protocol/README.md) · [../evidence/README.md](../evidence/README.md) · [../milestones/M0.md](../milestones/M0.md) · [../milestones/MVP.md](../milestones/MVP.md) · [../supply-chain/README.md](../supply-chain/README.md)
+- [README.md](README.md)（Authority Index） · [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) · [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md) · [../protocol/README.md](../protocol/README.md) · [../evidence/README.md](../evidence/README.md) · [M0 Development Pass Candidate](../milestones/M0_DEVELOPMENT_PASS.md) · [../milestones/M0.md](../milestones/M0.md) · [../milestones/MVP.md](../milestones/MVP.md) · [../supply-chain/README.md](../supply-chain/README.md)
 - [返回仓库首页](../../README.md)
