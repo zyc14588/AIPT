@@ -16,12 +16,19 @@ import {
   CLOSEOUT_ALLOWED_PATHS, EXPECTED_MIT_LICENSE, FORBIDDEN_PREFIXES,
   FROZEN_REGISTRY_PATHS, M0_CLOSEOUT, M0_HISTORICAL_PATHS,
   MVP_B000_ALLOWED_PATHS, MVP_B000_BASE_COMMIT, MVP_B000_BASE_TREE,
-  MVP_B000_BRANCH, MVP_B000_FORBIDDEN_PREFIXES, normalizeText,
+  MVP_B000_FORBIDDEN_PREFIXES, MVP_B000_SNAPSHOT, normalizeText,
   pathMatchesAllowed, pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
-import { validateCandidateFacts, validateChangedPaths } from './mvp-bootstrap.mjs';
+import {
+  collectLifecycleFacts as collectMvpB000LifecycleFacts,
+  runLifecycleRegressionProbes as runMvpB000LifecycleRegressionProbes,
+  validateChangedPaths,
+  validateLifecycle as validateMvpB000Lifecycle,
+} from './mvp-bootstrap.mjs';
+
+const MVP_STATUS_PATH = 'docs/authority/registry/project-status.json';
 
 const ALLOWED_PATHS_LITERAL = [
   '.github/workflows/ci.yml',
@@ -368,43 +375,14 @@ function verifyHistoricalTopology(repo, fail, ok) {
   } else ok('B008 three-commit zero-merge Candidate history and repair scope verified');
 }
 
-function normalizedEnv(value) {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
-}
-
-function isMvpB000Checkout(repo) {
-  const branch = git(repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
-  return branch.stdout.trim() === MVP_B000_BRANCH ||
-    normalizedEnv(process.env.GITHUB_REF) === `refs/heads/${MVP_B000_BRANCH}`;
-}
-
-function collectMvpCandidateFacts(repo) {
-  const baseCommit = git(repo, ['rev-parse', `${MVP_B000_BASE_COMMIT}^{commit}`], { check: false });
-  const baseTree = git(repo, ['rev-parse', `${MVP_B000_BASE_COMMIT}^{tree}`], { check: false });
-  const head = git(repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
-  const branch = git(repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
-  const ancestry = git(repo, ['merge-base', '--is-ancestor', MVP_B000_BASE_COMMIT, 'HEAD'], { check: false });
-  const merges = git(repo, ['rev-list', '--merges', `${MVP_B000_BASE_COMMIT}..HEAD`], { check: false });
-  const subjects = git(repo, ['log', '--format=%s', `${MVP_B000_BASE_COMMIT}..HEAD`], { check: false });
-  const githubPresent = ['GITHUB_ACTIONS', 'GITHUB_EVENT_NAME', 'GITHUB_REF', 'GITHUB_SHA']
-    .some((key) => Object.hasOwn(process.env, key));
-  return {
-    baseCommit: baseCommit.status === 0 ? baseCommit.stdout.trim() : null,
-    baseTree: baseTree.status === 0 ? baseTree.stdout.trim() : null,
-    head: head.status === 0 ? head.stdout.trim() : null,
-    branch: branch.status === 0 ? branch.stdout.trim() : null,
-    baseIsAncestor: ancestry.status === 0,
-    mergeCommits: merges.status === 0 ? merges.stdout.split('\n').filter(Boolean) : null,
-    subjects: subjects.status === 0 ? subjects.stdout.split('\n').filter(Boolean) : null,
-    github: {
-      present: githubPresent,
-      eventName: normalizedEnv(process.env.GITHUB_EVENT_NAME),
-      ref: normalizedEnv(process.env.GITHUB_REF),
-      headRef: normalizedEnv(process.env.GITHUB_HEAD_REF),
-      baseRef: normalizedEnv(process.env.GITHUB_BASE_REF),
-      sha: normalizedEnv(process.env.GITHUB_SHA),
-    },
-  };
+function hasMvpB000Authority(repo) {
+  try {
+    const status = JSON.parse(fs.readFileSync(path.join(repo, MVP_STATUS_PATH), 'utf8'));
+    return status?.authority_snapshot_id === MVP_B000_SNAPSHOT ||
+      status?.authority_snapshot_id === 'AIPT-MVP-B000-CLOSEOUT-001';
+  } catch {
+    return false;
+  }
 }
 
 export function isUnsafeMvpRawMode(line) {
@@ -458,11 +436,23 @@ function runMvpB000Tree(ctx) {
     fail('M0 closeout topology/tree/subject drifted');
   } else ok('M0 closeout topology/tree/subject verified');
 
-  const facts = collectMvpCandidateFacts(ctx.repo);
-  const lifecycleProblems = validateCandidateFacts(facts);
-  for (const problem of lifecycleProblems) fail('MVP B000 lifecycle: ' + problem);
-  if (lifecycleProblems.length === 0) {
-    ok('CANDIDATE = PASS: exact task branch and Base..HEAD zero-merge/no-closeout history');
+  let status;
+  let baseStatus;
+  try {
+    status = JSON.parse(fs.readFileSync(path.join(ctx.repo, MVP_STATUS_PATH), 'utf8'));
+    const baseStatusProbe = git(ctx.repo, [
+      'show', `${MVP_B000_BASE_COMMIT}:${MVP_STATUS_PATH}`,
+    ], { check: false });
+    if (baseStatusProbe.status !== 0) throw new Error('fixed Base status is unavailable');
+    baseStatus = JSON.parse(baseStatusProbe.stdout);
+  } catch (error) {
+    fail('MVP B000 lifecycle status is unreadable: ' + error.message);
+  }
+  const facts = collectMvpB000LifecycleFacts(ctx.repo);
+  const lifecycle = validateMvpB000Lifecycle(facts, status, baseStatus);
+  for (const problem of lifecycle.problems) fail('MVP B000 lifecycle: ' + problem);
+  if (lifecycle.result === 'PASS') {
+    ok(`${lifecycle.phase} = PASS (${lifecycle.checkoutKind}): exact B000 topology and status`);
   }
 
   const tracked = git(ctx.repo, ['diff', '--name-only', '--no-renames', MVP_B000_BASE_COMMIT], { check: false });
@@ -530,16 +520,12 @@ function runMvpB000Tree(ctx) {
   for (const finding of hazards) fail('public-tree hygiene finding: ' + JSON.stringify(finding));
   if (hazards.length === 0) ok('public tree has no secret/path/endpoint/prompt hazard');
 
-  const clone = (value) => JSON.parse(JSON.stringify(value));
-  const lifecycleProbes = [
-    ['foreign branch', (() => { const value = clone(facts); value.github.present = false; value.branch = 'task/AIPT-MVP-B001'; return value; })()],
-    ['post-Base merge', { ...clone(facts), mergeCommits: ['0'.repeat(40)] }],
-    ['premature closeout', { ...clone(facts), subjects: ['closeout: complete AIPT-MVP-B000'] }],
-  ];
+  const lifecycleProbes = status && baseStatus
+    ? runMvpB000LifecycleRegressionProbes(status, baseStatus) : [];
   let rejected = 0;
-  for (const [label, probe] of lifecycleProbes) {
-    if (validateCandidateFacts(probe).length > 0) rejected += 1;
-    else fail('tree lifecycle negative probe was accepted: ' + label);
+  for (const probe of lifecycleProbes) {
+    if (probe.matched) rejected += 1;
+    else fail('tree lifecycle regression mismatched: ' + probe.label);
   }
   const pathProbeRejected = validateChangedPaths([...expectedPaths, 'internal/run/engine.go']).length > 0;
   if (pathProbeRejected) rejected += 1;
@@ -561,7 +547,10 @@ function runMvpB000Tree(ctx) {
 
   return {
     result: pass ? 'PASS' : 'FAIL',
-    phase: 'CANDIDATE',
+    phase: lifecycle.phase === 'CLOSEOUT_MAIN' ? 'CLOSEOUT' :
+      lifecycle.phase === 'POST_MERGE_MAIN' ? 'POST_MERGE' : 'CANDIDATE',
+    lifecycle_phase: lifecycle.phase,
+    lifecycle_checkout: lifecycle.checkoutKind,
     details,
     changed_paths: changed,
     negative_probes: rejected === expectedRejected ? 'PASS' : 'FAIL',
@@ -571,9 +560,9 @@ function runMvpB000Tree(ctx) {
 
 export function run(ctx) {
   // Preserve the complete B008 lifecycle implementation below for historical
-  // checkouts. Only the exact authorized successor branch takes this new
-  // zero-merge Candidate path.
-  if (isMvpB000Checkout(ctx.repo)) return runMvpB000Tree(ctx);
+  // checkouts. Exact B000 authority routes Candidate, PR, post-merge and the
+  // fail-closed future closeout shape through the shared successor classifier.
+  if (hasMvpB000Authority(ctx.repo)) return runMvpB000Tree(ctx);
   const details = [];
   let pass = true;
   const ok = (message) => details.push('ok: ' + message);

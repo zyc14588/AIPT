@@ -12,7 +12,13 @@ import {
   STATUS_DATE,
 } from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
-import { EXPECTED_BATCHES, validateStatus } from './mvp-bootstrap.mjs';
+import {
+  collectLifecycleFacts,
+  expectedCandidateStatus,
+  EXPECTED_BATCHES,
+  runLifecycleRegressionProbes,
+  validateLifecycle,
+} from './mvp-bootstrap.mjs';
 
 const STATUS_PATH = 'docs/authority/registry/project-status.json';
 const GRAPH_PATH = 'docs/authority/registry/batch-graph.json';
@@ -117,11 +123,14 @@ function historicalNegativeProbes(baseStatus) {
   });
 }
 
-function negativeProbes(status, baseStatus) {
+function negativeProbes(status, baseStatus, facts) {
   const probes = [
     ['wrong snapshot', (copy) => { copy.authority_snapshot_id = 'AIPT-MVP-B001-CANDIDATE-001'; }],
     ['wrong status date', (copy) => { copy.as_of = '2026-08-27'; }],
-    ['GLOBAL_WIP zero', (copy) => { copy.tracks['AIPT-STANDALONE'].global_wip = 0; }],
+    ['GLOBAL_WIP phase drift', (copy) => {
+      copy.tracks['AIPT-STANDALONE'].global_wip =
+        copy.tracks['AIPT-STANDALONE'].global_wip === 0 ? 1 : 0;
+    }],
     ['GLOBAL_WIP above one', (copy) => { copy.tracks['AIPT-STANDALONE'].global_wip = 2; }],
     ['foreign active batch', (copy) => { copy.tracks['AIPT-STANDALONE'].current_batch = 'AIPT-MVP-B001'; }],
     ['B001 authorized', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
@@ -129,8 +138,18 @@ function negativeProbes(status, baseStatus) {
     ['later MVP batch started', (copy) => { copy.tracks['AIPT-STANDALONE'].batch_history['AIPT-MVP-B006'] = 'IN_PROGRESS'; }],
     ['M0 history reopened', (copy) => { copy.tracks['AIPT-STANDALONE'].batch_history['AIPT-M0-B008'] = 'IN_PROGRESS'; }],
     ['B008 implementation head replaced', (copy) => { copy.repositories.AIPT.verified_head = MVP_B000_BASE_COMMIT; }],
-    ['pending Candidate removed', (copy) => { delete copy.repositories.AIPT.pending_candidate; }],
-    ['pending Candidate merge authorized', (copy) => { copy.repositories.AIPT.pending_candidate.merge_authorized = true; }],
+    ['pending Candidate phase drift', (copy) => {
+      if (Object.hasOwn(copy.repositories.AIPT, 'pending_candidate')) {
+        delete copy.repositories.AIPT.pending_candidate;
+      } else {
+        copy.repositories.AIPT.pending_candidate = {};
+      }
+    }],
+    ['pending Candidate merge authorization', (copy) => {
+      copy.repositories.AIPT.pending_candidate = {
+        ...(copy.repositories.AIPT.pending_candidate ?? {}), merge_authorized: true,
+      };
+    }],
     ['platform unfreeze', (copy) => { copy.tracks['AIPT-PLATFORM-INTEGRATION'].unfreeze_authorized = true; }],
     ['UNREGISTERED drift', (copy) => { copy.repositories.UNREGISTERED.verified_tree = '0'.repeat(40); }],
     ['MVP pass inflation', (copy) => { copy.repositories.AIPT.verified_state.boundaries.mvp_development_pass = 'GRANTED'; }],
@@ -138,7 +157,7 @@ function negativeProbes(status, baseStatus) {
   return probes.map(([label, mutate]) => {
     const copy = clone(status);
     mutate(copy);
-    return [label, validateStatus(copy, baseStatus).length > 0];
+    return [label, validateLifecycle(facts, copy, baseStatus).result === 'FAIL'];
   });
 }
 
@@ -159,9 +178,12 @@ export function run(ctx) {
     return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
   }
 
-  const problems = validateStatus(status, baseStatus);
-  for (const problem of problems) fail(problem);
-  if (problems.length === 0) ok('machine status is the exact AIPT-MVP-B000 Candidate transition');
+  const facts = collectLifecycleFacts(ctx.repo);
+  const lifecycle = validateLifecycle(facts, status, baseStatus);
+  for (const problem of lifecycle.problems) fail('lifecycle: ' + problem);
+  if (lifecycle.result === 'PASS') {
+    ok(`machine status exactly matches ${lifecycle.phase} (${lifecycle.checkoutKind})`);
+  }
 
   const historicalProblems = validateHistoricalB008Status(baseStatus);
   for (const problem of historicalProblems) fail(problem);
@@ -178,12 +200,23 @@ export function run(ctx) {
     fail('status MVP batch order does not exactly mirror the machine graph');
   } else ok('status carries the exact ordered 13-item MVP graph');
 
-  if (status.as_of !== STATUS_DATE || status.authority_snapshot_id !== MVP_B000_SNAPSHOT ||
-      standalone.current_batch !== CURRENT_BATCH || standalone.global_wip !== 1 ||
-      standalone.next_serial_batch !== MVP_B000_NEXT_BATCH ||
+  const closeoutPhase = lifecycle.phase === 'CLOSEOUT_MAIN';
+  const phaseTupleExact = closeoutPhase
+    ? status.authority_snapshot_id === 'AIPT-MVP-B000-CLOSEOUT-001' &&
+      standalone.current_batch === 'NO_ACTIVE_BATCH' && standalone.global_wip === 0 &&
+      standalone.batch_history?.[CURRENT_BATCH] === 'MERGED_CLOSED'
+    : status.as_of === STATUS_DATE && status.authority_snapshot_id === MVP_B000_SNAPSHOT &&
+      standalone.current_batch === CURRENT_BATCH && standalone.global_wip === 1 &&
+      standalone.batch_history?.[CURRENT_BATCH] === 'IN_PROGRESS';
+  if (!phaseTupleExact || standalone.next_serial_batch !== MVP_B000_NEXT_BATCH ||
+      standalone.next_batch_state !== 'NOT_AUTHORIZED' ||
       standalone.next_batch_authorized !== false || standalone.next_batch_started !== false) {
-    fail('current/next/WIP lifecycle tuple drifted');
-  } else ok('B000 is sole active batch; B001 is named but unauthorized and not started');
+    fail('phase/current/next/WIP lifecycle tuple drifted');
+  } else if (closeoutPhase) {
+    ok('CLOSEOUT: B000 is MERGED_CLOSED/WIP0; B001 remains unauthorized and not started');
+  } else {
+    ok('CANDIDATE/POST_MERGE: B000 remains IN_PROGRESS/WIP1; B001 remains unauthorized');
+  }
 
   if (status.repositories?.AIPT?.verified_head !== B008_IMPLEMENTATION_MERGE.commit ||
       status.repositories?.AIPT?.verified_tree !== B008_IMPLEMENTATION_MERGE.tree ||
@@ -196,7 +229,12 @@ export function run(ctx) {
     fail('platform integration is not frozen');
   } else ok('platform integration remains frozen without unfreeze authority');
 
-  const docs = [
+  const docs = closeoutPhase ? [
+    ['README.md', ['AIPT-MVP-B000', 'MERGED_CLOSED', MVP_B000_NEXT_BATCH, 'NOT_AUTHORIZED']],
+    ['docs/authority/PROJECT_STATUS.md', [
+      'AIPT-MVP-B000', 'MERGED_CLOSED', MVP_B000_NEXT_BATCH, 'NOT_AUTHORIZED',
+    ]],
+  ] : [
     ['README.md', [MVP_B000_SNAPSHOT, CURRENT_BATCH, 'GLOBAL_WIP = 1', MVP_B000_NEXT_BATCH]],
     ['docs/authority/PROJECT_STATUS.md', [MVP_B000_SNAPSHOT, CURRENT_BATCH,
       'GLOBAL_WIP = 1', MVP_B000_NEXT_BATCH, 'NOT_AUTHORIZED']],
@@ -204,11 +242,11 @@ export function run(ctx) {
   for (const [relative, needles] of docs) {
     const text = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
     const missing = needles.filter((needle) => !text.includes(needle));
-    if (missing.length) fail(`${relative} misses Candidate lifecycle tokens: ${missing.join(', ')}`);
-    else ok(`${relative} carries the exact Candidate lifecycle boundary`);
+    if (missing.length) fail(`${relative} misses ${closeoutPhase ? 'closeout' : 'active'} lifecycle tokens: ${missing.join(', ')}`);
+    else ok(`${relative} carries the exact phase lifecycle boundary`);
   }
 
-  const probes = negativeProbes(status, baseStatus);
+  const probes = negativeProbes(status, baseStatus, facts);
   for (const [label, rejected] of probes) if (!rejected) fail('negative status probe was accepted: ' + label);
   const rejected = probes.filter(([, value]) => value).length;
   if (rejected === probes.length) ok(`all ${rejected} status-transition mutations reject`);
@@ -222,12 +260,32 @@ export function run(ctx) {
     ok(`all ${historicalRejected} historical B008 final-status mutations reject`);
   }
 
+  const lifecycleProbes = runLifecycleRegressionProbes(
+    expectedCandidateStatus(baseStatus), baseStatus,
+  );
+  const lifecycleMatches = lifecycleProbes.filter((probe) => probe.matched).length;
+  for (const probe of lifecycleProbes) {
+    if (!probe.matched) fail('shared lifecycle regression mismatched: ' + probe.label);
+  }
+  if (lifecycleMatches === lifecycleProbes.length) {
+    ok(`all ${lifecycleProbes.length} shared lifecycle/status regressions matched`);
+  }
+
+  const phase = lifecycle.phase === 'CLOSEOUT_MAIN' ? 'CLOSEOUT' :
+    lifecycle.phase === 'POST_MERGE_MAIN' ? 'POST_MERGE' : 'CANDIDATE';
+
   return {
     result: pass ? 'PASS' : 'FAIL',
+    phase,
+    lifecycle_phase: lifecycle.phase,
+    lifecycle_checkout: lifecycle.checkoutKind,
     details,
-    negative_probes: rejected === probes.length && historicalRejected === historicalProbes.length
+    negative_probes: rejected === probes.length && historicalRejected === historicalProbes.length &&
+      lifecycleMatches === lifecycleProbes.length
       ? 'PASS' : 'FAIL',
-    negative_probe_count: probes.length + historicalProbes.length,
+    negative_probe_count: probes.length + historicalProbes.length + lifecycleProbes.length,
+    lifecycle_regression: lifecycleMatches === lifecycleProbes.length ? 'PASS' : 'FAIL',
+    lifecycle_probe_count: lifecycleProbes.length,
     historical_b008_status_protection: historicalProblems.length === 0 &&
       historicalRejected === historicalProbes.length ? 'PASS' : 'FAIL',
   };
