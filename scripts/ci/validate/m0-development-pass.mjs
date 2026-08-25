@@ -44,6 +44,14 @@ const REQUIRED_CHANGED_PATHS = [
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
 ];
+const TASK_BRANCH = 'task/AIPT-M0-B008';
+const MAIN_BRANCH = 'main';
+const IMPLEMENTATION_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B008';
+const PR_REF_PATTERN = /^refs\/pull\/[1-9][0-9]*\/(?:head|merge)$/;
+const GITHUB_LIFECYCLE_KEYS = [
+  'GITHUB_ACTIONS', 'GITHUB_EVENT_NAME', 'GITHUB_REF', 'GITHUB_HEAD_REF',
+  'GITHUB_BASE_REF', 'GITHUB_SHA',
+];
 const FROZEN_FILES = [
   '.go-version', 'go.mod', 'go.sum', 'pnpm-lock.yaml', 'pnpm-workspace.yaml',
   'tools/toolchain.lock.json', 'tools/ci-actions.lock.json',
@@ -193,6 +201,405 @@ function isGeneratedWorktreeArtifact(relative) {
   return relative.split('/').includes('node_modules');
 }
 
+function linesFrom(probe) {
+  return probe?.status === 0 ? probe.stdout.split('\n').filter(Boolean) : null;
+}
+
+function normalizedEnv(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+function exactStringSet(actual, expected) {
+  return Array.isArray(actual) && actual.length === expected.length &&
+    new Set(actual).size === actual.length &&
+    JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
+}
+
+function isGitObjectId(value) {
+  return typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+}
+
+function readCommit(repo, commit) {
+  if (!commit) return null;
+  const parentProbe = git(repo, ['rev-list', '--parents', '-n', '1', commit], { check: false });
+  const parts = parentProbe.status === 0
+    ? parentProbe.stdout.trim().split(/\s+/).filter(Boolean) : [];
+  if (parts[0] !== commit) return null;
+  const treeProbe = git(repo, ['rev-parse', commit + '^{tree}'], { check: false });
+  const subjectProbe = git(repo, ['show', '-s', '--format=%s', commit], { check: false });
+  return {
+    commit,
+    parents: parts.slice(1),
+    tree: treeProbe.status === 0 ? treeProbe.stdout.trim() : null,
+    subject: subjectProbe.status === 0 ? subjectProbe.stdout.trim() : null,
+  };
+}
+
+// Git facts are collected once and then passed to a pure, fail-closed
+// classifier/validator. In particular, a pull_request synthetic merge and an
+// authorized main implementation merge may have the same graph shape, so the
+// GitHub event/ref binding participates in classification instead of being
+// treated as optional decoration.
+export function collectLifecycleFacts(repo, env = process.env) {
+  const baseCommitProbe = git(repo, ['rev-parse', BASE_COMMIT + '^{commit}'], { check: false });
+  const baseTreeProbe = git(repo, ['rev-parse', BASE_COMMIT + '^{tree}'], { check: false });
+  const headProbe = git(repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
+  const head = headProbe.status === 0 ? headProbe.stdout.trim() : null;
+  const headCommit = readCommit(repo, head);
+  const branchProbe = git(repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
+  const ancestryProbe = git(repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], {
+    check: false,
+  });
+  const mergeProbe = git(repo, [
+    'rev-list', '--merges', '--reverse', BASE_COMMIT + '..HEAD',
+  ], { check: false });
+  const mergeCommits = linesFrom(mergeProbe);
+  const soleMerge = Array.isArray(mergeCommits) && mergeCommits.length === 1
+    ? readCommit(repo, mergeCommits[0]) : null;
+  const candidateTip = soleMerge?.parents?.length === 2 ? soleMerge.parents[1] : head;
+  const candidateCommit = readCommit(repo, candidateTip);
+  const candidateAncestry = candidateTip
+    ? git(repo, ['merge-base', '--is-ancestor', BASE_COMMIT, candidateTip], { check: false })
+    : { status: 2 };
+  const candidateMergeProbe = candidateTip
+    ? git(repo, ['rev-list', '--merges', BASE_COMMIT + '..' + candidateTip], { check: false })
+    : { status: 2, stdout: '' };
+  const candidatePathsProbe = candidateTip
+    ? git(repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT, candidateTip], { check: false })
+    : { status: 2, stdout: '' };
+  const githubPresent = GITHUB_LIFECYCLE_KEYS.some((key) => Object.hasOwn(env, key));
+  return {
+    baseCommit: baseCommitProbe.status === 0 ? baseCommitProbe.stdout.trim() : null,
+    baseTree: baseTreeProbe.status === 0 ? baseTreeProbe.stdout.trim() : null,
+    head,
+    headTree: headCommit?.tree ?? null,
+    ancestryKnown: ancestryProbe.status === 0 || ancestryProbe.status === 1,
+    baseIsAncestor: ancestryProbe.status === 0,
+    branch: branchProbe.status === 0 ? branchProbe.stdout.trim() : null,
+    github: {
+      present: githubPresent,
+      eventName: normalizedEnv(env.GITHUB_EVENT_NAME),
+      ref: normalizedEnv(env.GITHUB_REF),
+      headRef: normalizedEnv(env.GITHUB_HEAD_REF),
+      baseRef: normalizedEnv(env.GITHUB_BASE_REF),
+    },
+    mergeCommits,
+    merge: soleMerge ? {
+      ...soleMerge,
+      treeDiffQuiet: candidateTip
+        ? git(repo, ['diff', '--quiet', candidateTip, soleMerge.commit], { check: false }).status === 0
+        : false,
+    } : null,
+    candidateTip,
+    candidateTree: candidateCommit?.tree ?? null,
+    candidateDescendsFromBase: candidateAncestry.status === 0,
+    candidateMergeCommits: linesFrom(candidateMergeProbe),
+    candidateChangedPaths: linesFrom(candidatePathsProbe)?.sort() ?? null,
+  };
+}
+
+export function classifyLifecycle(facts) {
+  const problems = [];
+  const github = facts?.github;
+  let phase = 'UNKNOWN';
+  if (!isPlainObject(github) || typeof github.present !== 'boolean') {
+    problems.push('GitHub lifecycle environment is unreadable');
+    return { result: 'FAIL', phase, problems };
+  }
+
+  if (github.present) {
+    if (github.eventName === 'pull_request') {
+      phase = 'PULL_REQUEST_CHECK';
+      if (github.headRef !== TASK_BRANCH) problems.push('pull_request head ref is not the B008 task branch');
+      if (!PR_REF_PATTERN.test(github.ref ?? '')) problems.push('pull_request GITHUB_REF is not an exact PR head/merge ref');
+      if (github.baseRef !== MAIN_BRANCH) problems.push('pull_request base ref is not main');
+      if (facts.branch !== null && facts.branch !== TASK_BRANCH) {
+        problems.push('pull_request symbolic branch is foreign');
+      }
+    } else if (github.eventName === 'push') {
+      if (github.headRef !== null || github.baseRef !== null) {
+        problems.push('push event unexpectedly carries PR head/base refs');
+      }
+      if (github.ref === 'refs/heads/' + TASK_BRANCH) {
+        phase = 'CANDIDATE_PUSH';
+        if (facts.branch !== null && facts.branch !== TASK_BRANCH) {
+          problems.push('Candidate push symbolic branch is foreign');
+        }
+      } else if (github.ref === 'refs/heads/' + MAIN_BRANCH) {
+        phase = 'POST_MERGE_MAIN';
+        if (facts.branch !== null && facts.branch !== MAIN_BRANCH) {
+          problems.push('main push symbolic branch is foreign');
+        }
+      } else {
+        problems.push('push GITHUB_REF is not the B008 task branch or main');
+      }
+    } else {
+      problems.push('GitHub event is not an authorized push or pull_request lifecycle event');
+    }
+  } else if (facts.branch === TASK_BRANCH) {
+    phase = 'CANDIDATE_PUSH';
+  } else if (facts.branch === MAIN_BRANCH) {
+    phase = 'POST_MERGE_MAIN';
+  } else if (facts.branch === null) {
+    if (Array.isArray(facts.mergeCommits) && facts.mergeCommits.length === 0) {
+      phase = 'CANDIDATE_PUSH';
+    } else if (Array.isArray(facts.mergeCommits) && facts.mergeCommits.length === 1 &&
+        facts.merge?.commit === facts.head && facts.merge?.subject === IMPLEMENTATION_MERGE_SUBJECT) {
+      phase = 'POST_MERGE_MAIN';
+    } else {
+      problems.push('detached local checkout cannot be classified uniquely from exact topology');
+    }
+  } else {
+    problems.push('local symbolic branch is not the B008 task branch or main');
+  }
+  return { result: problems.length === 0 ? 'PASS' : 'FAIL', phase, problems };
+}
+
+export function validateLifecycle(facts) {
+  const classification = classifyLifecycle(facts);
+  const problems = [...classification.problems];
+  const phase = classification.phase;
+  let checkoutKind = 'UNKNOWN';
+  let implementationMergeRecognized = false;
+  const mergeCommits = facts?.mergeCommits;
+
+  if (facts?.baseCommit !== BASE_COMMIT) problems.push('fixed Base commit does not resolve exactly');
+  if (facts?.baseTree !== BASE_TREE) problems.push('fixed Base tree does not resolve exactly');
+  if (!isGitObjectId(facts?.head)) problems.push('HEAD commit identity is unreadable');
+  if (!isGitObjectId(facts?.headTree)) problems.push('HEAD tree identity is unreadable');
+  if (facts?.ancestryKnown !== true) problems.push('HEAD ancestry is unreadable');
+  if (facts?.baseIsAncestor !== true) problems.push('HEAD does not descend from fixed Base');
+
+  const validateCandidate = () => {
+    if (!isGitObjectId(facts.candidateTip)) problems.push('Candidate tip identity is unreadable');
+    if (!isGitObjectId(facts.candidateTree)) problems.push('Candidate tree identity is unreadable');
+    if (facts.candidateTip !== facts.head) problems.push('Candidate tip is not HEAD');
+    if (facts.candidateDescendsFromBase !== true) problems.push('Candidate lineage does not descend from fixed Base');
+    if (!Array.isArray(facts.candidateMergeCommits)) {
+      problems.push('Candidate merge list is unreadable');
+    } else if (facts.candidateMergeCommits.length !== 0) {
+      problems.push('Candidate lineage contains a merge commit');
+    }
+    if (facts.candidateTree !== facts.headTree) problems.push('Candidate tree is not the checked-out HEAD tree');
+  };
+  const validateCandidateContract = () => {
+    if (!exactStringSet(facts.candidateChangedPaths, REQUIRED_CHANGED_PATHS)) {
+      problems.push('Base-to-Candidate changed-path contract is not the exact 15-path B008 surface');
+    }
+  };
+  const validateTwoParentMerge = ({ requireSubject }) => {
+    const merge = facts.merge;
+    if (!merge || typeof merge !== 'object') {
+      problems.push('lifecycle merge facts are missing');
+      return;
+    }
+    if (!isGitObjectId(merge.commit)) problems.push('lifecycle merge identity is unreadable');
+    if (!isGitObjectId(merge.tree)) problems.push('lifecycle merge tree identity is unreadable');
+    if (!isGitObjectId(facts.candidateTip)) problems.push('Candidate parent identity is unreadable');
+    if (!isGitObjectId(facts.candidateTree)) problems.push('Candidate parent tree identity is unreadable');
+    if (merge.commit !== facts.head) problems.push('lifecycle merge is not current HEAD');
+    if (!Array.isArray(merge.parents) || merge.parents.length !== 2) {
+      problems.push('lifecycle merge does not have exactly two parents');
+      return;
+    }
+    if (merge.parents[0] !== BASE_COMMIT) problems.push('lifecycle merge first parent is not fixed Base/main');
+    if (merge.parents[1] !== facts.candidateTip) problems.push('lifecycle merge second parent is not Candidate tip');
+    if (facts.candidateDescendsFromBase !== true) problems.push('Candidate parent does not descend from fixed Base');
+    if (!Array.isArray(facts.candidateMergeCommits)) {
+      problems.push('Candidate parent merge list is unreadable');
+    } else if (facts.candidateMergeCommits.length !== 0) {
+      problems.push('Candidate parent contains a merge commit');
+    }
+    if (merge.tree !== facts.candidateTree) problems.push('lifecycle merge tree does not equal Candidate tree');
+    if (merge.treeDiffQuiet !== true) problems.push('lifecycle merge introduces a tree delta from Candidate');
+    if (facts.headTree !== merge.tree) problems.push('checked-out HEAD tree does not equal lifecycle merge tree');
+    if (requireSubject && merge.subject !== IMPLEMENTATION_MERGE_SUBJECT) {
+      problems.push('implementation merge subject is not exact');
+    }
+  };
+
+  if (phase === 'CANDIDATE_PUSH') {
+    checkoutKind = 'CANDIDATE_HEAD';
+    if (!Array.isArray(mergeCommits)) problems.push('post-base merge list is unreadable');
+    else if (mergeCommits.length !== 0) problems.push('Candidate history must contain zero post-base merges');
+    validateCandidate();
+    validateCandidateContract();
+  } else if (phase === 'PULL_REQUEST_CHECK') {
+    if (!Array.isArray(mergeCommits)) {
+      problems.push('post-base merge list is unreadable');
+    } else if (mergeCommits.length === 0) {
+      checkoutKind = 'PR_HEAD';
+      validateCandidate();
+      validateCandidateContract();
+    } else if (mergeCommits.length === 1) {
+      checkoutKind = 'PR_SYNTHETIC_MERGE';
+      if (facts.branch !== null) problems.push('PR synthetic merge checkout must be detached');
+      if (mergeCommits[0] !== facts.head) problems.push('PR synthetic merge must be current HEAD');
+      validateTwoParentMerge({ requireSubject: false });
+      validateCandidateContract();
+    } else {
+      problems.push('PR checkout contains more than one post-base merge');
+    }
+  } else if (phase === 'POST_MERGE_MAIN') {
+    checkoutKind = 'IMPLEMENTATION_MERGE';
+    if (!Array.isArray(mergeCommits)) {
+      problems.push('post-base merge list is unreadable');
+    } else if (mergeCommits.length !== 1) {
+      problems.push('post-merge main must contain exactly one implementation merge');
+    } else {
+      if (mergeCommits[0] !== facts.head) problems.push('implementation merge must be current HEAD');
+      validateTwoParentMerge({ requireSubject: true });
+      validateCandidateContract();
+      implementationMergeRecognized = problems.length === 0;
+    }
+  } else {
+    problems.push('lifecycle phase is not uniquely classified');
+  }
+
+  return {
+    result: problems.length === 0 ? 'PASS' : 'FAIL',
+    phase,
+    checkoutKind,
+    implementationMergeRecognized,
+    problems,
+  };
+}
+
+function lifecycleRegressionProbes() {
+  const candidateId = 'c'.repeat(40);
+  const candidateTree = 'd'.repeat(40);
+  const syntheticId = 'e'.repeat(40);
+  const implementationId = 'f'.repeat(40);
+  const githubLocal = {
+    present: false, eventName: null, ref: null, headRef: null, baseRef: null,
+  };
+  const candidate = {
+    baseCommit: BASE_COMMIT,
+    baseTree: BASE_TREE,
+    head: candidateId,
+    headTree: candidateTree,
+    ancestryKnown: true,
+    baseIsAncestor: true,
+    branch: TASK_BRANCH,
+    github: githubLocal,
+    mergeCommits: [],
+    merge: null,
+    candidateTip: candidateId,
+    candidateTree,
+    candidateDescendsFromBase: true,
+    candidateMergeCommits: [],
+    candidateChangedPaths: [...REQUIRED_CHANGED_PATHS],
+  };
+  const syntheticMerge = {
+    ...clone(candidate),
+    head: syntheticId,
+    headTree: candidateTree,
+    branch: null,
+    github: {
+      present: true,
+      eventName: 'pull_request',
+      ref: 'refs/pull/8/merge',
+      headRef: TASK_BRANCH,
+      baseRef: MAIN_BRANCH,
+    },
+    mergeCommits: [syntheticId],
+    merge: {
+      commit: syntheticId,
+      parents: [BASE_COMMIT, candidateId],
+      tree: candidateTree,
+      subject: 'Merge candidate-tip into main',
+      treeDiffQuiet: true,
+    },
+  };
+  const implementationMerge = {
+    ...clone(syntheticMerge),
+    head: implementationId,
+    branch: MAIN_BRANCH,
+    github: githubLocal,
+    mergeCommits: [implementationId],
+    merge: {
+      ...syntheticMerge.merge,
+      commit: implementationId,
+      subject: IMPLEMENTATION_MERGE_SUBJECT,
+    },
+  };
+  const prHead = {
+    ...clone(candidate),
+    branch: null,
+    github: {
+      present: true,
+      eventName: 'pull_request',
+      ref: 'refs/pull/8/merge',
+      headRef: TASK_BRANCH,
+      baseRef: MAIN_BRANCH,
+    },
+  };
+  const probes = [
+    ['task branch + zero merge Candidate', candidate, 'PASS', 'CANDIDATE_PUSH', false],
+    ['exact Candidate GitHub push', {
+      ...clone(candidate), branch: null, github: {
+        present: true, eventName: 'push', ref: 'refs/heads/' + TASK_BRANCH,
+        headRef: null, baseRef: null,
+      },
+    }, 'PASS', 'CANDIDATE_PUSH', false],
+    ['exact PR head Candidate', prHead, 'PASS', 'PULL_REQUEST_CHECK', false],
+    ['valid detached PR synthetic merge', syntheticMerge, 'PASS', 'PULL_REQUEST_CHECK', false],
+    ['PR synthetic merge with implementation subject stays non-authoritative', {
+      ...clone(syntheticMerge),
+      merge: { ...syntheticMerge.merge, subject: IMPLEMENTATION_MERGE_SUBJECT },
+    }, 'PASS', 'PULL_REQUEST_CHECK', false],
+    ['valid main post-merge', implementationMerge, 'PASS', 'POST_MERGE_MAIN', true],
+    ['valid detached GitHub main push', {
+      ...clone(implementationMerge), branch: null, github: {
+        present: true, eventName: 'push', ref: 'refs/heads/' + MAIN_BRANCH,
+        headRef: null, baseRef: null,
+      },
+    }, 'PASS', 'POST_MERGE_MAIN', true],
+    ['wrong Candidate branch', { ...clone(candidate), branch: 'task/foreign' }, 'FAIL'],
+    ['task branch with merge', {
+      ...clone(candidate), mergeCommits: ['internal-merge'], candidateMergeCommits: ['internal-merge'],
+    }, 'FAIL'],
+    ['wrong PR head', {
+      ...clone(prHead), github: { ...prHead.github, headRef: 'task/foreign' },
+    }, 'FAIL'],
+    ['main with zero merge', { ...clone(candidate), branch: MAIN_BRANCH }, 'FAIL'],
+    ['wrong merge first parent', {
+      ...clone(implementationMerge),
+      merge: { ...implementationMerge.merge, parents: ['a'.repeat(40), candidateId] },
+    }, 'FAIL'],
+    ['missing merge second parent', {
+      ...clone(implementationMerge),
+      merge: { ...implementationMerge.merge, parents: [BASE_COMMIT] },
+    }, 'FAIL'],
+    ['wrong implementation merge subject', {
+      ...clone(implementationMerge),
+      merge: { ...implementationMerge.merge, subject: 'merge: wrong' },
+    }, 'FAIL'],
+    ['merge tree mismatch', {
+      ...clone(implementationMerge), headTree: '0'.repeat(40),
+      merge: { ...implementationMerge.merge, tree: '0'.repeat(40) },
+    }, 'FAIL'],
+    ['merge introduces Candidate tree delta', {
+      ...clone(implementationMerge),
+      merge: { ...implementationMerge.merge, treeDiffQuiet: false },
+    }, 'FAIL'],
+    ['Candidate parent contains merge', {
+      ...clone(implementationMerge), candidateMergeCommits: ['candidate-internal-merge'],
+    }, 'FAIL'],
+    ['second merge', {
+      ...clone(implementationMerge), mergeCommits: [implementationId, '1'.repeat(40)],
+    }, 'FAIL'],
+  ];
+  return probes.map(([label, facts, expected, expectedPhase, expectedRecognized]) => {
+    const actual = validateLifecycle(facts);
+    const matched = actual.result === expected &&
+      (expectedPhase === undefined || actual.phase === expectedPhase) &&
+      (expectedRecognized === undefined ||
+        actual.implementationMergeRecognized === expectedRecognized);
+    return { label, expected, actual: actual.result, phase: actual.phase, matched };
+  });
+}
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -296,23 +703,21 @@ export function run(ctx) {
     fail('human milestone document misses: ' + missingDocNeedles.join(', '));
   } else ok('human milestone document states every required non-inflation boundary');
 
-  const baseCommit = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{commit}'], { check: false });
-  const baseTree = git(ctx.repo, ['rev-parse', BASE_COMMIT + '^{tree}'], { check: false });
-  if (baseCommit.status !== 0 || baseCommit.stdout.trim() !== BASE_COMMIT ||
-      baseTree.status !== 0 || baseTree.stdout.trim() !== BASE_TREE) {
+  const lifecycleFacts = collectLifecycleFacts(ctx.repo);
+  if (lifecycleFacts.baseCommit !== BASE_COMMIT || lifecycleFacts.baseTree !== BASE_TREE) {
     fail('fixed B008 base commit/tree does not resolve exactly');
   } else ok('fixed B008 base commit/tree resolves exactly');
-  const ancestry = git(ctx.repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], { check: false });
-  if (ancestry.status !== 0) fail('HEAD does not descend from the fixed B008 base');
-  else ok('HEAD descends from the fixed B008 base');
-  const branch = git(ctx.repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
-  if (branch.status !== 0 || branch.stdout.trim() !== 'task/AIPT-M0-B008') {
-    fail('Candidate is not on task/AIPT-M0-B008');
-  } else ok('Candidate branch is exact');
-  const mergeList = git(ctx.repo, ['rev-list', '--merges', BASE_COMMIT + '..HEAD'], { check: false });
-  if (mergeList.status !== 0 || mergeList.stdout.trim() !== '') {
-    fail('B008 Candidate history contains a post-base merge');
-  } else ok('B008 Candidate history contains zero post-base merge commits');
+  const lifecycle = validateLifecycle(lifecycleFacts);
+  if (lifecycle.result === 'FAIL') {
+    for (const problem of lifecycle.problems) fail('lifecycle: ' + problem);
+  } else if (lifecycle.phase === 'CANDIDATE_PUSH') {
+    ok('CANDIDATE_PUSH = PASS: exact task/ref binding, fixed-Base ancestry, zero merges and 15-path Candidate surface');
+  } else if (lifecycle.phase === 'PULL_REQUEST_CHECK') {
+    ok('PULL_REQUEST_CHECK = PASS: exact B008 PR head and ' + lifecycle.checkoutKind +
+      ' topology; no implementation merge is recognized');
+  } else {
+    ok('POST_MERGE_MAIN = PASS: exact one-merge main topology, subject and Candidate tree');
+  }
 
   const tracked = git(ctx.repo, ['diff', '--name-only', '--no-renames', BASE_COMMIT], { check: false });
   const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'], { check: false });
@@ -365,11 +770,28 @@ export function run(ctx) {
   }
   if (rejected === probes.length) ok('all ' + rejected + ' required negative probes reject');
 
+  const lifecycleProbes = lifecycleRegressionProbes();
+  const lifecycleProbeMatches = lifecycleProbes.filter((probe) => probe.matched).length;
+  for (const probe of lifecycleProbes) {
+    if (!probe.matched) {
+      fail('lifecycle regression probe mismatched: ' + probe.label +
+        ' (expected ' + probe.expected + ', got ' + probe.actual + '/' + probe.phase + ')');
+    }
+  }
+  if (lifecycleProbeMatches === lifecycleProbes.length) {
+    ok('all ' + lifecycleProbes.length + ' lifecycle topology/event/ref regression probes matched');
+  }
+
   return {
     result: pass ? 'PASS' : 'FAIL',
     details,
     negative_probes: rejected === probes.length ? 'PASS' : 'FAIL',
     negative_probe_count: probes.length,
+    lifecycle_phase: lifecycle.phase,
+    lifecycle_checkout: lifecycle.checkoutKind,
+    implementation_merge_recognized: lifecycle.implementationMergeRecognized,
+    lifecycle_regression: lifecycleProbeMatches === lifecycleProbes.length ? 'PASS' : 'FAIL',
+    lifecycle_probe_count: lifecycleProbes.length,
     changed_paths: changed,
   };
 }
