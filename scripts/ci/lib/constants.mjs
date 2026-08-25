@@ -396,6 +396,48 @@ export const MVP_B000_AUTHORITY = 'AIPT-MVP-B000-START-001';
 export const MVP_B000_SNAPSHOT = 'AIPT-MVP-B000-CANDIDATE-001';
 export const MVP_B000_NEXT_BATCH = 'AIPT-MVP-B001';
 
+// Immutable AIPT-MVP-B000 Candidate, repair and implementation-merge
+// identities. Closeout records these facts without replacing the accepted M0
+// verified implementation identity.
+export const MVP_B000_INITIAL_CANDIDATE = Object.freeze({
+  commit: '524113a95cd43365b56f215996775bc574e43d1a',
+  tree: '8c3823f9578c27b1ab3b42a15a56b6e97893d6ec',
+  ci_run: 32865192423,
+  ci_conclusion: 'success',
+});
+
+export const MVP_B000_FINAL_CANDIDATE = Object.freeze({
+  commit: '9a4d5e0ad09fbc9c3e13536d02cd131f992836f2',
+  tree: '895ccfc569435c390a1aaeea566167a2d61a4de6',
+  ci_run: 32869412683,
+  ci_conclusion: 'success',
+});
+
+export const MVP_B000_LIFECYCLE_REPAIR = Object.freeze({
+  finding: 'AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001',
+  status: 'CLOSED',
+  commit: MVP_B000_FINAL_CANDIDATE.commit,
+  parent: MVP_B000_INITIAL_CANDIDATE.commit,
+  subject: 'fix(ci): support MVP B000 merge lifecycle',
+  changed_paths: Object.freeze([
+    'scripts/ci/validate/mvp-bootstrap.mjs',
+    'scripts/ci/validate/m0-development-pass.mjs',
+    'scripts/ci/validate/tree-integrity.mjs',
+    'scripts/ci/validate/status-transition.mjs',
+  ]),
+});
+
+export const MVP_B000_IMPLEMENTATION_MERGE = Object.freeze({
+  directive: 'AIPT-MVP-B000-MERGE-001',
+  commit: '1a26e023af1b56c057590a46de2f63c3b4220923',
+  tree: MVP_B000_FINAL_CANDIDATE.tree,
+  parent1: MVP_B000_BASE_COMMIT,
+  parent2: MVP_B000_FINAL_CANDIDATE.commit,
+  subject: 'merge: integrate AIPT-MVP-B000',
+  post_merge_ci_run: 32907168240,
+  post_merge_ci_conclusion: 'success',
+});
+
 // Current cross-repository serial predecessor required by B007. Candidate,
 // merge and closeout identities remain separately auditable facts.
 export const B007_EXTERNAL_SERIAL_PREDECESSOR = {
@@ -821,6 +863,20 @@ export const MVP_B000_ALLOWED_PATHS = [
   'scripts/ci/validate/tree-integrity.mjs',
   'scripts/ci/validate/workflow.mjs',
 ];
+
+// Exact single-commit governance/validator surface authorized by
+// AIPT-MVP-B000-CLOSEOUT-001. This is distinct from the cumulative 17-path
+// bootstrap surface above.
+export const MVP_B000_CLOSEOUT_ALLOWED_PATHS = Object.freeze([
+  'README.md',
+  'docs/authority/BATCH_DEPENDENCY_GRAPH.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/milestones/MVP.md',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/mvp-bootstrap.mjs',
+]);
 
 export const M0_HISTORICAL_PATHS = [
   'docs/milestones/M0.md',

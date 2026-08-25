@@ -4,8 +4,10 @@
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
 // The report preserves every historical M0 gate and adds the exact MVP
-// bootstrap authority/lifecycle gate. M0 stays effective while B000 is the
-// sole active governance batch and B001 remains unauthorized/not started.
+// bootstrap authority/lifecycle gate. M0 stays effective while B000 is either
+// the sole active governance batch or its exact closeout; B001 remains
+// unauthorized/not started in both phases.
+import fs from 'node:fs';
 import path from 'node:path';
 import { run as runStatus } from './validate/status-transition.mjs';
 import { run as runDefer } from './validate/defer-016.mjs';
@@ -50,10 +52,20 @@ const checks = await Promise.all([
 ]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
+const status = JSON.parse(fs.readFileSync(
+  path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
+));
+const standalone = status.tracks?.['AIPT-STANDALONE'];
+const b000Closed = standalone?.batch_history?.[CURRENT_BATCH] === 'MERGED_CLOSED' &&
+  standalone?.construction === 'IDLE_WAITING_NEXT_BATCH' &&
+  standalone?.current_batch === 'NO_ACTIVE_BATCH' && standalone?.global_wip === 0;
+const note = b000Closed
+  ? 'AIPT-MVP-B000 MERGED_CLOSED / GLOBAL_WIP 0; AIPT-MVP-B001 is named but NOT_AUTHORIZED/NOT_STARTED; M0 Development Pass remains effective; production/release/MVP qualifications remain NOT_GRANTED, human equivalence remains NOT_CLAIMED, and platform integration remains FROZEN_WAITING_M1_ENGINE'
+  : 'AIPT-MVP-B000 IN_PROGRESS / GLOBAL_WIP 1; AIPT-MVP-B001 is named but NOT_AUTHORIZED/NOT_STARTED; M0 Development Pass remains effective; production/release/MVP qualifications remain NOT_GRANTED, human equivalence remains NOT_CLAIMED, and platform integration remains FROZEN_WAITING_M1_ENGINE';
 const report = {
   schema: 'aipt.public.mvp-b000-validator-run/v1',
   task_id: CURRENT_BATCH,
-  note: 'AIPT-MVP-B000 Candidate — governance/bootstrap only; M0 Development Pass remains effective; AIPT-MVP-B001 is named but NOT_AUTHORIZED/NOT_STARTED; production/release/MVP qualifications remain NOT_GRANTED, human equivalence remains NOT_CLAIMED, and platform integration remains FROZEN_WAITING_M1_ENGINE',
+  note,
   repo: ctx.repo,
   result,
   checks,

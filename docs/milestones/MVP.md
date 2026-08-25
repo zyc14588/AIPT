@@ -15,7 +15,7 @@ AIPT-MVP-B000 → AIPT-MVP-B001 → UNREGISTERED-AIPT-P1-B000
 → AIPT-MVP-B008 → AIPT-MVP-B009 → AIPT-MVP-B010
 ```
 
-当前 `AIPT-MVP-B000 = IN_PROGRESS`、`GLOBAL_WIP = 1`。`AIPT-MVP-B001` 是下一串行批次，但保持 `NOT_STARTED`、`NOT_AUTHORIZED`，所有更晚 MVP 批次均为 `NOT_STARTED`。B000 只安装治理、机器图、生命周期和 fail-closed CI validator；不实现 Run engine、不调用真实模型、不执行真实桌测或资格 Run。MVP Development Pass 仍为 `NOT_GRANTED`；生产/发行资格仍为 `NOT_GRANTED`，真人等价仍为 `NOT_CLAIMED`，平台集成仍为 `FROZEN_WAITING_M1_ENGINE`。
+当前 `AIPT-MVP-B000 = MERGED_CLOSED`、`construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。final Candidate `9a4d5e0ad09fbc9c3e13536d02cd131f992836f2`（tree `895ccfc569435c390a1aaeea566167a2d61a4de6`，CI `32869412683` success）由 implementation merge `1a26e023af1b56c057590a46de2f63c3b4220923` 精确集成，post-merge CI `32907168240` success；finding `AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001` = `CLOSED`。`AIPT-MVP-B001` 是下一串行批次，但保持 `NOT_STARTED`、`NOT_AUTHORIZED`，未获授权且未启动；所有更晚 MVP 批次均为 `NOT_STARTED`。B000 只完成治理、机器图、生命周期和 fail-closed CI validator，没有 Run engine、真实模型 runtime 调用、真实桌测或 qualification Run。`M0 Development Pass = GRANTED` 继续有效，MVP Development Pass 仍为 `NOT_GRANTED`；生产/发行资格仍为 `NOT_GRANTED`，真人等价仍为 `NOT_CLAIMED`，平台集成仍为 `FROZEN_WAITING_M1_ENGINE` 且解冻未获授权。
 
 ## 真实 MVP：使用《未登记》任务 0
 

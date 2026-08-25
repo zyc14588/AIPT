@@ -1,12 +1,12 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-26",
-  "authority_snapshot_id": "AIPT-MVP-B000-CANDIDATE-001",
+  "authority_snapshot_id": "AIPT-MVP-B000-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-MVP-B000",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "AIPT-MVP-B001",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
@@ -21,7 +21,7 @@
         "AIPT-M0-B006": "MERGED_CLOSED",
         "AIPT-M0-B007": "MERGED_CLOSED",
         "AIPT-M0-B008": "MERGED_CLOSED",
-        "AIPT-MVP-B000": "IN_PROGRESS",
+        "AIPT-MVP-B000": "MERGED_CLOSED",
         "AIPT-MVP-B001": "NOT_STARTED",
         "UNREGISTERED-AIPT-P1-B000": "NOT_STARTED",
         "AIPT-MVP-B002": "NOT_STARTED",
@@ -66,7 +66,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -156,17 +156,49 @@
           "platform_integration": "FROZEN_WAITING_M1_ENGINE"
         }
       },
-      "pending_candidate": {
-        "milestone": "MVP",
+      "mvp_bootstrap": {
         "task_id": "AIPT-MVP-B000",
-        "authority": "AIPT-MVP-B000-START-001",
-        "branch": "task/AIPT-MVP-B000",
-        "base_commit": "c617f3c6ab3e56ac88f228ed4825e751537fc1f0",
-        "base_tree": "95a8d2980c5a6aa44f3db67c66f07ff008ff3491",
-        "state": "IN_PROGRESS",
+        "state": "MERGED_CLOSED",
+        "start_authority": "AIPT-MVP-B000-START-001",
+        "merge_authority": "AIPT-MVP-B000-MERGE-001",
+        "closeout_authority": "AIPT-MVP-B000-CLOSEOUT-001",
+        "base": {
+          "commit": "c617f3c6ab3e56ac88f228ed4825e751537fc1f0",
+          "tree": "95a8d2980c5a6aa44f3db67c66f07ff008ff3491"
+        },
+        "initial_candidate": {
+          "commit": "524113a95cd43365b56f215996775bc574e43d1a",
+          "tree": "8c3823f9578c27b1ab3b42a15a56b6e97893d6ec",
+          "ci_run": 32865192423
+        },
+        "final_candidate": {
+          "commit": "9a4d5e0ad09fbc9c3e13536d02cd131f992836f2",
+          "tree": "895ccfc569435c390a1aaeea566167a2d61a4de6",
+          "ci_run": 32869412683
+        },
+        "lifecycle_repair": {
+          "finding": "AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001",
+          "status": "CLOSED",
+          "commit": "9a4d5e0ad09fbc9c3e13536d02cd131f992836f2",
+          "parent": "524113a95cd43365b56f215996775bc574e43d1a"
+        },
+        "implementation_merge": {
+          "commit": "1a26e023af1b56c057590a46de2f63c3b4220923",
+          "tree": "895ccfc569435c390a1aaeea566167a2d61a4de6",
+          "parents": [
+            "c617f3c6ab3e56ac88f228ed4825e751537fc1f0",
+            "9a4d5e0ad09fbc9c3e13536d02cd131f992836f2"
+          ],
+          "subject": "merge: integrate AIPT-MVP-B000"
+        },
+        "post_merge_ci": {
+          "run": 32907168240,
+          "conclusion": "success"
+        },
         "scope": "GOVERNANCE_BOOTSTRAP_ONLY",
-        "merge_authorized": false,
-        "closeout_authorized": false
+        "serial_graph_items": 13,
+        "runtime_implementation_changed": false,
+        "real_model_runtime_calls": 0
       }
     },
     "UNREGISTERED": {

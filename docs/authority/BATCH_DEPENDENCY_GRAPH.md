@@ -2,7 +2,7 @@
 
 > M0 历史完整保留；MVP 的新机器权威为
 > [registry/batch-graph.json](registry/batch-graph.json)。全局串行批次依赖；
-> 规则：`GLOBAL_WIP = 1`、一个批次只修改一个权威仓库、前一批次正式关闭后才可启动下一批次、
+> 规则：活跃施工时 `GLOBAL_WIP = 1`、空闲等待时 `GLOBAL_WIP = 0`，一个批次只修改一个权威仓库、前一批次正式关闭后才可启动下一批次、
 > 集成任务只读两个来源 Commit。
 
 ## 串行批次表
@@ -79,7 +79,7 @@ AIPT-MVP-B000
   → AIPT-MVP-B010
 ```
 
-当前仅 `AIPT-MVP-B000 = IN_PROGRESS`；`AIPT-MVP-B001` 只是命名的下一串行批次，仍为 `NOT_STARTED`、`NOT_AUTHORIZED`，其余 MVP 批次全部 `NOT_STARTED`。不存在独立的 `AIPT-M1-*` 别名。
+当前 `AIPT-MVP-B000 = MERGED_CLOSED`，`construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。final Candidate `9a4d5e0ad09fbc9c3e13536d02cd131f992836f2`（tree `895ccfc569435c390a1aaeea566167a2d61a4de6`，CI `32869412683` success）由 implementation merge `1a26e023af1b56c057590a46de2f63c3b4220923` 精确集成，post-merge CI `32907168240` success；finding `AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001` = `CLOSED`。B000 只完成 MVP 治理/bootstrap，没有 Run engine、真实模型 runtime 调用、真实桌测或 qualification Run。`M0 Development Pass = GRANTED` 继续有效，`MVP Development Pass = NOT_GRANTED`；production/release 仍为 `NOT_GRANTED`，human equivalence 仍为 `NOT_CLAIMED`，Platform Integration 仍为 `FROZEN_WAITING_M1_ENGINE` 且解冻未获授权。`AIPT-MVP-B001` 只是命名的下一串行批次，保持 `NOT_STARTED`、`NOT_AUTHORIZED`、未授权且未启动；其余 MVP 批次全部 `NOT_STARTED`。不存在独立的 `AIPT-M1-*` 别名。
 
 ## Mermaid 视图（可选渲染）
 
@@ -94,7 +94,7 @@ flowchart LR
 
 ## 施工纪律
 
-- `GLOBAL_WIP = 1`（`R12-Q017`、`R13-Q003`）：首个纵向切片完成前，任何时刻只有一个活跃批次。
+- `GLOBAL_WIP <= 1`（`R12-Q017`、`R13-Q003`）：活跃施工精确为 1，关闭后空闲等待精确为 0；任何时刻最多只有一个活跃批次。
 - **单批次单仓库**（`R13-Q002`）：一个实施批次只能修改一个权威仓库。
 - **前一批次正式关闭后才可启动下一批次**。
 - **集成任务只读**（`INT-AIPT-UNREGISTERED-001`）：只读两个来源 Commit，不修改任一仓库。

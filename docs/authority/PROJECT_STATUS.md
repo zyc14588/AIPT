@@ -7,7 +7,7 @@
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B000`，`GLOBAL_WIP = 1`；`AIPT-M0-B000` 至 `AIPT-M0-B008` 均为不可变 `MERGED_CLOSED` 历史 |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`；权威快照 `AIPT-MVP-B000-CLOSEOUT-001`；`AIPT-M0-B000` 至 `AIPT-M0-B008` 与 `AIPT-MVP-B000` 均为不可变 `MERGED_CLOSED` 历史 |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
@@ -23,14 +23,14 @@
 - `AIPT-M0-B006` = **MERGED/CLOSED**：Base `10d0232bd2e3e42601bbb00cedc753f842e219db`（tree `922115b9a75a7eca8dd97475f3f228bc7d3d2c10`）；Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，Candidate CI run `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree，parents 为 Base 与 Candidate，subject `merge: integrate AIPT-M0-B006`），post-merge CI run `32578143923` success。Evidence Schema、最小 `RAW_CAPTURE` exporter/verifier、只读 PostgreSQL 18.4 source、确定性与篡改检测均 PASS；根算法为 `SHA-256(manifest.json exact bytes)`。`AUDIT_READY`/`AUDIT_RESULT` generator、签名、加密和分块均为 `NOT_IMPLEMENTED`。Harness 施工尝试因 `HARNESS_INPUT_TOKEN_BUDGET`（`190183 > 180000`）未产生 patch，最终 `CODEX_ONLY`，未手工编辑 split-memory；这是施工遥测而非 product runtime failure。
 - `AIPT-M0-B007` = **MERGED_CLOSED**：Base `e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8`（tree `326def92334a43f6d63cd77b40f0eae9af31b375`）；Original Candidate `5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92`（tree `d4cc34e8fcbec8ea4f864f22aa7503cc1dcdffcd`）；repair/final Candidate `561e43f9bc646c43da0b48c8485f820f73941df9`（tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`，Candidate CI `32634972911` success）；implementation merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb`（相同 tree，parents 为 Base 与 final Candidate，subject `merge: integrate AIPT-M0-B007`），post-merge CI `32636449574` success。Web Host、动态 loopback bind、Host/Origin/CSRF、安全头与六个 truthful panels 均 PASS；Config 不暴露 DSN/credential，新增第三方 pnpm 依赖为 0。Queue/Run/Status backend、Report UI export 与 `AUDIT_READY`/`AUDIT_RESULT` generators 均为 `NOT_IMPLEMENTED`，`RAW_CAPTURE` 为 `IMPLEMENTED_LIBRARY_ONLY`，Launcher 顺序不变且 MODEL/HARNESS/IPC 继续失败关闭。finding `AIPT-B007-SUPPLY-CHAIN-DOC-CONSISTENCY-001` 已由 repair commit 关闭，无语义代码变更。外部串行前序 `UNREGISTERED-AIPT-P0-B003` 继续绑定 implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`、closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`（tree `5585271c78d1fe5cd8357c7b36a501bee34f0240`，CI `32621464543` success）。
 - `AIPT-M0-B008` = **MERGED_CLOSED**：source base 为 B007 closeout `656154ff37f8cff0daff46d6f4b7dfe68254853c`（tree `4781236e62a112132e00c21bd5f5b407d73178ab`）；final Candidate `e5659082f9a0ec657d5c33cc8063d8a410c335aa`（tree `9ad4341317e977d455e98ced20f3880d9e50c691`，Candidate CI `32808838664` success）已由 implementation merge `8927a2779f3f123dabd472623d76d8e910152133` 精确集成，post-merge CI `32819203218` success，finding `AIPT-B008-MILESTONE-VALIDATOR-LIFECYCLE-001` 已关闭。GPT Hard Gate = `PASS`，open findings 为空，`M0 Development Pass = GRANTED`，并由 `AIPT-M0-B008-CLOSEOUT-001` 正式生效。M0 交付可构建、可验证的工程基础，但未执行真实 TRPG 桌测；它不是 MVP Development Pass，生产/发行资格均为 `NOT_GRANTED`，真人等价与真实桌测完成均为 `NOT_CLAIMED`。第二审计者生产门仍未完成，MODEL/HARNESS/IPC 生产 gate 仍未实现，平台集成保持冻结。机器与人类记录见 [M0 Development Pass](../milestones/M0_DEVELOPMENT_PASS.md)。
-- `AIPT-MVP-B000` = **IN_PROGRESS**：Owner Authority `AIPT-MVP-B000-START-001`；Base 为 M0 closeout `c617f3c6ab3e56ac88f228ed4825e751537fc1f0`（tree `95a8d2980c5a6aa44f3db67c66f07ff008ff3491`，CI `32828913767` success）。权威 13 项串行图见 [registry/batch-graph.json](registry/batch-graph.json)。下一项 `AIPT-MVP-B001` 仅被命名，仍为 `NOT_STARTED`、`NOT_AUTHORIZED`；其余 MVP 批次均为 `NOT_STARTED`。不存在独立 `AIPT-M1-*` 批次别名。
+- `AIPT-MVP-B000` = **MERGED_CLOSED**：Owner Authority `AIPT-MVP-B000-START-001`；Base 为 M0 closeout `c617f3c6ab3e56ac88f228ed4825e751537fc1f0`（tree `95a8d2980c5a6aa44f3db67c66f07ff008ff3491`）。final Candidate `9a4d5e0ad09fbc9c3e13536d02cd131f992836f2`（tree `895ccfc569435c390a1aaeea566167a2d61a4de6`，Candidate CI `32869412683` success）由 implementation merge `1a26e023af1b56c057590a46de2f63c3b4220923` 集成，post-merge CI `32907168240` success；finding `AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001` = `CLOSED`。权威 13 项串行图见 [registry/batch-graph.json](registry/batch-graph.json)。当前 `construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`；下一项 `AIPT-MVP-B001` 仅被命名，仍为 `NOT_STARTED`、`NOT_AUTHORIZED`，未获授权且未启动；其余 MVP 批次均为 `NOT_STARTED`。不存在独立 `AIPT-M1-*` 批次别名。B000 只完成 MVP 治理/bootstrap，没有 Run engine、真实模型 runtime 调用、真实桌测或 qualification Run。
 - 详见 [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) 与 [../milestones/M0.md](../milestones/M0.md)。
 
 ## 仓库
 
 | 仓库 | 说明 |
 |---|---|
-| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；verified implementation identity 固定为 B008 implementation merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`，不得用 M0 closeout 或 MVP Candidate 替换；另有 `task/AIPT-MVP-B000` pending Candidate surface，merge/closeout 均未获授权 |
+| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；M0 verified implementation identity 继续固定为 B008 implementation merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`，不得用 M0 closeout 或 MVP closeout 替换；B000 的独立 `mvp_bootstrap` machine surface 固定其 final Candidate、implementation merge 与 post-merge CI，且已 `MERGED_CLOSED` |
 | 《未登记》UNREGISTERED | <https://github.com/zyc14588/UNREGISTERED>，默认分支 `main`；P0-B003 verified implementation merge `5d25dad0dbcb648de565ea723027f999ec5b3a37`、tree `aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc`，closeout `358d6d9d08a86818e34fd0c0d9a62bfe66e73abe`；规划快照与实现权威明确分离；就绪等级 `PLAYTESTABLE_DRAFT` |
 
 ## 运行环境与模型（设计基线）
@@ -38,6 +38,7 @@
 - 参考环境：Ubuntu 26.04 LTS（`ENV-F001`）；Bash 启动 + 本地 Web（`ENV-F002`）。
 - 主远端模型：`deepseek-v4-pro`（`ENV-F003`），完整 Campaign 使用该模型（`R14-Q023`）。
 - 本地模型：`UNASSIGNED`；GGUF 选型与性能阈值延期（`DEFER-002`、`DEFER-003`）。
+- B000 closeout 于 2026-08-26 重新查询 [DeepSeek 官方 Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/)：`deepseek-v4-pro` 每百万 token 的输入缓存命中为 off-peak `$0.022` / peak `$0.044`，输入缓存未命中为 `$0.66` / `$1.32`，输出为 `$1.98` / `$3.96`。本任务无适合外包的产品施工 leaf，`execution_route = CODEX_ONLY`；Harness Provider 调用、产品模型调用与真实模型 runtime 调用均为 `0`。
 - 以上是**设计基线**：完整桌测运行时尚未建设。B001 建立工程与 CI，B002 交付协议/SDK/Go 契约消费者，B003 交付 PostgreSQL 存储，B004 交付失败关闭的 Launcher 与 Core runtime shell，B005 交付 Harness Adapter stdio 边界与无模型 fixture smoke，B006 交付公开 Evidence/Audit Schema 与最小原生 `RAW_CAPTURE` exporter/verifier，B007 交付本地只读 Web 可视化。真实模型、IPC listener、Queue/Run backend 与后续审计 generator 仍未实现。
 
 ## 审计状态
@@ -57,7 +58,7 @@
 
 ## 下一步
 
-- `AIPT-M0-B000` 至 `AIPT-M0-B008` 均保持 `MERGED_CLOSED`；`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B000`，`GLOBAL_WIP = 1`。
+- `AIPT-M0-B000` 至 `AIPT-M0-B008` 与 `AIPT-MVP-B000` 均保持 `MERGED_CLOSED`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`。
 - B008 verified implementation identity 固定为 merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`；`M0 Development Pass = GRANTED`。
 - `next_serial_batch = AIPT-MVP-B001`、`next_batch_state = NOT_AUTHORIZED`、`next_batch_authorized = false`、`next_batch_started = false`；B001 与全部更晚批次均未启动，不得自动推进。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。

@@ -16,7 +16,12 @@ import {
   MVP_B000_BASE_COMMIT,
   MVP_B000_BASE_TREE,
   MVP_B000_BRANCH,
+  MVP_B000_CLOSEOUT_ALLOWED_PATHS,
+  MVP_B000_FINAL_CANDIDATE,
   MVP_B000_FORBIDDEN_PREFIXES,
+  MVP_B000_IMPLEMENTATION_MERGE,
+  MVP_B000_INITIAL_CANDIDATE,
+  MVP_B000_LIFECYCLE_REPAIR,
   MVP_B000_NEXT_BATCH,
   MVP_B000_SNAPSHOT,
   STATUS_DATE,
@@ -38,19 +43,13 @@ const GITHUB_LIFECYCLE_KEYS = [
   'GITHUB_BASE_REF', 'GITHUB_SHA',
 ];
 
-export const MVP_B000_PREVIOUS_CANDIDATE =
-  '524113a95cd43365b56f215996775bc574e43d1a';
-export const MVP_B000_PREVIOUS_CANDIDATE_TREE =
-  '8c3823f9578c27b1ab3b42a15a56b6e97893d6ec';
-export const MVP_B000_REPAIR_SUBJECT = 'fix(ci): support MVP B000 merge lifecycle';
-export const MVP_B000_IMPLEMENTATION_MERGE_SUBJECT = 'merge: integrate AIPT-MVP-B000';
+export const MVP_B000_PREVIOUS_CANDIDATE = MVP_B000_INITIAL_CANDIDATE.commit;
+export const MVP_B000_PREVIOUS_CANDIDATE_TREE = MVP_B000_INITIAL_CANDIDATE.tree;
+export const MVP_B000_REPAIR_SUBJECT = MVP_B000_LIFECYCLE_REPAIR.subject;
+export const MVP_B000_IMPLEMENTATION_MERGE_SUBJECT =
+  MVP_B000_IMPLEMENTATION_MERGE.subject;
 export const MVP_B000_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-MVP-B000';
-export const MVP_B000_REPAIR_PATHS = [
-  'scripts/ci/validate/mvp-bootstrap.mjs',
-  'scripts/ci/validate/m0-development-pass.mjs',
-  'scripts/ci/validate/tree-integrity.mjs',
-  'scripts/ci/validate/status-transition.mjs',
-];
+export const MVP_B000_REPAIR_PATHS = MVP_B000_LIFECYCLE_REPAIR.changed_paths;
 export const MVP_B000_LIFECYCLE_PHASES = Object.freeze({
   CANDIDATE_PUSH: 'CANDIDATE_PUSH',
   PULL_REQUEST_CHECK: 'PULL_REQUEST_CHECK',
@@ -212,6 +211,50 @@ const EXPECTED_PENDING = {
   merge_authorized: false,
   closeout_authorized: false,
 };
+const EXPECTED_MVP_BOOTSTRAP = {
+  task_id: CURRENT_BATCH,
+  state: 'MERGED_CLOSED',
+  start_authority: MVP_B000_AUTHORITY,
+  merge_authority: MVP_B000_IMPLEMENTATION_MERGE.directive,
+  closeout_authority: 'AIPT-MVP-B000-CLOSEOUT-001',
+  base: {
+    commit: MVP_B000_BASE_COMMIT,
+    tree: MVP_B000_BASE_TREE,
+  },
+  initial_candidate: {
+    commit: MVP_B000_INITIAL_CANDIDATE.commit,
+    tree: MVP_B000_INITIAL_CANDIDATE.tree,
+    ci_run: MVP_B000_INITIAL_CANDIDATE.ci_run,
+  },
+  final_candidate: {
+    commit: MVP_B000_FINAL_CANDIDATE.commit,
+    tree: MVP_B000_FINAL_CANDIDATE.tree,
+    ci_run: MVP_B000_FINAL_CANDIDATE.ci_run,
+  },
+  lifecycle_repair: {
+    finding: MVP_B000_LIFECYCLE_REPAIR.finding,
+    status: MVP_B000_LIFECYCLE_REPAIR.status,
+    commit: MVP_B000_LIFECYCLE_REPAIR.commit,
+    parent: MVP_B000_LIFECYCLE_REPAIR.parent,
+  },
+  implementation_merge: {
+    commit: MVP_B000_IMPLEMENTATION_MERGE.commit,
+    tree: MVP_B000_IMPLEMENTATION_MERGE.tree,
+    parents: [
+      MVP_B000_IMPLEMENTATION_MERGE.parent1,
+      MVP_B000_IMPLEMENTATION_MERGE.parent2,
+    ],
+    subject: MVP_B000_IMPLEMENTATION_MERGE.subject,
+  },
+  post_merge_ci: {
+    run: MVP_B000_IMPLEMENTATION_MERGE.post_merge_ci_run,
+    conclusion: MVP_B000_IMPLEMENTATION_MERGE.post_merge_ci_conclusion,
+  },
+  scope: 'GOVERNANCE_BOOTSTRAP_ONLY',
+  serial_graph_items: 13,
+  runtime_implementation_changed: false,
+  real_model_runtime_calls: 0,
+};
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -305,6 +348,7 @@ export function expectedCloseoutStatus(baseStatus) {
   expected.tracks['AIPT-STANDALONE'].batch_history[CURRENT_BATCH] = 'MERGED_CLOSED';
   expected.tracks['AIPT-STANDALONE'].global_wip = 0;
   delete expected.repositories.AIPT.pending_candidate;
+  expected.repositories.AIPT.mvp_bootstrap = EXPECTED_MVP_BOOTSTRAP;
   return expected;
 }
 
@@ -325,6 +369,73 @@ export function validateCloseoutStatus(status, baseStatus) {
 function sameSet(actual, expected) {
   return actual.length === expected.length && new Set(actual).size === actual.length &&
     JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
+}
+
+function frozenIdentityProblems() {
+  const problems = [];
+  const exactInitial = {
+    commit: '524113a95cd43365b56f215996775bc574e43d1a',
+    tree: '8c3823f9578c27b1ab3b42a15a56b6e97893d6ec',
+    ci_run: 32865192423,
+    ci_conclusion: 'success',
+  };
+  const exactFinal = {
+    commit: '9a4d5e0ad09fbc9c3e13536d02cd131f992836f2',
+    tree: '895ccfc569435c390a1aaeea566167a2d61a4de6',
+    ci_run: 32869412683,
+    ci_conclusion: 'success',
+  };
+  const exactRepair = {
+    finding: 'AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001',
+    status: 'CLOSED',
+    commit: exactFinal.commit,
+    parent: exactInitial.commit,
+    subject: 'fix(ci): support MVP B000 merge lifecycle',
+    changed_paths: [
+      'scripts/ci/validate/mvp-bootstrap.mjs',
+      'scripts/ci/validate/m0-development-pass.mjs',
+      'scripts/ci/validate/tree-integrity.mjs',
+      'scripts/ci/validate/status-transition.mjs',
+    ],
+  };
+  const exactMerge = {
+    directive: 'AIPT-MVP-B000-MERGE-001',
+    commit: '1a26e023af1b56c057590a46de2f63c3b4220923',
+    tree: exactFinal.tree,
+    parent1: MVP_B000_BASE_COMMIT,
+    parent2: exactFinal.commit,
+    subject: 'merge: integrate AIPT-MVP-B000',
+    post_merge_ci_run: 32907168240,
+    post_merge_ci_conclusion: 'success',
+  };
+  const exactCloseoutPaths = [
+    'README.md',
+    'docs/authority/BATCH_DEPENDENCY_GRAPH.md',
+    'docs/authority/PROJECT_STATUS.md',
+    'docs/authority/registry/project-status.json',
+    'docs/milestones/MVP.md',
+    'scripts/ci/lib/constants.mjs',
+    'scripts/ci/run-checks.mjs',
+    'scripts/ci/validate/mvp-bootstrap.mjs',
+  ];
+  problems.push(...compareExact(MVP_B000_INITIAL_CANDIDATE, exactInitial,
+    '$constants.MVP_B000_INITIAL_CANDIDATE'));
+  problems.push(...compareExact(MVP_B000_FINAL_CANDIDATE, exactFinal,
+    '$constants.MVP_B000_FINAL_CANDIDATE'));
+  problems.push(...compareExact(MVP_B000_LIFECYCLE_REPAIR, exactRepair,
+    '$constants.MVP_B000_LIFECYCLE_REPAIR'));
+  problems.push(...compareExact(MVP_B000_IMPLEMENTATION_MERGE, exactMerge,
+    '$constants.MVP_B000_IMPLEMENTATION_MERGE'));
+  if (!sameSet(MVP_B000_CLOSEOUT_ALLOWED_PATHS, exactCloseoutPaths)) {
+    problems.push('$constants.MVP_B000_CLOSEOUT_ALLOWED_PATHS drifted');
+  }
+  if (![MVP_B000_INITIAL_CANDIDATE, MVP_B000_FINAL_CANDIDATE,
+    MVP_B000_LIFECYCLE_REPAIR, MVP_B000_LIFECYCLE_REPAIR.changed_paths,
+    MVP_B000_IMPLEMENTATION_MERGE, MVP_B000_CLOSEOUT_ALLOWED_PATHS]
+    .every((value) => Object.isFrozen(value))) {
+    problems.push('B000 identity/closeout constants are not frozen');
+  }
+  return problems;
 }
 
 export function validateChangedPaths(changed) {
@@ -581,6 +692,10 @@ export function validateLifecycle(facts, status = null, baseStatus = null) {
     if (!isGitObjectId(facts?.candidateTip) || !isGitObjectId(facts?.candidateTree)) {
       problems.push('Candidate commit/tree identity is unreadable');
     }
+    if (facts?.candidateTip !== MVP_B000_FINAL_CANDIDATE.commit ||
+        facts?.candidateTree !== MVP_B000_FINAL_CANDIDATE.tree) {
+      problems.push('Candidate is not the exact frozen final Candidate identity');
+    }
     if (facts?.candidateDescendsFromBase !== true ||
         facts?.candidateDescendsFromPrevious !== true) {
       problems.push('Candidate does not descend from fixed Base and Previous Candidate');
@@ -628,10 +743,21 @@ export function validateLifecycle(facts, status = null, baseStatus = null) {
       return;
     }
     if (merge.parents[0] !== MVP_B000_BASE_COMMIT) problems.push('merge first parent is not fixed Base');
-    if (merge.parents[1] !== facts.candidateTip) problems.push('merge second parent is not Candidate tip');
+    if (merge.parents[1] !== MVP_B000_FINAL_CANDIDATE.commit ||
+        merge.parents[1] !== facts.candidateTip) {
+      problems.push('merge second parent is not the frozen final Candidate');
+    }
     validateCandidateLineage();
-    if (!synthetic && merge.subject !== MVP_B000_IMPLEMENTATION_MERGE_SUBJECT) {
-      problems.push('implementation merge subject is not exact');
+    if (!synthetic) {
+      if (merge.commit !== MVP_B000_IMPLEMENTATION_MERGE.commit) {
+        problems.push('implementation merge commit identity is not exact');
+      }
+      if (merge.subject !== MVP_B000_IMPLEMENTATION_MERGE_SUBJECT) {
+        problems.push('implementation merge subject is not exact');
+      }
+      if (merge.tree !== MVP_B000_IMPLEMENTATION_MERGE.tree) {
+        problems.push('implementation merge tree identity is not exact');
+      }
     }
     if (merge.tree !== facts.candidateTree || merge.tree !== facts.headTree && merge.commit === facts.head) {
       problems.push('merge tree does not equal Candidate/checkout tree');
@@ -669,7 +795,9 @@ export function validateLifecycle(facts, status = null, baseStatus = null) {
     if (!Array.isArray(facts?.mergeCommits) || facts.mergeCommits.length !== 1) {
       problems.push('post-merge main must contain exactly one implementation merge');
     } else {
-      if (facts.mergeCommits[0] !== facts.head || facts.merge?.commit !== facts.head) {
+      if (facts.mergeCommits[0] !== MVP_B000_IMPLEMENTATION_MERGE.commit ||
+          facts.head !== MVP_B000_IMPLEMENTATION_MERGE.commit ||
+          facts.merge?.commit !== facts.head) {
         problems.push('implementation merge must be current HEAD');
       }
       if (!Array.isArray(facts.ordinaryDescendants) || facts.ordinaryDescendants.length !== 0) {
@@ -681,6 +809,10 @@ export function validateLifecycle(facts, status = null, baseStatus = null) {
     checkoutKind = 'FINAL_CLOSEOUT';
     if (!Array.isArray(facts?.mergeCommits) || facts.mergeCommits.length !== 1) {
       problems.push('closeout main must contain exactly one implementation merge');
+    } else if (facts.mergeCommits[0] !== MVP_B000_IMPLEMENTATION_MERGE.commit ||
+        facts.merge?.commit !== MVP_B000_IMPLEMENTATION_MERGE.commit) {
+      problems.push('closeout does not descend from the exact implementation merge');
+      validateMerge();
     } else {
       validateMerge();
     }
@@ -690,11 +822,14 @@ export function validateLifecycle(facts, status = null, baseStatus = null) {
     }
     if (!isPlainObject(facts?.headCommit) || facts.headCommit.commit !== facts.head ||
         !Array.isArray(facts.headCommit.parents) || facts.headCommit.parents.length !== 1 ||
-        facts.headCommit.parents[0] !== facts.merge?.commit) {
+        facts.headCommit.parents[0] !== MVP_B000_IMPLEMENTATION_MERGE.commit) {
       problems.push('closeout is not one ordinary single-parent child of implementation merge');
     }
     if (facts?.headCommit?.subject !== MVP_B000_CLOSEOUT_SUBJECT) {
       problems.push('closeout subject is not exact');
+    }
+    if (!exactStringSet(facts?.closeoutChangedPaths, MVP_B000_CLOSEOUT_ALLOWED_PATHS)) {
+      problems.push('closeout changed paths are not the exact eight-path allowlist');
     }
   } else {
     problems.push('lifecycle phase is not uniquely classified');
@@ -781,8 +916,44 @@ function modeProblems(repo, changed) {
   return problems;
 }
 
-function humanDocProblems(repo) {
-  const contracts = [
+function humanDocProblems(repo, phase) {
+  const closeout = phase === MVP_B000_LIFECYCLE_PHASES.CLOSEOUT_MAIN;
+  const contracts = closeout ? [
+    ['README.md', ['AIPT-MVP-B000-CLOSEOUT-001', CURRENT_BATCH, 'MERGED_CLOSED',
+      'IDLE_WAITING_NEXT_BATCH', 'NO_ACTIVE_BATCH', 'GLOBAL_WIP = 0',
+      MVP_B000_NEXT_BATCH, 'NOT_STARTED', 'NOT_AUTHORIZED',
+      MVP_B000_FINAL_CANDIDATE.commit, MVP_B000_IMPLEMENTATION_MERGE.commit,
+      String(MVP_B000_IMPLEMENTATION_MERGE.post_merge_ci_run),
+      MVP_B000_LIFECYCLE_REPAIR.finding, 'Run engine', '真实模型 runtime 调用',
+      '真实桌测', 'qualification Run', 'FROZEN_WAITING_M1_ENGINE', GRAPH_PATH]],
+    ['docs/authority/PROJECT_STATUS.md', ['AIPT-MVP-B000-CLOSEOUT-001', CURRENT_BATCH,
+      'MERGED_CLOSED', 'IDLE_WAITING_NEXT_BATCH', 'NO_ACTIVE_BATCH', 'GLOBAL_WIP = 0',
+      MVP_B000_NEXT_BATCH, 'NOT_STARTED', 'NOT_AUTHORIZED',
+      MVP_B000_FINAL_CANDIDATE.commit, MVP_B000_IMPLEMENTATION_MERGE.commit,
+      String(MVP_B000_IMPLEMENTATION_MERGE.post_merge_ci_run),
+      MVP_B000_LIFECYCLE_REPAIR.finding, 'M0 Development Pass', 'GRANTED',
+      'MVP Development Pass', 'NOT_GRANTED', 'FROZEN_WAITING_M1_ENGINE',
+      'Run engine', '真实模型 runtime 调用', '真实桌测', 'qualification Run',
+      'registry/batch-graph.json']],
+    ['docs/authority/BATCH_DEPENDENCY_GRAPH.md', [
+      'registry/batch-graph.json', ...EXPECTED_BATCHES.map((batch) => batch.id),
+      'MERGED_CLOSED', 'IDLE_WAITING_NEXT_BATCH', 'NO_ACTIVE_BATCH', 'GLOBAL_WIP = 0',
+      MVP_B000_FINAL_CANDIDATE.commit, MVP_B000_IMPLEMENTATION_MERGE.commit,
+      String(MVP_B000_IMPLEMENTATION_MERGE.post_merge_ci_run),
+      MVP_B000_LIFECYCLE_REPAIR.finding, 'NOT_STARTED', 'NOT_AUTHORIZED',
+      'M0 Development Pass', 'GRANTED', 'MVP Development Pass', 'NOT_GRANTED',
+      'FROZEN_WAITING_M1_ENGINE', 'Run engine', '真实模型 runtime 调用',
+      '真实桌测', 'qualification Run',
+    ]],
+    ['docs/milestones/MVP.md', [CURRENT_BATCH, 'MERGED_CLOSED',
+      'IDLE_WAITING_NEXT_BATCH', 'NO_ACTIVE_BATCH', 'GLOBAL_WIP = 0',
+      MVP_B000_NEXT_BATCH, 'NOT_STARTED', 'NOT_AUTHORIZED',
+      MVP_B000_FINAL_CANDIDATE.commit, MVP_B000_IMPLEMENTATION_MERGE.commit,
+      String(MVP_B000_IMPLEMENTATION_MERGE.post_merge_ci_run),
+      MVP_B000_LIFECYCLE_REPAIR.finding, 'M0 Development Pass', 'GRANTED',
+      'MVP Development Pass', 'NOT_GRANTED', 'FROZEN_WAITING_M1_ENGINE',
+      'Run engine', '真实模型 runtime 调用', '真实桌测', 'qualification Run']],
+  ] : [
     ['README.md', [MVP_B000_SNAPSHOT, CURRENT_BATCH, 'GLOBAL_WIP = 1', MVP_B000_NEXT_BATCH,
       'NOT_AUTHORIZED', 'FROZEN_WAITING_M1_ENGINE', GRAPH_PATH]],
     ['docs/authority/PROJECT_STATUS.md', [MVP_B000_SNAPSHOT, CURRENT_BATCH,
@@ -802,6 +973,10 @@ function humanDocProblems(repo) {
     if (relative.endsWith('BATCH_DEPENDENCY_GRAPH.md') && text.includes('`BATCH_GRAPH.json`')) {
       problems.push('human dependency graph retains stale missing BATCH_GRAPH.json claim');
     }
+    if (closeout && (text.includes('`AIPT-MVP-B000` = **IN_PROGRESS**') ||
+        text.includes('当前 `AIPT-MVP-B000 = IN_PROGRESS`'))) {
+      problems.push(`${relative} retains Candidate-era B000 state as current`);
+    }
   }
   return problems;
 }
@@ -812,11 +987,12 @@ function clone(value) {
 
 // These pure probes close the phase-boundary regressions without creating a
 // real merge or closeout in the authoritative worktree.
-export function runLifecycleRegressionProbes(candidateStatus, baseStatus) {
-  const candidateId = 'a'.repeat(40);
-  const candidateTree = 'b'.repeat(40);
+export function runLifecycleRegressionProbes(_status, baseStatus) {
+  const candidateStatus = expectedCandidateStatus(baseStatus);
+  const candidateId = MVP_B000_FINAL_CANDIDATE.commit;
+  const candidateTree = MVP_B000_FINAL_CANDIDATE.tree;
   const syntheticId = 'c'.repeat(40);
-  const mergeId = 'd'.repeat(40);
+  const mergeId = MVP_B000_IMPLEMENTATION_MERGE.commit;
   const closeoutId = 'e'.repeat(40);
   const local = {
     present: false, eventName: null, ref: null, headRef: null, baseRef: null, sha: null,
@@ -939,10 +1115,7 @@ export function runLifecycleRegressionProbes(candidateStatus, baseStatus) {
     headCommit: closeoutCommit,
     github: { ...postMerge.github, sha: closeoutId },
     ordinaryDescendants: [closeoutCommit],
-    closeoutChangedPaths: [
-      'docs/authority/PROJECT_STATUS.md',
-      'docs/authority/registry/project-status.json',
-    ],
+    closeoutChangedPaths: [...MVP_B000_CLOSEOUT_ALLOWED_PATHS],
   };
   const closeoutStatus = expectedCloseoutStatus(baseStatus);
   const cases = [];
@@ -965,6 +1138,15 @@ export function runLifecycleRegressionProbes(candidateStatus, baseStatus) {
   add('valid main post-merge', postMerge, candidateStatus, 'PASS', 'POST_MERGE_MAIN');
   add('future exact closeout topology simulation', closeout, closeoutStatus, 'PASS',
     'CLOSEOUT_MAIN');
+  const wrongMergeId = '7'.repeat(40);
+  add('wrong implementation merge identity', {
+    ...clone(postMerge),
+    head: wrongMergeId,
+    headCommit: { ...postMerge.headCommit, commit: wrongMergeId },
+    github: { ...postMerge.github, sha: wrongMergeId },
+    mergeCommits: [wrongMergeId],
+    merge: { ...postMerge.merge, commit: wrongMergeId },
+  }, candidateStatus, 'FAIL');
   add('wrong Candidate branch', { ...clone(candidate), branch: 'task/AIPT-MVP-B001' },
     candidateStatus, 'FAIL');
   add('Candidate contains merge', {
@@ -1035,12 +1217,72 @@ export function runLifecycleRegressionProbes(candidateStatus, baseStatus) {
     }],
   };
   add('second ordinary closeout descendant', secondDescendant, closeoutStatus, 'FAIL');
+  add('wrong closeout parent', {
+    ...clone(closeout),
+    headCommit: { ...closeout.headCommit, parents: ['1'.repeat(40)] },
+  }, closeoutStatus, 'FAIL');
+  add('two-parent closeout', {
+    ...clone(closeout),
+    headCommit: {
+      ...closeout.headCommit, parents: [mergeId, MVP_B000_FINAL_CANDIDATE.commit],
+    },
+  }, closeoutStatus, 'FAIL');
+  add('wrong closeout subject', {
+    ...clone(closeout),
+    headCommit: { ...closeout.headCommit, subject: 'closeout: wrong' },
+  }, closeoutStatus, 'FAIL');
+  add('closeout path missing', {
+    ...clone(closeout),
+    closeoutChangedPaths: MVP_B000_CLOSEOUT_ALLOWED_PATHS.slice(1),
+  }, closeoutStatus, 'FAIL');
+  add('closeout path added', {
+    ...clone(closeout),
+    closeoutChangedPaths: [...MVP_B000_CLOSEOUT_ALLOWED_PATHS, 'package.json'],
+  }, closeoutStatus, 'FAIL');
+  const closeoutStillActive = clone(closeoutStatus);
+  closeoutStillActive.tracks['AIPT-STANDALONE'].batch_history[CURRENT_BATCH] = 'IN_PROGRESS';
+  add('B000 closeout remains IN_PROGRESS', closeout, closeoutStillActive, 'FAIL');
+  const closeoutWip1 = clone(closeoutStatus);
+  closeoutWip1.tracks['AIPT-STANDALONE'].global_wip = 1;
+  add('closeout GLOBAL_WIP remains one', closeout, closeoutWip1, 'FAIL');
+  const closeoutB001Authorized = clone(closeoutStatus);
+  closeoutB001Authorized.tracks['AIPT-STANDALONE'].next_batch_authorized = true;
+  add('closeout authorizes B001', closeout, closeoutB001Authorized, 'FAIL');
+  const closeoutB001Started = clone(closeoutStatus);
+  closeoutB001Started.tracks['AIPT-STANDALONE'].next_batch_started = true;
+  add('closeout starts B001', closeout, closeoutB001Started, 'FAIL');
+  const closeoutB001Active = clone(closeoutStatus);
+  closeoutB001Active.tracks['AIPT-STANDALONE'].batch_history[MVP_B000_NEXT_BATCH] = 'IN_PROGRESS';
+  add('B001 incorrectly IN_PROGRESS', closeout, closeoutB001Active, 'FAIL');
+  const closeoutB002 = clone(closeoutStatus);
+  closeoutB002.tracks['AIPT-STANDALONE'].current_batch = 'AIPT-MVP-B002';
+  closeoutB002.tracks['AIPT-STANDALONE'].batch_history['AIPT-MVP-B002'] = 'IN_PROGRESS';
+  add('arbitrary B002 active after closeout', closeout, closeoutB002, 'FAIL');
+  const closeoutM0Revoked = clone(closeoutStatus);
+  closeoutM0Revoked.repositories.AIPT.verified_state.m0_development_pass.result = 'REVOKED';
+  add('M0 Development Pass revoked after closeout', closeout, closeoutM0Revoked, 'FAIL');
+  const closeoutMvpGranted = clone(closeoutStatus);
+  closeoutMvpGranted.repositories.AIPT.verified_state.boundaries.mvp_development_pass = 'GRANTED';
+  add('MVP Development Pass granted at B000 closeout', closeout, closeoutMvpGranted, 'FAIL');
+  const closeoutPlatform = clone(closeoutStatus);
+  closeoutPlatform.tracks['AIPT-PLATFORM-INTEGRATION'].status = 'UNFROZEN';
+  add('platform integration unfrozen after closeout', closeout, closeoutPlatform, 'FAIL');
+  const runtimeClaim = clone(closeoutStatus);
+  runtimeClaim.repositories.AIPT.mvp_bootstrap.runtime_implementation_changed = true;
+  add('runtime implementation claim added', closeout, runtimeClaim, 'FAIL');
+  const runtimeCall = clone(closeoutStatus);
+  runtimeCall.repositories.AIPT.mvp_bootstrap.real_model_runtime_calls = 1;
+  add('real model runtime call claimed', closeout, runtimeCall, 'FAIL');
   return cases;
 }
 
 function runNegativeProbes(graph, status, baseStatus) {
   const probes = [];
   const add = (label, rejected) => probes.push([label, rejected]);
+  const validateCurrentStatus = (candidate) =>
+    status?.authority_snapshot_id === 'AIPT-MVP-B000-CLOSEOUT-001'
+      ? validateCloseoutStatus(candidate, baseStatus)
+      : validateStatus(candidate, baseStatus);
 
   const removed = clone(graph); removed.serial_batches.splice(4, 1);
   add('removed graph item', validateGraph(removed).length > 0);
@@ -1053,23 +1295,25 @@ function runNegativeProbes(graph, status, baseStatus) {
   add('standalone M1 alias', validateGraph(m1).length > 0);
 
   const b001 = clone(status); b001.tracks['AIPT-STANDALONE'].next_batch_authorized = true;
-  add('B001 authorization', validateStatus(b001, baseStatus).length > 0);
+  add('B001 authorization', validateCurrentStatus(b001).length > 0);
   const later = clone(status); later.tracks['AIPT-STANDALONE'].batch_history['AIPT-MVP-B004'] = 'IN_PROGRESS';
-  add('later batch start', validateStatus(later, baseStatus).length > 0);
-  const wip0 = clone(status); wip0.tracks['AIPT-STANDALONE'].global_wip = 0;
-  add('GLOBAL_WIP zero', validateStatus(wip0, baseStatus).length > 0);
+  add('later batch start', validateCurrentStatus(later).length > 0);
+  const wrongPhaseWip = clone(status);
+  wrongPhaseWip.tracks['AIPT-STANDALONE'].global_wip =
+    wrongPhaseWip.tracks['AIPT-STANDALONE'].global_wip === 0 ? 1 : 0;
+  add('GLOBAL_WIP phase drift', validateCurrentStatus(wrongPhaseWip).length > 0);
   const wip2 = clone(status); wip2.tracks['AIPT-STANDALONE'].global_wip = 2;
-  add('GLOBAL_WIP above one', validateStatus(wip2, baseStatus).length > 0);
+  add('GLOBAL_WIP above one', validateCurrentStatus(wip2).length > 0);
   const revoke = clone(status); revoke.repositories.AIPT.verified_state.m0_development_pass.result = 'REVOKED';
-  add('M0 pass revocation', validateStatus(revoke, baseStatus).length > 0);
+  add('M0 pass revocation', validateCurrentStatus(revoke).length > 0);
   const unfreeze = clone(status); unfreeze.tracks['AIPT-PLATFORM-INTEGRATION'].status = 'UNFROZEN';
-  add('platform unfreeze', validateStatus(unfreeze, baseStatus).length > 0);
+  add('platform unfreeze', validateCurrentStatus(unfreeze).length > 0);
   const external = clone(status); external.repositories.UNREGISTERED.verified_head = '0'.repeat(40);
-  add('UNREGISTERED identity drift', validateStatus(external, baseStatus).length > 0);
+  add('UNREGISTERED identity drift', validateCurrentStatus(external).length > 0);
   const premature = clone(status); premature.repositories.AIPT.verified_state.boundaries.mvp_development_pass = 'GRANTED';
-  add('premature MVP Development Pass', validateStatus(premature, baseStatus).length > 0);
+  add('premature MVP Development Pass', validateCurrentStatus(premature).length > 0);
   const claim = clone(status); claim.mvp_qualification_claims = { clean_runs_completed: 5, mutants_detected: 3 };
-  add('false Clean/Mutant completion claim', validateStatus(claim, baseStatus).length > 0);
+  add('false Clean/Mutant completion claim', validateCurrentStatus(claim).length > 0);
 
   add('runtime implementation path', validateChangedPaths([
     ...MVP_B000_ALLOWED_PATHS, 'internal/run/engine.go',
@@ -1104,6 +1348,12 @@ export function run(ctx) {
   } catch (error) {
     fail('authority input is unreadable: ' + error.message);
     return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
+  }
+
+  const identityProblems = frozenIdentityProblems();
+  for (const problem of identityProblems) fail('frozen B000 identity: ' + problem);
+  if (identityProblems.length === 0) {
+    ok('initial/final Candidate, lifecycle repair, implementation merge and closeout allowlist are exact frozen constants');
   }
 
   const graphProblems = validateGraph(graph);
@@ -1168,7 +1418,9 @@ export function run(ctx) {
     }
   }
 
-  for (const problem of humanDocProblems(ctx.repo)) fail('human authority: ' + problem);
+  for (const problem of humanDocProblems(ctx.repo, lifecycle.phase)) {
+    fail('human authority: ' + problem);
+  }
   if (!details.some((line) => line.startsWith('FAIL: human authority'))) {
     ok('human authority links the real machine graph and states every non-inflation boundary');
   }
