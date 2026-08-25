@@ -1,4 +1,4 @@
-// Shared B008 final-closeout validator constants and immutable predecessor identities.
+// Shared MVP bootstrap validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 through AIPT-M0-B007 acceptances. Nothing in the
@@ -10,11 +10,11 @@
 // AIPT-M0-B007 closeout commit and its tree, held as independent literal
 // anchors. Every predecessor keeps its own original identity.
 
-export const CURRENT_BATCH = 'AIPT-M0-B008';
+export const CURRENT_BATCH = 'AIPT-MVP-B000';
 
-// Closeout leaves no active construction batch. CURRENT_BATCH remains the
-// immutable historical batch id whose closeout is being validated.
-export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
+// The new Owner Authority opens exactly one post-M0 governance batch while
+// every later MVP batch remains unauthorized and not started.
+export const ACTIVE_BATCH = CURRENT_BATCH;
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -25,7 +25,7 @@ export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 export const SUPPLY_CHAIN_BASELINE_BATCH = 'AIPT-M0-B001';
 
 // Public status date of the B008 Candidate snapshot (machine + human docs).
-export const STATUS_DATE = '2026-08-25';
+export const STATUS_DATE = '2026-08-26';
 
 // Immutable closed-batch identities — historical state, never updated by
 // later batches and never aliased to the current base.
@@ -376,6 +376,25 @@ export const B008_IMPLEMENTATION_MERGE = {
   post_merge_ci_run: 32819203218,
   post_merge_ci_conclusion: 'success',
 };
+
+// Immutable M0 closeout and exact AIPT-MVP-B000 source base. This ordinary
+// single-parent authority commit made the M0 Development Pass effective; it
+// does not replace the accepted B008 implementation identity above.
+export const M0_CLOSEOUT = {
+  commit: 'c617f3c6ab3e56ac88f228ed4825e751537fc1f0',
+  tree: '95a8d2980c5a6aa44f3db67c66f07ff008ff3491',
+  parent: B008_IMPLEMENTATION_MERGE.commit,
+  subject: 'closeout: complete AIPT-M0-B008',
+  ci_run: 32828913767,
+  ci_conclusion: 'success',
+};
+
+export const MVP_B000_BASE_COMMIT = M0_CLOSEOUT.commit;
+export const MVP_B000_BASE_TREE = M0_CLOSEOUT.tree;
+export const MVP_B000_BRANCH = 'task/AIPT-MVP-B000';
+export const MVP_B000_AUTHORITY = 'AIPT-MVP-B000-START-001';
+export const MVP_B000_SNAPSHOT = 'AIPT-MVP-B000-CANDIDATE-001';
+export const MVP_B000_NEXT_BATCH = 'AIPT-MVP-B001';
 
 // Current cross-repository serial predecessor required by B007. Candidate,
 // merge and closeout identities remain separately auditable facts.
@@ -780,6 +799,60 @@ export const FROZEN_DECISION_PATHS = [
   'docs/authority/SUPERSEDED_DECISIONS.md',
 ];
 
+// Exact governance/CI-only surface authorized for AIPT-MVP-B000. The older
+// B008 allowlists above remain frozen historical inputs to the M0 final gate;
+// current lifecycle validators use this separate successor surface.
+export const MVP_B000_ALLOWED_PATHS = [
+  '.github/workflows/ci.yml',
+  'README.md',
+  'docs/authority/README.md',
+  'docs/authority/BATCH_DEPENDENCY_GRAPH.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/batch-graph.json',
+  'docs/authority/registry/project-status.json',
+  'docs/milestones/MVP.md',
+  'package.json',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/m0-development-pass.mjs',
+  'scripts/ci/validate/mvp-bootstrap.mjs',
+  'scripts/ci/validate/standalone-entrypoints.mjs',
+  'scripts/ci/validate/status-transition.mjs',
+  'scripts/ci/validate/tree-integrity.mjs',
+  'scripts/ci/validate/workflow.mjs',
+];
+
+export const M0_HISTORICAL_PATHS = [
+  'docs/milestones/M0.md',
+  'docs/milestones/M0_DEVELOPMENT_PASS.md',
+  'docs/milestones/m0-development-pass.json',
+];
+
+export const MVP_B000_FORBIDDEN_PREFIXES = [
+  'cmd/',
+  'internal/',
+  'packages/',
+  'schemas/',
+  'testdata/',
+  'tools/',
+  'scripts/ci/sbom/',
+  'scripts/ci/validate/sbom.mjs',
+  'scripts/ci/validate/supply-chain.mjs',
+  'docs/architecture/',
+  'docs/harness/',
+  'docs/evidence/',
+  'docs/integration/',
+  'docs/licensing/',
+  'docs/runtime/',
+  'docs/supply-chain/',
+  '.go-version',
+  'go.mod',
+  'go.sum',
+  'LICENSE',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+];
+
 export const EXPECTED_MIT_LICENSE = `MIT License
 
 Copyright (c) 2026 AIPT contributors
@@ -833,4 +906,8 @@ export function pathMatchesCloseoutAllowed(p) {
 
 export function pathMatchesStatusTransition(p) {
   return STATUS_TRANSITION_PATHS.includes(p);
+}
+
+export function pathMatchesMvpB000Allowed(p) {
+  return MVP_B000_ALLOWED_PATHS.includes(p);
 }

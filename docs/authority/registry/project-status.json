@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-25",
-  "authority_snapshot_id": "AIPT-M0-B008-CLOSEOUT-001",
+  "as_of": "2026-08-26",
+  "authority_snapshot_id": "AIPT-MVP-B000-CANDIDATE-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "NONE",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B000",
+      "next_serial_batch": "AIPT-MVP-B001",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -20,7 +20,20 @@
         "AIPT-M0-B005": "MERGED_CLOSED",
         "AIPT-M0-B006": "MERGED_CLOSED",
         "AIPT-M0-B007": "MERGED_CLOSED",
-        "AIPT-M0-B008": "MERGED_CLOSED"
+        "AIPT-M0-B008": "MERGED_CLOSED",
+        "AIPT-MVP-B000": "IN_PROGRESS",
+        "AIPT-MVP-B001": "NOT_STARTED",
+        "UNREGISTERED-AIPT-P1-B000": "NOT_STARTED",
+        "AIPT-MVP-B002": "NOT_STARTED",
+        "AIPT-MVP-B003": "NOT_STARTED",
+        "AIPT-MVP-B004": "NOT_STARTED",
+        "INT-AIPT-UNREGISTERED-MVP-001": "NOT_STARTED",
+        "AIPT-MVP-B005": "NOT_STARTED",
+        "AIPT-MVP-B006": "NOT_STARTED",
+        "AIPT-MVP-B007": "NOT_STARTED",
+        "AIPT-MVP-B008": "NOT_STARTED",
+        "AIPT-MVP-B009": "NOT_STARTED",
+        "AIPT-MVP-B010": "NOT_STARTED"
       },
       "external_serial_predecessor": {
         "id": "UNREGISTERED-AIPT-P0-B003",
@@ -53,7 +66,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -142,6 +155,18 @@
           "real_playtest_completion": "NOT_CLAIMED",
           "platform_integration": "FROZEN_WAITING_M1_ENGINE"
         }
+      },
+      "pending_candidate": {
+        "milestone": "MVP",
+        "task_id": "AIPT-MVP-B000",
+        "authority": "AIPT-MVP-B000-START-001",
+        "branch": "task/AIPT-MVP-B000",
+        "base_commit": "c617f3c6ab3e56ac88f228ed4825e751537fc1f0",
+        "base_tree": "95a8d2980c5a6aa44f3db67c66f07ff008ff3491",
+        "state": "IN_PROGRESS",
+        "scope": "GOVERNANCE_BOOTSTRAP_ONLY",
+        "merge_authorized": false,
+        "closeout_authorized": false
       }
     },
     "UNREGISTERED": {

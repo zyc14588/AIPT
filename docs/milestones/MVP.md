@@ -3,6 +3,20 @@
 > 开发 MVP 资格合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)；
 > 延期参数见 [../authority/registry/deferred-parameters.json](../authority/registry/deferred-parameters.json)。
 
+## 冻结实施序列与当前状态
+
+MVP 的机器权威是 [batch-graph.json](../authority/registry/batch-graph.json)，固定串行顺序为：
+
+```text
+AIPT-MVP-B000 → AIPT-MVP-B001 → UNREGISTERED-AIPT-P1-B000
+→ AIPT-MVP-B002 → AIPT-MVP-B003 → AIPT-MVP-B004
+→ INT-AIPT-UNREGISTERED-MVP-001（只读）
+→ AIPT-MVP-B005 → AIPT-MVP-B006 → AIPT-MVP-B007
+→ AIPT-MVP-B008 → AIPT-MVP-B009 → AIPT-MVP-B010
+```
+
+当前 `AIPT-MVP-B000 = IN_PROGRESS`、`GLOBAL_WIP = 1`。`AIPT-MVP-B001` 是下一串行批次，但保持 `NOT_STARTED`、`NOT_AUTHORIZED`，所有更晚 MVP 批次均为 `NOT_STARTED`。B000 只安装治理、机器图、生命周期和 fail-closed CI validator；不实现 Run engine、不调用真实模型、不执行真实桌测或资格 Run。MVP Development Pass 仍为 `NOT_GRANTED`；生产/发行资格仍为 `NOT_GRANTED`，真人等价仍为 `NOT_CLAIMED`，平台集成仍为 `FROZEN_WAITING_M1_ENGINE`。
+
 ## 真实 MVP：使用《未登记》任务 0
 
 - 真实 MVP 直接与已进入原型桌测阶段的**《未登记》**共同建设，使用其当前游戏仓库（`R12-Q001`、`R12-Q003`）。

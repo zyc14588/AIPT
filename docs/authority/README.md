@@ -10,6 +10,7 @@ AIPT 的权威信息分两层：
    - [registry/decisions.json](registry/decisions.json)：全部 454 条决策（`ACTIVE` / `REFINED` / `SUPERSEDED`）。
    - [registry/supersessions.json](registry/supersessions.json)：覆盖与细化关系。
    - [registry/deferred-parameters.json](registry/deferred-parameters.json)：允许延期、尚未冻结的参数。
+   - [registry/batch-graph.json](registry/batch-graph.json)：M0 closeout 后的 13 项 MVP 权威串行图。
    - [registry/project-status.json](registry/project-status.json)：工作轨、仓库与审计状态快照。
 2. **人类文档**——可读解释与施工合同。若与机器登记冲突，以机器登记为准；人类文档**不是**第二份独立权威。
 
@@ -34,6 +35,7 @@ AIPT 的权威信息分两层：
 | [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md) | 延期参数：状态、阻塞范围与关闭条件 |
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | 当前项目状态与下一步 |
 | [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) | 全局串行批次依赖图 |
+| [registry/batch-graph.json](registry/batch-graph.json) | 机器可读 MVP 批次图（13 项，顺序与字段冻结） |
 
 领域文档：架构 [../architecture/README.md](../architecture/README.md) · 安全 [../security/README.md](../security/README.md) · 证据 [../evidence/README.md](../evidence/README.md) · 测试模型 [../test-model/README.md](../test-model/README.md) · 集成 [../integration/README.md](../integration/README.md) · 许可 [../licensing/README.md](../licensing/README.md) · 供应链 [../supply-chain/README.md](../supply-chain/README.md)
 
@@ -52,7 +54,7 @@ B001 建立公共 CI 与供应链基础后，以下工具登记随仓库同行�
 
 ## 最短阅读路径
 
-- **施工者**：本页 → [DECISION_MATRIX.md](DECISION_MATRIX.md) → [GOVERNANCE.md](GOVERNANCE.md) → [PROJECT_STATUS.md](PROJECT_STATUS.md) → [../milestones/M0.md](../milestones/M0.md)
+- **施工者**：本页 → [registry/batch-graph.json](registry/batch-graph.json) → [PROJECT_STATUS.md](PROJECT_STATUS.md) → [BATCH_DEPENDENCY_GRAPH.md](BATCH_DEPENDENCY_GRAPH.md) → [../milestones/MVP.md](../milestones/MVP.md)
 - **审计者**：本页 → [SUPERSEDED_DECISIONS.md](SUPERSEDED_DECISIONS.md) → [DEFERRED_PARAMETERS.md](DEFERRED_PARAMETERS.md) → [registry/decisions.json](registry/decisions.json) → [../evidence/README.md](../evidence/README.md)
 
 ## 私有提示词政策

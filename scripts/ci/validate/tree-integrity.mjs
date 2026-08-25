@@ -14,11 +14,21 @@ import {
   B008_IMPLEMENTATION_MERGE, B008_INITIAL_CANDIDATE, B008_LIFECYCLE_REPAIR,
   B008_MERGE_SUBJECT, BASE_COMMIT, BASE_TREE,
   CLOSEOUT_ALLOWED_PATHS, EXPECTED_MIT_LICENSE, FORBIDDEN_PREFIXES,
-  FROZEN_REGISTRY_PATHS, normalizeText, pathMatchesAllowed,
-  pathMatchesCloseoutAllowed,
+  FROZEN_REGISTRY_PATHS, M0_CLOSEOUT, M0_HISTORICAL_PATHS,
+  MVP_B000_ALLOWED_PATHS, MVP_B000_BASE_COMMIT, MVP_B000_BASE_TREE,
+  MVP_B000_FORBIDDEN_PREFIXES, MVP_B000_SNAPSHOT, normalizeText,
+  pathMatchesAllowed, pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
+import {
+  collectLifecycleFacts as collectMvpB000LifecycleFacts,
+  runLifecycleRegressionProbes as runMvpB000LifecycleRegressionProbes,
+  validateChangedPaths,
+  validateLifecycle as validateMvpB000Lifecycle,
+} from './mvp-bootstrap.mjs';
+
+const MVP_STATUS_PATH = 'docs/authority/registry/project-status.json';
 
 const ALLOWED_PATHS_LITERAL = [
   '.github/workflows/ci.yml',
@@ -365,7 +375,194 @@ function verifyHistoricalTopology(repo, fail, ok) {
   } else ok('B008 three-commit zero-merge Candidate history and repair scope verified');
 }
 
+function hasMvpB000Authority(repo) {
+  try {
+    const status = JSON.parse(fs.readFileSync(path.join(repo, MVP_STATUS_PATH), 'utf8'));
+    return status?.authority_snapshot_id === MVP_B000_SNAPSHOT ||
+      status?.authority_snapshot_id === 'AIPT-MVP-B000-CLOSEOUT-001';
+  } catch {
+    return false;
+  }
+}
+
+export function isUnsafeMvpRawMode(line) {
+  const modes = /^:(\d{6}) (\d{6}) /.exec(line);
+  if (!modes) return true;
+  const unsafeType = [modes[1], modes[2]].some((mode) =>
+    mode === '120000' || mode === '160000');
+  const deletion = modes[2] === '000000';
+  const malformedAddition = modes[1] === '000000' && modes[2] !== '100644';
+  return unsafeType || deletion || malformedAddition;
+}
+
+function runMvpB000Tree(ctx) {
+  const details = [];
+  let pass = true;
+  const ok = (message) => details.push('ok: ' + message);
+  const fail = (message) => { pass = false; details.push('FAIL: ' + message); };
+  const expectedPaths = [
+    '.github/workflows/ci.yml',
+    'README.md',
+    'docs/authority/README.md',
+    'docs/authority/BATCH_DEPENDENCY_GRAPH.md',
+    'docs/authority/PROJECT_STATUS.md',
+    'docs/authority/registry/batch-graph.json',
+    'docs/authority/registry/project-status.json',
+    'docs/milestones/MVP.md',
+    'package.json',
+    'scripts/ci/lib/constants.mjs',
+    'scripts/ci/run-checks.mjs',
+    'scripts/ci/validate/m0-development-pass.mjs',
+    'scripts/ci/validate/mvp-bootstrap.mjs',
+    'scripts/ci/validate/standalone-entrypoints.mjs',
+    'scripts/ci/validate/status-transition.mjs',
+    'scripts/ci/validate/tree-integrity.mjs',
+    'scripts/ci/validate/workflow.mjs',
+  ];
+  if (!same(MVP_B000_ALLOWED_PATHS, expectedPaths)) fail('MVP B000 allowlist constant drifted');
+  else ok('MVP B000 exact 17-path allowlist anchored independently');
+  if (MVP_B000_BASE_COMMIT !== 'c617f3c6ab3e56ac88f228ed4825e751537fc1f0' ||
+      MVP_B000_BASE_TREE !== '95a8d2980c5a6aa44f3db67c66f07ff008ff3491') {
+    fail('MVP B000 Base literal drifted');
+  } else ok('MVP B000 Base commit/tree literals anchored independently');
+
+  verifyHistoricalTopology(ctx.repo, fail, ok);
+  const closeout = git(ctx.repo, ['rev-list', '--parents', '-n', '1', M0_CLOSEOUT.commit], { check: false });
+  const closeoutTree = git(ctx.repo, ['rev-parse', `${M0_CLOSEOUT.commit}^{tree}`], { check: false });
+  const closeoutSubject = git(ctx.repo, ['show', '-s', '--format=%s', M0_CLOSEOUT.commit], { check: false });
+  if (closeout.stdout.trim() !== `${M0_CLOSEOUT.commit} ${M0_CLOSEOUT.parent}` ||
+      closeoutTree.stdout.trim() !== M0_CLOSEOUT.tree ||
+      closeoutSubject.stdout.trim() !== M0_CLOSEOUT.subject) {
+    fail('M0 closeout topology/tree/subject drifted');
+  } else ok('M0 closeout topology/tree/subject verified');
+
+  let status;
+  let baseStatus;
+  try {
+    status = JSON.parse(fs.readFileSync(path.join(ctx.repo, MVP_STATUS_PATH), 'utf8'));
+    const baseStatusProbe = git(ctx.repo, [
+      'show', `${MVP_B000_BASE_COMMIT}:${MVP_STATUS_PATH}`,
+    ], { check: false });
+    if (baseStatusProbe.status !== 0) throw new Error('fixed Base status is unavailable');
+    baseStatus = JSON.parse(baseStatusProbe.stdout);
+  } catch (error) {
+    fail('MVP B000 lifecycle status is unreadable: ' + error.message);
+  }
+  const facts = collectMvpB000LifecycleFacts(ctx.repo);
+  const lifecycle = validateMvpB000Lifecycle(facts, status, baseStatus);
+  for (const problem of lifecycle.problems) fail('MVP B000 lifecycle: ' + problem);
+  if (lifecycle.result === 'PASS') {
+    ok(`${lifecycle.phase} = PASS (${lifecycle.checkoutKind}): exact B000 topology and status`);
+  }
+
+  const tracked = git(ctx.repo, ['diff', '--name-only', '--no-renames', MVP_B000_BASE_COMMIT], { check: false });
+  const untracked = git(ctx.repo, ['ls-files', '--others', '--exclude-standard'], { check: false });
+  const changed = [...new Set([
+    ...tracked.stdout.split('\n'),
+    ...untracked.stdout.split('\n').filter((relative) =>
+      relative && !isGeneratedWorktreeArtifact(relative)),
+  ].filter(Boolean))].sort();
+  const scopeProblems = validateChangedPaths(changed);
+  for (const problem of scopeProblems) fail(problem);
+  if (scopeProblems.length === 0) ok('exact 17-path MVP governance/CI scope verified');
+  for (const relative of changed) {
+    const forbidden = MVP_B000_FORBIDDEN_PREFIXES.find((prefix) =>
+      prefix.endsWith('/') ? relative.startsWith(prefix) : relative === prefix);
+    if (forbidden) fail(`forbidden MVP B000 path changed (${forbidden}): ${relative}`);
+    try {
+      const stat = fs.lstatSync(path.join(ctx.repo, relative));
+      if (!stat.isFile() || stat.isSymbolicLink()) fail('changed path is not a regular file: ' + relative);
+    } catch (error) {
+      fail(`changed path lstat failed: ${relative}: ${error.message}`);
+    }
+  }
+  for (const line of git(ctx.repo, [
+    'diff', '--raw', '--no-abbrev', '--no-renames', MVP_B000_BASE_COMMIT,
+  ], { check: false }).stdout.split('\n').filter(Boolean)) {
+    if (isUnsafeMvpRawMode(line)) {
+      fail('unsafe changed mode: ' + line);
+    }
+  }
+  const localWorktrees = fs.readdirSync(ctx.repo).filter((name) => name.startsWith('.wt-'));
+  if (localWorktrees.length) fail('repository-local .wt-* content is forbidden');
+  else ok('no repository-local worktree content');
+
+  for (const relative of [...FROZEN_FILES, ...M0_HISTORICAL_PATHS]) {
+    const base = git(ctx.repo, ['show', `${MVP_B000_BASE_COMMIT}:${relative}`], { check: false });
+    let current;
+    try {
+      current = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
+    } catch (error) {
+      fail(`frozen file unreadable: ${relative}: ${error.message}`);
+      continue;
+    }
+    if (base.status !== 0 || base.stdout !== current) fail('frozen file changed: ' + relative);
+  }
+  if (!details.some((line) => line.startsWith('FAIL: frozen file'))) {
+    ok('dependencies, toolchains, registries and all M0 milestone files are byte-identical to Base');
+  }
+
+  const license = fs.readFileSync(path.join(ctx.repo, 'LICENSE'), 'utf8');
+  if (normalizeText(license) !== normalizeText(EXPECTED_MIT_LICENSE)) fail('LICENSE drifted from exact MIT text');
+  else ok('LICENSE remains exact MIT text');
+  const markdown = collectMarkdownLinkIssues(ctx.repo);
+  for (const issue of markdown.issues) fail('Markdown link issue: ' + JSON.stringify(issue));
+  if (markdown.issues.length === 0) ok(markdown.mdCount + ' Markdown documents have contained links');
+  let jsonFailures = 0;
+  for (const file of walkFiles(ctx.repo, (candidatePath) => candidatePath.endsWith('.json'))) {
+    try { JSON.parse(fs.readFileSync(file, 'utf8')); } catch {
+      jsonFailures += 1;
+      fail('JSON parse failed: ' + path.relative(ctx.repo, file));
+    }
+  }
+  if (jsonFailures === 0) ok('all source JSON parses');
+  const hazards = scanTreeForHazards(ctx.repo);
+  for (const finding of hazards) fail('public-tree hygiene finding: ' + JSON.stringify(finding));
+  if (hazards.length === 0) ok('public tree has no secret/path/endpoint/prompt hazard');
+
+  const lifecycleProbes = status && baseStatus
+    ? runMvpB000LifecycleRegressionProbes(status, baseStatus) : [];
+  let rejected = 0;
+  for (const probe of lifecycleProbes) {
+    if (probe.matched) rejected += 1;
+    else fail('tree lifecycle regression mismatched: ' + probe.label);
+  }
+  const pathProbeRejected = validateChangedPaths([...expectedPaths, 'internal/run/engine.go']).length > 0;
+  if (pathProbeRejected) rejected += 1;
+  else fail('runtime path negative probe was accepted');
+  const regularAddition = ':000000 100644 ' + '0'.repeat(40) + ' ' + '1'.repeat(40) + ' A\tnew.json';
+  if (isUnsafeMvpRawMode(regularAddition)) fail('regular 100644 addition mode control was rejected');
+  const unsafeModeProbes = [
+    ':100644 000000 ' + '1'.repeat(40) + ' ' + '0'.repeat(40) + ' D\tdeleted.json',
+    ':000000 120000 ' + '0'.repeat(40) + ' ' + '1'.repeat(40) + ' A\tsymlink',
+    ':000000 160000 ' + '0'.repeat(40) + ' ' + '1'.repeat(40) + ' A\tgitlink',
+    'malformed raw mode line',
+  ];
+  for (const probe of unsafeModeProbes) {
+    if (isUnsafeMvpRawMode(probe)) rejected += 1;
+    else fail('unsafe raw-mode negative probe was accepted: ' + probe);
+  }
+  const expectedRejected = lifecycleProbes.length + 1 + unsafeModeProbes.length;
+  if (rejected === expectedRejected) ok(`all ${rejected} MVP tree/scope/mode mutation probes reject`);
+
+  return {
+    result: pass ? 'PASS' : 'FAIL',
+    phase: lifecycle.phase === 'CLOSEOUT_MAIN' ? 'CLOSEOUT' :
+      lifecycle.phase === 'POST_MERGE_MAIN' ? 'POST_MERGE' : 'CANDIDATE',
+    lifecycle_phase: lifecycle.phase,
+    lifecycle_checkout: lifecycle.checkoutKind,
+    details,
+    changed_paths: changed,
+    negative_probes: rejected === expectedRejected ? 'PASS' : 'FAIL',
+    negative_probe_count: expectedRejected,
+  };
+}
+
 export function run(ctx) {
+  // Preserve the complete B008 lifecycle implementation below for historical
+  // checkouts. Exact B000 authority routes Candidate, PR, post-merge and the
+  // fail-closed future closeout shape through the shared successor classifier.
+  if (hasMvpB000Authority(ctx.repo)) return runMvpB000Tree(ctx);
   const details = [];
   let pass = true;
   const ok = (message) => details.push('ok: ' + message);
