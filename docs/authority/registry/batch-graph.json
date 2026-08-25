@@ -1,0 +1,133 @@
+{
+  "schema": "aipt.public.mvp-batch-graph/v1",
+  "authority": "AIPT-MVP-B000-START-001",
+  "milestone": "MVP",
+  "predecessor": {
+    "task_id": "AIPT-M0-B008",
+    "state": "MERGED_CLOSED",
+    "closeout_commit": "c617f3c6ab3e56ac88f228ed4825e751537fc1f0",
+    "closeout_tree": "95a8d2980c5a6aa44f3db67c66f07ff008ff3491",
+    "closeout_ci_run": 32828913767,
+    "m0_development_pass": "GRANTED"
+  },
+  "global_rules": {
+    "global_wip": 1,
+    "single_active_batch": true,
+    "single_authoritative_repository_per_implementation_batch": true,
+    "previous_batch_must_close_before_next": true,
+    "public_ci_remote_model_calls": false,
+    "qualification_runs_serial": true,
+    "platform_integration": "FROZEN_WAITING_M1_ENGINE"
+  },
+  "serial_batches": [
+    {
+      "order": 1,
+      "id": "AIPT-MVP-B000",
+      "repository": "AIPT",
+      "purpose": "MVP authority bootstrap, machine batch graph, lifecycle transition, validator foundation",
+      "risk": "governance"
+    },
+    {
+      "order": 2,
+      "id": "AIPT-MVP-B001",
+      "repository": "AIPT",
+      "purpose": "Campaign/Suite/Case/Run contracts, immutable Run Manifest, PostgreSQL authoritative serial queue and lease skeleton",
+      "risk": "authoritative-state"
+    },
+    {
+      "order": 3,
+      "id": "UNREGISTERED-AIPT-P1-B000",
+      "repository": "UNREGISTERED",
+      "purpose": "Freeze Task 0 executable playtest package contract, scene/guide/rule mapping and runtime adapter inputs",
+      "risk": "game-canon"
+    },
+    {
+      "order": 4,
+      "id": "AIPT-MVP-B002",
+      "repository": "AIPT",
+      "purpose": "Deterministic Run Core: action transaction pipeline, RNG streams/seed commitments, invariants, projections and replay",
+      "risk": "state-projection"
+    },
+    {
+      "order": 5,
+      "id": "AIPT-MVP-B003",
+      "repository": "AIPT",
+      "purpose": "1 GM + 4 player Agent orchestration, per-Run sessions, persona/context assembly, visibility and bounded repair",
+      "risk": "hidden-information"
+    },
+    {
+      "order": 6,
+      "id": "AIPT-MVP-B004",
+      "repository": "AIPT",
+      "purpose": "Versioned Model Profiles, real Harness runtime gateway, REMOTE_DEEPSEEK and LOCAL_LLAMACPP minimum certification",
+      "risk": "external-model-security"
+    },
+    {
+      "order": 7,
+      "id": "INT-AIPT-UNREGISTERED-MVP-001",
+      "repository": "INTEGRATION_READ_ONLY",
+      "purpose": "Fixed-pair end-to-end Task 0 runtime conformance smoke without qualification-run claims",
+      "risk": "cross-repository"
+    },
+    {
+      "order": 8,
+      "id": "AIPT-MVP-B005",
+      "repository": "AIPT",
+      "purpose": "Run evidence closure: AUDIT_READY generation, replay/defect/report contracts and deterministic export",
+      "risk": "evidence-integrity"
+    },
+    {
+      "order": 9,
+      "id": "AIPT-MVP-B006",
+      "repository": "AIPT",
+      "purpose": "Operational loopback Web controls for Queue/Run/Status-Table/Reports using the same authoritative services",
+      "risk": "ui-security"
+    },
+    {
+      "order": 10,
+      "id": "AIPT-MVP-B007",
+      "repository": "AIPT",
+      "purpose": "Non-qualifying real-model diagnostic pilot: DeepSeek full path plus llama.cpp startup/auth/minimum role call",
+      "risk": "external-model-pilot"
+    },
+    {
+      "order": 11,
+      "id": "AIPT-MVP-B008",
+      "repository": "AIPT",
+      "purpose": "Five serial Clean qualification Runs on the fixed Task 0 pair",
+      "risk": "qualification-clean"
+    },
+    {
+      "order": 12,
+      "id": "AIPT-MVP-B009",
+      "repository": "AIPT",
+      "purpose": "Three serial Mutant qualification Runs and mandatory detection of all frozen mutant classes",
+      "risk": "qualification-adversarial"
+    },
+    {
+      "order": 13,
+      "id": "AIPT-MVP-B010",
+      "repository": "AIPT",
+      "purpose": "MVP comprehensive acceptance, replay/reachability/privacy review, GPT hard gate and MVP Development Pass",
+      "risk": "milestone-gate"
+    }
+  ],
+  "mvp_gate": {
+    "clean_runs_required": 5,
+    "mutants_required": 3,
+    "mutant_classes": [
+      "HIDDEN_INFORMATION_LEAK",
+      "PROSE_MACHINE_DIVERGENCE",
+      "STATE_REPLAY_INCONSISTENCY"
+    ],
+    "requirements": [
+      "NO_HIDDEN_INFORMATION_LEAK",
+      "STATE_REPLAYABLE",
+      "CRITICAL_PATH_ENDING_RECOVERY_REACHABLE",
+      "GPT_AUDIT_PASS"
+    ],
+    "production_qualification": "NOT_GRANTED_BY_MVP_DEVELOPMENT_PASS",
+    "release_qualification": "NOT_GRANTED_BY_MVP_DEVELOPMENT_PASS",
+    "human_equivalence": "NOT_CLAIMED"
+  }
+}

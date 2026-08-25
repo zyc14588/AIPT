@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-M0-B008 constructs only a proposed M0 Development Pass Candidate; the pass is not effective before B008 is merged and closed, and no later batch is authorized.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-MVP-B000 installs governance and fail-closed CI bootstrap only; AIPT-MVP-B001 and all runtime work remain unauthorized.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -18,6 +18,7 @@
     "check:evidence": "node scripts/ci/validate/evidence.mjs",
     "check:web-ui": "node scripts/ci/validate/web-ui.mjs",
     "check:m0-development-pass": "node scripts/ci/validate/m0-development-pass.mjs",
+    "check:mvp-bootstrap": "node scripts/ci/validate/mvp-bootstrap.mjs",
     "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
     "test:protocol-go": "go test ./internal/protocol -count=1",
     "test:harness-adapter": "pnpm --filter @aipt/harness-adapter test",

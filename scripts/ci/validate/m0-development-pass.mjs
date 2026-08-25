@@ -6,9 +6,12 @@ import path from 'node:path';
 import {
   ALLOWED_PATHS, BASE_COMMIT, BASE_TREE, B007_CLOSEOUT,
   B007_EXTERNAL_SERIAL_PREDECESSOR, B007_IMPLEMENTATION_MERGE,
-  B008_FINAL_CANDIDATE, B008_IMPLEMENTATION_MERGE,
+  B008_CANDIDATE_HISTORY, B008_FINAL_CANDIDATE, B008_IMPLEMENTATION_MERGE,
   B008_INITIAL_CANDIDATE, B008_LIFECYCLE_REPAIR,
   CLOSEOUT_ALLOWED_PATHS, FROZEN_REGISTRY_PATHS,
+  CURRENT_BATCH, M0_CLOSEOUT, M0_HISTORICAL_PATHS,
+  MVP_B000_ALLOWED_PATHS, MVP_B000_BASE_COMMIT, MVP_B000_BASE_TREE,
+  MVP_B000_BRANCH, MVP_B000_NEXT_BATCH, MVP_B000_SNAPSHOT, STATUS_DATE,
   pathMatchesAllowed, pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -1014,7 +1017,263 @@ function readJson(repo, relative) {
   return JSON.parse(fs.readFileSync(path.join(repo, relative), 'utf8'));
 }
 
+function normalizedSuccessorEnv(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+function isExactMvpB000Checkout(repo) {
+  const branch = git(repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
+  return branch.stdout.trim() === MVP_B000_BRANCH ||
+    normalizedSuccessorEnv(process.env.GITHUB_REF) === `refs/heads/${MVP_B000_BRANCH}`;
+}
+
+function expectedMvpHistory() {
+  const future = [
+    'AIPT-MVP-B000', 'AIPT-MVP-B001', 'UNREGISTERED-AIPT-P1-B000',
+    'AIPT-MVP-B002', 'AIPT-MVP-B003', 'AIPT-MVP-B004',
+    'INT-AIPT-UNREGISTERED-MVP-001', 'AIPT-MVP-B005', 'AIPT-MVP-B006',
+    'AIPT-MVP-B007', 'AIPT-MVP-B008', 'AIPT-MVP-B009', 'AIPT-MVP-B010',
+  ];
+  return Object.fromEntries([
+    ...CLOSED_BATCH_IDS.map((id) => [id, 'MERGED_CLOSED']),
+    ...future.map((id, index) => [id, index === 0 ? 'IN_PROGRESS' : 'NOT_STARTED']),
+  ]);
+}
+
+function validatePostM0SuccessorStatus(status, baseStatus) {
+  const expected = {
+    ...baseStatus,
+    as_of: STATUS_DATE,
+    authority_snapshot_id: MVP_B000_SNAPSHOT,
+    tracks: {
+      'AIPT-STANDALONE': {
+        ...baseStatus.tracks['AIPT-STANDALONE'],
+        construction: 'IN_PROGRESS',
+        current_batch: CURRENT_BATCH,
+        next_serial_batch: MVP_B000_NEXT_BATCH,
+        next_batch_state: 'NOT_AUTHORIZED',
+        next_batch_authorized: false,
+        next_batch_started: false,
+        batch_history: expectedMvpHistory(),
+        global_wip: 1,
+      },
+      'AIPT-PLATFORM-INTEGRATION': baseStatus.tracks['AIPT-PLATFORM-INTEGRATION'],
+    },
+    repositories: {
+      AIPT: {
+        ...baseStatus.repositories.AIPT,
+        pending_candidate: {
+          milestone: 'MVP',
+          task_id: CURRENT_BATCH,
+          authority: 'AIPT-MVP-B000-START-001',
+          branch: MVP_B000_BRANCH,
+          base_commit: MVP_B000_BASE_COMMIT,
+          base_tree: MVP_B000_BASE_TREE,
+          state: 'IN_PROGRESS',
+          scope: 'GOVERNANCE_BOOTSTRAP_ONLY',
+          merge_authorized: false,
+          closeout_authorized: false,
+        },
+      },
+      UNREGISTERED: baseStatus.repositories.UNREGISTERED,
+    },
+  };
+  return compareExact(status, expected, '$status');
+}
+
+function collectPostM0ChangedPaths(repo) {
+  const tracked = git(repo, [
+    'diff', '--name-only', '--no-renames', MVP_B000_BASE_COMMIT,
+  ], { check: false });
+  const untracked = git(repo, ['ls-files', '--others', '--exclude-standard'], { check: false });
+  if (tracked.status !== 0 || untracked.status !== 0) return null;
+  return [...new Set([
+    ...tracked.stdout.split('\n'),
+    ...untracked.stdout.split('\n').filter((relative) =>
+      relative && !isGeneratedWorktreeArtifact(relative)),
+  ].filter(Boolean))].sort();
+}
+
+function runPostM0Successor(ctx) {
+  const details = [];
+  let pass = true;
+  const ok = (message) => details.push('ok: ' + message);
+  const fail = (message) => { pass = false; details.push('FAIL: ' + message); };
+  let record;
+  let status;
+  let baseStatus;
+  try {
+    record = readJson(ctx.repo, RECORD_PATH);
+    status = readJson(ctx.repo, STATUS_PATH);
+    const baseStatusProbe = git(ctx.repo, [
+      'show', `${MVP_B000_BASE_COMMIT}:${STATUS_PATH}`,
+    ], { check: false });
+    if (baseStatusProbe.status !== 0) throw new Error('M0 closeout project status is unavailable');
+    baseStatus = JSON.parse(baseStatusProbe.stdout);
+  } catch (error) {
+    fail('M0 record or post-M0 status is unreadable: ' + error.message);
+    return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
+  }
+
+  const recordProblems = validateRecord(record);
+  for (const problem of recordProblems) fail('record: ' + problem);
+  if (recordProblems.length === 0) {
+    ok('immutable M0 Development Pass record, audit and integration bindings remain exact');
+  }
+
+  const statusProblems = validatePostM0SuccessorStatus(status, baseStatus);
+  for (const problem of statusProblems) fail('post-M0 successor status: ' + problem);
+  if (statusProblems.length === 0) {
+    ok('exact AIPT-MVP-B000 successor preserves M0 and rejects every arbitrary future batch name');
+  }
+
+  const baseCommit = git(ctx.repo, ['rev-parse', `${MVP_B000_BASE_COMMIT}^{commit}`], { check: false });
+  const baseTree = git(ctx.repo, ['rev-parse', `${MVP_B000_BASE_COMMIT}^{tree}`], { check: false });
+  const head = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
+  const branch = git(ctx.repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
+  const ancestry = git(ctx.repo, [
+    'merge-base', '--is-ancestor', MVP_B000_BASE_COMMIT, 'HEAD',
+  ], { check: false });
+  const merges = git(ctx.repo, [
+    'rev-list', '--merges', `${MVP_B000_BASE_COMMIT}..HEAD`,
+  ], { check: false });
+  const subjects = git(ctx.repo, [
+    'log', '--format=%s', `${MVP_B000_BASE_COMMIT}..HEAD`,
+  ], { check: false }).stdout.split('\n').filter(Boolean);
+  const githubPresent = ['GITHUB_ACTIONS', 'GITHUB_EVENT_NAME', 'GITHUB_REF', 'GITHUB_SHA']
+    .some((key) => Object.hasOwn(process.env, key));
+  const exactLocal = !githubPresent && branch.stdout.trim() === MVP_B000_BRANCH;
+  const exactPush = githubPresent &&
+    normalizedSuccessorEnv(process.env.GITHUB_EVENT_NAME) === 'push' &&
+    normalizedSuccessorEnv(process.env.GITHUB_REF) === `refs/heads/${MVP_B000_BRANCH}` &&
+    normalizedSuccessorEnv(process.env.GITHUB_SHA) === head.stdout.trim() &&
+    normalizedSuccessorEnv(process.env.GITHUB_HEAD_REF) === null &&
+    normalizedSuccessorEnv(process.env.GITHUB_BASE_REF) === null &&
+    (branch.status !== 0 || branch.stdout.trim() === MVP_B000_BRANCH);
+  if (baseCommit.stdout.trim() !== MVP_B000_BASE_COMMIT ||
+      baseTree.stdout.trim() !== MVP_B000_BASE_TREE || ancestry.status !== 0 ||
+      merges.status !== 0 || merges.stdout.trim() !== '' ||
+      subjects.some((subject) => /^(?:merge|closeout):/i.test(subject)) ||
+      (!exactLocal && !exactPush)) {
+    fail('successor lifecycle is not the exact zero-merge task/AIPT-MVP-B000 Candidate');
+  } else ok('post-M0 successor lifecycle is exact task branch, zero merge and no closeout claim');
+
+  const closeoutParents = git(ctx.repo, [
+    'rev-list', '--parents', '-n', '1', M0_CLOSEOUT.commit,
+  ], { check: false });
+  const closeoutTree = git(ctx.repo, ['rev-parse', `${M0_CLOSEOUT.commit}^{tree}`], { check: false });
+  const closeoutSubject = git(ctx.repo, [
+    'show', '-s', '--format=%s', M0_CLOSEOUT.commit,
+  ], { check: false });
+  const b008Parents = git(ctx.repo, [
+    'rev-list', '--parents', '-n', '1', B008_IMPLEMENTATION_MERGE.commit,
+  ], { check: false });
+  const b008Tree = git(ctx.repo, [
+    'rev-parse', `${B008_IMPLEMENTATION_MERGE.commit}^{tree}`,
+  ], { check: false });
+  const b008Subject = git(ctx.repo, [
+    'show', '-s', '--format=%s', B008_IMPLEMENTATION_MERGE.commit,
+  ], { check: false });
+  const b008History = git(ctx.repo, [
+    'rev-list', '--reverse', BASE_COMMIT + '..' + B008_FINAL_CANDIDATE.commit,
+  ], { check: false });
+  const b008RepairPaths = git(ctx.repo, [
+    'diff', '--name-only', '--no-renames', B008_LIFECYCLE_REPAIR.parent,
+    B008_LIFECYCLE_REPAIR.commit,
+  ], { check: false });
+  if (closeoutParents.stdout.trim() !== `${M0_CLOSEOUT.commit} ${M0_CLOSEOUT.parent}` ||
+      closeoutTree.stdout.trim() !== M0_CLOSEOUT.tree ||
+      closeoutSubject.stdout.trim() !== M0_CLOSEOUT.subject ||
+      b008Parents.stdout.trim() !== `${B008_IMPLEMENTATION_MERGE.commit} ${B008_IMPLEMENTATION_MERGE.parent1} ${B008_IMPLEMENTATION_MERGE.parent2}` ||
+      b008Tree.stdout.trim() !== B008_IMPLEMENTATION_MERGE.tree ||
+      b008Subject.stdout.trim() !== B008_IMPLEMENTATION_MERGE.subject ||
+      JSON.stringify(b008History.stdout.split('\n').filter(Boolean)) !== JSON.stringify(B008_CANDIDATE_HISTORY) ||
+      !exactStringSet(b008RepairPaths.stdout.split('\n').filter(Boolean), B008_LIFECYCLE_REPAIR.changed_paths)) {
+    fail('B008 final Candidate/merge/repair or M0 closeout topology drifted');
+  } else ok('B008 final Candidate/merge/repair and M0 closeout identities remain immutable');
+
+  const changed = collectPostM0ChangedPaths(ctx.repo);
+  if (!changed || !exactStringSet(changed, MVP_B000_ALLOWED_PATHS)) {
+    fail('post-M0 successor changed paths are not the exact 17-path B000 surface');
+  } else ok('post-M0 successor changed paths are the exact governance/CI-only surface');
+
+  for (const relative of [...FROZEN_FILES, ...M0_HISTORICAL_PATHS]) {
+    const base = git(ctx.repo, ['show', `${MVP_B000_BASE_COMMIT}:${relative}`], { check: false });
+    let current;
+    try {
+      current = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
+    } catch (error) {
+      fail(`frozen successor file unreadable: ${relative}: ${error.message}`);
+      continue;
+    }
+    if (base.status !== 0 || base.stdout !== current) fail('frozen successor file changed: ' + relative);
+  }
+  if (!details.some((line) => line.startsWith('FAIL: frozen successor file'))) {
+    ok('M0 milestone, dependency, toolchain and frozen registry files remain byte-identical');
+  }
+
+  const semanticProblems = validateLifecycleSemantics(
+    lifecycleSemanticsFromRecord(record), 'CLOSEOUT_MAIN',
+  );
+  for (const problem of semanticProblems) fail('effective M0 semantics: ' + problem);
+  if (semanticProblems.length === 0) ok('M0 pass remains effective without qualification inflation');
+
+  const recordProbes = runNegativeProbes(record);
+  const statusProbeMutations = [
+    ['B001 authorization', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
+    ['arbitrary future batch', (copy) => { copy.tracks['AIPT-STANDALONE'].current_batch = 'AIPT-MVP-B002'; }],
+    ['M0 pass revocation', (copy) => { copy.repositories.AIPT.verified_state.m0_development_pass.result = 'REVOKED'; }],
+    ['platform unfreeze', (copy) => { copy.tracks['AIPT-PLATFORM-INTEGRATION'].status = 'UNFROZEN'; }],
+    ['UNREGISTERED drift', (copy) => { copy.repositories.UNREGISTERED.verified_head = '0'.repeat(40); }],
+  ];
+  const statusProbes = statusProbeMutations.map(([label, mutate]) => {
+    const copy = clone(status);
+    mutate(copy);
+    return [label, validatePostM0SuccessorStatus(copy, baseStatus).length > 0];
+  });
+  const negativeProbes = [...recordProbes, ...statusProbes];
+  for (const [label, rejected] of negativeProbes) if (!rejected) fail('negative probe accepted: ' + label);
+  const rejected = negativeProbes.filter(([, value]) => value).length;
+  if (rejected === negativeProbes.length) ok(`all ${rejected} M0 preservation mutations reject`);
+
+  const lifecycleProbes = lifecycleRegressionProbes();
+  const lifecycleProbeMatches = lifecycleProbes.filter((probe) => probe.matched).length;
+  for (const probe of lifecycleProbes) {
+    if (!probe.matched) fail('B008 lifecycle regression probe mismatched: ' + probe.label);
+  }
+  if (lifecycleProbeMatches === lifecycleProbes.length) {
+    ok(`all ${lifecycleProbes.length} historical B008 lifecycle topology/event/ref probes matched`);
+  }
+  const semanticsProbes = lifecycleSemanticsRegressionProbes(record);
+  const semanticsMatches = semanticsProbes.filter((probe) => probe.matched).length;
+  for (const probe of semanticsProbes) {
+    if (!probe.matched) fail('B008 lifecycle semantics probe mismatched: ' + probe.label);
+  }
+  if (semanticsMatches === semanticsProbes.length) {
+    ok(`all ${semanticsProbes.length} historical effectiveness/boundary probes matched`);
+  }
+
+  return {
+    result: pass ? 'PASS' : 'FAIL',
+    details,
+    negative_probes: rejected === negativeProbes.length ? 'PASS' : 'FAIL',
+    negative_probe_count: negativeProbes.length,
+    lifecycle_phase: 'POST_M0_SUCCESSOR_CANDIDATE',
+    lifecycle_checkout: 'MVP_B000_CANDIDATE_HEAD',
+    implementation_merge_recognized: true,
+    m0_development_pass_effective: semanticProblems.length === 0,
+    lifecycle_regression: lifecycleProbeMatches === lifecycleProbes.length ? 'PASS' : 'FAIL',
+    lifecycle_probe_count: lifecycleProbes.length,
+    lifecycle_semantics_regression: semanticsMatches === semanticsProbes.length ? 'PASS' : 'FAIL',
+    lifecycle_semantics_probe_count: semanticsProbes.length,
+    changed_paths: changed ?? [],
+  };
+}
+
 export function run(ctx) {
+  // Preserve the complete B008 Candidate/merge/closeout gate below. The only
+  // added acceptance path is the exact Owner-authorized post-M0 B000 branch.
+  if (isExactMvpB000Checkout(ctx.repo)) return runPostM0Successor(ctx);
   const details = [];
   let pass = true;
   const ok = (message) => details.push('ok: ' + message);

@@ -108,6 +108,12 @@ export function run(ctx) {
       args: ['--repo', ctx.repo],
       result: 'PASS',
     },
+    {
+      name: 'mvp-bootstrap',
+      label: 'mvp-bootstrap exact AIPT-MVP-B000 gate',
+      args: ['--repo', ctx.repo],
+      result: 'PASS',
+    },
   ];
   for (const c of positives) {
     const cp = spawnEntrypoint(c.name, c.args, ctx.repo);

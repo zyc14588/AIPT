@@ -232,6 +232,10 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run check:m0-development-pass',
     nameTokens: ['b008', 'm0 development pass', 'final gate', 'merged_closed', 'boundary probes'],
   },
+  {
+    command: 'pnpm run check:mvp-bootstrap',
+    nameTokens: ['aipt', 'mvp', 'b000', 'bootstrap', 'gate'],
+  },
   { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
 
@@ -1940,6 +1944,71 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run check:m0-development-pass', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B000 bootstrap gate removed from toolchain',
+      reason: /check:mvp-bootstrap.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:mvp-bootstrap', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B000 bootstrap gate masks failures',
+      reason: /must not mask failures/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace(
+              '      - name: AIPT MVP B000 bootstrap gate',
+              '      - name: AIPT MVP B000 bootstrap gate\n        continue-on-error: true',
+            ),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B000 bootstrap gate is conditional',
+      reason: /must not be conditionally skipped/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace(
+              '      - name: AIPT MVP B000 bootstrap gate',
+              '      - name: AIPT MVP B000 bootstrap gate\n        if: always()',
+            ),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B000 bootstrap gate duplicated',
+      reason: /check:mvp-bootstrap.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) => {
+            const step = '      - name: AIPT MVP B000 bootstrap gate\n        run: pnpm run check:mvp-bootstrap';
+            return t.replace(step, `${step}\n${step}`);
+          }),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B000 bootstrap command drift',
+      reason: /check:mvp-bootstrap.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace(
+              '        run: pnpm run check:mvp-bootstrap',
+              '        run: pnpm run check:mvp-bootstrap --changed',
+            ),
           ),
           lock,
         ),

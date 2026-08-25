@@ -1,6 +1,7 @@
 # 批次依赖图（BATCH DEPENDENCY GRAPH）
 
-> 由机器种子 `BATCH_GRAPH.json` 生成的可读视图。全局串行批次依赖；
+> M0 历史完整保留；MVP 的新机器权威为
+> [registry/batch-graph.json](registry/batch-graph.json)。全局串行批次依赖；
 > 规则：`GLOBAL_WIP = 1`、一个批次只修改一个权威仓库、前一批次正式关闭后才可启动下一批次、
 > 集成任务只读两个来源 Commit。
 
@@ -42,6 +43,44 @@ AIPT-M0-B000
   → AIPT-M0-B008
 ```
 
+## MVP 权威串行批次表
+
+下表严格对应机器权威 `aipt.public.mvp-batch-graph/v1`；顺序、ID、仓库、目的与风险不得重命名、重排、拆分或合并。
+
+| 顺序 | 批次 | 仓库 | 目的 | 风险 |
+|---|---|---|---|---|
+| 1 | `AIPT-MVP-B000` | AIPT | MVP authority bootstrap, machine batch graph, lifecycle transition, validator foundation | governance |
+| 2 | `AIPT-MVP-B001` | AIPT | Campaign/Suite/Case/Run contracts, immutable Run Manifest, PostgreSQL authoritative serial queue and lease skeleton | authoritative-state |
+| 3 | `UNREGISTERED-AIPT-P1-B000` | UNREGISTERED | Freeze Task 0 executable playtest package contract, scene/guide/rule mapping and runtime adapter inputs | game-canon |
+| 4 | `AIPT-MVP-B002` | AIPT | Deterministic Run Core: action transaction pipeline, RNG streams/seed commitments, invariants, projections and replay | state-projection |
+| 5 | `AIPT-MVP-B003` | AIPT | 1 GM + 4 player Agent orchestration, per-Run sessions, persona/context assembly, visibility and bounded repair | hidden-information |
+| 6 | `AIPT-MVP-B004` | AIPT | Versioned Model Profiles, real Harness runtime gateway, REMOTE_DEEPSEEK and LOCAL_LLAMACPP minimum certification | external-model-security |
+| 7 | `INT-AIPT-UNREGISTERED-MVP-001` | INTEGRATION_READ_ONLY | Fixed-pair end-to-end Task 0 runtime conformance smoke without qualification-run claims | cross-repository |
+| 8 | `AIPT-MVP-B005` | AIPT | Run evidence closure: AUDIT_READY generation, replay/defect/report contracts and deterministic export | evidence-integrity |
+| 9 | `AIPT-MVP-B006` | AIPT | Operational loopback Web controls for Queue/Run/Status-Table/Reports using the same authoritative services | ui-security |
+| 10 | `AIPT-MVP-B007` | AIPT | Non-qualifying real-model diagnostic pilot: DeepSeek full path plus llama.cpp startup/auth/minimum role call | external-model-pilot |
+| 11 | `AIPT-MVP-B008` | AIPT | Five serial Clean qualification Runs on the fixed Task 0 pair | qualification-clean |
+| 12 | `AIPT-MVP-B009` | AIPT | Three serial Mutant qualification Runs and mandatory detection of all frozen mutant classes | qualification-adversarial |
+| 13 | `AIPT-MVP-B010` | AIPT | MVP comprehensive acceptance, replay/reachability/privacy review, GPT hard gate and MVP Development Pass | milestone-gate |
+
+```text
+AIPT-MVP-B000
+  → AIPT-MVP-B001
+  → UNREGISTERED-AIPT-P1-B000
+  → AIPT-MVP-B002
+  → AIPT-MVP-B003
+  → AIPT-MVP-B004
+  → INT-AIPT-UNREGISTERED-MVP-001（只读）
+  → AIPT-MVP-B005
+  → AIPT-MVP-B006
+  → AIPT-MVP-B007
+  → AIPT-MVP-B008
+  → AIPT-MVP-B009
+  → AIPT-MVP-B010
+```
+
+当前仅 `AIPT-MVP-B000 = IN_PROGRESS`；`AIPT-MVP-B001` 只是命名的下一串行批次，仍为 `NOT_STARTED`、`NOT_AUTHORIZED`，其余 MVP 批次全部 `NOT_STARTED`。不存在独立的 `AIPT-M1-*` 别名。
+
 ## Mermaid 视图（可选渲染）
 
 ```mermaid
@@ -59,6 +98,8 @@ flowchart LR
 - **单批次单仓库**（`R13-Q002`）：一个实施批次只能修改一个权威仓库。
 - **前一批次正式关闭后才可启动下一批次**。
 - **集成任务只读**（`INT-AIPT-UNREGISTERED-001`）：只读两个来源 Commit，不修改任一仓库。
+- **MVP 集成任务只读**（`INT-AIPT-UNREGISTERED-MVP-001`）：只读固定来源 Commit 对，不修改任一仓库。
+- **资格 Run 串行**：Clean 与 Mutant 资格 Run 只允许依照权威图串行执行；B000 不执行任何资格 Run。
 
 ## B000 Bootstrap CI 例外与 B001 追溯义务
 
