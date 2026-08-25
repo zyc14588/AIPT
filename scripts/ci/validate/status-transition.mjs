@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// AIPT-M0-B008 Candidate status-transition validator.
+// AIPT-M0-B008 final closeout status-transition validator.
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -9,24 +9,27 @@ import {
   B005_IMPLEMENTATION_MERGE, B006_CANDIDATE, B006_CLOSEOUT,
   B006_IMPLEMENTATION_MERGE, B007_CANDIDATE, B007_CLOSEOUT,
   B007_EXTERNAL_SERIAL_PREDECESSOR, B007_IMPLEMENTATION_MERGE,
-  B007_ORIGINAL_CANDIDATE, CURRENT_BATCH, EXTERNAL_SERIAL_HISTORY,
+  B007_ORIGINAL_CANDIDATE, B008_CANDIDATE_HISTORY, B008_FINAL_CANDIDATE,
+  B008_IMPLEMENTATION_MERGE, B008_INITIAL_CANDIDATE, B008_LIFECYCLE_REPAIR,
+  CURRENT_BATCH, EXTERNAL_SERIAL_HISTORY,
   FROZEN_REGISTRY_PATHS, HARNESS_SOURCE, STATUS_DATE,
   STATUS_TRANSITION_PATHS,
 } from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 
 const SCHEMA = 'aipt.public.project-status/v1';
-const SNAPSHOT_ID = 'AIPT-M0-B008-CANDIDATE-001';
+const SNAPSHOT_ID = 'AIPT-M0-B008-CLOSEOUT-001';
 const DESIGN = 'FROZEN_R0_R16_DCA_BOOTSTRAP';
-const CONSTRUCTION = 'IN_PROGRESS';
+const CONSTRUCTION = 'IDLE_WAITING_NEXT_BATCH';
 const NEXT_BATCH = 'NONE';
 const NEXT_STATE = 'NOT_AUTHORIZED';
 const PLATFORM = 'FROZEN_WAITING_M1_ENGINE';
 const CLOSED_BATCH_IDS = [
   'AIPT-M0-B000', 'AIPT-M0-B001', 'AIPT-M0-B002', 'AIPT-M0-B003',
   'AIPT-M0-B004', 'AIPT-M0-B005', 'AIPT-M0-B006', 'AIPT-M0-B007',
+  'AIPT-M0-B008',
 ];
-const BATCH_HISTORY_KEYS = [...CLOSED_BATCH_IDS, 'AIPT-M0-B008'];
+const BATCH_HISTORY_KEYS = [...CLOSED_BATCH_IDS];
 const ROOT_KEYS = [
   'as_of', 'auditing', 'authority_snapshot_id', 'prompt_assets',
   'public_reference', 'repositories', 'runtime', 'schema', 'tracks',
@@ -43,12 +46,7 @@ const PREDECESSOR_KEYS = [
   'implementation_merge', 'status',
 ];
 const AIPT_REPOSITORY_KEYS = [
-  'default_branch', 'pending_candidate', 'url', 'verified_head',
-  'verified_state', 'verified_tree',
-];
-const PENDING_CANDIDATE_KEYS = [
-  'base_commit', 'base_tree', 'branch', 'current_effective_status',
-  'effective_after', 'proposed_result', 'state', 'task_id',
+  'default_branch', 'url', 'verified_head', 'verified_state', 'verified_tree',
 ];
 const UNREGISTERED_REPOSITORY_KEYS = [
   'default_branch', 'formal_name_zh', 'planning_snapshot', 'readiness', 'url',
@@ -68,6 +66,81 @@ const STATUS_PATHS_LITERAL = [
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/validate/status-transition.mjs',
 ];
+const AUDIT_ARCHIVE_SHA256 = '0eb777d62c8045acc29b0a80216951b4aeb36f856bf690d2cd394019a1f7119d';
+const AUDIT_ROOT_SHA256 = '33becf9c765902442ec7d7445c50d3ac00737c50bccfc33b5bb4f56e2bdaa90b';
+const GPT_AUDIT_SHA256 = 'd35fca102f28387c0e4c7045d65da8418ffc947189500bf639d4edb11bbba207';
+const INTEGRATION_ROOT_SHA256 = '329c98d00600ede1e9bdd7830b30f7968cc3de4d458b57bb3f6730a0bfedac91';
+const CLOSED_FINDINGS = [
+  'AIPT-B008-AUDIT-EVIDENCE-SELF-CONTAINMENT-001',
+  'AIPT-B008-SOURCE-TREE-DIGEST-001',
+  'AIPT-B008-SOURCE-TREE-SUMMARY-FACT-001',
+  B008_LIFECYCLE_REPAIR.finding,
+];
+
+function expectedVerifiedState() {
+  return {
+    task_id: CURRENT_BATCH,
+    state: 'MERGED_CLOSED',
+    audited_product_implementation: {
+      commit: B007_IMPLEMENTATION_MERGE.commit,
+      tree: B007_IMPLEMENTATION_MERGE.tree,
+    },
+    base: { commit: B007_CLOSEOUT.commit, tree: B007_CLOSEOUT.tree },
+    initial_candidate: { commit: B008_INITIAL_CANDIDATE.commit },
+    final_candidate: {
+      commit: B008_FINAL_CANDIDATE.commit,
+      tree: B008_FINAL_CANDIDATE.tree,
+      ci_run: B008_FINAL_CANDIDATE.ci_run,
+      ci_conclusion: B008_FINAL_CANDIDATE.ci_conclusion,
+    },
+    lifecycle_repair: {
+      finding: B008_LIFECYCLE_REPAIR.finding,
+      status: B008_LIFECYCLE_REPAIR.status,
+      commit: B008_LIFECYCLE_REPAIR.commit,
+      parent: B008_LIFECYCLE_REPAIR.parent,
+      changed_paths: B008_LIFECYCLE_REPAIR.changed_paths,
+    },
+    implementation_merge: {
+      commit: B008_IMPLEMENTATION_MERGE.commit,
+      tree: B008_IMPLEMENTATION_MERGE.tree,
+      parents: [B008_IMPLEMENTATION_MERGE.parent1, B008_IMPLEMENTATION_MERGE.parent2],
+      subject: B008_IMPLEMENTATION_MERGE.subject,
+    },
+    post_merge_ci: {
+      run: B008_IMPLEMENTATION_MERGE.post_merge_ci_run,
+      conclusion: B008_IMPLEMENTATION_MERGE.post_merge_ci_conclusion,
+    },
+    gpt_hard_gate: {
+      directive: 'AIPT-M0-B008-GPT-PASS-AND-FINALIZE-001',
+      result: 'PASS',
+      open_findings: [],
+      audit_ready_archive_sha256: AUDIT_ARCHIVE_SHA256,
+      audit_ready_root_sha256: AUDIT_ROOT_SHA256,
+      gpt_audit_result_sha256: GPT_AUDIT_SHA256,
+      integration_root_sha256: INTEGRATION_ROOT_SHA256,
+    },
+    findings_closed: CLOSED_FINDINGS,
+    m0_development_pass: {
+      result: 'GRANTED',
+      effective_condition: 'AIPT-M0-B008_MERGED_CLOSED',
+      effective_by: SNAPSHOT_ID,
+    },
+    lifecycle: {
+      global_wip: 0,
+      next_serial_batch: NEXT_BATCH,
+      next_batch_authorized: false,
+      next_batch_started: false,
+    },
+    boundaries: {
+      production_qualification: 'NOT_GRANTED',
+      release_qualification: 'NOT_GRANTED',
+      mvp_development_pass: 'NOT_GRANTED',
+      human_equivalence: 'NOT_CLAIMED',
+      real_playtest_completion: 'NOT_CLAIMED',
+      platform_integration: PLATFORM,
+    },
+  };
+}
 
 function same(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -101,14 +174,13 @@ function expectedExternalHistory() {
   ];
 }
 
-export function checkStatusDocument(status, acceptedVerifiedState) {
+export function checkStatusDocument(status) {
   const problems = [];
   const standalone = status?.tracks?.['AIPT-STANDALONE'];
   const platform = status?.tracks?.['AIPT-PLATFORM-INTEGRATION'];
   const repo = status?.repositories?.AIPT;
   const unregistered = status?.repositories?.UNREGISTERED;
   const predecessor = standalone?.external_serial_predecessor;
-  const pending = repo?.pending_candidate;
 
   if (!exactKeys(status, ROOT_KEYS)) problems.push('root keys are not exact');
   if (status?.schema !== SCHEMA) problems.push('status schema drifted');
@@ -116,12 +188,14 @@ export function checkStatusDocument(status, acceptedVerifiedState) {
   if (status?.authority_snapshot_id !== SNAPSHOT_ID) problems.push('snapshot id drifted');
   if (!exactKeys(standalone, STANDALONE_KEYS)) problems.push('standalone keys are not exact');
   if (standalone?.design !== DESIGN) problems.push('standalone design drifted');
-  if (standalone?.construction !== CONSTRUCTION) problems.push('construction is not IN_PROGRESS');
-  if (standalone?.current_batch !== ACTIVE_BATCH || ACTIVE_BATCH !== CURRENT_BATCH ||
-      CURRENT_BATCH !== 'AIPT-M0-B008') {
-    problems.push('B008 is not the sole active batch');
+  if (standalone?.construction !== CONSTRUCTION) {
+    problems.push('construction is not IDLE_WAITING_NEXT_BATCH');
   }
-  if (standalone?.global_wip !== 1) problems.push('GLOBAL_WIP is not one');
+  if (standalone?.current_batch !== ACTIVE_BATCH || ACTIVE_BATCH !== 'NO_ACTIVE_BATCH' ||
+      CURRENT_BATCH !== 'AIPT-M0-B008') {
+    problems.push('closeout does not leave NO_ACTIVE_BATCH while retaining the B008 history id');
+  }
+  if (standalone?.global_wip !== 0) problems.push('GLOBAL_WIP is not zero');
   if (standalone?.next_serial_batch !== NEXT_BATCH || standalone?.next_batch_state !== NEXT_STATE) {
     problems.push('next serial batch/state is not NONE/NOT_AUTHORIZED');
   }
@@ -133,8 +207,8 @@ export function checkStatusDocument(status, acceptedVerifiedState) {
   for (const id of CLOSED_BATCH_IDS) {
     if (standalone?.batch_history?.[id] !== 'MERGED_CLOSED') problems.push(id + ' is not MERGED_CLOSED');
   }
-  if (standalone?.batch_history?.['AIPT-M0-B008'] !== 'IN_PROGRESS') {
-    problems.push('B008 is not IN_PROGRESS');
+  if (standalone?.batch_history?.['AIPT-M0-B008'] !== 'MERGED_CLOSED') {
+    problems.push('B008 is not MERGED_CLOSED');
   }
 
   if (!exactKeys(predecessor, PREDECESSOR_KEYS)) problems.push('external predecessor keys are not exact');
@@ -160,18 +234,10 @@ export function checkStatusDocument(status, acceptedVerifiedState) {
   }
   if (!exactKeys(repo, AIPT_REPOSITORY_KEYS) ||
       repo?.url !== 'https://github.com/zyc14588/AIPT' || repo?.default_branch !== 'main' ||
-      repo?.verified_head !== B007_IMPLEMENTATION_MERGE.commit ||
-      repo?.verified_tree !== B007_IMPLEMENTATION_MERGE.tree ||
-      repo?.verified_state !== acceptedVerifiedState) {
-    problems.push('accepted AIPT implementation identity/state drifted');
-  }
-  if (!exactKeys(pending, PENDING_CANDIDATE_KEYS) ||
-      pending?.task_id !== CURRENT_BATCH || pending?.branch !== 'task/AIPT-M0-B008' ||
-      pending?.base_commit !== B007_CLOSEOUT.commit || pending?.base_tree !== B007_CLOSEOUT.tree ||
-      pending?.state !== 'IN_PROGRESS' || pending?.proposed_result !== 'M0_DEVELOPMENT_PASS' ||
-      pending?.current_effective_status !== 'NOT_YET_GRANTED' ||
-      pending?.effective_after !== 'AIPT-M0-B008_MERGED_CLOSED') {
-    problems.push('pending B008 Candidate surface drifted or became effective');
+      repo?.verified_head !== B008_IMPLEMENTATION_MERGE.commit ||
+      repo?.verified_tree !== B008_IMPLEMENTATION_MERGE.tree ||
+      !same(repo?.verified_state, expectedVerifiedState())) {
+    problems.push('final B008 implementation identity/state drifted');
   }
   if (!exactKeys(unregistered, UNREGISTERED_REPOSITORY_KEYS) ||
       unregistered?.url !== 'https://github.com/zyc14588/UNREGISTERED' ||
@@ -223,6 +289,8 @@ function identityChecks(repo) {
     ['B007 final Candidate', B007_CANDIDATE.commit, B007_CANDIDATE.tree],
     ['B007 implementation merge', B007_IMPLEMENTATION_MERGE.commit, B007_IMPLEMENTATION_MERGE.tree],
     ['B007 closeout/B008 base', B007_CLOSEOUT.commit, B007_CLOSEOUT.tree],
+    ['B008 final Candidate', B008_FINAL_CANDIDATE.commit, B008_FINAL_CANDIDATE.tree],
+    ['B008 implementation merge', B008_IMPLEMENTATION_MERGE.commit, B008_IMPLEMENTATION_MERGE.tree],
   ];
   return checks.map(([label, commit, tree]) => {
     const actual = git(repo, ['rev-parse', commit + '^{tree}'], { check: false });
@@ -236,24 +304,19 @@ export function run(ctx) {
   const ok = (message) => details.push('ok: ' + message);
   const fail = (message) => { pass = false; details.push('FAIL: ' + message); };
   let status;
-  let acceptedVerifiedState;
   try {
     status = JSON.parse(fs.readFileSync(
       path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
     ));
-    const baseStatus = git(ctx.repo, [
-      'show', B007_CLOSEOUT.commit + ':docs/authority/registry/project-status.json',
-    ]);
-    acceptedVerifiedState = JSON.parse(baseStatus.stdout).repositories.AIPT.verified_state;
   } catch (error) {
-    fail('project status or accepted base status is unreadable: ' + error.message);
+    fail('project status is unreadable: ' + error.message);
     return { result: 'FAIL', details };
   }
 
-  for (const problem of checkStatusDocument(status, acceptedVerifiedState)) fail(problem);
-  if (pass) ok('machine status is the exact B008 IN_PROGRESS Candidate transition');
+  for (const problem of checkStatusDocument(status)) fail(problem);
+  if (pass) ok('machine status is the exact B008 MERGED_CLOSED final transition');
   if (!same(STATUS_TRANSITION_PATHS, STATUS_PATHS_LITERAL)) fail('STATUS_TRANSITION_PATHS drifted');
-  else ok('five-path Candidate status surface is exact');
+  else ok('five-path final closeout status subset is exact');
 
   for (const [label, good] of identityChecks(ctx.repo)) {
     if (good) ok(label + ' immutable tree verified'); else fail(label + ' immutable tree drifted');
@@ -266,6 +329,50 @@ export function run(ctx) {
     fail('B007 closeout parent drifted');
   } else ok('B007 closeout is the exact single-parent B008 base');
 
+  const b008Lineage = git(ctx.repo, [
+    'rev-list', '--reverse', B007_CLOSEOUT.commit + '..' + B008_FINAL_CANDIDATE.commit,
+  ], { check: false });
+  const b008Merges = git(ctx.repo, [
+    'rev-list', '--merges', B007_CLOSEOUT.commit + '..' + B008_FINAL_CANDIDATE.commit,
+  ], { check: false });
+  if (b008Lineage.status !== 0 ||
+      !same(b008Lineage.stdout.split('\n').filter(Boolean), B008_CANDIDATE_HISTORY) ||
+      b008Merges.status !== 0 || b008Merges.stdout.trim() !== '') {
+    fail('B008 Candidate lineage is not the exact three-commit zero-merge history');
+  } else ok('B008 Candidate lineage is the exact three-commit zero-merge history');
+
+  const repairParents = git(ctx.repo, [
+    'rev-list', '--parents', '-n', '1', B008_LIFECYCLE_REPAIR.commit,
+  ], { check: false });
+  const repairPaths = git(ctx.repo, [
+    'diff', '--name-only', '--no-renames', B008_LIFECYCLE_REPAIR.parent,
+    B008_LIFECYCLE_REPAIR.commit,
+  ], { check: false });
+  if (repairParents.status !== 0 ||
+      repairParents.stdout.trim() !== B008_LIFECYCLE_REPAIR.commit + ' ' + B008_LIFECYCLE_REPAIR.parent ||
+      repairPaths.status !== 0 ||
+      !same(repairPaths.stdout.split('\n').filter(Boolean), B008_LIFECYCLE_REPAIR.changed_paths) ||
+      B008_LIFECYCLE_REPAIR.status !== 'CLOSED') {
+    fail('B008 lifecycle repair identity/scope/finding disposition drifted');
+  } else ok('B008 lifecycle repair finding is CLOSED with exact one-path scope');
+
+  const mergeIdentity = git(ctx.repo, [
+    'rev-list', '--parents', '-n', '1', B008_IMPLEMENTATION_MERGE.commit,
+  ], { check: false });
+  const mergeSubject = git(ctx.repo, [
+    'show', '-s', '--format=%s', B008_IMPLEMENTATION_MERGE.commit,
+  ], { check: false });
+  const mergeTreeQuiet = git(ctx.repo, [
+    'diff', '--quiet', B008_FINAL_CANDIDATE.commit, B008_IMPLEMENTATION_MERGE.commit,
+  ], { check: false });
+  if (mergeIdentity.status !== 0 ||
+      mergeIdentity.stdout.trim() !== B008_IMPLEMENTATION_MERGE.commit + ' ' +
+        B008_IMPLEMENTATION_MERGE.parent1 + ' ' + B008_IMPLEMENTATION_MERGE.parent2 ||
+      mergeSubject.status !== 0 || mergeSubject.stdout.trim() !== B008_IMPLEMENTATION_MERGE.subject ||
+      mergeTreeQuiet.status !== 0) {
+    fail('B008 implementation merge topology/subject/tree drifted');
+  } else ok('B008 implementation merge topology, subject and Candidate tree verified');
+
   for (const relative of FROZEN_REGISTRY_PATHS) {
     const base = git(ctx.repo, ['show', B007_CLOSEOUT.commit + ':' + relative], { check: false });
     const current = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
@@ -274,36 +381,39 @@ export function run(ctx) {
   }
 
   const docs = [
-    ['README.md', [SNAPSHOT_ID, CURRENT_BATCH, 'IN_PROGRESS Candidate', CONSTRUCTION,
-      'GLOBAL_WIP = 1', 'NOT_YET_GRANTED', 'next_serial_batch = NONE']],
+    ['README.md', [SNAPSHOT_ID, CURRENT_BATCH, 'MERGED_CLOSED', CONSTRUCTION,
+      'GLOBAL_WIP = 0', 'M0 Development Pass = GRANTED', 'next_serial_batch = NONE']],
     ['docs/authority/PROJECT_STATUS.md', [SNAPSHOT_ID, CURRENT_BATCH,
-      'IN_PROGRESS Candidate', CONSTRUCTION, 'GLOBAL_WIP = 1',
-      'NOT_YET_GRANTED', 'next_serial_batch = NONE']],
+      'MERGED_CLOSED', CONSTRUCTION, 'GLOBAL_WIP = 0',
+      'M0 Development Pass = GRANTED', 'next_serial_batch = NONE']],
   ];
   for (const [relative, needles] of docs) {
     const body = fs.readFileSync(path.join(ctx.repo, relative), 'utf8');
     const missing = needles.filter((needle) => !body.includes(needle));
-    if (missing.length) fail(relative + ' misses B008 Candidate tokens: ' + missing.join(', '));
-    else ok(relative + ' carries the B008 Candidate boundary');
+    if (missing.length) fail(relative + ' misses B008 final tokens: ' + missing.join(', '));
+    else ok(relative + ' carries the B008 final closeout boundary');
   }
 
   const mutations = [
-    ['construction closed early', (s) => { s.tracks['AIPT-STANDALONE'].construction = 'IDLE_WAITING_NEXT_BATCH'; }],
-    ['active batch cleared', (s) => { s.tracks['AIPT-STANDALONE'].current_batch = 'NO_ACTIVE_BATCH'; }],
-    ['GLOBAL_WIP zero', (s) => { s.tracks['AIPT-STANDALONE'].global_wip = 0; }],
+    ['construction reopened', (s) => { s.tracks['AIPT-STANDALONE'].construction = 'IN_PROGRESS'; }],
+    ['active batch added', (s) => { s.tracks['AIPT-STANDALONE'].current_batch = CURRENT_BATCH; }],
+    ['GLOBAL_WIP raised', (s) => { s.tracks['AIPT-STANDALONE'].global_wip = 1; }],
     ['next batch added', (s) => { s.tracks['AIPT-STANDALONE'].next_serial_batch = 'AIPT-M1-B000'; }],
     ['next batch authorized', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
     ['next batch started', (s) => { s.tracks['AIPT-STANDALONE'].next_batch_started = true; }],
-    ['B008 claims merged closed', (s) => { s.tracks['AIPT-STANDALONE'].batch_history[CURRENT_BATCH] = 'MERGED_CLOSED'; }],
+    ['B008 reopened', (s) => { s.tracks['AIPT-STANDALONE'].batch_history[CURRENT_BATCH] = 'IN_PROGRESS'; }],
     ['B007 reopened', (s) => { s.tracks['AIPT-STANDALONE'].batch_history['AIPT-M0-B007'] = 'IN_PROGRESS'; }],
     ['predecessor tree drift', (s) => { s.tracks['AIPT-STANDALONE'].external_serial_predecessor.candidate_tree = 'wrong'; }],
     ['external history removed', (s) => { s.tracks['AIPT-STANDALONE'].external_batch_history.pop(); }],
     ['platform unfrozen', (s) => { s.tracks['AIPT-PLATFORM-INTEGRATION'].unfreeze_authorized = true; }],
     ['verified head changed to base', (s) => { s.repositories.AIPT.verified_head = B007_CLOSEOUT.commit; }],
-    ['verified state drift', (s) => { s.repositories.AIPT.verified_state += ' drift'; }],
-    ['pending pass effective early', (s) => { s.repositories.AIPT.pending_candidate.current_effective_status = 'GRANTED'; }],
-    ['pending Candidate claims closed', (s) => { s.repositories.AIPT.pending_candidate.state = 'MERGED_CLOSED'; }],
-    ['pending base drift', (s) => { s.repositories.AIPT.pending_candidate.base_tree = 'wrong'; }],
+    ['verified tree changed to audited product tree', (s) => { s.repositories.AIPT.verified_tree = B007_IMPLEMENTATION_MERGE.tree; }],
+    ['verified state reopened', (s) => { s.repositories.AIPT.verified_state.state = 'IN_PROGRESS'; }],
+    ['Development Pass revoked', (s) => { s.repositories.AIPT.verified_state.m0_development_pass.result = 'NOT_GRANTED'; }],
+    ['production boundary elevated', (s) => { s.repositories.AIPT.verified_state.boundaries.production_qualification = 'GRANTED'; }],
+    ['audit root drift', (s) => { s.repositories.AIPT.verified_state.gpt_hard_gate.audit_ready_root_sha256 = '0'.repeat(64); }],
+    ['lifecycle finding reopened', (s) => { s.repositories.AIPT.verified_state.lifecycle_repair.status = 'OPEN'; }],
+    ['pending Candidate reintroduced', (s) => { s.repositories.AIPT.pending_candidate = {}; }],
     ['Harness identity drift', (s) => { s.runtime.deepseek_harness_commit = HARNESS_SOURCE.previous_commit; }],
     ['UNREGISTERED implementation drift', (s) => { s.repositories.UNREGISTERED.verified_head = 'wrong'; }],
     ['unknown root field', (s) => { s.m0_development_pass_effective = true; }],
@@ -312,7 +422,7 @@ export function run(ctx) {
   for (const [, mutate] of mutations) {
     const copy = clone(status);
     mutate(copy);
-    if (checkStatusDocument(copy, acceptedVerifiedState).length > 0) rejected += 1;
+    if (checkStatusDocument(copy).length > 0) rejected += 1;
   }
   if (rejected !== mutations.length) fail('status mutation probes rejected ' + rejected + '/' + mutations.length);
   else ok('all ' + rejected + ' status mutation probes fail closed');

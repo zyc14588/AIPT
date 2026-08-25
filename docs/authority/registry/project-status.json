@@ -1,12 +1,12 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-25",
-  "authority_snapshot_id": "AIPT-M0-B008-CANDIDATE-001",
+  "authority_snapshot_id": "AIPT-M0-B008-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-M0-B008",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "NONE",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
@@ -20,7 +20,7 @@
         "AIPT-M0-B005": "MERGED_CLOSED",
         "AIPT-M0-B006": "MERGED_CLOSED",
         "AIPT-M0-B007": "MERGED_CLOSED",
-        "AIPT-M0-B008": "IN_PROGRESS"
+        "AIPT-M0-B008": "MERGED_CLOSED"
       },
       "external_serial_predecessor": {
         "id": "UNREGISTERED-AIPT-P0-B003",
@@ -53,7 +53,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -64,18 +64,84 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
-      "verified_head": "e05179a223f9dd0ff1b317e78c0e466e1146f6bb",
-      "verified_tree": "35a5cc261fef75df8d25102015670bcb1d6fbd92",
-      "verified_state": "AIPT-M0-B007 MERGED_CLOSED: Base e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8 (tree 326def92334a43f6d63cd77b40f0eae9af31b375); Original Candidate 5f78ca91170521ac2acc6ec6eeef4a20e1fdbf92 (tree d4cc34e8fcbec8ea4f864f22aa7503cc1dcdffcd); Repair commit/final Candidate 561e43f9bc646c43da0b48c8485f820f73941df9 (tree 35a5cc261fef75df8d25102015670bcb1d6fbd92, Candidate CI run 32634972911 success); Implementation merge e05179a223f9dd0ff1b317e78c0e466e1146f6bb (tree 35a5cc261fef75df8d25102015670bcb1d6fbd92, parents e1e1a6315ef2308922105dd30fd4bbcf4e3f91c8 and 561e43f9bc646c43da0b48c8485f820f73941df9, subject merge: integrate AIPT-M0-B007), Post-merge CI run 32636449574 success; Web Host PASS; bind 127.0.0.1; dynamic port true; Host guard PASS; Origin guard PASS; CSRF PASS; Config no DSN/credential; six truthful panels PASS; zero new third-party pnpm dependencies; Queue/Run/Status backend NOT_IMPLEMENTED; RAW_CAPTURE IMPLEMENTED_LIBRARY_ONLY; Report UI export NOT_IMPLEMENTED; AUDIT_READY/AUDIT_RESULT generators NOT_IMPLEMENTED; Launcher order unchanged; repair finding AIPT-B007-SUPPLY-CHAIN-DOC-CONSISTENCY-001 CLOSED by 561e43f9bc646c43da0b48c8485f820f73941df9 with semantic code changes false; external serial predecessor UNREGISTERED-AIPT-P0-B003 MERGED_CLOSED at closeout 358d6d9d08a86818e34fd0c0d9a62bfe66e73abe (tree 5585271c78d1fe5cd8357c7b36a501bee34f0240, closeout CI 32621464543 success); B000/B001/B002/B003/B004/B005/B006/B007 remain MERGED_CLOSED; construction IDLE_WAITING_NEXT_BATCH with current_batch NO_ACTIVE_BATCH and global WIP 0; next serial batch INT-AIPT-UNREGISTERED-001 is AUTHORIZED_TO_PREPARE and not started; platform integration remains frozen",
-      "pending_candidate": {
+      "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",
+      "verified_tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
+      "verified_state": {
         "task_id": "AIPT-M0-B008",
-        "branch": "task/AIPT-M0-B008",
-        "base_commit": "656154ff37f8cff0daff46d6f4b7dfe68254853c",
-        "base_tree": "4781236e62a112132e00c21bd5f5b407d73178ab",
-        "state": "IN_PROGRESS",
-        "proposed_result": "M0_DEVELOPMENT_PASS",
-        "current_effective_status": "NOT_YET_GRANTED",
-        "effective_after": "AIPT-M0-B008_MERGED_CLOSED"
+        "state": "MERGED_CLOSED",
+        "audited_product_implementation": {
+          "commit": "e05179a223f9dd0ff1b317e78c0e466e1146f6bb",
+          "tree": "35a5cc261fef75df8d25102015670bcb1d6fbd92"
+        },
+        "base": {
+          "commit": "656154ff37f8cff0daff46d6f4b7dfe68254853c",
+          "tree": "4781236e62a112132e00c21bd5f5b407d73178ab"
+        },
+        "initial_candidate": {
+          "commit": "6647cd97cc46aeda981a6615ca6bd0a729cab38d"
+        },
+        "final_candidate": {
+          "commit": "e5659082f9a0ec657d5c33cc8063d8a410c335aa",
+          "tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
+          "ci_run": 32808838664,
+          "ci_conclusion": "success"
+        },
+        "lifecycle_repair": {
+          "finding": "AIPT-B008-MILESTONE-VALIDATOR-LIFECYCLE-001",
+          "status": "CLOSED",
+          "commit": "e5659082f9a0ec657d5c33cc8063d8a410c335aa",
+          "parent": "6647cd97cc46aeda981a6615ca6bd0a729cab38d",
+          "changed_paths": [
+            "scripts/ci/validate/m0-development-pass.mjs"
+          ]
+        },
+        "implementation_merge": {
+          "commit": "8927a2779f3f123dabd472623d76d8e910152133",
+          "tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
+          "parents": [
+            "656154ff37f8cff0daff46d6f4b7dfe68254853c",
+            "e5659082f9a0ec657d5c33cc8063d8a410c335aa"
+          ],
+          "subject": "merge: integrate AIPT-M0-B008"
+        },
+        "post_merge_ci": {
+          "run": 32819203218,
+          "conclusion": "success"
+        },
+        "gpt_hard_gate": {
+          "directive": "AIPT-M0-B008-GPT-PASS-AND-FINALIZE-001",
+          "result": "PASS",
+          "open_findings": [],
+          "audit_ready_archive_sha256": "0eb777d62c8045acc29b0a80216951b4aeb36f856bf690d2cd394019a1f7119d",
+          "audit_ready_root_sha256": "33becf9c765902442ec7d7445c50d3ac00737c50bccfc33b5bb4f56e2bdaa90b",
+          "gpt_audit_result_sha256": "d35fca102f28387c0e4c7045d65da8418ffc947189500bf639d4edb11bbba207",
+          "integration_root_sha256": "329c98d00600ede1e9bdd7830b30f7968cc3de4d458b57bb3f6730a0bfedac91"
+        },
+        "findings_closed": [
+          "AIPT-B008-AUDIT-EVIDENCE-SELF-CONTAINMENT-001",
+          "AIPT-B008-SOURCE-TREE-DIGEST-001",
+          "AIPT-B008-SOURCE-TREE-SUMMARY-FACT-001",
+          "AIPT-B008-MILESTONE-VALIDATOR-LIFECYCLE-001"
+        ],
+        "m0_development_pass": {
+          "result": "GRANTED",
+          "effective_condition": "AIPT-M0-B008_MERGED_CLOSED",
+          "effective_by": "AIPT-M0-B008-CLOSEOUT-001"
+        },
+        "lifecycle": {
+          "global_wip": 0,
+          "next_serial_batch": "NONE",
+          "next_batch_authorized": false,
+          "next_batch_started": false
+        },
+        "boundaries": {
+          "production_qualification": "NOT_GRANTED",
+          "release_qualification": "NOT_GRANTED",
+          "mvp_development_pass": "NOT_GRANTED",
+          "human_equivalence": "NOT_CLAIMED",
+          "real_playtest_completion": "NOT_CLAIMED",
+          "platform_integration": "FROZEN_WAITING_M1_ENGINE"
+        }
       }
     },
     "UNREGISTERED": {

@@ -3,10 +3,10 @@
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
-// The report schema and task_id are B008 Candidate metadata: the report is an
-// under-construction validator run, never an effective Development Pass,
-// merge or closeout claim. Every historical gate is retained alongside the
-// B008 milestone gate.
+// The report schema and task_id remain stable B008 metadata. The final report
+// enforces MERGED_CLOSED, the effective M0 Development Pass, unchanged
+// qualification boundaries, a frozen platform-integration track, and no next
+// batch. Every historical gate remains present beside the final B008 gate.
 import path from 'node:path';
 import { run as runStatus } from './validate/status-transition.mjs';
 import { run as runDefer } from './validate/defer-016.mjs';
@@ -52,7 +52,7 @@ const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
 const report = {
   schema: 'aipt.public.b008-validator-run/v1',
   task_id: CURRENT_BATCH,
-  note: 'AIPT-M0-B008 Candidate construction IN_PROGRESS — proposed M0 Development Pass remains NOT_YET_GRANTED until B008 is MERGED_CLOSED; no merge, closeout or next batch is authorized',
+  note: 'AIPT-M0-B008 MERGED_CLOSED — M0 Development Pass is effective; no next batch is authorized; production/release/MVP qualifications remain NOT_GRANTED, human equivalence remains NOT_CLAIMED, and platform integration remains FROZEN_WAITING_M1_ENGINE',
   repo: ctx.repo,
   result,
   checks,

@@ -10,7 +10,9 @@ import {
   B005_IMPLEMENTATION_MERGE, B006_CANDIDATE, B006_CLOSEOUT,
   B006_IMPLEMENTATION_MERGE, B007_CANDIDATE, B007_CANDIDATE_HISTORY, B007_CLOSEOUT,
   B007_IMPLEMENTATION_MERGE, B007_ORIGINAL_CANDIDATE, B007_REPAIR,
-  B008_CLOSEOUT_SUBJECT, B008_MERGE_SUBJECT, BASE_COMMIT, BASE_TREE,
+  B008_CANDIDATE_HISTORY, B008_CLOSEOUT_SUBJECT, B008_FINAL_CANDIDATE,
+  B008_IMPLEMENTATION_MERGE, B008_INITIAL_CANDIDATE, B008_LIFECYCLE_REPAIR,
+  B008_MERGE_SUBJECT, BASE_COMMIT, BASE_TREE,
   CLOSEOUT_ALLOWED_PATHS, EXPECTED_MIT_LICENSE, FORBIDDEN_PREFIXES,
   FROZEN_REGISTRY_PATHS, normalizeText, pathMatchesAllowed,
   pathMatchesCloseoutAllowed,
@@ -36,18 +38,20 @@ const ALLOWED_PATHS_LITERAL = [
   'scripts/ci/validate/workflow.mjs',
 ];
 const CLOSEOUT_ALLOWED_PATHS_LITERAL = [
+  '.github/workflows/ci.yml',
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
   'docs/milestones/M0.md',
   'docs/milestones/M0_DEVELOPMENT_PASS.md',
   'docs/milestones/m0-development-pass.json',
-  'package.json',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/m0-development-pass.mjs',
+  'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
+  'scripts/ci/validate/workflow.mjs',
 ];
 const FORBIDDEN_PREFIXES_LITERAL = [
   'cmd/',
@@ -96,9 +100,9 @@ const FALSE_ALLOWLIST_PROBES = [
   'AIPT-M1-B000/README.md',
 ];
 const FALSE_CLOSEOUT_ALLOWLIST_PROBES = [
-  '.github/workflows/ci.yml',
-  'scripts/ci/validate/workflow.mjs',
-  'scripts/ci/validate/standalone-entrypoints.mjs',
+  'package.json',
+  '.github/workflows/other.yml',
+  'scripts/ci/validate/supply-chain.mjs',
   'internal/model/runtime.go',
   'README.md.bak',
 ];
@@ -111,9 +115,9 @@ function isGeneratedWorktreeArtifact(relative) {
   return relative.split('/').includes('node_modules');
 }
 
-// Candidate history is intentionally identified by the future merge's second
-// parent. Owner authorization remains external; the validator enforces the
-// exact Git topology and zero-delta merge once that authorization exists.
+// Candidate history is identified by the frozen implementation merge's second
+// parent. The validator enforces the exact zero-delta merge and the sole
+// Owner-authorized single-parent closeout descendant.
 export function evaluateB008Lifecycle(input) {
   const problems = [];
   if (input?.baseCommit !== BASE_COMMIT) problems.push('base commit drifted');
@@ -126,25 +130,45 @@ export function evaluateB008Lifecycle(input) {
   if (problems.length > 0) return { result: 'FAIL', phase: 'UNKNOWN', problems };
 
   if (input.mergeCommits.length === 0) {
-    return { result: 'PASS', phase: 'CANDIDATE', problems: [] };
+    if (input.candidateTip !== B008_FINAL_CANDIDATE.commit) {
+      problems.push('Candidate tip identity drifted');
+    }
+    if (input.candidateTree !== B008_FINAL_CANDIDATE.tree) {
+      problems.push('Candidate tree identity drifted');
+    }
+    return { result: problems.length === 0 ? 'PASS' : 'FAIL', phase: 'CANDIDATE', problems };
   }
   if (input.mergeCommits.length !== 1) problems.push('exactly one post-base merge is permitted');
   const merge = input.merge;
   if (!merge || typeof merge !== 'object') problems.push('B008 merge object is missing');
   if (merge?.commit !== input.mergeCommits[0]) problems.push('merge identity mismatch');
+  if (merge?.commit !== B008_IMPLEMENTATION_MERGE.commit) {
+    problems.push('implementation merge commit drifted');
+  }
   if (!Array.isArray(merge?.parents) || merge.parents.length !== 2) {
     problems.push('authorized merge must have exactly two parents');
   } else {
-    if (merge.parents[0] !== BASE_COMMIT) problems.push('merge first parent is not the fixed B008 base');
-    if (merge.parents[1] !== merge?.secondParent) problems.push('merge second parent identity drifted');
+    if (merge.parents[0] !== B008_IMPLEMENTATION_MERGE.parent1) {
+      problems.push('merge first parent is not the fixed B008 base');
+    }
+    if (merge.parents[1] !== B008_IMPLEMENTATION_MERGE.parent2) {
+      problems.push('merge second parent is not the frozen final Candidate');
+    }
   }
-  if (!merge?.secondParent) problems.push('Owner-approved Candidate parent is missing');
+  if (merge?.secondParent !== B008_FINAL_CANDIDATE.commit) {
+    problems.push('Owner-approved Candidate parent identity drifted');
+  }
   if (merge?.candidateDescendsFromBase !== true) problems.push('Candidate does not descend from base');
   if (merge?.candidateHasMerges !== false) problems.push('Candidate contains a merge commit');
-  if (!merge?.secondParentTree) problems.push('Candidate tree is unreadable');
+  if (merge?.secondParentTree !== B008_FINAL_CANDIDATE.tree) {
+    problems.push('Candidate tree identity drifted');
+  }
+  if (merge?.tree !== B008_IMPLEMENTATION_MERGE.tree) {
+    problems.push('implementation merge tree identity drifted');
+  }
   if (merge?.tree !== merge?.secondParentTree) problems.push('merge tree differs from Candidate tree');
   if (merge?.treeDiffQuiet !== true) problems.push('merge introduced tree changes');
-  if (merge?.subject !== B008_MERGE_SUBJECT) problems.push('merge subject drifted');
+  if (merge?.subject !== B008_IMPLEMENTATION_MERGE.subject) problems.push('merge subject drifted');
   if (!Array.isArray(input?.ordinaryDescendants)) problems.push('later history is unreadable');
   else {
     if (input.ordinaryDescendants.length > 1) problems.push('more than one post-merge descendant is not permitted');
@@ -155,9 +179,16 @@ export function evaluateB008Lifecycle(input) {
         problems.push('closeout parent is not the B008 implementation merge');
       }
       if (entry?.subject !== B008_CLOSEOUT_SUBJECT) problems.push('closeout subject drifted');
+      if (entry?.commit !== input?.head) problems.push('closeout is not current HEAD');
     }
   }
-  return { result: problems.length === 0 ? 'PASS' : 'FAIL', phase: 'POST_MERGE', problems };
+  const phase = Array.isArray(input?.ordinaryDescendants) && input.ordinaryDescendants.length > 0
+    ? 'CLOSEOUT' : 'POST_MERGE';
+  if (phase === 'CLOSEOUT' &&
+      !same([...(input?.closeoutChangedPaths ?? [])].sort(), [...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort())) {
+    problems.push('closeout changed paths are not the exact 14-path surface');
+  }
+  return { result: problems.length === 0 ? 'PASS' : 'FAIL', phase, problems };
 }
 
 function topologyProbes() {
@@ -169,45 +200,90 @@ function topologyProbes() {
     candidateMergeCommits: [],
     mergeCommits: [],
     ordinaryDescendants: [],
+    candidateTip: B008_FINAL_CANDIDATE.commit,
+    candidateTree: B008_FINAL_CANDIDATE.tree,
+    head: B008_FINAL_CANDIDATE.commit,
+    closeoutChangedPaths: [],
   };
   const exactMerge = {
-    commit: 'b008-merge',
-    parents: [BASE_COMMIT, 'owner-approved-candidate'],
-    secondParent: 'owner-approved-candidate',
+    commit: B008_IMPLEMENTATION_MERGE.commit,
+    parents: [B008_IMPLEMENTATION_MERGE.parent1, B008_IMPLEMENTATION_MERGE.parent2],
+    secondParent: B008_FINAL_CANDIDATE.commit,
     candidateDescendsFromBase: true,
     candidateHasMerges: false,
-    tree: 'candidate-tree',
-    secondParentTree: 'candidate-tree',
+    tree: B008_IMPLEMENTATION_MERGE.tree,
+    secondParentTree: B008_FINAL_CANDIDATE.tree,
     treeDiffQuiet: true,
     subject: B008_MERGE_SUBJECT,
   };
-  const merged = { ...candidate, mergeCommits: ['b008-merge'], merge: exactMerge };
+  const merged = {
+    ...candidate,
+    head: B008_IMPLEMENTATION_MERGE.commit,
+    mergeCommits: [B008_IMPLEMENTATION_MERGE.commit],
+    merge: exactMerge,
+  };
+  const exactCloseout = {
+    commit: 'f'.repeat(40),
+    parents: [B008_IMPLEMENTATION_MERGE.commit],
+    subject: B008_CLOSEOUT_SUBJECT,
+  };
   return [
     ['Candidate PASS', candidate, 'PASS'],
     ['Candidate merge FAIL', { ...candidate, candidateMergeCommits: ['merge'] }, 'FAIL'],
     ['exact implementation merge PASS', merged, 'PASS'],
-    ['bad first parent FAIL', { ...merged, merge: { ...exactMerge, parents: ['wrong', 'owner-approved-candidate'] } }, 'FAIL'],
-    ['bad Candidate parent FAIL', { ...merged, merge: { ...exactMerge, parents: [BASE_COMMIT, 'wrong'] } }, 'FAIL'],
+    ['bad first parent FAIL', {
+      ...merged, merge: { ...exactMerge, parents: ['wrong', B008_FINAL_CANDIDATE.commit] },
+    }, 'FAIL'],
+    ['bad Candidate parent FAIL', {
+      ...merged, merge: { ...exactMerge, parents: [BASE_COMMIT, 'wrong'] },
+    }, 'FAIL'],
     ['Candidate merge hidden FAIL', { ...merged, merge: { ...exactMerge, candidateHasMerges: true } }, 'FAIL'],
-    ['bad Candidate tree FAIL', { ...merged, merge: { ...exactMerge, secondParentTree: 'wrong' } }, 'FAIL'],
+    ['bad Candidate tree FAIL', {
+      ...merged, merge: { ...exactMerge, secondParentTree: 'wrong' },
+    }, 'FAIL'],
     ['merge changes tree FAIL', { ...merged, merge: { ...exactMerge, treeDiffQuiet: false } }, 'FAIL'],
     ['wrong merge subject FAIL', { ...merged, merge: { ...exactMerge, subject: 'merge: wrong' } }, 'FAIL'],
-    ['second merge FAIL', { ...merged, mergeCommits: ['b008-merge', 'merge-2'] }, 'FAIL'],
+    ['second merge FAIL', {
+      ...merged, mergeCommits: [B008_IMPLEMENTATION_MERGE.commit, 'merge-2'],
+    }, 'FAIL'],
     ['merge plus exact closeout PASS', {
       ...merged,
-      ordinaryDescendants: [{ commit: 'closeout', parents: ['b008-merge'], subject: B008_CLOSEOUT_SUBJECT }],
+      head: exactCloseout.commit,
+      ordinaryDescendants: [exactCloseout],
+      closeoutChangedPaths: [...CLOSEOUT_ALLOWED_PATHS_LITERAL],
     }, 'PASS'],
     ['wrong closeout parent FAIL', {
       ...merged,
-      ordinaryDescendants: [{ commit: 'closeout', parents: ['wrong'], subject: B008_CLOSEOUT_SUBJECT }],
+      head: exactCloseout.commit,
+      ordinaryDescendants: [{ ...exactCloseout, parents: ['wrong'] }],
+      closeoutChangedPaths: [...CLOSEOUT_ALLOWED_PATHS_LITERAL],
     }, 'FAIL'],
     ['later merge FAIL', {
       ...merged,
-      ordinaryDescendants: [{ commit: 'closeout', parents: ['b008-merge', 'other'], subject: B008_CLOSEOUT_SUBJECT }],
+      head: exactCloseout.commit,
+      ordinaryDescendants: [{ ...exactCloseout,
+        parents: [B008_IMPLEMENTATION_MERGE.commit, 'other'] }],
+      closeoutChangedPaths: [...CLOSEOUT_ALLOWED_PATHS_LITERAL],
     }, 'FAIL'],
     ['bad closeout subject FAIL', {
       ...merged,
-      ordinaryDescendants: [{ commit: 'closeout', parents: ['b008-merge'], subject: 'wrong' }],
+      head: exactCloseout.commit,
+      ordinaryDescendants: [{ ...exactCloseout, subject: 'wrong' }],
+      closeoutChangedPaths: [...CLOSEOUT_ALLOWED_PATHS_LITERAL],
+    }, 'FAIL'],
+    ['second ordinary descendant FAIL', {
+      ...merged,
+      head: 'e'.repeat(40),
+      ordinaryDescendants: [exactCloseout, {
+        commit: 'e'.repeat(40), parents: [exactCloseout.commit], subject: 'unauthorized',
+      }],
+      closeoutChangedPaths: [...CLOSEOUT_ALLOWED_PATHS_LITERAL],
+    }, 'FAIL'],
+    ['closeout path expansion FAIL', {
+      ...merged,
+      head: exactCloseout.commit,
+      ordinaryDescendants: [exactCloseout],
+      closeoutChangedPaths: [...CLOSEOUT_ALLOWED_PATHS_LITERAL, 'package.json'],
     }, 'FAIL'],
   ];
 }
@@ -232,6 +308,11 @@ function verifyHistoricalTopology(repo, fail, ok) {
     ['B007 implementation merge', B007_IMPLEMENTATION_MERGE.commit, B007_IMPLEMENTATION_MERGE.tree,
       [B007_IMPLEMENTATION_MERGE.parent1, B007_IMPLEMENTATION_MERGE.parent2]],
     ['B007 closeout/B008 base', B007_CLOSEOUT.commit, B007_CLOSEOUT.tree, [B007_CLOSEOUT.parent]],
+    ['B008 final Candidate', B008_FINAL_CANDIDATE.commit, B008_FINAL_CANDIDATE.tree,
+      [B008_LIFECYCLE_REPAIR.parent]],
+    ['B008 implementation merge', B008_IMPLEMENTATION_MERGE.commit,
+      B008_IMPLEMENTATION_MERGE.tree,
+      [B008_IMPLEMENTATION_MERGE.parent1, B008_IMPLEMENTATION_MERGE.parent2]],
   ];
   for (const [label, commit, tree, parents] of historical) {
     const treeProbe = git(repo, ['rev-parse', commit + '^{tree}'], { check: false });
@@ -245,6 +326,8 @@ function verifyHistoricalTopology(repo, fail, ok) {
     ['B005', B005_CANDIDATE.commit, B005_CANDIDATE.tree, B005_IMPLEMENTATION_MERGE.commit],
     ['B006', B006_CANDIDATE.commit, B006_CANDIDATE.tree, B006_IMPLEMENTATION_MERGE.commit],
     ['B007', B007_CANDIDATE.commit, B007_CANDIDATE.tree, B007_IMPLEMENTATION_MERGE.commit],
+    ['B008', B008_FINAL_CANDIDATE.commit, B008_FINAL_CANDIDATE.tree,
+      B008_IMPLEMENTATION_MERGE.commit],
   ];
   for (const [label, candidateCommit, tree, mergeCommit] of candidateTrees) {
     const actualTree = git(repo, ['rev-parse', candidateCommit + '^{tree}'], { check: false });
@@ -262,6 +345,24 @@ function verifyHistoricalTopology(repo, fail, ok) {
       B007_REPAIR.semantic_code_changes !== false || B007_REPAIR.status !== 'CLOSED') {
     fail('B007 repair finding/scope/semantic disposition drifted');
   } else ok('B007 repair finding is CLOSED with exact two-path non-semantic scope');
+
+  const b008History = git(repo, [
+    'rev-list', '--reverse', '--topo-order', BASE_COMMIT + '..' + B008_FINAL_CANDIDATE.commit,
+  ], { check: false });
+  const actualB008History = b008History.status === 0
+    ? b008History.stdout.split('\n').filter(Boolean) : null;
+  const b008RepairPaths = git(repo, [
+    'diff', '--name-only', '--no-renames', B008_LIFECYCLE_REPAIR.parent,
+    B008_LIFECYCLE_REPAIR.commit,
+  ], { check: false });
+  const actualB008RepairPaths = b008RepairPaths.status === 0
+    ? b008RepairPaths.stdout.split('\n').filter(Boolean).sort() : null;
+  if (!same(actualB008History, B008_CANDIDATE_HISTORY) ||
+      B008_INITIAL_CANDIDATE.commit !== B008_CANDIDATE_HISTORY.at(-2) ||
+      !same(actualB008RepairPaths, [...B008_LIFECYCLE_REPAIR.changed_paths].sort()) ||
+      B008_LIFECYCLE_REPAIR.status !== 'CLOSED') {
+    fail('B008 Candidate history or lifecycle repair identity drifted');
+  } else ok('B008 three-commit zero-merge Candidate history and repair scope verified');
 }
 
 export function run(ctx) {
@@ -331,7 +432,7 @@ export function run(ctx) {
       fail('frozen registry changed: ' + relative);
     }
   }
-  if (scopeFailures === 0) ok('all changed paths remain inside exact B008 Candidate scope');
+  if (scopeFailures === 0) ok('all cumulative changed paths remain inside the exact B008 surface');
 
   const ancestry = git(ctx.repo, ['merge-base', '--is-ancestor', BASE_COMMIT, 'HEAD'], { check: false });
   const mergeListProbe = git(ctx.repo, ['rev-list', '--merges', '--reverse', BASE_COMMIT + '..HEAD'], { check: false });
@@ -340,6 +441,7 @@ export function run(ctx) {
   let candidateTip = 'HEAD';
   let merge;
   let ordinaryDescendants = [];
+  let closeoutChanged = [];
   if (Array.isArray(mergeCommits) && mergeCommits.length === 1) {
     const commit = mergeCommits[0];
     const tokens = git(ctx.repo, ['rev-list', '--parents', '-n', '1', commit], { check: false })
@@ -377,26 +479,43 @@ export function run(ctx) {
           };
         })
       : null;
+    if (commit !== git(ctx.repo, ['rev-parse', 'HEAD^{commit}']).stdout.trim()) {
+      const closeoutDiff = git(ctx.repo, [
+        'diff', '--name-only', '--no-renames', commit, 'HEAD',
+      ], { check: false });
+      closeoutChanged = closeoutDiff.status === 0
+        ? closeoutDiff.stdout.split('\n').filter(Boolean).sort() : null;
+    }
   }
   const candidateMergeProbe = candidateTip
     ? git(ctx.repo, ['rev-list', '--merges', BASE_COMMIT + '..' + candidateTip], { check: false })
     : { status: 2, stdout: '' };
   const candidateMergeCommits = candidateMergeProbe.status === 0
     ? candidateMergeProbe.stdout.split('\n').filter(Boolean) : null;
+  const candidateTreeProbe = candidateTip
+    ? git(ctx.repo, ['rev-parse', candidateTip + '^{tree}'], { check: false })
+    : { status: 2, stdout: '' };
+  const headProbe = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false });
   const lifecycle = evaluateB008Lifecycle({
     baseCommit: BASE_COMMIT,
     baseTree: BASE_TREE,
     ancestryKnown: ancestry.status === 0 || ancestry.status === 1,
     baseIsAncestor: ancestry.status === 0,
     candidateMergeCommits,
+    candidateTip,
+    candidateTree: candidateTreeProbe.status === 0 ? candidateTreeProbe.stdout.trim() : null,
+    head: headProbe.status === 0 ? headProbe.stdout.trim() : null,
     mergeCommits,
     merge,
     ordinaryDescendants,
+    closeoutChangedPaths: closeoutChanged,
   });
   if (lifecycle.result === 'FAIL') {
     for (const problem of lifecycle.problems) fail('B008 lifecycle: ' + problem);
+  } else if (lifecycle.phase === 'CLOSEOUT') {
+    ok('CLOSEOUT = PASS: exact B008 merge plus one single-parent exact 14-path closeout');
   } else if (lifecycle.phase === 'POST_MERGE') {
-    ok('POST_MERGE = PASS: exact B008 merge topology and at most one single-parent closeout');
+    ok('POST_MERGE = PASS: exact B008 implementation merge without a closeout descendant');
   } else {
     ok('CANDIDATE = PASS: Base..HEAD contains zero merge commits');
   }
@@ -422,18 +541,19 @@ export function run(ctx) {
   } catch (error) {
     fail('B008 status claim is unreadable: ' + error.message);
   }
-  const hasCloseout = Array.isArray(ordinaryDescendants) && ordinaryDescendants.length === 1 &&
-    ordinaryDescendants[0].subject === B008_CLOSEOUT_SUBJECT;
-  let closeoutChanged = [];
-  if (lifecycle.phase === 'POST_MERGE' && (hasCloseout || statusClaimsCloseout)) {
-    const mergeCommit = merge?.commit;
-    const closeoutTracked = git(ctx.repo, ['diff', '--name-only', '--no-renames', mergeCommit])
-      .stdout.split('\n').filter(Boolean);
-    closeoutChanged = [...new Set([...closeoutTracked, ...untracked])].sort();
+  if (statusClaimsCloseout && lifecycle.phase !== 'CLOSEOUT') {
+    fail('final project status claims closeout but exact closeout topology is absent');
+  }
+  if (!statusClaimsCloseout) fail('final project status does not claim exact B008 closeout');
+  if (lifecycle.phase !== 'CLOSEOUT') fail('final tree-integrity gate is not in CLOSEOUT phase');
+  if (lifecycle.phase === 'CLOSEOUT') {
     for (const relative of closeoutChanged) {
       if (!pathMatchesCloseoutAllowed(relative)) fail('path outside B008 closeout scope: ' + relative);
     }
-  } else ok('B008 closeout is not claimed');
+    if (same(closeoutChanged, [...CLOSEOUT_ALLOWED_PATHS_LITERAL].sort())) {
+      ok('closeout changed paths are the exact 14-path allowlist');
+    }
+  }
 
   for (const line of git(ctx.repo, ['diff', '--raw', '--no-abbrev', '--no-renames', BASE_COMMIT])
     .stdout.split('\n').filter(Boolean)) {

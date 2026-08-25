@@ -1,9 +1,10 @@
-// Shared B008 Candidate validator constants and immutable predecessor identities.
+// Shared B008 final-closeout validator constants and immutable predecessor identities.
 //
 // Every fixed identity below is an immutable historical fact installed by the
 // closed AIPT-M0-B000 through AIPT-M0-B007 acceptances. Nothing in the
-// milestone record may rewrite those accepted identities or validate the
-// B008 Candidate into an effective Development Pass.
+// milestone record may rewrite those accepted identities. B008 closeout makes
+// the independently audited M0 Development Pass effective without changing
+// any product/runtime identity or granting a later batch.
 //
 // BASE_* is the accepted main base the B008 Candidate must diff against: the
 // AIPT-M0-B007 closeout commit and its tree, held as independent literal
@@ -11,9 +12,9 @@
 
 export const CURRENT_BATCH = 'AIPT-M0-B008';
 
-// B008 alone is active. No later batch is named or authorized by this
-// Candidate construction.
-export const ACTIVE_BATCH = CURRENT_BATCH;
+// Closeout leaves no active construction batch. CURRENT_BATCH remains the
+// immutable historical batch id whose closeout is being validated.
+export const ACTIVE_BATCH = 'NO_ACTIVE_BATCH';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -334,6 +335,48 @@ export const B008_BASE_TREE = B007_CLOSEOUT.tree;
 export const B008_MERGE_SUBJECT = 'merge: integrate AIPT-M0-B008';
 export const B008_CLOSEOUT_SUBJECT = 'closeout: complete AIPT-M0-B008';
 
+// Exact linear Candidate history from the immutable B007 closeout base. All
+// three commits are ordinary single-parent commits and the final entry is the
+// lifecycle validator repair accepted by the Owner.
+export const B008_CANDIDATE_HISTORY = [
+  '6534edd8c721c7807db2fca1f20fe6f68aac08ce',
+  '6647cd97cc46aeda981a6615ca6bd0a729cab38d',
+  'e5659082f9a0ec657d5c33cc8063d8a410c335aa',
+];
+
+export const B008_INITIAL_CANDIDATE = {
+  commit: '6647cd97cc46aeda981a6615ca6bd0a729cab38d',
+};
+
+export const B008_FINAL_CANDIDATE = {
+  commit: 'e5659082f9a0ec657d5c33cc8063d8a410c335aa',
+  tree: '9ad4341317e977d455e98ced20f3880d9e50c691',
+  ci_run: 32808838664,
+  ci_conclusion: 'success',
+};
+
+export const B008_LIFECYCLE_REPAIR = {
+  finding: 'AIPT-B008-MILESTONE-VALIDATOR-LIFECYCLE-001',
+  status: 'CLOSED',
+  commit: 'e5659082f9a0ec657d5c33cc8063d8a410c335aa',
+  parent: '6647cd97cc46aeda981a6615ca6bd0a729cab38d',
+  changed_paths: ['scripts/ci/validate/m0-development-pass.mjs'],
+};
+
+// Exact two-parent implementation merge authorized by
+// AIPT-M0-B008-MERGE-001. The closeout is one ordinary child of this commit;
+// verified_head intentionally remains this implementation identity.
+export const B008_IMPLEMENTATION_MERGE = {
+  directive: 'AIPT-M0-B008-MERGE-001',
+  commit: '8927a2779f3f123dabd472623d76d8e910152133',
+  tree: '9ad4341317e977d455e98ced20f3880d9e50c691',
+  parent1: '656154ff37f8cff0daff46d6f4b7dfe68254853c',
+  parent2: 'e5659082f9a0ec657d5c33cc8063d8a410c335aa',
+  subject: B008_MERGE_SUBJECT,
+  post_merge_ci_run: 32819203218,
+  post_merge_ci_conclusion: 'success',
+};
+
 // Current cross-repository serial predecessor required by B007. Candidate,
 // merge and closeout identities remain separately auditable facts.
 export const B007_EXTERNAL_SERIAL_PREDECESSOR = {
@@ -641,10 +684,10 @@ export const REQUIRED_SUPPLY_CHAIN_RULES = [
   'remote_model_call_forbidden',
 ];
 
-// Exact AIPT-M0-B008 Candidate surface. Runtime/product implementation,
-// schemas, dependencies, lockfiles, toolchains, SBOM and supply-chain sources
-// remain frozen. B008 adds only the proposed milestone record, truthful
-// authority status, and fail-closed CI validation for that proposal.
+// Exact cumulative AIPT-M0-B008 surface from Base through final closeout.
+// Runtime/product implementation, schemas, dependencies, lockfiles,
+// toolchains, SBOM and supply-chain sources remain frozen. package.json is a
+// historical Candidate change and is not part of the closeout allowlist.
 export const ALLOWED_PATHS = [
   '.github/workflows/ci.yml',
   'README.md',
@@ -663,25 +706,28 @@ export const ALLOWED_PATHS = [
   'scripts/ci/validate/workflow.mjs',
 ];
 
-// A later Owner-authorized B008 closeout may evolve only milestone/status
-// authority and their validators. This Candidate does not exercise that phase.
+// Exact Owner-authorized B008 closeout surface. It contains governance state,
+// milestone metadata, and only the CI labels/validators needed to enforce the
+// final lifecycle. package.json and every product/runtime path remain frozen.
 export const CLOSEOUT_ALLOWED_PATHS = [
+  '.github/workflows/ci.yml',
   'README.md',
   'docs/authority/PROJECT_STATUS.md',
   'docs/authority/registry/project-status.json',
   'docs/milestones/M0.md',
   'docs/milestones/M0_DEVELOPMENT_PASS.md',
   'docs/milestones/m0-development-pass.json',
-  'package.json',
   'scripts/ci/lib/constants.mjs',
   'scripts/ci/run-checks.mjs',
   'scripts/ci/validate/m0-development-pass.mjs',
+  'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/validate/status-transition.mjs',
   'scripts/ci/validate/tree-integrity.mjs',
+  'scripts/ci/validate/workflow.mjs',
 ];
 
-// Exact machine/human status transition surface used during Candidate
-// construction. Milestone record validation is owned by its dedicated gate.
+// Exact machine/human status transition subset used by the final closeout.
+// Milestone record validation is owned by its dedicated gate.
 export const STATUS_TRANSITION_PATHS = [
   'README.md',
   'docs/authority/PROJECT_STATUS.md',

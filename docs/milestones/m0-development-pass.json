@@ -1,17 +1,18 @@
 {
   "schema": "aipt.m0.development-pass/v1",
   "task_id": "AIPT-M0-B008",
-  "record_state": "CANDIDATE_PROPOSAL",
+  "record_state": "M0_DEVELOPMENT_PASS_EFFECTIVE",
   "authority": {
-    "directive_id": "AIPT-M0-B008-GPT-PASS-AND-FINALIZE-001",
-    "authorization_scope": "IMPLEMENT_AND_FREEZE_CANDIDATE_ONLY",
-    "branch": "task/AIPT-M0-B008",
-    "merge_authorized": false
+    "gpt_stage_b_directive": "AIPT-M0-B008-GPT-PASS-AND-FINALIZE-001",
+    "merge_directive": "AIPT-M0-B008-MERGE-001",
+    "closeout_directive": "AIPT-M0-B008-CLOSEOUT-001",
+    "authorization_scope": "FINALIZE_M0_DEVELOPMENT_PASS",
+    "branch": "main"
   },
   "lifecycle": {
-    "construction": "IN_PROGRESS",
-    "current_batch": "AIPT-M0-B008",
-    "global_wip": 1,
+    "construction": "IDLE_WAITING_NEXT_BATCH",
+    "current_batch": "NO_ACTIVE_BATCH",
+    "global_wip": 0,
     "batch_history": {
       "AIPT-M0-B000": "MERGED_CLOSED",
       "AIPT-M0-B001": "MERGED_CLOSED",
@@ -21,7 +22,7 @@
       "AIPT-M0-B005": "MERGED_CLOSED",
       "AIPT-M0-B006": "MERGED_CLOSED",
       "AIPT-M0-B007": "MERGED_CLOSED",
-      "AIPT-M0-B008": "IN_PROGRESS"
+      "AIPT-M0-B008": "MERGED_CLOSED"
     },
     "next_serial_batch": "NONE",
     "next_batch_state": "NOT_AUTHORIZED",
@@ -30,22 +31,52 @@
   },
   "milestone_state": {
     "gpt_audit": "PASS",
-    "m0_development_pass": "PROPOSED_PENDING_B008_MERGED_CLOSED"
+    "m0_development_pass": "GRANTED"
   },
-  "proposal": {
-    "proposed_result": "M0_DEVELOPMENT_PASS",
-    "current_effective_status": "NOT_YET_GRANTED",
-    "effective_after": "AIPT-M0-B008_MERGED_CLOSED"
+  "result": {
+    "result": "M0_DEVELOPMENT_PASS",
+    "effective_status": "GRANTED",
+    "effective_condition": "AIPT-M0-B008_MERGED_CLOSED",
+    "effective_condition_satisfied": true
   },
   "source_bindings": {
     "aipt": {
+      "audited_product_implementation": {
+        "commit": "e05179a223f9dd0ff1b317e78c0e466e1146f6bb",
+        "tree": "35a5cc261fef75df8d25102015670bcb1d6fbd92"
+      },
       "source_b007_closeout": {
         "commit": "656154ff37f8cff0daff46d6f4b7dfe68254853c",
         "tree": "4781236e62a112132e00c21bd5f5b407d73178ab"
       },
-      "accepted_m0_implementation": {
-        "commit": "e05179a223f9dd0ff1b317e78c0e466e1146f6bb",
-        "tree": "35a5cc261fef75df8d25102015670bcb1d6fbd92"
+      "b008_initial_candidate": {
+        "commit": "6647cd97cc46aeda981a6615ca6bd0a729cab38d"
+      },
+      "b008_final_candidate": {
+        "commit": "e5659082f9a0ec657d5c33cc8063d8a410c335aa",
+        "tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
+        "ci_run": 32808838664,
+        "ci_conclusion": "success"
+      },
+      "b008_lifecycle_repair": {
+        "finding": "AIPT-B008-MILESTONE-VALIDATOR-LIFECYCLE-001",
+        "status": "CLOSED",
+        "commit": "e5659082f9a0ec657d5c33cc8063d8a410c335aa",
+        "parent": "6647cd97cc46aeda981a6615ca6bd0a729cab38d",
+        "changed_paths": [
+          "scripts/ci/validate/m0-development-pass.mjs"
+        ]
+      },
+      "b008_milestone_implementation": {
+        "commit": "8927a2779f3f123dabd472623d76d8e910152133",
+        "tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
+        "parents": [
+          "656154ff37f8cff0daff46d6f4b7dfe68254853c",
+          "e5659082f9a0ec657d5c33cc8063d8a410c335aa"
+        ],
+        "subject": "merge: integrate AIPT-M0-B008",
+        "post_merge_ci_run": 32819203218,
+        "post_merge_ci_conclusion": "success"
       }
     },
     "unregistered": {
@@ -75,6 +106,9 @@
       "AIPT-B008-AUDIT-EVIDENCE-SELF-CONTAINMENT-001",
       "AIPT-B008-SOURCE-TREE-DIGEST-001",
       "AIPT-B008-SOURCE-TREE-SUMMARY-FACT-001"
+    ],
+    "closed_lifecycle_findings": [
+      "AIPT-B008-MILESTONE-VALIDATOR-LIFECYCLE-001"
     ]
   },
   "batch_identity_ledger": {

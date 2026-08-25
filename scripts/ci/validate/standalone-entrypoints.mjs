@@ -104,7 +104,7 @@ export function run(ctx) {
     { name: 'web-ui', label: 'web-ui', args: ['--repo', ctx.repo], result: 'PASS' },
     {
       name: 'm0-development-pass',
-      label: 'm0-development-pass Candidate',
+      label: 'm0-development-pass final M0 gate',
       args: ['--repo', ctx.repo],
       result: 'PASS',
     },

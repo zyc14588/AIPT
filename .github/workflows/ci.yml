@@ -138,7 +138,7 @@ jobs:
         run: pnpm run test:web-go
       - name: B007 live loopback Web smoke test (dynamic 127.0.0.1 port)
         run: pnpm run smoke:web-ui
-      - name: B008 M0 Development Pass Candidate (NOT_YET_GRANTED + negative probes)
+      - name: B008 M0 Development Pass final gate (MERGED_CLOSED + boundary probes)
         run: pnpm run check:m0-development-pass
       - name: B001+B002+B003+B004+B005+B006+B007+B008 aggregate validators (pnpm run check)
         run: pnpm run check

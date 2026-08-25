@@ -230,7 +230,7 @@ const FOCUSED_COMMANDS = [
   },
   {
     command: 'pnpm run check:m0-development-pass',
-    nameTokens: ['b008', 'm0 development pass', 'candidate', 'not_yet_granted', 'negative probes'],
+    nameTokens: ['b008', 'm0 development pass', 'final gate', 'merged_closed', 'boundary probes'],
   },
   { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
@@ -1934,7 +1934,7 @@ export function run(ctx) {
         ),
     },
     {
-      label: 'B008 M0 Development Pass Candidate gate removed from toolchain',
+      label: 'B008 M0 Development Pass final gate removed from toolchain',
       reason: /check:m0-development-pass.*exactly once/,
       run: () =>
         checkWorkflowText(
