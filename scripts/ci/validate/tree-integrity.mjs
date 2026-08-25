@@ -407,6 +407,16 @@ function collectMvpCandidateFacts(repo) {
   };
 }
 
+export function isUnsafeMvpRawMode(line) {
+  const modes = /^:(\d{6}) (\d{6}) /.exec(line);
+  if (!modes) return true;
+  const unsafeType = [modes[1], modes[2]].some((mode) =>
+    mode === '120000' || mode === '160000');
+  const deletion = modes[2] === '000000';
+  const malformedAddition = modes[1] === '000000' && modes[2] !== '100644';
+  return unsafeType || deletion || malformedAddition;
+}
+
 function runMvpB000Tree(ctx) {
   const details = [];
   let pass = true;
@@ -479,9 +489,7 @@ function runMvpB000Tree(ctx) {
   for (const line of git(ctx.repo, [
     'diff', '--raw', '--no-abbrev', '--no-renames', MVP_B000_BASE_COMMIT,
   ], { check: false }).stdout.split('\n').filter(Boolean)) {
-    const modes = /^:(\d{6}) (\d{6}) /.exec(line);
-    if (modes && [modes[1], modes[2]].some((mode) =>
-      mode === '120000' || mode === '160000' || mode === '000000')) {
+    if (isUnsafeMvpRawMode(line)) {
       fail('unsafe changed mode: ' + line);
     }
   }
@@ -536,15 +544,28 @@ function runMvpB000Tree(ctx) {
   const pathProbeRejected = validateChangedPaths([...expectedPaths, 'internal/run/engine.go']).length > 0;
   if (pathProbeRejected) rejected += 1;
   else fail('runtime path negative probe was accepted');
-  if (rejected === lifecycleProbes.length + 1) ok(`all ${rejected} MVP tree/scope mutation probes reject`);
+  const regularAddition = ':000000 100644 ' + '0'.repeat(40) + ' ' + '1'.repeat(40) + ' A\tnew.json';
+  if (isUnsafeMvpRawMode(regularAddition)) fail('regular 100644 addition mode control was rejected');
+  const unsafeModeProbes = [
+    ':100644 000000 ' + '1'.repeat(40) + ' ' + '0'.repeat(40) + ' D\tdeleted.json',
+    ':000000 120000 ' + '0'.repeat(40) + ' ' + '1'.repeat(40) + ' A\tsymlink',
+    ':000000 160000 ' + '0'.repeat(40) + ' ' + '1'.repeat(40) + ' A\tgitlink',
+    'malformed raw mode line',
+  ];
+  for (const probe of unsafeModeProbes) {
+    if (isUnsafeMvpRawMode(probe)) rejected += 1;
+    else fail('unsafe raw-mode negative probe was accepted: ' + probe);
+  }
+  const expectedRejected = lifecycleProbes.length + 1 + unsafeModeProbes.length;
+  if (rejected === expectedRejected) ok(`all ${rejected} MVP tree/scope/mode mutation probes reject`);
 
   return {
     result: pass ? 'PASS' : 'FAIL',
     phase: 'CANDIDATE',
     details,
     changed_paths: changed,
-    negative_probes: rejected === lifecycleProbes.length + 1 ? 'PASS' : 'FAIL',
-    negative_probe_count: lifecycleProbes.length + 1,
+    negative_probes: rejected === expectedRejected ? 'PASS' : 'FAIL',
+    negative_probe_count: expectedRejected,
   };
 }
 
