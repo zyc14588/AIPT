@@ -16,7 +16,7 @@ import {
   CLOSEOUT_ALLOWED_PATHS, EXPECTED_MIT_LICENSE, FORBIDDEN_PREFIXES,
   FROZEN_REGISTRY_PATHS, M0_CLOSEOUT, M0_HISTORICAL_PATHS,
   MVP_B000_ALLOWED_PATHS, MVP_B000_BASE_COMMIT, MVP_B000_BASE_TREE,
-  MVP_B000_FORBIDDEN_PREFIXES, MVP_B000_SNAPSHOT, normalizeText,
+  MVP_B000_FORBIDDEN_PREFIXES, MVP_B000_SNAPSHOT, MVP_B001, normalizeText,
   pathMatchesAllowed, pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { collectMarkdownLinkIssues, scanTreeForHazards, walkFiles } from '../lib/scan.mjs';
@@ -27,6 +27,7 @@ import {
   validateChangedPaths,
   validateLifecycle as validateMvpB000Lifecycle,
 } from './mvp-bootstrap.mjs';
+import { run as runMvpB001 } from './mvp-b001.mjs';
 
 const MVP_STATUS_PATH = 'docs/authority/registry/project-status.json';
 
@@ -559,6 +560,14 @@ function runMvpB000Tree(ctx) {
 }
 
 export function run(ctx) {
+  try {
+    const status = JSON.parse(fs.readFileSync(path.join(ctx.repo, MVP_STATUS_PATH), 'utf8'));
+    if (status?.authority_snapshot_id === MVP_B001.snapshot || status?.authority_snapshot_id === 'AIPT-MVP-B001-CLOSEOUT-001') {
+      return { ...runMvpB001(ctx), name: 'tree-integrity' };
+    }
+  } catch {
+    // The historical gate below owns the fail-closed unreadable-input report.
+  }
   // Preserve the complete B008 lifecycle implementation below for historical
   // checkouts. Exact B000 authority routes Candidate, PR, post-merge and the
   // fail-closed future closeout shape through the shared successor classifier.

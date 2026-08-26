@@ -16,6 +16,9 @@ import (
 // to the frozen migration file must update this constant in the same change.
 const ledgerMigrationChecksumHex = "cbab234c8d6a265397dcc553bd9bdb17006712f77ec482b0ef8332f050c9f591"
 
+// queueMigrationChecksumHex pins the exact approved B001 migration bytes.
+const queueMigrationChecksumHex = "47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997"
+
 // ---- embedded migration inventory and checksum ----
 
 func mustEmbeddedMigrationBytes(t *testing.T) []byte {
@@ -32,20 +35,31 @@ func mustEmbeddedMigrationSQL(t *testing.T) string {
 	return string(mustEmbeddedMigrationBytes(t))
 }
 
+func mustQueueMigrationBytes(t *testing.T) []byte {
+	t.Helper()
+	body, err := fs.ReadFile(migrationsFS, "migrations/000002_playtest_queue.sql")
+	if err != nil {
+		t.Fatalf("read embedded migrations/000002_playtest_queue.sql: %v", err)
+	}
+	return body
+}
+
 func TestSchemaEmbeddedMigrationsExactInventory(t *testing.T) {
 	entries, err := fs.ReadDir(migrationsFS, "migrations")
 	if err != nil {
 		t.Fatalf("fs.ReadDir(migrationsFS, migrations): %v", err)
 	}
-	if len(entries) != 1 {
-		t.Fatalf("embedded migrations directory has %d entries, want exactly 1", len(entries))
+	if len(entries) != 2 {
+		t.Fatalf("embedded migrations directory has %d entries, want exactly 2", len(entries))
 	}
-	entry := entries[0]
-	if entry.Name() != "000001_ledger.sql" {
-		t.Errorf("embedded migration = %q, want 000001_ledger.sql", entry.Name())
-	}
-	if entry.IsDir() {
-		t.Error("embedded migration entry must be a file, not a directory")
+	want := []string{"000001_ledger.sql", "000002_playtest_queue.sql"}
+	for i, entry := range entries {
+		if entry.Name() != want[i] {
+			t.Errorf("embedded migration[%d] = %q, want %q", i, entry.Name(), want[i])
+		}
+		if entry.IsDir() {
+			t.Errorf("embedded migration %q must be a file", entry.Name())
+		}
 	}
 }
 
@@ -54,8 +68,8 @@ func TestSchemaEmbeddedMigrationsLoadAndChecksum(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadMigrations(migrationsFS): %v", err)
 	}
-	if len(migs) != 1 {
-		t.Fatalf("loadMigrations returned %d migrations, want 1", len(migs))
+	if len(migs) != 2 {
+		t.Fatalf("loadMigrations returned %d migrations, want 2", len(migs))
 	}
 	m := migs[0]
 	if m.version != 1 {
@@ -75,6 +89,52 @@ func TestSchemaEmbeddedMigrationsLoadAndChecksum(t *testing.T) {
 	}
 	if m.checksum != sum {
 		t.Errorf("loaded checksum %x must equal the SHA-256 of the embedded bytes %x", m.checksum, sum)
+	}
+	queue := migs[1]
+	if queue.version != 2 || queue.filename != "000002_playtest_queue.sql" || queue.name != "playtest_queue" {
+		t.Errorf("queue migration identity = (%d, %q, %q), want (2, 000002_playtest_queue.sql, playtest_queue)", queue.version, queue.filename, queue.name)
+	}
+	queueBody := mustQueueMigrationBytes(t)
+	queueSum := sha256.Sum256(queueBody)
+	if got := hex.EncodeToString(queueSum[:]); got != queueMigrationChecksumHex {
+		t.Errorf("migrations/000002_playtest_queue.sql checksum = %s, want %s", got, queueMigrationChecksumHex)
+	}
+	if queue.checksum != queueSum {
+		t.Errorf("loaded queue checksum %x must equal embedded SHA-256 %x", queue.checksum, queueSum)
+	}
+}
+
+func TestQueueMigrationNormalizedStructure(t *testing.T) {
+	lower := strings.ToLower(normalizeSQL(t, string(mustQueueMigrationBytes(t))))
+	wants := []string{
+		"create table aipt.playtest_campaigns",
+		"create table aipt.playtest_suites",
+		"create table aipt.playtest_cases",
+		"create table aipt.run_manifests",
+		"create table aipt.playtest_runs",
+		"create table aipt.run_dependencies",
+		"create table aipt.playtest_queue_control",
+		"create table aipt.run_leases",
+		"create table aipt.run_attempts",
+		"aipt_run_manifest_immutable",
+		"before update or delete or truncate on aipt.run_manifests",
+		"aipt_run_attempt_append_only",
+		"before update or delete or truncate on aipt.run_attempts",
+		"create unique index run_leases_one_active_formal_slot",
+		"where status = 'active' and formal_slot = 1",
+		"aipt.playtest_priority_rank ( priority_class )",
+		"queued_at asc",
+		"run_id collate \"c\" asc",
+	}
+	for _, want := range wants {
+		if !strings.Contains(lower, want) {
+			t.Errorf("normalized queue migration must contain %q", want)
+		}
+	}
+	for _, forbidden := range []string{"drop table", "drop function", "down migration", "force migration", "repair migration"} {
+		if strings.Contains(lower, forbidden) {
+			t.Errorf("queue migration contains forbidden %q", forbidden)
+		}
 	}
 }
 

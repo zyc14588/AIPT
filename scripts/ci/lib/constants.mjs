@@ -14,7 +14,9 @@ export const CURRENT_BATCH = 'AIPT-MVP-B000';
 
 // The new Owner Authority opens exactly one post-M0 governance batch while
 // every later MVP batch remains unauthorized and not started.
-export const ACTIVE_BATCH = CURRENT_BATCH;
+// CURRENT_BATCH remains the historical B000 validator key. ACTIVE_BATCH is
+// the exact authorized successor and must never be derived by prefix matching.
+export const ACTIVE_BATCH = 'AIPT-MVP-B001';
 
 // The historical batch that selected the frozen toolchain / supply-chain
 // policy. tools/*.lock.json `selected_by_batch` is an immutable B001 fact,
@@ -436,6 +438,23 @@ export const MVP_B000_IMPLEMENTATION_MERGE = Object.freeze({
   subject: 'merge: integrate AIPT-MVP-B000',
   post_merge_ci_run: 32907168240,
   post_merge_ci_conclusion: 'success',
+});
+
+// Exact AIPT-MVP-B001 construction authority. The Candidate identity is not
+// hard-coded before Owner freeze; lifecycle gates derive it only from the
+// zero-merge task branch or the exact second parent of a permitted merge.
+export const MVP_B001 = Object.freeze({
+  task_id: 'AIPT-MVP-B001',
+  authority: 'AIPT-MVP-B001-START-001',
+  snapshot: 'AIPT-MVP-B001-CANDIDATE-001',
+  branch: 'task/AIPT-MVP-B001',
+  base_commit: '64b5692971bbe687884ec34bd6417fe803987ae9',
+  base_tree: '1a6feabb1796af9f66fd78fc842f249ec03a5251',
+  next_batch: 'UNREGISTERED-AIPT-P1-B000',
+  merge_subject: 'merge: integrate AIPT-MVP-B001',
+  closeout_subject: 'closeout: complete AIPT-MVP-B001',
+  migration: 'internal/storage/postgres/migrations/000002_playtest_queue.sql',
+  migration_sha256: '47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997',
 });
 
 // Current cross-repository serial predecessor required by B007. Candidate,

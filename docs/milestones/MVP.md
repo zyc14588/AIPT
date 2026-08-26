@@ -15,7 +15,9 @@ AIPT-MVP-B000 → AIPT-MVP-B001 → UNREGISTERED-AIPT-P1-B000
 → AIPT-MVP-B008 → AIPT-MVP-B009 → AIPT-MVP-B010
 ```
 
-当前 `AIPT-MVP-B000 = MERGED_CLOSED`、`construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。final Candidate `9a4d5e0ad09fbc9c3e13536d02cd131f992836f2`（tree `895ccfc569435c390a1aaeea566167a2d61a4de6`，CI `32869412683` success）由 implementation merge `1a26e023af1b56c057590a46de2f63c3b4220923` 精确集成，post-merge CI `32907168240` success；finding `AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001` = `CLOSED`。`AIPT-MVP-B001` 是下一串行批次，但保持 `NOT_STARTED`、`NOT_AUTHORIZED`，未获授权且未启动；所有更晚 MVP 批次均为 `NOT_STARTED`。B000 只完成治理、机器图、生命周期和 fail-closed CI validator，没有 Run engine、真实模型 runtime 调用、真实桌测或 qualification Run。`M0 Development Pass = GRANTED` 继续有效，MVP Development Pass 仍为 `NOT_GRANTED`；生产/发行资格仍为 `NOT_GRANTED`，真人等价仍为 `NOT_CLAIMED`，平台集成仍为 `FROZEN_WAITING_M1_ENGINE` 且解冻未获授权。
+`AIPT-MVP-B000 = MERGED_CLOSED`：final Candidate `9a4d5e0ad09fbc9c3e13536d02cd131f992836f2`（tree `895ccfc569435c390a1aaeea566167a2d61a4de6`，CI `32869412683` success）由 implementation merge `1a26e023af1b56c057590a46de2f63c3b4220923` 精确集成，post-merge CI `32907168240` success；finding `AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001` = `CLOSED`。
+
+当前唯一活动批次 `AIPT-MVP-B001 = IN_PROGRESS`，Authority `AIPT-MVP-B001-START-001` 仅为 `IMPLEMENT_AND_FREEZE_CANDIDATE_ONLY`。精确 Base 为 `64b5692971bbe687884ec34bd6417fe803987ae9`（tree `1a6feabb1796af9f66fd78fc842f249ec03a5251`），当前 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B001`、`GLOBAL_WIP = 1`。本批次只实现版本化 `Campaign → Suite → Case → Run` Test Plan、不可变 canonical-SHA-256 Run Manifest、PostgreSQL 18.4 权威 Queue/Lease/Attempt 与 formal WIP=1；没有 Run Core、Agent 编排、产品模型调用、真实桌测或 qualification Run，merge/closeout 均未授权。下一项 `UNREGISTERED-AIPT-P1-B000` 与所有更晚批次仍为 `NOT_STARTED` / `NOT_AUTHORIZED`。`M0 Development Pass = GRANTED` 继续有效，MVP Development Pass 仍为 `NOT_GRANTED`；生产/发行资格仍为 `NOT_GRANTED`，真人等价仍为 `NOT_CLAIMED`，平台集成仍为 `FROZEN_WAITING_M1_ENGINE`。
 
 ## 真实 MVP：使用《未登记》任务 0
 

@@ -2,7 +2,7 @@
 
 > 公开顶层架构合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)；
 > 冲突处理顺序见 [../authority/README.md](../authority/README.md)。
-> **本节全部为设计目标，B000 未实现任何运行时代码。**
+> M0 历史实现保持不变；`AIPT-MVP-B001` 只实现声明式 Test Plan、不可变 Manifest 与 PostgreSQL Queue/Lease/Attempt authority，不代表 Run Core 已实现。
 
 ## 技术栈与进程边界
 
@@ -16,10 +16,13 @@
 
 - 第一阶段使用 **stdio JSON-RPC**；后续增加 **Unix Domain Socket**；协议同时支持两种传输（`R4-F005`）。
 
-## 持久化：PostgreSQL 事件账本
+## 持久化：PostgreSQL 事件账本与 B001 队列权威
 
 - PostgreSQL 上维护**追加式哈希链事件账本**（`R4-Q008`）。
 - 事件账本是权威：快照、投影与 UI 状态均可从账本重建，属于派生/次级（`R4-Q009`）。
+- 冻结迁移 `000001_ledger.sql` 保持精确字节与 SHA-256；B001 仅新增 `000002_playtest_queue.sql`，定义 Campaign/Suite/Case/Run、不可变 Run Manifest、依赖、queue control、lease 与 append-only Attempt。
+- 队列选择由 PostgreSQL 中的确定性 priority rank、`queued_at`、`run_id COLLATE "C"`、依赖与 capability 条件决定；正式资格槽位通过数据库部分唯一索引实施 WIP=1，而不是进程内互斥。
+- Lease 的 acquisition、heartbeat、expiry 与 recovery 使用数据库时间；generation + holder + token hash 构成所有权边界。生产库不保存明文 token，调用方返回值中的 token 由可注入 `TokenSource` 生成。
 
 ## 确定性状态提交
 
@@ -45,8 +48,7 @@
 
 ## 设计状态声明
 
-以上均为**冻结设计合同**；代码、Schema 与可运行系统由后续批次建设
-（`AIPT-M0-B002` 起，见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)）。
+冻结历史合同继续有效；B001 已交付的 Test Plan / Manifest / Queue-Lease-Attempt 只是权威调度骨架。Run Core 的动作事务、Agent orchestration、模型 gateway、真实 playtest 与 qualification 仍由后续批次建设，当前不得从“可入队/可租约”推断“可运行”。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
 
 ## 相邻文档
 

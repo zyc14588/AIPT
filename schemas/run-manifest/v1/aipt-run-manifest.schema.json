@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/run-manifest/v1/aipt-run-manifest.schema.json",
+  "title": "AIPT immutable Run Manifest v1",
+  "description": "canonical_sha256 is SHA-256 over the canonical JSON object after removing only canonical_sha256. Prompt text, credentials, DSNs, private paths and human-private data are not representable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "manifest_id", "run_id", "ancestry", "run_type", "source", "model_assignments", "prompt_assets", "seat_roster", "budget", "evidence", "visibility_profile_id", "safety_applicable", "safety_profile_id", "classification", "qualification_eligible", "canonical_sha256"],
+  "properties": {
+    "schema": { "const": "aipt.run-manifest/v1" },
+    "manifest_id": { "$ref": "#/$defs/identity" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "ancestry": { "$ref": "#/$defs/ancestry" },
+    "run_type": { "$ref": "#/$defs/taskType" },
+    "source": { "$ref": "#/$defs/source" },
+    "model_assignments": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/modelAssignment" } },
+    "prompt_assets": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "#/$defs/promptAsset" } },
+    "seat_roster": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/seat" } },
+    "budget": { "$ref": "#/$defs/budget" },
+    "evidence": { "$ref": "#/$defs/evidence" },
+    "visibility_profile_id": { "enum": ["AIPT_VISIBILITY_STANDARD_V1", "AIPT_VISIBILITY_DIAGNOSTIC_V1"] },
+    "safety_applicable": { "type": "boolean" },
+    "safety_profile_id": { "enum": ["AIPT_SAFETY_STANDARD_V1", "AIPT_SAFETY_DIAGNOSTIC_V1", "NOT_APPLICABLE"] },
+    "classification": { "enum": ["QUALIFICATION", "DIAGNOSTIC"] },
+    "qualification_eligible": { "type": "boolean" },
+    "canonical_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    { "oneOf": [
+      { "required": ["classification", "qualification_eligible"], "properties": { "classification": { "const": "QUALIFICATION" }, "qualification_eligible": { "const": true } } },
+      { "required": ["classification", "qualification_eligible"], "properties": { "classification": { "const": "DIAGNOSTIC" }, "qualification_eligible": { "const": false } } }
+    ] },
+    { "oneOf": [
+      { "required": ["safety_applicable", "safety_profile_id"], "properties": { "safety_applicable": { "const": true }, "safety_profile_id": { "enum": ["AIPT_SAFETY_STANDARD_V1", "AIPT_SAFETY_DIAGNOSTIC_V1"] } } },
+      { "required": ["safety_applicable", "safety_profile_id"], "properties": { "safety_applicable": { "const": false }, "safety_profile_id": { "const": "NOT_APPLICABLE" } } }
+    ] }
+  ],
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$" },
+    "repository": { "type": "string", "minLength": 3, "maxLength": 200, "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "taskType": { "enum": ["SYSTEM_QUALIFICATION", "RULE", "PROSE", "ORACLE", "HUMAN_SIMULATION", "ADVERSARIAL", "PACKAGE_BUILD", "CALIBRATION", "REGRESSION"] },
+    "ancestry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["campaign_id", "suite_id", "case_id"],
+      "properties": { "campaign_id": { "$ref": "#/$defs/identity" }, "suite_id": { "$ref": "#/$defs/identity" }, "case_id": { "$ref": "#/$defs/identity" } }
+    },
+    "repositorySource": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": { "repository": { "$ref": "#/$defs/repository" }, "commit": { "$ref": "#/$defs/gitOid" }, "tree": { "$ref": "#/$defs/gitOid" } }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["aipt", "game"],
+      "properties": { "aipt": { "$ref": "#/$defs/repositorySource" }, "game": { "$ref": "#/$defs/repositorySource" } }
+    },
+    "modelAssignment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["assignment_id", "model_profile_id"],
+      "properties": { "assignment_id": { "$ref": "#/$defs/identity" }, "model_profile_id": { "$ref": "#/$defs/identity" } }
+    },
+    "promptAsset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["asset_id", "sha256"],
+      "properties": { "asset_id": { "$ref": "#/$defs/identity" }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "seat": {
+      "type": "object", "additionalProperties": false,
+      "required": ["seat_id", "role_id", "model_assignment_id"],
+      "properties": { "seat_id": { "$ref": "#/$defs/identity" }, "role_id": { "$ref": "#/$defs/identity" }, "model_assignment_id": { "$ref": "#/$defs/identity" } }
+    },
+    "budget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["policy_id", "limits_id", "max_input_tokens", "max_output_tokens", "max_duration_seconds"],
+      "properties": {
+        "policy_id": { "$ref": "#/$defs/identity" }, "limits_id": { "$ref": "#/$defs/identity" },
+        "max_input_tokens": { "type": "integer", "minimum": 1, "maximum": 1000000000 },
+        "max_output_tokens": { "type": "integer", "minimum": 1, "maximum": 1000000000 },
+        "max_duration_seconds": { "type": "integer", "minimum": 1, "maximum": 604800 }
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["profile_id", "config_id"],
+      "properties": { "profile_id": { "$ref": "#/$defs/identity" }, "config_id": { "$ref": "#/$defs/identity" } }
+    }
+  }
+}

@@ -9,6 +9,7 @@ import {
   MVP_B000_BASE_COMMIT,
   MVP_B000_NEXT_BATCH,
   MVP_B000_SNAPSHOT,
+  MVP_B001,
   STATUS_DATE,
 } from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -19,6 +20,7 @@ import {
   runLifecycleRegressionProbes,
   validateLifecycle,
 } from './mvp-bootstrap.mjs';
+import { run as runMvpB001 } from './mvp-b001.mjs';
 
 const STATUS_PATH = 'docs/authority/registry/project-status.json';
 const GRAPH_PATH = 'docs/authority/registry/batch-graph.json';
@@ -162,6 +164,14 @@ function negativeProbes(status, baseStatus, facts) {
 }
 
 export function run(ctx) {
+  try {
+    const snapshot = readJson(ctx.repo, STATUS_PATH)?.authority_snapshot_id;
+    if (snapshot === MVP_B001.snapshot || snapshot === 'AIPT-MVP-B001-CLOSEOUT-001') {
+      return { ...runMvpB001(ctx), name: 'status-transition' };
+    }
+  } catch {
+    // The historical gate below owns the fail-closed unreadable-input report.
+  }
   const details = [];
   let pass = true;
   const ok = (message) => details.push('ok: ' + message);
