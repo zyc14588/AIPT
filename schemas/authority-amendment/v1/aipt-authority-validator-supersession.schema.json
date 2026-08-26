@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v1/aipt-authority-validator-supersession.schema.json",
+  "title": "AIPT Authority validator supersession record v1",
+  "description": "One append-only link in an explicitly authorized validator identity chain. A record is never accepted by filename or recency.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "record_id", "chain_sequence", "predecessor_record_id", "role", "path",
+    "old_sha256", "new_sha256", "amendment_id", "repair_task_id", "repair_candidate_commit",
+    "reason", "semantic_constraints", "regression_evidence", "amendment_acceptance",
+    "repair_acceptance", "provenance"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.authority-validator-supersession/v1" },
+    "record_id": { "$ref": "#/$defs/identity" },
+    "chain_sequence": { "type": "integer", "minimum": 1 },
+    "predecessor_record_id": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/identity" }
+      ]
+    },
+    "role": { "enum": ["AUTHORITY_VALIDATOR_IDENTITY", "B001_HISTORICAL_VALIDATOR_IDENTITY"] },
+    "path": { "$ref": "#/$defs/repoPath" },
+    "old_sha256": { "$ref": "#/$defs/sha256" },
+    "new_sha256": { "$ref": "#/$defs/sha256" },
+    "amendment_id": { "$ref": "#/$defs/identity" },
+    "repair_task_id": { "$ref": "#/$defs/identity" },
+    "repair_candidate_commit": { "$ref": "#/$defs/gitOid" },
+    "reason": { "$ref": "#/$defs/nonEmpty" },
+    "semantic_constraints": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identity" }
+    },
+    "regression_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["suite_identity", "result", "commands", "negative_probe_count", "b001_regression"],
+      "properties": {
+        "suite_identity": { "$ref": "#/$defs/sha256" },
+        "result": { "const": "PASS" },
+        "commands": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmpty" }
+        },
+        "negative_probe_count": { "type": "integer", "minimum": 1 },
+        "b001_regression": { "const": "PASS" }
+      }
+    },
+    "amendment_acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "accepted", "candidate_commit", "candidate_tree", "merge_commit", "merge_tree",
+        "merge_parents", "owner_approved", "candidate_ci_run_id", "candidate_ci_conclusion"
+      ],
+      "properties": {
+        "accepted": { "const": true },
+        "candidate_commit": { "$ref": "#/$defs/gitOid" },
+        "candidate_tree": { "$ref": "#/$defs/gitOid" },
+        "merge_commit": { "$ref": "#/$defs/gitOid" },
+        "merge_tree": { "$ref": "#/$defs/gitOid" },
+        "merge_parents": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "$ref": "#/$defs/gitOid" }
+        },
+        "owner_approved": { "const": true },
+        "candidate_ci_run_id": { "type": "integer", "minimum": 1 },
+        "candidate_ci_conclusion": { "const": "success" }
+      }
+    },
+    "repair_acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "independent_acceptance", "candidate_ci_run_id", "candidate_ci_conclusion"],
+      "properties": {
+        "state": { "enum": ["CANDIDATE_FROZEN", "ACCEPTED"] },
+        "independent_acceptance": { "enum": ["PENDING", "PASS"] },
+        "candidate_ci_run_id": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": 1 }
+          ]
+        },
+        "candidate_ci_conclusion": { "enum": ["pending", "success"] }
+      }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["created_by_task", "append_only", "original_identity_preserved"],
+      "properties": {
+        "created_by_task": { "$ref": "#/$defs/identity" },
+        "append_only": { "const": true },
+        "original_identity_preserved": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string", "minLength": 1, "maxLength": 180,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,179}$"
+    },
+    "nonEmpty": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": {
+      "type": "string", "minLength": 1, "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    }
+  }
+}

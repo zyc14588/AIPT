@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v1/aipt-authority-amendment.schema.json",
+  "title": "AIPT append-only Authority Amendment v1",
+  "description": "Machine contract for a provenance-preserving amendment to an immutable Authority. Acceptance is proven from immutable Git topology and CI evidence; it is never inferred from file recency.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "amendment_id", "amendment_sequence", "authority_task_id",
+    "authority_candidate_commit", "authority_candidate_tree", "authority_merge_commit",
+    "authority_merge_tree", "authority_merge_parents", "authority_pr",
+    "base_authority_artifact_manifest", "base_authority_artifact_manifest_sha256",
+    "amendment_reason", "authorized_changes", "forbidden_changes", "supersession_policy",
+    "effective_authority_resolution", "post_merge_reverification_policy", "acceptance",
+    "lifecycle", "provenance", "scope"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.authority-amendment/v1" },
+    "amendment_id": { "$ref": "#/$defs/identity" },
+    "amendment_sequence": { "type": "integer", "minimum": 1 },
+    "authority_task_id": { "$ref": "#/$defs/identity" },
+    "authority_candidate_commit": { "$ref": "#/$defs/gitOid" },
+    "authority_candidate_tree": { "$ref": "#/$defs/gitOid" },
+    "authority_merge_commit": { "$ref": "#/$defs/gitOid" },
+    "authority_merge_tree": { "$ref": "#/$defs/gitOid" },
+    "authority_merge_parents": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": { "$ref": "#/$defs/gitOid" }
+    },
+    "authority_pr": { "type": "integer", "minimum": 1 },
+    "base_authority_artifact_manifest": { "$ref": "#/$defs/repoPath" },
+    "base_authority_artifact_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "amendment_reason": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/reason" }
+    },
+    "authorized_changes": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/authorizedChange" }
+    },
+    "forbidden_changes": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonEmpty" }
+    },
+    "supersession_policy": { "$ref": "#/$defs/openObject" },
+    "effective_authority_resolution": { "$ref": "#/$defs/openObject" },
+    "post_merge_reverification_policy": { "$ref": "#/$defs/openObject" },
+    "acceptance": { "$ref": "#/$defs/openObject" },
+    "lifecycle": { "$ref": "#/$defs/openObject" },
+    "provenance": { "$ref": "#/$defs/openObject" },
+    "scope": { "$ref": "#/$defs/openObject" }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string", "minLength": 1, "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,159}$"
+    },
+    "nonEmpty": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": {
+      "type": "string", "minLength": 1, "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "reason": {
+      "type": "object", "additionalProperties": false,
+      "required": ["finding_id", "summary", "observed_effect"],
+      "properties": {
+        "finding_id": { "enum": ["F1", "F2", "F3"] },
+        "summary": { "$ref": "#/$defs/nonEmpty" },
+        "observed_effect": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "authorizedChange": {
+      "type": "object", "additionalProperties": false,
+      "required": ["change_id", "kind", "role", "path", "reason", "semantic_constraints"],
+      "properties": {
+        "change_id": { "$ref": "#/$defs/identity" },
+        "kind": {
+          "enum": ["VALIDATOR_SUPERSESSION", "HISTORICAL_VALIDATOR_REPAIR", "POST_MERGE_REVERIFICATION_INFRASTRUCTURE"]
+        },
+        "role": { "$ref": "#/$defs/identity" },
+        "path": { "$ref": "#/$defs/repoPath" },
+        "old_sha256": { "$ref": "#/$defs/sha256" },
+        "reason": { "$ref": "#/$defs/nonEmpty" },
+        "semantic_constraints": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identity" }
+        }
+      }
+    },
+    "openObject": { "type": "object", "minProperties": 1 }
+  }
+}

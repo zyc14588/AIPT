@@ -1,0 +1,40 @@
+{
+  "schema": "aipt.public.authority-amendment-artifacts/v1",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+  "hash_algorithm": "SHA-256",
+  "artifacts": [
+    {
+      "path": "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md",
+      "sha256": "d75ed02cab37835e981b9eb2ad50c696f14e203e5d1fab8046cbbe1fffba2f68",
+      "role": "HUMAN_READABLE_AUTHORITY_AMENDMENT"
+    },
+    {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001.json",
+      "sha256": "258e96dcff183ded4ddb0e9f4e7bf72f4b670439239082457e5a93d2b5a13274",
+      "role": "MACHINE_EXECUTION_AUTHORITY_AMENDMENT"
+    },
+    {
+      "path": "schemas/authority-amendment/v1/aipt-authority-amendment.schema.json",
+      "sha256": "0783f0ee96ef260e761aefe057acaa3b9cc4d09b28b385063622cc46632eba2b",
+      "role": "AUTHORITY_AMENDMENT_SCHEMA_V1"
+    },
+    {
+      "path": "schemas/authority-amendment/v1/aipt-authority-validator-supersession.schema.json",
+      "sha256": "607815877160f5db02d8689cf8f1c6fd5e9dcff01b367bb999c2ac54bab759e3",
+      "role": "AUTHORITY_VALIDATOR_SUPERSESSION_SCHEMA_V1"
+    },
+    {
+      "path": "schemas/authority-amendment/v1/aipt-post-merge-reverification-evidence.schema.json",
+      "sha256": "5d375abea79024f88574d4647703521ed07f375775468804f29d8cb25dfbfb9b",
+      "role": "POST_MERGE_REVERIFICATION_EVIDENCE_SCHEMA_V1"
+    },
+    {
+      "path": "scripts/ci/validate/p1-b000-authority-amendment.mjs",
+      "sha256": "af2b37bc3af60afac84eb32d127365189ca937044a8ca64983139f5aebd6fc63",
+      "role": "AUTHORITY_AMENDMENT_VALIDATOR_IDENTITY"
+    }
+  ],
+  "self_hash_excluded": true,
+  "candidate_git_identity_embedded": false,
+  "candidate_git_identity_recording": "STRUCTURED_STAGE_REVIEW_AND_IMMUTABLE_GIT_OBJECTS"
+}

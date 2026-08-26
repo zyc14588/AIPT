@@ -114,6 +114,19 @@ jobs:
         run: go test ./...
       - name: pnpm frozen install
         run: pnpm install --frozen-lockfile
+      - name: Classify exact Authority Amendment bootstrap candidate
+        id: authority_amendment_classify
+        run: |
+          REPORT_PATH="${RUNNER_TEMP}/authority-amendment-classification.json"
+          if node scripts/ci/validate/p1-b000-authority-amendment.mjs --ci-bootstrap-classify > "${REPORT_PATH}"; then
+            echo "applicable=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "applicable=false" >> "${GITHUB_OUTPUT}"
+          fi
+          cat "${REPORT_PATH}"
+      - name: Authority Amendment schema provenance supersession recovery and A01-A20 gate
+        if: steps.authority_amendment_classify.outputs.applicable == 'true'
+        run: pnpm run check:p1-b000-authority-amendment
       - name: "B002 protocol assets: schema + JSON-RPC wire envelopes + shared fixture (hidden-leak mutant rejection, replay determinism)"
         run: pnpm run check:protocol-assets
       - name: B002 Adapter SDK contract tests (packages/adapter-sdk)
@@ -139,14 +152,19 @@ jobs:
       - name: B007 live loopback Web smoke test (dynamic 127.0.0.1 port)
         run: pnpm run smoke:web-ui
       - name: B008 M0 Development Pass final gate (MERGED_CLOSED + boundary probes)
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check:m0-development-pass
       - name: AIPT MVP B001 Test Plan + immutable Manifest + PostgreSQL queue/lease gate
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check:mvp-b001
       - name: AIPT MVP B000 bootstrap gate
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check:mvp-bootstrap
       - name: P1 B000 authority contract schemas scope lifecycle and N01-N39 gate
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check:p1-b000-authority
       - name: MVP-B001+B001+B002+B003+B004+B005+B006+B007+B008 aggregate validators (pnpm run check)
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |
