@@ -320,7 +320,7 @@ func TestPostgresIntegrationMigrationFreshEmbeddedApply(t *testing.T) {
 		t.Fatalf("MigrateUp on fresh ephemeral database: %v", err)
 	}
 
-	// Exact version/name/current embedded checksum of the single applied row.
+	// Exact version/name/current embedded checksum of the frozen ledger row.
 	var version int64
 	var name string
 	var checksum []byte
@@ -346,15 +346,22 @@ func TestPostgresIntegrationMigrationFreshEmbeddedApply(t *testing.T) {
 	if appliedAt.IsZero() {
 		t.Error("applied_at must be set by the database")
 	}
+	var queueChecksum []byte
+	if err := pool.QueryRow(ctx, "SELECT checksum FROM aipt.schema_migrations WHERE version = 2 AND name = 'playtest_queue'").Scan(&queueChecksum); err != nil {
+		t.Fatalf("read queue migration metadata: %v", err)
+	}
+	queueEmbeddedSum := sha256.Sum256(mustQueueMigrationBytes(t))
+	if !bytes.Equal(queueChecksum, queueEmbeddedSum[:]) || hex.EncodeToString(queueChecksum) != queueMigrationChecksumHex {
+		t.Errorf("queue migration checksum = %x, want %x", queueChecksum, queueEmbeddedSum)
+	}
 
-	// Object inventory: the bootstrap metadata table plus the two ledger
-	// tables, two functions, and exactly one non-internal trigger.
+	// Object inventory: B003 ledger plus the exact B001 queue schema.
 	tables, functions, triggers, err := countAIPTObjects(ctx, pool)
 	if err != nil {
 		t.Fatalf("count aipt objects: %v", err)
 	}
-	if tables != 3 || functions != 2 || triggers != 1 {
-		t.Errorf("aipt object inventory = %d tables, %d functions, %d triggers; want 3, 2, 1",
+	if tables != 12 || functions != 6 || triggers != 4 {
+		t.Errorf("aipt object inventory = %d tables, %d functions, %d triggers; want 12, 6, 4",
 			tables, functions, triggers)
 	}
 	tableNames, err := queryStrings(ctx, pool,
@@ -362,13 +369,20 @@ func TestPostgresIntegrationMigrationFreshEmbeddedApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list aipt tables: %v", err)
 	}
-	wantStrings(t, "aipt tables", tableNames, []string{"ledger_events", "ledger_streams", "schema_migrations"})
+	wantStrings(t, "aipt tables", tableNames, []string{
+		"ledger_events", "ledger_streams", "playtest_campaigns", "playtest_cases",
+		"playtest_queue_control", "playtest_runs", "playtest_suites", "run_attempts",
+		"run_dependencies", "run_leases", "run_manifests", "schema_migrations",
+	})
 	funcNames, err := queryStrings(ctx, pool,
 		"SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'aipt' ORDER BY p.proname")
 	if err != nil {
 		t.Fatalf("list aipt functions: %v", err)
 	}
-	wantStrings(t, "aipt functions", funcNames, []string{"ledger_event_hash_v1", "ledger_events_append_only"})
+	wantStrings(t, "aipt functions", funcNames, []string{
+		"ledger_event_hash_v1", "ledger_events_append_only", "playtest_priority_rank",
+		"playtest_runs_identity_immutable", "run_attempts_append_only", "run_manifests_immutable",
+	})
 
 	// The versioned hash function is live and returns a 32-byte digest.
 	var hashLen int
@@ -395,7 +409,7 @@ func TestPostgresIntegrationMigrationFreshEmbeddedApply(t *testing.T) {
 }
 
 // TestPostgresIntegrationMigrationSecondRunNoOp covers the clean second-run
-// no-op: no error, exactly one metadata row, an unchanged applied_at, and an
+// no-op: no error, exactly two metadata rows, an unchanged applied_at, and an
 // unchanged object inventory.
 func TestPostgresIntegrationMigrationSecondRunNoOp(t *testing.T) {
 	fx := newIntegrationFixture(t)
@@ -438,8 +452,8 @@ func TestPostgresIntegrationMigrationSecondRunNoOp(t *testing.T) {
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM aipt.schema_migrations").Scan(&rowCount); err != nil {
 		t.Fatalf("count schema_migrations rows: %v", err)
 	}
-	if rowCount != 1 {
-		t.Errorf("second run left %d schema_migrations rows, want 1", rowCount)
+	if rowCount != 2 {
+		t.Errorf("second run left %d schema_migrations rows, want 2", rowCount)
 	}
 
 	tablesAfter, functionsAfter, triggersAfter, err := countAIPTObjects(ctx, pool)
