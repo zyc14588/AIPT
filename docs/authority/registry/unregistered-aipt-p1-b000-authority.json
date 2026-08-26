@@ -1,0 +1,523 @@
+{
+  "schema": "aipt.public.batch-authority/v1",
+  "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "authority_version": "1.0.0",
+  "authority_state": "CANDIDATE_FROZEN",
+  "frozen_batch": "UNREGISTERED-AIPT-P1-B000",
+  "precedence": {
+    "inherits": "docs/authority/README.md",
+    "rank": "TASK_SCOPED_MACHINE_AUTHORITY_BELOW_ACTIVE_DECISIONS_ABOVE_ROADMAP_PROSE",
+    "conflict_rule": "ACTIVE_OR_REFINED_DECISION_CHAIN_WINS; OTHERWISE_THIS_MACHINE_CONTRACT_WINS_OVER_HUMAN_ROADMAP_PROSE",
+    "human_document": "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+    "dual_authority_permitted": false
+  },
+  "authority_task": {
+    "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+    "repository": "zyc14588/AIPT",
+    "branch": "task/UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+    "base_commit": "eede815e818d87362605f55d5bfd2a0460e6e130",
+    "base_tree": "d2668f0ea9d3b72969199c7cd8afc5edb94c2a6b",
+    "state": "CANDIDATE_FROZEN",
+    "kind": "GOVERNANCE_ONLY",
+    "implementation_candidate": false,
+    "merge_authorized": false
+  },
+  "implementation_task": {
+    "task_id": "UNREGISTERED-AIPT-P1-B000",
+    "repository": "zyc14588/UNREGISTERED",
+    "branch": "task/UNREGISTERED-AIPT-P1-B000",
+    "base_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+    "base_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+    "state": "PLANNED",
+    "authorized": false,
+    "started": false,
+    "merge_authorized": false
+  },
+  "objective": "Establish and validate the UNREGISTERED P1 Playtest Package Contract so a package with fixed source identity can be accepted by AIPT through versioned, deterministic, auditable and hidden-information-isolated input contracts and can bind lawfully to the AIPT-MVP-B001 Campaign to Suite to Case to Run hierarchy and immutable Run Manifest. The implementation batch is limited to package data, source mapping, visibility, adapter input, provenance and compatibility; it does not implement a run core, agent orchestration, a real model gateway or a real playtest.",
+  "authority_ownership": {
+    "aipt_owns": [
+      "PLAYTEST_PACKAGE_CONTRACT",
+      "RUNTIME_ADAPTER_INPUT_CONTRACT",
+      "SOURCE_IDENTITY_REQUIREMENTS",
+      "MAPPING_SEMANTICS",
+      "VISIBILITY_SEMANTICS",
+      "COMPATIBILITY_REQUIREMENTS",
+      "VALIDATION_SEMANTICS",
+      "EVIDENCE_PROVENANCE_SEMANTICS"
+    ],
+    "game_repository_owns": [
+      "ACTUAL_SOURCE_MATERIAL",
+      "CONCRETE_PACKAGE_MANIFEST",
+      "CONCRETE_SOURCE_MAPPING",
+      "CONCRETE_VISIBILITY_DECLARATIONS",
+      "CONCRETE_SOURCE_DIGESTS",
+      "GAME_SPECIFIC_ADAPTER_DATA"
+    ],
+    "canonical_contract_repository": "zyc14588/AIPT",
+    "game_repository_contract_role": "CONFORMING_INSTANCE_AND_PINNED_REFERENCE_ONLY",
+    "game_defined_execution_semantics_permitted": false
+  },
+  "dependencies": {
+    "aipt_ancestry": {
+      "task": "AIPT-MVP-B001",
+      "status": "MERGED_CLOSED",
+      "closeout_authority": "AIPT-MVP-B001-CLOSEOUT-001",
+      "commit": "eede815e818d87362605f55d5bfd2a0460e6e130",
+      "tree": "d2668f0ea9d3b72969199c7cd8afc5edb94c2a6b",
+      "must_be_ancestor": true
+    },
+    "unregistered_source": {
+      "repository": "zyc14588/UNREGISTERED",
+      "commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+      "tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+      "readiness": "PLAYTESTABLE_DRAFT",
+      "p0_adapter_role": "PREDECESSOR_INPUT_NOT_P1_AUTHORITY"
+    },
+    "b001_contracts": {
+      "test_plan_schema": "schemas/testplan/v1/aipt-test-plan.schema.json",
+      "run_manifest_schema": "schemas/run-manifest/v1/aipt-run-manifest.schema.json",
+      "queue_migration": "internal/storage/postgres/migrations/000002_playtest_queue.sql",
+      "queue_migration_sha256": "47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997"
+    }
+  },
+  "gap_matrix": [
+    { "authority": "OBJECTIVE", "existing_source": "MVP_ROADMAP_ONE_LINE", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" },
+    { "authority": "DELIVERABLES", "existing_source": "NONE", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" },
+    { "authority": "NON_GOALS", "existing_source": "MILESTONE_PARTIAL", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" },
+    { "authority": "PLAYTEST_PACKAGE", "existing_source": "NONE", "sufficient": false, "action": "DEFINED_BY_AIPT_SCHEMA_V1" },
+    { "authority": "RUNTIME_ADAPTER_INPUT", "existing_source": "P0_ADAPTER_PREDECESSOR_ONLY", "sufficient": false, "action": "DEFINED_BY_AIPT_SCHEMA_V1" },
+    { "authority": "MAPPING", "existing_source": "P0_ASSETS_PARTIAL", "sufficient": false, "action": "DEFINED_BY_THIS_CONTRACT" },
+    { "authority": "VISIBILITY", "existing_source": "P0_GAME_TAXONOMY_NOT_P1_CORE", "sufficient": false, "action": "DEFINED_BY_THIS_CONTRACT" },
+    { "authority": "SOURCE_IDENTITY", "existing_source": "P0_EXTERNAL_MANIFEST_BINDING_PARTIAL", "sufficient": false, "action": "DEFINED_BY_THIS_CONTRACT" },
+    { "authority": "B001_COMPATIBILITY", "existing_source": "B001_INDIRECT", "sufficient": false, "action": "DEFINED_BY_THIS_CONTRACT" },
+    { "authority": "ACCEPTANCE", "existing_source": "NONE", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" },
+    { "authority": "NEGATIVE_PROBES", "existing_source": "NONE_FOR_P1", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" },
+    { "authority": "CANDIDATE_REMOTE_CI", "existing_source": "GENERIC_GOVERNANCE_ONLY", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" },
+    { "authority": "LIFECYCLE_STOP_CONDITIONS", "existing_source": "GENERIC_ONLY", "sufficient": false, "action": "FROZEN_BY_THIS_CONTRACT" }
+  ],
+  "deliverables": [
+    { "id": "D1", "name": "VERSIONED_PLAYTEST_PACKAGE_CONTRACT", "authority_path": "schemas/playtest-package/v1/aipt-playtest-package.schema.json", "implementation_path": "aipt/p1-b000/playtest-package.json" },
+    { "id": "D2", "name": "VERSIONED_RUNTIME_ADAPTER_INPUT_CONTRACT", "authority_path": "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json", "implementation_path": "aipt/p1-b000/runtime-adapter-input.json" },
+    { "id": "D3", "name": "UNREGISTERED_P1_PACKAGE_MANIFEST", "implementation_path": "aipt/p1-b000/playtest-package.json" },
+    { "id": "D4", "name": "SCENE_GUIDE_RULE_MAPPING", "implementation_path": "aipt/p1-b000/playtest-package.json" },
+    { "id": "D5", "name": "VISIBILITY_CLASSIFICATION", "implementation_path": "aipt/p1-b000/playtest-package.json" },
+    { "id": "D6", "name": "SOURCE_IDENTITY_DIGEST_BINDING", "implementation_path": "aipt/p1-b000/playtest-package.json" },
+    { "id": "D7", "name": "VALIDATORS", "implementation_path": "scripts/aipt/validate-p1-b000.mjs" },
+    { "id": "D8", "name": "NEGATIVE_TESTS", "implementation_path": "scripts/aipt/validate-p1-b000.mjs" },
+    { "id": "D9", "name": "COMPATIBILITY_EVIDENCE", "implementation_path": "aipt/p1-b000/compatibility-evidence.json" },
+    { "id": "D10", "name": "CANDIDATE_REMOTE_CI_EVIDENCE", "recording_surface": "IMMUTABLE_GIT_OBJECTS_GITHUB_ACTIONS_RUN_AND_STRUCTURED_STAGE_REVIEW" }
+  ],
+  "non_goals": [
+    "RUN_CORE_IMPLEMENTATION",
+    "AGENT_ORCHESTRATION",
+    "AI_PLAYER_RUNTIME",
+    "AI_GM_RUNTIME",
+    "REAL_MODEL_GATEWAY",
+    "DEEPSEEK_OPENAI_RUNTIME_INTEGRATION",
+    "REAL_MODEL_CALLS",
+    "REAL_PLAYTEST_EXECUTION",
+    "COMBAT_RULE_ENGINE_IMPLEMENTATION",
+    "SCENARIO_LOGIC_EXECUTION",
+    "NPC_AUTONOMOUS_BEHAVIOUR",
+    "MEMORY_RAG_ORCHESTRATION",
+    "PROMPT_GENERATION_SYSTEM",
+    "VISUAL_GENERATION",
+    "VOICE_GENERATION",
+    "TRPG_PLATFORM_INTEGRATION",
+    "UNREGISTERED_STORY_REWRITE",
+    "UNREGISTERED_RULE_REWRITE",
+    "GENERAL_CONTENT_AUTHORING",
+    "B001_QUEUE_REDESIGN",
+    "B001_MANIFEST_REDESIGN"
+  ],
+  "scope": {
+    "authority_task": {
+      "repository": "zyc14588/AIPT",
+      "default_write_policy": "DENY",
+      "allowed_paths": [
+        ".github/workflows/ci.yml",
+        "docs/authority/README.md",
+        "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+        "docs/authority/registry/unregistered-aipt-p1-b000-authority-artifacts.json",
+        "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+        "package.json",
+        "schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+        "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+        "scripts/ci/run-checks.mjs",
+        "scripts/ci/validate/mvp-b001.mjs",
+        "scripts/ci/validate/p1-b000-authority.mjs",
+        "scripts/ci/validate/standalone-entrypoints.mjs",
+        "scripts/ci/validate/workflow.mjs"
+      ]
+    },
+    "implementation_task": {
+      "repository": "zyc14588/UNREGISTERED",
+      "default_write_policy": "DENY",
+      "allowed_paths": [
+        ".github/workflows/aipt-content-gate.yml",
+        "aipt/README.md",
+        "aipt/p1-b000/compatibility-evidence.json",
+        "aipt/p1-b000/playtest-package.json",
+        "aipt/p1-b000/runtime-adapter-input.json",
+        "aipt/status.json",
+        "scripts/aipt/validate-p1-b000.mjs"
+      ],
+      "read_only_reference_prefixes": [
+        "LICENSES/",
+        "aipt/p0-b000/",
+        "aipt/p0-b001/",
+        "aipt/p0-b002/",
+        "aipt/p0-b003/",
+        "campaign/"
+      ],
+      "explicit_forbidden": [
+        { "kind": "PREFIX", "path": "campaign/", "reason": "STORY_RULE_AND_SCENARIO_SOURCE_IS_READ_ONLY" },
+        { "kind": "PREFIX", "path": "knowledge/", "reason": "GENERAL_CONTENT_AUTHORING_FORBIDDEN" },
+        { "kind": "PREFIX", "path": "aipt/p0-b000/", "reason": "P0_HISTORY_FROZEN" },
+        { "kind": "PREFIX", "path": "aipt/p0-b001/", "reason": "P0_HISTORY_FROZEN" },
+        { "kind": "PREFIX", "path": "aipt/p0-b002/", "reason": "P0_HISTORY_FROZEN" },
+        { "kind": "PREFIX", "path": "aipt/p0-b003/", "reason": "P0_HISTORY_FROZEN" },
+        { "kind": "EXACT", "path": "AGENTS.md", "reason": "REPOSITORY_OPERATING_RULES_FROZEN" },
+        { "kind": "EXACT", "path": "pack-manifest.json", "reason": "GAME_PACKAGE_REDISTRIBUTION_SURFACE_FORBIDDEN" }
+      ],
+      "aipt_repository_write_permitted": false,
+      "trpg_platform_write_permitted": false
+    }
+  },
+  "general_purpose_gate": {
+    "aipt_schema_game_literals_permitted": false,
+    "game_specific_core_columns_permitted": false,
+    "game_specific_queue_states_permitted": false,
+    "game_specific_lifecycle_permitted": false,
+    "game_specific_run_manifest_fields_permitted": false,
+    "game_specific_evidence_classes_permitted": false,
+    "privileged_validator_bypass_permitted": false,
+    "hard_coded_scenario_truth_in_aipt_permitted": false,
+    "game_specific_data_locations": [
+      "PACKAGE_METADATA",
+      "SOURCE_MAPPING_DATA",
+      "DECLARED_CAPABILITIES",
+      "VERSIONED_EXTENSION_PAYLOAD",
+      "GAME_REPOSITORY_ASSETS"
+    ]
+  },
+  "package_identity_contract": {
+    "stable_key": ["package_id", "package_version"],
+    "immutable_instance_tuple": [
+      "schema_version",
+      "package_id",
+      "package_version",
+      "source_repository",
+      "source_commit",
+      "source_tree",
+      "source_digest",
+      "adapter_contract_version"
+    ],
+    "comparison": "BYTE_EXACT_AFTER_SCHEMA_VALIDATION",
+    "duplicate_stable_key": "REJECT",
+    "filename_as_identity": false,
+    "directory_as_identity": false,
+    "branch_as_identity": false,
+    "human_title_as_identity": false
+  },
+  "source_identity_contract": {
+    "required_fields": ["source_repository", "source_commit", "source_tree", "source_digest"],
+    "commit_form": "LOWERCASE_FULL_40_HEX_GIT_OBJECT_ID",
+    "tree_form": "LOWERCASE_FULL_40_HEX_GIT_TREE_ID",
+    "branch_is_immutable_identity": false,
+    "verification": [
+      "SOURCE_COMMIT_EXISTS",
+      "SOURCE_COMMIT_TREE_EQUALS_DECLARED_TREE",
+      "EVERY_DIGEST_ENTRY_EXISTS_AS_REGULAR_NON_SYMLINK_FILE_AT_SOURCE_COMMIT",
+      "EVERY_FILE_DIGEST_MATCHES_EXACT_GIT_BLOB_BYTES",
+      "SOURCE_DIGEST_RECOMPUTES_EXACTLY"
+    ],
+    "source_change_policy": "NEW_PACKAGE_VERSION_AND_NEW_IMMUTABLE_SOURCE_TUPLE_REQUIRED",
+    "stale_manifest_policy": "REJECT"
+  },
+  "digest_contract": {
+    "algorithm": "SHA-256",
+    "manifest_canonicalization": "RFC8785-JCS",
+    "source_digest_projection": "ENTIRE_PLAYTEST_PACKAGE_OBJECT_WITH_ONLY_SOURCE_DIGEST_MEMBER_REMOVED",
+    "source_digest_input_encoding": "UTF-8_CANONICAL_JSON_BYTES",
+    "file_content_mode": "EXACT_GIT_BLOB_BYTES",
+    "newline_normalization": "NONE",
+    "path_form": "REPOSITORY_RELATIVE_POSIX",
+    "path_order": "UTF8_BYTE_LEX_ASC",
+    "symlink_policy": "REJECT_PATH_COMPONENT_OR_TARGET",
+    "missing_file_policy": "REJECT",
+    "scope_closure": "DIGEST_ENTRY_PATH_SET_MUST_EQUAL_UNION_OF_MAPPING_AND_REFERENCE_SOURCE_PATHS",
+    "unexpected_extra_file_policy": "UNREFERENCED_REPOSITORY_FILES_ARE_OUT_OF_SCOPE; REFERENCED_UNLISTED_OR_LISTED_UNREFERENCED_FILES_REJECT",
+    "duplicate_digest_path_policy": "REJECT",
+    "duplicate_logical_mapping_policy": "REJECT"
+  },
+  "mapping_contract": {
+    "version": "1.0.0",
+    "source_kinds": ["SCENE", "GUIDE", "RULE", "ASSET", "REFERENCE"],
+    "required_fields": ["logical_id", "source_kind", "source_path", "content_sha256", "visibility_class", "depends_on"],
+    "scene_semantics": "A_SCENE_IS_A_DATA_UNIT_FOR_PLAYTEST_PROGRESSION_ENCOUNTER_OR_SITUATION_INPUT; B000_DOES_NOT_EXECUTE_IT",
+    "guide_semantics": "A_GUIDE_IS_GM_KEEPER_SYSTEM_ADJUDICATION_OR_SCENARIO_OPERATION_MATERIAL_AND_SUPPORTS_GM_ONLY_CLASSIFICATION",
+    "rule_semantics": "A_RULE_IS_A_DECLARED_TEST_TARGET_OR_RUNTIME_REFERENCE_SOURCE; B000_DOES_NOT_IMPLEMENT_A_RULE_ENGINE",
+    "path_is_semantic_identity": false,
+    "duplicate_logical_id": "REJECT",
+    "dangling_dependency": "REJECT",
+    "unknown_source_kind": "REJECT",
+    "missing_required_target": "REJECT",
+    "path_traversal": "REJECT",
+    "package_root_escape": "REJECT",
+    "content_digest_mismatch": "REJECT",
+    "unsupported_mapping_version": "REJECT",
+    "cross_package_reference_v1": "REJECT"
+  },
+  "visibility_contract": {
+    "classes": ["PLAYER_VISIBLE", "GM_ONLY", "SYSTEM_INTERNAL"],
+    "secret_class": "SECRET",
+    "secret_is_game_hidden_information": false,
+    "secret_permitted_in_package": false,
+    "surfaces": {
+      "PLAYER_VISIBLE": ["PLAYER_AGENT_CONTEXT", "PLAYER_VISIBLE_EVIDENCE", "GM_CONTEXT", "AUTHORIZED_EVIDENCE"],
+      "GM_ONLY": ["GM_CONTEXT", "ADJUDICATION", "AUTHORIZED_EVIDENCE"],
+      "SYSTEM_INTERNAL": ["HARNESS_CONTROL", "TEST_CONTROL", "BOOKKEEPING"]
+    },
+    "missing_visibility": "REJECT",
+    "unknown_visibility": "REJECT",
+    "player_reference_to_gm_only": "REJECT",
+    "player_evidence_contains_gm_only": "REJECT",
+    "system_internal_exposed_to_game_role": "REJECT",
+    "secret_discovered": "REJECT",
+    "mapping_declaration_conflict": "REJECT",
+    "secret_detection_minimum": [
+      "PEM_PRIVATE_KEY_HEADER",
+      "KNOWN_PROVIDER_SECRET_PREFIX_WITH_EIGHT_OR_MORE_PAYLOAD_CHARACTERS",
+      "SENSITIVE_ASSIGNMENT_NAME_WITH_NONEMPTY_VALUE",
+      "URI_USERINFO_CONTAINING_PASSWORD"
+    ]
+  },
+  "adapter_contract": {
+    "schema_path": "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+    "schema": "aipt.runtime-adapter-input/v1",
+    "version": "1.0.0",
+    "normalizes": [
+      "PACKAGE_IDENTITY",
+      "SOURCE_IDENTITY",
+      "SELECTED_TEST_UNIT",
+      "RESOLVED_SOURCE_MAPPINGS",
+      "VISIBILITY_METADATA",
+      "RULE_REFERENCES",
+      "SCENARIO_REFERENCES",
+      "GUIDE_REFERENCES",
+      "DECLARED_CAPABILITIES",
+      "PROVENANCE"
+    ],
+    "forbidden_representations": [
+      "LIVE_MODEL_CONNECTION",
+      "MODEL_INVOCATION",
+      "AGENT_LOOP",
+      "TOOL_CALL_LOOP",
+      "RUNTIME_SCHEDULING",
+      "MEMORY_EXECUTION"
+    ],
+    "unknown_package": "REJECT",
+    "unsupported_version": "REJECT",
+    "cross_package_reference_v1": "REJECT"
+  },
+  "compatibility_contract": {
+    "hierarchy": ["CAMPAIGN", "SUITE", "CASE", "RUN"],
+    "attempt_internal_only": true,
+    "attempt_external_addressability": false,
+    "run_manifest_schema": "aipt.run-manifest/v1",
+    "run_manifest_redesign_permitted": false,
+    "binding_chain": [
+      "RUN_ID",
+      "IMMUTABLE_RUN_MANIFEST_ID_AND_CANONICAL_SHA256",
+      "RUN_MANIFEST_SOURCE_GAME_REPOSITORY_COMMIT_TREE",
+      "ADAPTER_INPUT_PACKAGE_BINDING_WITH_EQUAL_REPOSITORY_COMMIT_TREE",
+      "PACKAGE_SOURCE_DIGEST_AND_FILE_DIGESTS"
+    ],
+    "second_manifest_authority_permitted": false,
+    "protected_baseline": {
+      "campaign_suite_case_run": true,
+      "attempt_internal_only": true,
+      "run_manifest_immutability": true,
+      "postgresql_queue_authority": true,
+      "formal_wip": 1,
+      "deterministic_selection": true,
+      "lease": true,
+      "heartbeat": true,
+      "expiry": true,
+      "recovery": true,
+      "append_only_attempt_history": true,
+      "migration_path": "internal/storage/postgres/migrations/000002_playtest_queue.sql",
+      "migration_sha256": "47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997"
+    }
+  },
+  "evidence_provenance_contract": {
+    "required_answers": [
+      "PACKAGE_ID",
+      "PACKAGE_VERSION",
+      "SOURCE_REPOSITORY",
+      "SOURCE_COMMIT",
+      "SOURCE_TREE",
+      "SOURCE_DIGEST",
+      "MAPPING_LOGICAL_ID",
+      "SCENE_RULE_GUIDE_SOURCE_PATH_AND_CONTENT_DIGEST",
+      "RUN_MANIFEST_ID",
+      "RUN_MANIFEST_CANONICAL_SHA256"
+    ],
+    "player_visible_evidence_additional_proof": "PLAYER_VISIBLE_SOURCE_SET_INTERSECTION_GM_ONLY_SOURCE_SET_IS_EMPTY",
+    "incomplete_provenance": "REJECT"
+  },
+  "negative_tests": [
+    { "id": "N01", "name": "MALFORMED_PACKAGE_MANIFEST", "expected": "FAIL_SCHEMA" },
+    { "id": "N02", "name": "UNSUPPORTED_SCHEMA_VERSION", "expected": "FAIL_UNSUPPORTED_VERSION" },
+    { "id": "N03", "name": "MISSING_PACKAGE_ID", "expected": "FAIL_SCHEMA" },
+    { "id": "N04", "name": "DUPLICATE_PACKAGE_IDENTITY", "expected": "FAIL_DUPLICATE_PACKAGE_IDENTITY" },
+    { "id": "N05", "name": "INVALID_PACKAGE_VERSION", "expected": "FAIL_SCHEMA" },
+    { "id": "N06", "name": "MISSING_SOURCE_COMMIT", "expected": "FAIL_SCHEMA" },
+    { "id": "N07", "name": "SOURCE_COMMIT_MISMATCH", "expected": "FAIL_SOURCE_IDENTITY" },
+    { "id": "N08", "name": "SOURCE_TREE_MISMATCH", "expected": "FAIL_SOURCE_IDENTITY" },
+    { "id": "N09", "name": "SOURCE_DIGEST_MISMATCH", "expected": "FAIL_SOURCE_DIGEST" },
+    { "id": "N10", "name": "STALE_SOURCE_MANIFEST", "expected": "FAIL_SOURCE_DIGEST" },
+    { "id": "N11", "name": "DUPLICATE_LOGICAL_MAPPING_ID", "expected": "FAIL_MAPPING" },
+    { "id": "N12", "name": "UNKNOWN_SOURCE_KIND", "expected": "FAIL_SCHEMA" },
+    { "id": "N13", "name": "DANGLING_MAPPING_REFERENCE", "expected": "FAIL_MAPPING" },
+    { "id": "N14", "name": "PATH_TRAVERSAL", "expected": "FAIL_PATH_POLICY" },
+    { "id": "N15", "name": "MAPPING_ESCAPES_PACKAGE_ROOT", "expected": "FAIL_PATH_POLICY" },
+    { "id": "N16", "name": "MISSING_MAPPED_FILE", "expected": "FAIL_REFERENCE_INTEGRITY" },
+    { "id": "N17", "name": "MAPPED_CONTENT_DIGEST_MISMATCH", "expected": "FAIL_SOURCE_DIGEST" },
+    { "id": "N18", "name": "MISSING_VISIBILITY", "expected": "FAIL_VISIBILITY" },
+    { "id": "N19", "name": "UNKNOWN_VISIBILITY", "expected": "FAIL_SCHEMA" },
+    { "id": "N20", "name": "PLAYER_VISIBLE_REFERENCE_TO_GM_ONLY", "expected": "FAIL_VISIBILITY" },
+    { "id": "N21", "name": "PLAYER_VISIBLE_EVIDENCE_CONTAINS_GM_ONLY", "expected": "FAIL_VISIBILITY" },
+    { "id": "N22", "name": "SYSTEM_INTERNAL_EXPOSED_TO_PLAYER", "expected": "FAIL_VISIBILITY" },
+    { "id": "N23", "name": "SECRET_MATERIAL_DETECTED", "expected": "FAIL_SECRET" },
+    { "id": "N24", "name": "CONFLICTING_VISIBILITY_DECLARATIONS", "expected": "FAIL_VISIBILITY" },
+    { "id": "N25", "name": "UNSUPPORTED_ADAPTER_CONTRACT_VERSION", "expected": "FAIL_UNSUPPORTED_VERSION" },
+    { "id": "N26", "name": "INVALID_ADAPTER_INPUT", "expected": "FAIL_SCHEMA" },
+    { "id": "N27", "name": "ADAPTER_REFERENCES_UNKNOWN_PACKAGE", "expected": "FAIL_PACKAGE_BINDING" },
+    { "id": "N28", "name": "CROSS_PACKAGE_REFERENCE_WITHOUT_AUTHORIZATION", "expected": "FAIL_CROSS_PACKAGE_REFERENCE" },
+    { "id": "N29", "name": "MISSING_RUN_MANIFEST_SOURCE_BINDING", "expected": "FAIL_SCHEMA" },
+    { "id": "N30", "name": "SOURCE_BINDING_IDENTITY_MISMATCH", "expected": "FAIL_B001_COMPATIBILITY" },
+    { "id": "N31", "name": "MUTABLE_BRANCH_USED_AS_IMMUTABLE_IDENTITY", "expected": "FAIL_SCHEMA" },
+    { "id": "N32", "name": "EVIDENCE_PROVENANCE_INCOMPLETE", "expected": "FAIL_SCHEMA" },
+    { "id": "N33", "name": "B001_CAMPAIGN_SUITE_CASE_RUN_REGRESSION", "expected": "FAIL_B001_REGRESSION" },
+    { "id": "N34", "name": "ATTEMPT_EXTERNALLY_ADDRESSABLE", "expected": "FAIL_B001_REGRESSION" },
+    { "id": "N35", "name": "RUN_MANIFEST_MUTATION_REGRESSION", "expected": "FAIL_B001_REGRESSION" },
+    { "id": "N36", "name": "POSTGRESQL_QUEUE_AUTHORITY_REGRESSION", "expected": "FAIL_B001_REGRESSION" },
+    { "id": "N37", "name": "FORMAL_WIP_ONE_REGRESSION", "expected": "FAIL_B001_REGRESSION" },
+    { "id": "N38", "name": "LEASE_RECOVERY_REGRESSION", "expected": "FAIL_B001_REGRESSION" },
+    { "id": "N39", "name": "ATTEMPT_APPEND_ONLY_REGRESSION", "expected": "FAIL_B001_REGRESSION" }
+  ],
+  "acceptance": {
+    "candidate_requirements": [
+      "AUTHORITY_CONTRACT_PRESENT",
+      "OBJECTIVE_SATISFIED",
+      "ALL_DELIVERABLES_PRESENT",
+      "SCOPE_COMPLIANT",
+      "FORBIDDEN_PATHS_UNCHANGED",
+      "SOURCE_IDENTITY_VERIFIED",
+      "SOURCE_DIGEST_VERIFIED",
+      "MAPPING_VALIDATION_PASS",
+      "VISIBILITY_VALIDATION_PASS",
+      "ADAPTER_CONTRACT_VALIDATION_PASS",
+      "B001_COMPATIBILITY_PASS",
+      "NEGATIVE_PROBES_PASS",
+      "B001_REGRESSION_PASS",
+      "ALL_REQUIRED_LOCAL_TESTS_PASS",
+      "REMOTE_CI_PASS",
+      "CANDIDATE_FROZEN",
+      "WORKTREE_CLEAN",
+      "OPEN_FINDINGS_EMPTY"
+    ],
+    "stage_pass": "CODEX_STAGE_PASS",
+    "merge_eligible_when_all_requirements_true": true,
+    "merge_authorized": false,
+    "local_commands": [
+      "node scripts/aipt/validate-p0-b000.mjs",
+      "node scripts/aipt/validate-p0-b001.mjs",
+      "node scripts/aipt/validate-p0-b002.mjs",
+      "node scripts/aipt/validate-p0-b003.mjs",
+      "node scripts/aipt/validate-p1-b000.mjs"
+    ],
+    "remote_ci": {
+      "workflow": "AIPT Content Gate",
+      "required_job_names": ["aipt-content-gate"],
+      "head_sha_must_equal_candidate_commit": true,
+      "required_job_conclusion": "success",
+      "internet_provider_dependency_permitted": false,
+      "real_external_model_dependency_permitted": false,
+      "real_api_key_dependency_permitted": false,
+      "gm_leakage_fixture_permitted": false,
+      "secret_bearing_fixture_permitted": false
+    }
+  },
+  "lifecycle": {
+    "states": [
+      "PLANNED",
+      "AUTHORIZED",
+      "ACTIVE",
+      "CANDIDATE_FROZEN",
+      "CODEX_STAGE_PASS",
+      "MERGE_ELIGIBLE",
+      "MERGED",
+      "POST_MERGE_VERIFIED",
+      "CLOSED",
+      "BLOCKED",
+      "FAIL"
+    ],
+    "transitions": [
+      { "from": "PLANNED", "to": "AUTHORIZED", "requires": "OWNER_START_AUTHORITY_REFERENCING_FROZEN_AUTHORITY_CANDIDATE" },
+      { "from": "AUTHORIZED", "to": "ACTIVE", "requires": "EXACT_BRANCH_BASE_AND_CLEAN_WORKTREE" },
+      { "from": "ACTIVE", "to": "CANDIDATE_FROZEN", "requires": "LOCAL_ACCEPTANCE_PASS_AND_ORDINARY_CANDIDATE_COMMIT" },
+      { "from": "CANDIDATE_FROZEN", "to": "CODEX_STAGE_PASS", "requires": "INDEPENDENT_CODEX_REVIEW_PASS_AND_OPEN_FINDINGS_EMPTY" },
+      { "from": "CODEX_STAGE_PASS", "to": "MERGE_ELIGIBLE", "requires": "REMOTE_CI_HEAD_SHA_MATCH_AND_ALL_REQUIRED_JOBS_SUCCESS" },
+      { "from": "MERGE_ELIGIBLE", "to": "MERGED", "requires": "SEPARATE_OWNER_MERGE_AUTHORIZATION_AND_EXACT_MERGE_COMMIT" },
+      { "from": "MERGED", "to": "POST_MERGE_VERIFIED", "requires": "MAIN_HEAD_TREE_AND_POST_MERGE_CI_PASS" },
+      { "from": "POST_MERGE_VERIFIED", "to": "CLOSED", "requires": "SEPARATE_OWNER_CLOSEOUT_AUTHORIZATION" },
+      { "from": "AUTHORIZED", "to": "BLOCKED", "requires": "STOP_CONDITION" },
+      { "from": "ACTIVE", "to": "BLOCKED", "requires": "STOP_CONDITION" },
+      { "from": "CANDIDATE_FROZEN", "to": "BLOCKED", "requires": "REMOTE_IDENTITY_OR_CI_BLOCKER" },
+      { "from": "AUTHORIZED", "to": "FAIL", "requires": "NON_RECOVERABLE_AUTHORITY_OR_SCOPE_FAILURE" },
+      { "from": "ACTIVE", "to": "FAIL", "requires": "NON_RECOVERABLE_VALIDATION_OR_SCOPE_FAILURE" },
+      { "from": "CANDIDATE_FROZEN", "to": "FAIL", "requires": "CANDIDATE_DRIFT_OR_REMOTE_CI_FAILURE" },
+      { "from": "BLOCKED", "to": "AUTHORIZED", "requires": "NEW_OWNER_AUTHORITY_RESOLVING_EXACT_BLOCKER" }
+    ],
+    "unlisted_transition": "REJECT",
+    "fail_state_terminal": true,
+    "closed_state_terminal": true
+  },
+  "stop_conditions": [
+    { "code": "BLOCKED_AIPT_ANCESTRY_ANCHOR_MISSING", "condition": "AIPT_CLOSEOUT_COMMIT_OR_TREE_MISSING_OR_NOT_ANCESTOR" },
+    { "code": "BLOCKED_AUTHORITY_CONFLICT", "condition": "PRECEDENCE_OR_HIGHER_ACTIVE_AUTHORITY_CONFLICT" },
+    { "code": "BLOCKED_SOURCE_IDENTITY_DRIFT", "condition": "UNREGISTERED_SOURCE_COMMIT_TREE_CANNOT_BE_VERIFIED" },
+    { "code": "BLOCKED_AUTHORITY_ARCHITECTURE", "condition": "CURRENT_AUTHORITY_ARCHITECTURE_CANNOT_REPRESENT_CONTRACT" },
+    { "code": "FAIL_B001_GOVERNANCE_REGRESSION", "condition": "PROTECTED_B001_BEHAVIOR_OR_MIGRATION_WOULD_CHANGE" },
+    { "code": "FAIL_SCOPE_DRIFT", "condition": "NON_GOAL_OR_NON_ALLOWED_PATH_APPEARS" },
+    { "code": "BLOCKED_BUSINESS_IMPLEMENTATION_REQUIRED", "condition": "AUTHORITY_FREEZE_REQUIRES_RUNTIME_OR_GAME_LOGIC" },
+    { "code": "BLOCKED_SECRET_EXPOSURE", "condition": "SECRET_MATERIAL_DISCOVERED" },
+    { "code": "FAIL_AUTHORITY_VALIDATION", "condition": "REQUIRED_VALIDATOR_FAILS" },
+    { "code": "REMOTE_CI_FAIL", "condition": "REQUIRED_REMOTE_JOB_NOT_SUCCESSFUL" },
+    { "code": "FAIL_CANDIDATE_IDENTITY_DRIFT", "condition": "CANDIDATE_COMMIT_OR_TREE_CHANGES_AFTER_FREEZE" }
+  ],
+  "authority_freeze": {
+    "contract_paths": [
+      "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+      "schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+      "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json"
+    ],
+    "artifact_manifest_path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-artifacts.json",
+    "validator_path": "scripts/ci/validate/p1-b000-authority.mjs",
+    "candidate_identity_recording": "STRUCTURED_STAGE_REVIEW_AND_FUTURE_OWNER_START_DIRECTIVE",
+    "self_reference_rule": "CANDIDATE_COMMIT_AND_TREE_ARE_NOT_EMBEDDED_IN_THEIR_OWN_TREE; THE_STAGE_REVIEW_RECORDS_THE_GIT_IDENTITY_AND_THE_IMPLEMENTATION_START_DIRECTIVE_MUST_COPY_IT_EXACTLY",
+    "latest_document_reference_permitted": false
+  },
+  "runtime_boundaries": {
+    "run_core_implemented": false,
+    "agent_orchestration_implemented": false,
+    "real_model_gateway_implemented": false,
+    "real_model_calls": 0,
+    "real_playtest_executed": false,
+    "business_implementation_started": false
+  }
+}

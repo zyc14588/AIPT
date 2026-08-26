@@ -28,6 +28,7 @@ import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runM0DevelopmentPass } from './validate/m0-development-pass.mjs';
 import { run as runMvpBootstrap } from './validate/mvp-bootstrap.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001.mjs';
+import { run as runP1B000Authority } from './validate/p1-b000-authority.mjs';
 import { ACTIVE_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
@@ -51,6 +52,7 @@ const checks = await Promise.all([
   runM0DevelopmentPass(ctx),
   runMvpBootstrap(ctx),
   runMvpB001(ctx),
+  runP1B000Authority(ctx),
 ]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';

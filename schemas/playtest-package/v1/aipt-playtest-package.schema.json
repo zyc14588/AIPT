@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+  "title": "AIPT Playtest Package Contract v1",
+  "description": "General-purpose, data-only package identity, source mapping, visibility, digest, capability and AIPT compatibility contract. It contains no game-specific execution semantics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "mapping_version",
+    "package_id",
+    "package_version",
+    "game_id",
+    "game_version",
+    "package_root",
+    "source_repository",
+    "source_commit",
+    "source_tree",
+    "source_digest",
+    "digest_scope",
+    "adapter_contract_version",
+    "entrypoints",
+    "mappings",
+    "visibility_declarations",
+    "declared_capabilities",
+    "references",
+    "compatibility"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.playtest-package/v1" },
+    "schema_version": { "const": "1.0.0" },
+    "mapping_version": { "const": "1.0.0" },
+    "package_id": { "$ref": "#/$defs/identity" },
+    "package_version": { "$ref": "#/$defs/semver" },
+    "game_id": { "$ref": "#/$defs/identity" },
+    "game_version": { "$ref": "#/$defs/semver" },
+    "package_root": { "$ref": "#/$defs/packageRoot" },
+    "source_repository": { "$ref": "#/$defs/repository" },
+    "source_commit": { "$ref": "#/$defs/gitOid" },
+    "source_tree": { "$ref": "#/$defs/gitOid" },
+    "source_digest": { "$ref": "#/$defs/sha256" },
+    "digest_scope": { "$ref": "#/$defs/digestScope" },
+    "adapter_contract_version": { "const": "1.0.0" },
+    "entrypoints": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/entrypoint" }
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/mapping" }
+    },
+    "visibility_declarations": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/visibilityDeclaration" }
+    },
+    "declared_capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/reference" }
+    },
+    "compatibility": { "$ref": "#/$defs/compatibility" }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$"
+    },
+    "semver": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 64,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "gitOid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    },
+    "packageRoot": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$"
+    },
+    "sourcePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9_@+.-]+(?:/[A-Za-z0-9_@+.-]+)*$"
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9.-]*/v(0|[1-9][0-9]*)$"
+    },
+    "sourceKind": {
+      "enum": ["SCENE", "GUIDE", "RULE", "ASSET", "REFERENCE"]
+    },
+    "visibilityClass": {
+      "enum": ["PLAYER_VISIBLE", "GM_ONLY", "SYSTEM_INTERNAL"]
+    },
+    "surface": {
+      "enum": [
+        "PLAYER_AGENT_CONTEXT",
+        "PLAYER_VISIBLE_EVIDENCE",
+        "GM_CONTEXT",
+        "ADJUDICATION",
+        "AUTHORIZED_EVIDENCE",
+        "HARNESS_CONTROL",
+        "TEST_CONTROL",
+        "BOOKKEEPING"
+      ]
+    },
+    "digestEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_path", "content_sha256"],
+      "properties": {
+        "source_path": { "$ref": "#/$defs/sourcePath" },
+        "content_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "digestScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "manifest_canonicalization",
+        "file_content_mode",
+        "path_order",
+        "symlink_policy",
+        "unexpected_file_policy",
+        "entries"
+      ],
+      "properties": {
+        "algorithm": { "const": "SHA-256" },
+        "manifest_canonicalization": { "const": "RFC8785-JCS" },
+        "file_content_mode": { "const": "GIT_BLOB_EXACT_BYTES_NO_NEWLINE_NORMALIZATION" },
+        "path_order": { "const": "UTF8_BYTE_LEX_ASC" },
+        "symlink_policy": { "const": "REJECT" },
+        "unexpected_file_policy": { "const": "UNREFERENCED_OUT_OF_SCOPE_REFERENCED_UNLISTED_REJECT" },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/digestEntry" }
+        }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_id",
+        "source_kind",
+        "source_path",
+        "content_sha256",
+        "visibility_class",
+        "depends_on"
+      ],
+      "properties": {
+        "logical_id": { "$ref": "#/$defs/identity" },
+        "source_kind": { "$ref": "#/$defs/sourceKind" },
+        "source_path": { "$ref": "#/$defs/sourcePath" },
+        "content_sha256": { "$ref": "#/$defs/sha256" },
+        "visibility_class": { "$ref": "#/$defs/visibilityClass" },
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identity" }
+        }
+      }
+    },
+    "visibilityDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_id", "visibility_class", "allowed_surfaces"],
+      "properties": {
+        "logical_id": { "$ref": "#/$defs/identity" },
+        "visibility_class": { "$ref": "#/$defs/visibilityClass" },
+        "allowed_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/surface" }
+        }
+      }
+    },
+    "entrypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "test_unit_id",
+        "scene_ids",
+        "guide_ids",
+        "rule_ids",
+        "asset_ids",
+        "reference_ids",
+        "player_visible_ids",
+        "gm_only_ids",
+        "system_internal_ids",
+        "required_capabilities"
+      ],
+      "properties": {
+        "test_unit_id": { "$ref": "#/$defs/identity" },
+        "scene_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "guide_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "rule_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "asset_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "reference_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "player_visible_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "gm_only_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "system_internal_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "required_capabilities": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/capability" } }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_id", "source_path", "content_sha256", "visibility_class", "media_type", "required_by"],
+      "properties": {
+        "reference_id": { "$ref": "#/$defs/identity" },
+        "source_path": { "$ref": "#/$defs/sourcePath" },
+        "content_sha256": { "$ref": "#/$defs/sha256" },
+        "visibility_class": { "$ref": "#/$defs/visibilityClass" },
+        "media_type": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+        },
+        "required_by": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "test_plan_schema",
+        "run_manifest_schema",
+        "campaign_hierarchy",
+        "attempt_internal_only",
+        "manifest_binding_model",
+        "aipt_ancestry_commit",
+        "aipt_ancestry_tree",
+        "authority_task_id",
+        "authority_version",
+        "authority_commit",
+        "authority_tree",
+        "authority_registry_sha256",
+        "authority_artifact_manifest_sha256"
+      ],
+      "properties": {
+        "test_plan_schema": { "const": "aipt.test-plan/v1" },
+        "run_manifest_schema": { "const": "aipt.run-manifest/v1" },
+        "campaign_hierarchy": { "const": "CAMPAIGN_SUITE_CASE_RUN" },
+        "attempt_internal_only": { "const": true },
+        "manifest_binding_model": { "const": "B001_GAME_SOURCE_PLUS_ADAPTER_BINDING_V1" },
+        "aipt_ancestry_commit": { "$ref": "#/$defs/gitOid" },
+        "aipt_ancestry_tree": { "$ref": "#/$defs/gitOid" },
+        "authority_task_id": { "$ref": "#/$defs/identity" },
+        "authority_version": { "$ref": "#/$defs/semver" },
+        "authority_commit": { "$ref": "#/$defs/gitOid" },
+        "authority_tree": { "$ref": "#/$defs/gitOid" },
+        "authority_registry_sha256": { "$ref": "#/$defs/sha256" },
+        "authority_artifact_manifest_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "aipt.public.authority-artifacts/v1",
+  "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "authority_version": "1.0.0",
+  "hash_algorithm": "SHA-256",
+  "artifacts": [
+    {
+      "path": "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+      "sha256": "787e1a1a278905d69cd9e000badec8c4143060dcb136e4b0da3d2fb7a12c3ede",
+      "role": "HUMAN_READABLE_AUTHORITY"
+    },
+    {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+      "sha256": "a9845bb74dac409ee243b7024e23aae271ab13c75e18116ae2513853cc02eed6",
+      "role": "MACHINE_EXECUTION_AUTHORITY"
+    },
+    {
+      "path": "schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+      "sha256": "88e55b63c8a6366c872edf0d886202a5c375e224c801433364332ddc4e4e7549",
+      "role": "PLAYTEST_PACKAGE_CONTRACT_V1"
+    },
+    {
+      "path": "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+      "sha256": "935b88f2409e604d01a13657a7790dae16e19ebe0c4e96f054c580102ec17413",
+      "role": "RUNTIME_ADAPTER_INPUT_CONTRACT_V1"
+    },
+    {
+      "path": "scripts/ci/validate/p1-b000-authority.mjs",
+      "sha256": "f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c",
+      "role": "AUTHORITY_VALIDATOR_IDENTITY"
+    }
+  ],
+  "self_hash_excluded": true,
+  "candidate_git_identity_embedded": false,
+  "candidate_git_identity_recording": "STRUCTURED_STAGE_REVIEW_AND_FUTURE_OWNER_START_DIRECTIVE"
+}

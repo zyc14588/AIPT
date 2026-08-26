@@ -144,6 +144,8 @@ jobs:
         run: pnpm run check:mvp-b001
       - name: AIPT MVP B000 bootstrap gate
         run: pnpm run check:mvp-bootstrap
+      - name: P1 B000 authority contract schemas scope lifecycle and N01-N39 gate
+        run: pnpm run check:p1-b000-authority
       - name: MVP-B001+B001+B002+B003+B004+B005+B006+B007+B008 aggregate validators (pnpm run check)
         run: pnpm run check
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)

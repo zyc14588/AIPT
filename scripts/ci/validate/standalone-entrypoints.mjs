@@ -120,6 +120,12 @@ export function run(ctx) {
       args: ['--repo', ctx.repo],
       result: 'PASS',
     },
+    {
+      name: 'p1-b000-authority',
+      label: 'P1 B000 machine authority, schemas, scope and N01-N39 gate',
+      args: ['--repo', ctx.repo],
+      result: 'PASS',
+    },
   ];
   for (const c of positives) {
     const cp = spawnEntrypoint(c.entrypoint ?? c.name, c.args, ctx.repo);

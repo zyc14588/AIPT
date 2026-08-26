@@ -25,6 +25,9 @@ const LEDGER_SHA256 = 'cbab234c8d6a265397dcc553bd9bdb17006712f77ec482b0ef8332f05
 const PLATFORM = 'FROZEN_WAITING_M1_ENGINE';
 const MAIN_BRANCH = 'main';
 const PR_REF = /^refs\/pull\/[1-9][0-9]*\/(?:head|merge)$/;
+const SUCCESSOR_AUTHORITY_BRANCH = 'task/UNREGISTERED-AIPT-P1-B000-AUTHORITY-001';
+const B001_CLOSEOUT_COMMIT = 'eede815e818d87362605f55d5bfd2a0460e6e130';
+const B001_CLOSEOUT_TREE = 'd2668f0ea9d3b72969199c7cd8afc5edb94c2a6b';
 
 const TASK_TYPES = [
   'SYSTEM_QUALIFICATION', 'RULE', 'PROSE', 'ORACLE',
@@ -754,9 +757,144 @@ export function runHistoricalLauncherIntegration(ctx, args = {}) {
   }
 }
 
+function isSuccessorAuthorityCheckout(repo, env = process.env) {
+  if (env.GITHUB_ACTIONS === 'true') {
+    if (env.GITHUB_EVENT_NAME === 'push' &&
+        env.GITHUB_REF === `refs/heads/${SUCCESSOR_AUTHORITY_BRANCH}`) return true;
+    if (env.GITHUB_EVENT_NAME === 'pull_request' &&
+        env.GITHUB_HEAD_REF === SUCCESSOR_AUTHORITY_BRANCH && env.GITHUB_BASE_REF === MAIN_BRANCH) return true;
+    return false;
+  }
+  const branch = git(repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
+  return branch.status === 0 && branch.stdout.trim() === SUCCESSOR_AUTHORITY_BRANCH;
+}
+
+function closeoutText(repo, relative) {
+  const cp = git(repo, ['show', `${B001_CLOSEOUT_COMMIT}:${relative}`], { check: false });
+  if (cp.status !== 0) throw new Error(`fixed B001 closeout path unavailable: ${relative}`);
+  return cp.stdout;
+}
+
+function successorChangedPaths(repo) {
+  const tracked = lines(git(repo, ['diff', '--name-only', '--no-renames', B001_CLOSEOUT_COMMIT], { check: false })) ?? [];
+  const untracked = lines(git(repo, ['ls-files', '--others', '--exclude-standard'], { check: false })) ?? [];
+  return [...new Set([...tracked, ...untracked]
+    .filter((relative) => relative && !relative.split('/').includes('node_modules')))].sort();
+}
+
+function runSuccessorAuthorityPreservation(ctx) {
+  const details = [];
+  let pass = true;
+  const ok = (message) => details.push(`ok: ${message}`);
+  const fail = (message) => { pass = false; details.push(`FAIL: ${message}`); };
+  let status, planSchema, manifestSchema;
+  try {
+    status = readJSON(ctx.repo, STATUS_PATH);
+    planSchema = readJSON(ctx.repo, TEST_PLAN_SCHEMA_PATH);
+    manifestSchema = readJSON(ctx.repo, MANIFEST_SCHEMA_PATH);
+  } catch (error) {
+    fail(`B001 successor preservation input unreadable: ${error.message}`);
+    return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
+  }
+
+  const closeoutTree = git(ctx.repo, ['rev-parse', `${B001_CLOSEOUT_COMMIT}^{tree}`], { check: false });
+  const closeoutCommit = readCommit(ctx.repo, B001_CLOSEOUT_COMMIT);
+  if (closeoutTree.status !== 0 || closeoutTree.stdout.trim() !== B001_CLOSEOUT_TREE ||
+      closeoutCommit?.subject !== 'closeout: complete AIPT-MVP-B001' ||
+      closeoutCommit?.parents?.length !== 1 || closeoutCommit.parents[0] !== MVP_B001_ACCEPTANCE.merge_commit) {
+    fail('exact B001 closeout commit/tree/topology drifted');
+  } else ok('exact B001 closeout commit/tree/topology verified');
+  if (git(ctx.repo, ['merge-base', '--is-ancestor', B001_CLOSEOUT_COMMIT, 'HEAD'], { check: false }).status !== 0) {
+    fail('successor authority Candidate does not descend from exact B001 closeout');
+  } else ok('successor authority Candidate descends from exact B001 closeout');
+  const laterMerges = lines(git(ctx.repo, ['rev-list', '--merges', `${B001_CLOSEOUT_COMMIT}..HEAD`], { check: false })) ?? [];
+  if (laterMerges.length !== 0) fail('successor authority Candidate contains a merge');
+  else ok('successor authority Candidate has zero post-closeout merges');
+  const head = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false }).stdout.trim();
+  if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_SHA !== head) fail('GITHUB_SHA is not successor Candidate HEAD');
+  else ok('successor authority checkout identity is bound to HEAD');
+
+  try {
+    if (read(ctx.repo, STATUS_PATH) !== closeoutText(ctx.repo, STATUS_PATH) ||
+        read(ctx.repo, GRAPH_PATH) !== closeoutText(ctx.repo, GRAPH_PATH)) {
+      fail('B001 closeout status or canonical batch graph changed');
+    } else ok('B001 closeout status and canonical batch graph remain byte-identical');
+  } catch (error) { fail(error.message); }
+
+  const protectedPaths = [
+    'schemas/testplan', 'schemas/run-manifest', 'internal/testplan',
+    'internal/storage/postgres/migrations', 'internal/storage/postgres/queue.go',
+    'internal/storage/postgres/queue_errors.go', 'internal/storage/postgres/queue_types.go',
+    'internal/storage/postgres/queue_test.go', 'internal/storage/postgres/queue_integration_test.go',
+  ];
+  const protectedDiff = git(ctx.repo, ['diff', '--name-only', '--no-renames',
+    B001_CLOSEOUT_COMMIT, '--', ...protectedPaths], { check: false });
+  if (protectedDiff.status !== 0 || protectedDiff.stdout.trim() !== '') {
+    fail('B001 protected Test Plan/Manifest/queue/lease/migration surface changed');
+  } else ok('B001 protected Test Plan/Manifest/queue/lease/migration surface is byte-identical');
+
+  const schemaChecks = schemaAndMutationChecks(planSchema, manifestSchema);
+  for (const problem of schemaChecks.problems) fail(problem);
+  if (schemaChecks.problems.length === 0) ok(`B001 schemas retain all ${schemaChecks.probeCount} security mutations`);
+  const migrationFiles = new Map();
+  for (const name of fs.readdirSync(path.join(ctx.repo, 'internal/storage/postgres/migrations'))) {
+    migrationFiles.set(name, read(ctx.repo, `internal/storage/postgres/migrations/${name}`));
+  }
+  const migrationProblems = checkMigrationContract(migrationFiles);
+  migrationProblems.forEach((problem) => fail(`migration: ${problem}`));
+  if (migrationProblems.length === 0) ok('B001 migration inventory/checksums/WIP1/lease/Attempt invariants remain exact');
+  const migrationProbes = migrationMutationChecks(
+    migrationFiles.get('000001_ledger.sql'), migrationFiles.get('000002_playtest_queue.sql'));
+  migrationProbes.forEach(([label, rejected]) => { if (!rejected) fail(`migration mutation accepted: ${label}`); });
+  if (migrationProbes.every(([, rejected]) => rejected)) ok(`all ${migrationProbes.length} B001 migration mutations reject`);
+
+  const docsAndGates = documentationAndGateProblems(ctx.repo, 'CLOSEOUT_MAIN');
+  docsAndGates.forEach((problem) => fail(problem));
+  if (docsAndGates.length === 0) ok('B001 closeout documentation and CI evidence remain present');
+  const lifecycleProbes = lifecycleRegressionChecks();
+  lifecycleProbes.forEach((probe) => { if (!probe.matched) fail(`B001 lifecycle probe mismatched: ${probe.label}`); });
+  if (lifecycleProbes.every((probe) => probe.matched)) ok(`all ${lifecycleProbes.length} frozen B001 lifecycle probes matched`);
+
+  const expectedStatus = JSON.parse(closeoutText(ctx.repo, STATUS_PATH));
+  const statusProblems = compareExact(status, expectedStatus, '$status');
+  statusProblems.forEach((problem) => fail(`B001 status: ${problem}`));
+  const statusMutation = clone(status);
+  statusMutation.tracks['AIPT-STANDALONE'].next_batch_authorized = true;
+  if (compareExact(statusMutation, expectedStatus).length === 0) fail('B001 unauthorized-next mutation was accepted');
+  else ok('B001 implementation successor remains NOT_STARTED/NOT_AUTHORIZED and mutation rejects');
+
+  const changed = successorChangedPaths(ctx.repo);
+  for (const relative of changed) {
+    if (/^(?:internal\/(?:run|agent|model|gateway|orchestration)|packages\/(?:run-core|agent-runtime)|cmd\/)/.test(relative)) {
+      fail(`runtime/business implementation path appears in authority Candidate: ${relative}`);
+    }
+  }
+  if (!details.some((entry) => entry.includes('runtime/business implementation path'))) {
+    ok('no Run Core, Agent orchestration, model gateway or real-playtest implementation path appears');
+  }
+
+  return {
+    result: pass ? 'PASS' : 'FAIL',
+    details,
+    task_id: MVP_B001.task_id,
+    lifecycle_phase: 'SUCCESSOR_AUTHORITY_CANDIDATE',
+    candidate_commit: head,
+    candidate_tree: git(ctx.repo, ['rev-parse', 'HEAD^{tree}'], { check: false }).stdout.trim(),
+    migration: MVP_B001.migration,
+    migration_sha256: MVP_B001.migration_sha256,
+    changed_paths: changed,
+    negative_probes: pass ? 'PASS' : 'FAIL',
+    negative_probe_count: schemaChecks.probeCount + migrationProbes.length + lifecycleProbes.length + 1,
+    external_model_calls: 0,
+    next_batch_authorized: false,
+    next_batch_started: false,
+  };
+}
+
 export function run(ctx, args = {}) {
   if (args['historical-web']) return runHistoricalWeb(ctx);
   if (args['historical-launcher-integration']) return runHistoricalLauncherIntegration(ctx, args);
+  if (isSuccessorAuthorityCheckout(ctx.repo)) return runSuccessorAuthorityPreservation(ctx);
   const details = [];
   let pass = true;
   const ok = (message) => details.push(`ok: ${message}`);
