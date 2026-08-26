@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runAsMain } from '../lib/cli.mjs';
+import { checkMigrationContract as checkB001MigrationContract } from './mvp-b001.mjs';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
 // 6a). h1hex is the frozen SHA-256 (64 lowercase hex) that the go.sum zip
@@ -50,6 +51,7 @@ const GO_RUNTIME_MODULES = [
 // The pinned SHA-256 of the exact bytes of migrations/000001_ledger.sql as
 // recorded by the storage package's own schema_test (ledgerMigrationChecksumHex).
 const MIGRATION_CHECKSUM_HEX = 'cbab234c8d6a265397dcc553bd9bdb17006712f77ec482b0ef8332f050c9f591';
+const QUEUE_MIGRATION_CHECKSUM_HEX = '47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997';
 
 const MIGRATION_FILENAME_RE = /^\d{6}_[a-z0-9_]+\.sql$/;
 
@@ -62,6 +64,12 @@ const REQUIRED_STORAGE_FILES = [
   'hash.go',
   'schema.go',
   'migrations/000001_ledger.sql',
+  'migrations/000002_playtest_queue.sql',
+  'queue.go',
+  'queue_errors.go',
+  'queue_types.go',
+  'queue_test.go',
+  'queue_integration_test.go',
   'migrate_test.go',
   'ledger_test.go',
   'hash_test.go',
@@ -106,6 +114,20 @@ const ERROR_SENTINELS = [
   'AIPT_LEDGER_EVENT_HASH_MISMATCH',
   'AIPT_LEDGER_MALFORMED_HASH',
   'AIPT_INVALID_LEDGER_HASH_INPUT',
+];
+
+const QUEUE_ERROR_SENTINELS = [
+  'AIPT_QUEUE_INVALID_INPUT',
+  'AIPT_QUEUE_RUN_EXISTS',
+  'AIPT_QUEUE_RUN_NOT_FOUND',
+  'AIPT_QUEUE_STATE_CONFLICT',
+  'AIPT_QUEUE_PAUSED',
+  'AIPT_QUEUE_NO_ELIGIBLE_RUN',
+  'AIPT_LEASE_STALE',
+  'AIPT_LEASE_EXPIRED',
+  'AIPT_LEASE_TOKEN_SOURCE_FAILURE',
+  'AIPT_ATTEMPT_CONFLICT',
+  'AIPT_QUEUE_STORAGE_FAILURE',
 ];
 
 // ---- pure go.mod/go.sum closure check (independent copy) ----
@@ -326,8 +348,8 @@ function checkMigrationSql(sql) {
 }
 
 // ---- pure migration file set check ----
-// Exactly one migration file 000001_ledger.sql, with the exact filename form
-// and the pinned SHA-256; the SQL must satisfy the migration contract.
+// Exactly the frozen B003 ledger migration followed by the single B001 queue
+// migration. Both byte identities and both SQL contracts are fail-closed.
 function checkMigrationFiles(files) {
   const details = [];
   let pass = true;
@@ -337,9 +359,10 @@ function checkMigrationFiles(files) {
     details.push(`FAIL: ${msg}`);
   };
   const names = files.map((f) => f.filename);
-  if (JSON.stringify([...names].sort()) !== JSON.stringify(['000001_ledger.sql'])) {
-    fail(`migrations/ must contain exactly 000001_ledger.sql, got ${JSON.stringify(names)}`);
-  } else ok('migrations/ contains exactly 000001_ledger.sql');
+  const expectedNames = ['000001_ledger.sql', '000002_playtest_queue.sql'];
+  if (JSON.stringify([...names].sort()) !== JSON.stringify(expectedNames)) {
+    fail(`migrations/ must contain exactly ${expectedNames.join(' + ')}, got ${JSON.stringify(names)}`);
+  } else ok(`migrations/ contains exactly ${expectedNames.join(' + ')}`);
   for (const f of files) {
     if (!MIGRATION_FILENAME_RE.test(f.filename)) {
       fail(`migration filename ${JSON.stringify(f.filename)} must match ^\\d{6}_[a-z0-9_]+\\.sql$`);
@@ -361,6 +384,19 @@ function checkMigrationFiles(files) {
   } else {
     fail('migrations/000001_ledger.sql missing (the SQL contract cannot be checked)');
   }
+  const queue = files.find((f) => f.filename === '000002_playtest_queue.sql');
+  if (queue) {
+    const sum = crypto.createHash('sha256').update(queue.content, 'utf8').digest('hex');
+    if (sum !== QUEUE_MIGRATION_CHECKSUM_HEX) {
+      fail(`migrations/000002_playtest_queue.sql SHA-256 must equal the pinned B001 value ${QUEUE_MIGRATION_CHECKSUM_HEX}, got ${sum}`);
+    } else ok(`migrations/000002_playtest_queue.sql SHA-256 == pinned ${QUEUE_MIGRATION_CHECKSUM_HEX}`);
+  } else {
+    fail('migrations/000002_playtest_queue.sql missing (the queue contract cannot be checked)');
+  }
+  const b001Files = new Map(files.map((f) => [f.filename, f.content]));
+  const b001Problems = checkB001MigrationContract(b001Files);
+  for (const problem of b001Problems) fail(`B001 migration contract: ${problem}`);
+  if (b001Problems.length === 0) ok('B001 migration contract preserves 000001 and enforces immutable Manifest, append-only Attempt, deterministic priority, lease ownership and formal WIP=1');
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
@@ -397,8 +433,10 @@ function checkContractSurface(tree) {
     details.push(`FAIL: ${msg}`);
   };
   const text = (name) => tree.get(name) ?? '';
+  const sourceText = ['ledger.go', 'verify.go', 'schema.go', 'hash.go', 'errors.go', 'migrate.go', 'queue.go', 'queue_types.go', 'queue_errors.go']
+    .map((name) => text(name)).join('\n');
   const requireSurface = (label, needle) => {
-    if (text('ledger.go').includes(needle) || text('verify.go').includes(needle) || text('schema.go').includes(needle) || text('hash.go').includes(needle) || text('errors.go').includes(needle) || text('migrate.go').includes(needle)) {
+    if (sourceText.includes(needle)) {
       ok(label);
     } else fail(label);
   };
@@ -415,6 +453,24 @@ function checkContractSurface(tree) {
     }
   }
   if (sentinelsOk) ok(`all ${ERROR_SENTINELS.length} typed error sentinels present`);
+  for (const [label, needle] of [
+    ['exported EnqueueRun API present', 'func (s *QueueStore) EnqueueRun('],
+    ['exported deterministic eligibility API present', 'func (s *QueueStore) ListEligibleRuns('],
+    ['exported lease acquire API present', 'func (s *QueueStore) AcquireLease('],
+    ['exported lease heartbeat API present', 'func (s *QueueStore) RenewLease('],
+    ['exported lease release API present', 'func (s *QueueStore) ReleaseLease('],
+    ['exported lease expiry recovery API present', 'func (s *QueueStore) RecoverExpiredLeases('],
+    ['exported append-only Attempt API present', 'func (s *QueueStore) AppendAttempt('],
+    ['injectable lease TokenSource present', 'type TokenSource interface'],
+  ]) requireSurface(label, needle);
+  let queueSentinelsOk = true;
+  for (const code of QUEUE_ERROR_SENTINELS) {
+    if (!text('queue_errors.go').includes(`errors.New("${code}")`)) {
+      fail(`typed queue error sentinel ${code} missing`);
+      queueSentinelsOk = false;
+    }
+  }
+  if (queueSentinelsOk) ok(`all ${QUEUE_ERROR_SENTINELS.length} typed queue/lease/Attempt error sentinels present`);
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
@@ -429,6 +485,7 @@ function checkIntegrationContract(testTexts) {
   };
   const migration = testTexts['migration_integration_test.go'] ?? '';
   const ledger = testTexts['ledger_integration_test.go'] ?? '';
+  const queue = testTexts['queue_integration_test.go'] ?? '';
   const requireBoth = (label, needle) => {
     if (migration.includes(needle) && ledger.includes(needle)) ok(label);
     else fail(label);
@@ -462,6 +519,20 @@ function checkIntegrationContract(testTexts) {
   if (tamperOk) ok('ledger tamper coverage exercises all five typed integrity failures');
   if (ledger.includes('DISABLE TRIGGER ledger_events_append_only')) ok('tamper tests disable the append-only trigger only inside ephemeral test databases');
   else fail('tamper tests must disable the append-only trigger (ephemeral only)');
+  const queueCoverage = [
+    'TestPostgresIntegrationQueueUpgradeFromB003',
+    'TestPostgresIntegrationQueueManifestImmutableEnqueueCancelNewRunAndRollback',
+    'TestPostgresIntegrationQueueDeterministicEligibilityPauseAndDependencies',
+    'TestPostgresIntegrationQueueConcurrentFormalClaimsWIP1',
+    'TestPostgresIntegrationQueueLeaseHeartbeatExpiryRecoveryAndStaleHolder',
+    'TestPostgresIntegrationQueueAttemptAppendHistory',
+  ];
+  const missingQueueCoverage = queueCoverage.filter((name) => !queue.includes(name));
+  if (missingQueueCoverage.length === 0 && queue.includes('16')) {
+    ok('B001 PostgreSQL integration coverage includes B003-only upgrade, immutable Manifest, rollback/cancel/new-Run, deterministic eligibility, 16-claimer WIP=1, lease heartbeat/expiry/recovery/stale ownership and append-only Attempt history');
+  } else {
+    fail(`B001 PostgreSQL queue integration coverage missing: ${missingQueueCoverage.join(', ') || 'literal 16-claimer proof'}`);
+  }
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
@@ -538,6 +609,7 @@ function checkStorageTree(tree) {
   const integrationCheck = checkIntegrationContract({
     'migration_integration_test.go': tree.get('migration_integration_test.go') ?? '',
     'ledger_integration_test.go': tree.get('ledger_integration_test.go') ?? '',
+    'queue_integration_test.go': tree.get('queue_integration_test.go') ?? '',
   });
   details.push(...integrationCheck.details);
   if (integrationCheck.result !== 'PASS') fail('integration-test contract FAIL');
@@ -581,6 +653,7 @@ export function run(ctx) {
   const goModText = read('go.mod');
   const goSumText = read('go.sum');
   const ledgerSqlText = storageTree.get('migrations/000001_ledger.sql') ?? '';
+  const queueSqlText = storageTree.get('migrations/000002_playtest_queue.sql') ?? '';
   const probes = [
     {
       label: 'go.mod unknown dependency injected',
@@ -722,7 +795,26 @@ export function run(ctx) {
     {
       label: 'migration file bytes mutated (checksum drift)',
       reason: /SHA-256 must equal the pinned schema_test value/,
-      run: () => checkMigrationFiles([{ filename: '000001_ledger.sql', content: `${ledgerSqlText}\n-- drift\n` }]),
+      run: () => checkMigrationFiles([
+        { filename: '000001_ledger.sql', content: `${ledgerSqlText}\n-- drift\n` },
+        { filename: '000002_playtest_queue.sql', content: queueSqlText },
+      ]),
+    },
+    {
+      label: 'B001 queue migration bytes mutated (checksum drift)',
+      reason: /000002_playtest_queue\.sql SHA-256 must equal the pinned B001 value|000002 queue bytes\/checksum drifted/,
+      run: () => checkMigrationFiles([
+        { filename: '000001_ledger.sql', content: ledgerSqlText },
+        { filename: '000002_playtest_queue.sql', content: `${queueSqlText}\n-- drift\n` },
+      ]),
+    },
+    {
+      label: 'B001 formal WIP=1 unique authority removed',
+      reason: /B001 migration contract: 000002 misses CREATE UNIQUE INDEX run_leases_one_active_formal_slot|000002_playtest_queue\.sql SHA-256/,
+      run: () => checkMigrationFiles([
+        { filename: '000001_ledger.sql', content: ledgerSqlText },
+        { filename: '000002_playtest_queue.sql', content: queueSqlText.replace('CREATE UNIQUE INDEX run_leases_one_active_formal_slot', 'CREATE INDEX run_leases_removed_formal_slot') },
+      ]),
     },
     {
       label: 'migration filename malformed',
@@ -730,6 +822,7 @@ export function run(ctx) {
       run: () => checkMigrationFiles([
         { filename: '0001_bad.sql', content: 'SELECT 1;\n' },
         { filename: '000001_ledger.sql', content: ledgerSqlText },
+        { filename: '000002_playtest_queue.sql', content: queueSqlText },
       ]),
     },
     {
@@ -822,7 +915,10 @@ export function run(ctx) {
     // Fixture D: a migrations directory with an out-of-contract SQL mutation
     // (tampered trigger) must be rejected by the migration contract.
     const tamperedSql = ledgerSqlText.replace(/RAISE EXCEPTION 'AIPT_LEDGER_APPEND_ONLY'/, "RAISE EXCEPTION 'AIPT_LEDGER_TAMPERED'");
-    const fixtureD = checkMigrationFiles([{ filename: '000001_ledger.sql', content: tamperedSql }]);
+    const fixtureD = checkMigrationFiles([
+      { filename: '000001_ledger.sql', content: tamperedSql },
+      { filename: '000002_playtest_queue.sql', content: queueSqlText },
+    ]);
     if (fixtureD.result !== 'FAIL') {
       fail('temporary-fixture probe: tampered append-only trigger was NOT rejected');
       fixtureOk = false;

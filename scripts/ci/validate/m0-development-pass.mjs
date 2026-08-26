@@ -11,7 +11,7 @@ import {
   CLOSEOUT_ALLOWED_PATHS, FROZEN_REGISTRY_PATHS,
   M0_CLOSEOUT, M0_HISTORICAL_PATHS,
   MVP_B000_ALLOWED_PATHS, MVP_B000_BASE_COMMIT, MVP_B000_BASE_TREE,
-  MVP_B000_SNAPSHOT,
+  MVP_B000_SNAPSHOT, MVP_B001,
   pathMatchesAllowed, pathMatchesCloseoutAllowed,
 } from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
@@ -20,6 +20,7 @@ import {
   runLifecycleRegressionProbes as runMvpB000LifecycleRegressionProbes,
   validateLifecycle as validateMvpB000Lifecycle,
 } from './mvp-bootstrap.mjs';
+import { run as runMvpB001 } from './mvp-b001.mjs';
 
 const RECORD_PATH = 'docs/milestones/m0-development-pass.json';
 const DOCUMENT_PATH = 'docs/milestones/M0_DEVELOPMENT_PASS.md';
@@ -1201,6 +1202,14 @@ function runPostM0Successor(ctx) {
 }
 
 export function run(ctx) {
+  try {
+    const status = readJson(ctx.repo, STATUS_PATH);
+    if (status?.authority_snapshot_id === MVP_B001.snapshot || status?.authority_snapshot_id === 'AIPT-MVP-B001-CLOSEOUT-001') {
+      return { ...runMvpB001(ctx), name: 'm0-development-pass' };
+    }
+  } catch {
+    // The historical gate below owns the fail-closed unreadable-input report.
+  }
   // Preserve the complete B008 Candidate/merge/closeout gate below. The only
   // added acceptance path is the exact Owner-authorized post-M0 B000 branch.
   if (hasExactMvpB000Authority(ctx.repo)) return runPostM0Successor(ctx);

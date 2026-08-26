@@ -1,4 +1,4 @@
-// B001 standalone-entrypoint regression validator (repair for B001-ACC-001).
+// Standalone-entrypoint regression validator, extended for AIPT-MVP-B001.
 //
 // Guards the defect class: every validator entrypoint must ACTUALLY execute
 // when invoked directly (`node scripts/ci/validate/<name>.mjs ...`). Each
@@ -101,7 +101,7 @@ export function run(ctx) {
     { name: 'adapter-sdk', label: 'adapter-sdk', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'harness-adapter', label: 'harness-adapter', args: ['--repo', ctx.repo], result: 'PASS' },
     { name: 'evidence', label: 'evidence', args: ['--repo', ctx.repo], result: 'PASS' },
-    { name: 'web-ui', label: 'web-ui', args: ['--repo', ctx.repo], result: 'PASS' },
+    { name: 'web-ui', entrypoint: 'mvp-b001', label: 'web-ui exact historical gate on frozen B001 Base', args: ['--repo', ctx.repo, '--historical-web'], result: 'PASS' },
     {
       name: 'm0-development-pass',
       label: 'm0-development-pass final M0 gate',
@@ -110,13 +110,19 @@ export function run(ctx) {
     },
     {
       name: 'mvp-bootstrap',
-      label: 'mvp-bootstrap exact AIPT-MVP-B000 gate',
+      label: 'mvp-bootstrap B000 preservation through B001 lifecycle',
+      args: ['--repo', ctx.repo],
+      result: 'PASS',
+    },
+    {
+      name: 'mvp-b001',
+      label: 'mvp-b001 exact Test Plan / Manifest / PostgreSQL queue gate',
       args: ['--repo', ctx.repo],
       result: 'PASS',
     },
   ];
   for (const c of positives) {
-    const cp = spawnEntrypoint(c.name, c.args, ctx.repo);
+    const cp = spawnEntrypoint(c.entrypoint ?? c.name, c.args, ctx.repo);
     verifyReport(c.name, c.label, cp, c.result, ok, fail);
   }
 

@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-26",
-  "authority_snapshot_id": "AIPT-MVP-B000-CLOSEOUT-001",
+  "authority_snapshot_id": "AIPT-MVP-B001-CANDIDATE-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "AIPT-MVP-B001",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B001",
+      "next_serial_batch": "UNREGISTERED-AIPT-P1-B000",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -22,7 +22,7 @@
         "AIPT-M0-B007": "MERGED_CLOSED",
         "AIPT-M0-B008": "MERGED_CLOSED",
         "AIPT-MVP-B000": "MERGED_CLOSED",
-        "AIPT-MVP-B001": "NOT_STARTED",
+        "AIPT-MVP-B001": "IN_PROGRESS",
         "UNREGISTERED-AIPT-P1-B000": "NOT_STARTED",
         "AIPT-MVP-B002": "NOT_STARTED",
         "AIPT-MVP-B003": "NOT_STARTED",
@@ -66,7 +66,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -155,6 +155,18 @@
           "real_playtest_completion": "NOT_CLAIMED",
           "platform_integration": "FROZEN_WAITING_M1_ENGINE"
         }
+      },
+      "pending_candidate": {
+        "milestone": "MVP",
+        "task_id": "AIPT-MVP-B001",
+        "authority": "AIPT-MVP-B001-START-001",
+        "branch": "task/AIPT-MVP-B001",
+        "base_commit": "64b5692971bbe687884ec34bd6417fe803987ae9",
+        "base_tree": "1a6feabb1796af9f66fd78fc842f249ec03a5251",
+        "state": "IN_PROGRESS",
+        "scope": "TEST_PLAN_MANIFEST_POSTGRES_QUEUE_LEASE_ONLY",
+        "merge_authorized": false,
+        "closeout_authorized": false
       },
       "mvp_bootstrap": {
         "task_id": "AIPT-MVP-B000",

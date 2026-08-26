@@ -1,7 +1,7 @@
 # 测试模型（TEST MODEL）
 
 > 公开测试模型设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> **本节全部为设计目标；B000 未实现任何测试代码。**
+> `AIPT-MVP-B001` 已实现本页所述 Test Plan、Manifest 与 Queue/Lease/Attempt 合同；Run Core、Agent 编排与真实桌测仍只是后续目标。
 
 ## 三条测试轨
 
@@ -24,9 +24,12 @@
 
 ## 队列层级：Campaign → Suite → Case → Run
 
-- 任务层级 `Campaign → Suite → Case → Run`；`Attempt` 是 Run 内部执行记录，不进入用户层级（`R8-F001`）。
-- 每个 Run 生成不可变 Manifest，固定源码、模型、Prompt、阵容、预算与证据（`R8-Q003`）；入队后冻结（`R8-Q005`）。
-- PostgreSQL 持久队列（`R8-Q006`），确定性优先级调度（`R8-Q007`）。
+- 版本化声明式 Test Plan 的用户层级精确为 `Campaign → Suite → Case → Run`；`Attempt` 是 Run 内部 append-only 执行记录，不进入用户层级，也不得被提升为第五层（`R8-F001`）。
+- Case/Run 的任务类型是闭集：`SYSTEM_QUALIFICATION`、`RULE`、`PROSE`、`ORACLE`、`HUMAN_SIMULATION`、`ADVERSARIAL`、`PACKAGE_BUILD`、`CALIBRATION`、`REGRESSION`。
+- 每个 Run 在入队事务中绑定不可变 Manifest：AIPT 与游戏仓库 commit/tree、模型分配 ID、Prompt 资产 ID + SHA-256、座席阵容、预算、证据配置、VisibilityProfile、SafetyProfile 与 classification/qualification eligibility（`R8-Q003`、`R8-Q005`）。Manifest 只保存可公开身份与摘要，禁止 Prompt 正文、凭据、DSN、私有绝对路径或真人私密数据；canonical SHA-256 从移除 `canonical_sha256` 后的规范 JSON 投影计算。
+- PostgreSQL 18.4 是唯一持久队列权威（`R8-Q006`）。优先级闭集与顺序为 `RELEASE → HOTFIX → MILESTONE → SYSTEM → CALIBRATION → EXPLORATORY → BACKGROUND`，同级再按 `queued_at` 与二进制稳定 `run_id` 排序；资源、模型、标签、认证、依赖完成与 `eligible_after` 等待年龄均 fail-closed 参与选择（`R8-Q007`）。
+- Lease 使用数据库时间执行 acquire / heartbeat / expiry / recovery，并以 holder、generation 与 token SHA-256 证明所有权；token source 可注入以支持确定性测试。PostgreSQL 部分唯一索引保证 formal qualification 活跃槽位 `WIP = 1`，并由 16 个并发 claimer 的真实 PostgreSQL race 测试证明。
+- 控制面只允许暂停**新的队列 acquisition**；当前合同没有 active formal Run 的人工 pause/resume API。取消只允许尚未开始的 queued Run；同 Run recovery 与 Attempt 历史保留，不覆盖旧记录。
 
 ## Campaign 与 Mutant
 

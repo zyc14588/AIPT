@@ -153,9 +153,12 @@ func TestPostgresIntegrationQueueManifestImmutableEnqueueCancelNewRunAndRollback
 	}
 
 	for label, sql := range map[string]string{
-		"update":   `UPDATE aipt.run_manifests SET manifest_bytes = '\x7b7d' WHERE run_id = 'run-old'`,
-		"delete":   `DELETE FROM aipt.run_manifests WHERE run_id = 'run-old'`,
-		"truncate": `TRUNCATE aipt.run_manifests`,
+		"update": `UPDATE aipt.run_manifests SET manifest_bytes = '\x7b7d' WHERE run_id = 'run-old'`,
+		"delete": `DELETE FROM aipt.run_manifests WHERE run_id = 'run-old'`,
+		// CASCADE gets past PostgreSQL's foreign-key precheck so the
+		// Manifest's own immutable trigger is the authoritative rejection.
+		// Plain TRUNCATE is independently rejected by the FK boundary.
+		"truncate": `TRUNCATE aipt.run_manifests CASCADE`,
 	} {
 		t.Run(label, func(t *testing.T) {
 			_, err := pool.Exec(ctx, sql)
