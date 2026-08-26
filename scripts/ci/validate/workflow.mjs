@@ -244,6 +244,10 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run check:mvp-bootstrap',
     nameTokens: ['aipt', 'mvp', 'b000', 'bootstrap', 'gate'],
   },
+  {
+    command: 'pnpm run check:p1-b000-authority',
+    nameTokens: ['p1', 'b000', 'authority', 'contract', 'schemas', 'scope', 'lifecycle', 'n01-n39', 'gate'],
+  },
   { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
 

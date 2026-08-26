@@ -20,6 +20,7 @@
     "check:m0-development-pass": "node scripts/ci/validate/m0-development-pass.mjs",
     "check:mvp-bootstrap": "node scripts/ci/validate/mvp-bootstrap.mjs",
     "check:mvp-b001": "node scripts/ci/validate/mvp-b001.mjs",
+    "check:p1-b000-authority": "node scripts/ci/validate/p1-b000-authority.mjs",
     "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
     "test:protocol-go": "go test ./internal/protocol -count=1",
     "test:harness-adapter": "pnpm --filter @aipt/harness-adapter test",

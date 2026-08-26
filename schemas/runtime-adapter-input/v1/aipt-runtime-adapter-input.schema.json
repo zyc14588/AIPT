@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+  "title": "AIPT Runtime Adapter Input Contract v1",
+  "description": "Normalized, immutable data input for a future runtime. This contract cannot represent live model connections, invocation loops, scheduling or memory execution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "adapter_contract_version",
+    "adapter_input_id",
+    "package_binding",
+    "selected_test_unit",
+    "resolved_mappings",
+    "visibility_resolution",
+    "scenario_references",
+    "guide_references",
+    "rule_references",
+    "asset_references",
+    "declared_capabilities",
+    "evidence_boundary",
+    "provenance",
+    "canonical_sha256"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.runtime-adapter-input/v1" },
+    "schema_version": { "const": "1.0.0" },
+    "adapter_contract_version": { "const": "1.0.0" },
+    "adapter_input_id": { "$ref": "#/$defs/identity" },
+    "package_binding": { "$ref": "#/$defs/packageBinding" },
+    "selected_test_unit": { "$ref": "#/$defs/identity" },
+    "resolved_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/resolvedMapping" }
+    },
+    "visibility_resolution": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/visibilityResolution" }
+    },
+    "scenario_references": { "$ref": "#/$defs/nonEmptyIdentityList" },
+    "guide_references": { "$ref": "#/$defs/nonEmptyIdentityList" },
+    "rule_references": { "$ref": "#/$defs/nonEmptyIdentityList" },
+    "asset_references": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+    "declared_capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "evidence_boundary": { "$ref": "#/$defs/evidenceBoundary" },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "canonical_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$"
+    },
+    "semver": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 64,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repository": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    },
+    "sourcePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9_@+.-]+(?:/[A-Za-z0-9_@+.-]+)*$"
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9.-]*/v(0|[1-9][0-9]*)$"
+    },
+    "sourceKind": { "enum": ["SCENE", "GUIDE", "RULE", "ASSET", "REFERENCE"] },
+    "visibilityClass": { "enum": ["PLAYER_VISIBLE", "GM_ONLY", "SYSTEM_INTERNAL"] },
+    "surface": {
+      "enum": [
+        "PLAYER_AGENT_CONTEXT",
+        "PLAYER_VISIBLE_EVIDENCE",
+        "GM_CONTEXT",
+        "ADJUDICATION",
+        "AUTHORIZED_EVIDENCE",
+        "HARNESS_CONTROL",
+        "TEST_CONTROL",
+        "BOOKKEEPING"
+      ]
+    },
+    "nonEmptyIdentityList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identity" }
+    },
+    "packageBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_id",
+        "package_version",
+        "game_id",
+        "game_version",
+        "source_repository",
+        "source_commit",
+        "source_tree",
+        "source_digest",
+        "package_manifest_sha256"
+      ],
+      "properties": {
+        "package_id": { "$ref": "#/$defs/identity" },
+        "package_version": { "$ref": "#/$defs/semver" },
+        "game_id": { "$ref": "#/$defs/identity" },
+        "game_version": { "$ref": "#/$defs/semver" },
+        "source_repository": { "$ref": "#/$defs/repository" },
+        "source_commit": { "$ref": "#/$defs/gitOid" },
+        "source_tree": { "$ref": "#/$defs/gitOid" },
+        "source_digest": { "$ref": "#/$defs/sha256" },
+        "package_manifest_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "resolvedMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_id", "source_kind", "source_path", "content_sha256", "visibility_class"],
+      "properties": {
+        "logical_id": { "$ref": "#/$defs/identity" },
+        "source_kind": { "$ref": "#/$defs/sourceKind" },
+        "source_path": { "$ref": "#/$defs/sourcePath" },
+        "content_sha256": { "$ref": "#/$defs/sha256" },
+        "visibility_class": { "$ref": "#/$defs/visibilityClass" }
+      }
+    },
+    "visibilityResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_id", "visibility_class", "allowed_surfaces"],
+      "properties": {
+        "logical_id": { "$ref": "#/$defs/identity" },
+        "visibility_class": { "$ref": "#/$defs/visibilityClass" },
+        "allowed_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/surface" }
+        }
+      }
+    },
+    "evidenceBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "player_visible_source_ids",
+        "non_player_source_ids",
+        "player_visible_gm_only_source_ids",
+        "visibility_proof"
+      ],
+      "properties": {
+        "player_visible_source_ids": { "$ref": "#/$defs/nonEmptyIdentityList" },
+        "non_player_source_ids": { "$ref": "#/$defs/nonEmptyIdentityList" },
+        "player_visible_gm_only_source_ids": {
+          "type": "array",
+          "maxItems": 0,
+          "items": { "$ref": "#/$defs/identity" }
+        },
+        "visibility_proof": { "const": "EXACT_CLASS_MEMBERSHIP_NO_GM_ONLY_LEAK" }
+      }
+    },
+    "repositorySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/repository" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" }
+      }
+    },
+    "ancestry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["campaign_id", "suite_id", "case_id", "run_id"],
+      "properties": {
+        "campaign_id": { "$ref": "#/$defs/identity" },
+        "suite_id": { "$ref": "#/$defs/identity" },
+        "case_id": { "$ref": "#/$defs/identity" },
+        "run_id": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "runManifestBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "manifest_id",
+        "run_id",
+        "canonical_sha256",
+        "ancestry",
+        "aipt_source",
+        "game_source"
+      ],
+      "properties": {
+        "schema": { "const": "aipt.run-manifest/v1" },
+        "manifest_id": { "$ref": "#/$defs/identity" },
+        "run_id": { "$ref": "#/$defs/identity" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" },
+        "ancestry": { "$ref": "#/$defs/ancestry" },
+        "aipt_source": { "$ref": "#/$defs/repositorySource" },
+        "game_source": { "$ref": "#/$defs/repositorySource" }
+      }
+    },
+    "authorityBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "authority_version", "commit", "tree", "registry_sha256", "artifact_manifest_sha256"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/identity" },
+        "authority_version": { "$ref": "#/$defs/semver" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "registry_sha256": { "$ref": "#/$defs/sha256" },
+        "artifact_manifest_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "run_manifest", "mapping_logical_ids", "source_paths"],
+      "properties": {
+        "authority": { "$ref": "#/$defs/authorityBinding" },
+        "run_manifest": { "$ref": "#/$defs/runManifestBinding" },
+        "mapping_logical_ids": { "$ref": "#/$defs/nonEmptyIdentityList" },
+        "source_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sourcePath" }
+        }
+      }
+    }
+  }
+}
