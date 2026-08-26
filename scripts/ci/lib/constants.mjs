@@ -457,6 +457,40 @@ export const MVP_B001 = Object.freeze({
   migration_sha256: '47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997',
 });
 
+// Owner-approved immutable B001 acceptance identity. These values are recorded
+// only after the exact Candidate was merged and its real main-branch CI passed.
+export const MVP_B001_ACCEPTANCE = Object.freeze({
+  candidate_commit: '85ef3489405694cf0764867a97fb21b09fda5894',
+  candidate_tree: '44a885569c59c428fb173e0847dc49a8111b526c',
+  candidate_ci_run: 32932281680,
+  candidate_ci_conclusion: 'success',
+  merge_commit: 'ad8e39b23f5888cfb9a7f8f15f9dd996964d8f16',
+  merge_tree: '44a885569c59c428fb173e0847dc49a8111b526c',
+  merge_parents: Object.freeze([
+    '64b5692971bbe687884ec34bd6417fe803987ae9',
+    '85ef3489405694cf0764867a97fb21b09fda5894',
+  ]),
+  merge_subject: 'merge: integrate AIPT-MVP-B001',
+  post_merge_ci_run: 32939064547,
+  post_merge_ci_head_sha: 'ad8e39b23f5888cfb9a7f8f15f9dd996964d8f16',
+  post_merge_ci_conclusion: 'success',
+  post_merge_ci_jobs_passed: 5,
+  post_merge_ci_jobs_failed: 0,
+  post_merge_ci_jobs_skipped: 0,
+});
+
+export const MVP_B001_CLOSEOUT_ALLOWED_PATHS = Object.freeze([
+  'README.md',
+  'docs/authority/BATCH_DEPENDENCY_GRAPH.md',
+  'docs/authority/PROJECT_STATUS.md',
+  'docs/authority/registry/project-status.json',
+  'docs/milestones/MVP.md',
+  'package.json',
+  'scripts/ci/lib/constants.mjs',
+  'scripts/ci/run-checks.mjs',
+  'scripts/ci/validate/mvp-b001.mjs',
+]);
+
 // Current cross-repository serial predecessor required by B007. Candidate,
 // merge and closeout identities remain separately auditable facts.
 export const B007_EXTERNAL_SERIAL_PREDECESSOR = {

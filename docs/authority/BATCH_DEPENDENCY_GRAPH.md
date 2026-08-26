@@ -81,7 +81,7 @@ AIPT-MVP-B000
 
 当前 `AIPT-MVP-B000 = MERGED_CLOSED`；final Candidate `9a4d5e0ad09fbc9c3e13536d02cd131f992836f2`（tree `895ccfc569435c390a1aaeea566167a2d61a4de6`，CI `32869412683` success）由 implementation merge `1a26e023af1b56c057590a46de2f63c3b4220923` 精确集成，post-merge CI `32907168240` success；finding `AIPT-MVP-B000-POSTMERGE-LIFECYCLE-001` = `CLOSED`。
 
-当前唯一活动批次为 `AIPT-MVP-B001 = IN_PROGRESS`：Authority `AIPT-MVP-B001-START-001` 仅授权 `IMPLEMENT_AND_FREEZE_CANDIDATE_ONLY`，精确 Base 为 `64b5692971bbe687884ec34bd6417fe803987ae9`（tree `1a6feabb1796af9f66fd78fc842f249ec03a5251`），分支为 `task/AIPT-MVP-B001`。当前 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B001`、`GLOBAL_WIP = 1`。范围仅为 Campaign/Suite/Case/Run Test Plan、不可变 Run Manifest、PostgreSQL 权威 Queue/Lease/Attempt；不含 Run Core、Agent 编排、产品模型调用或真实桌测，merge/closeout 未授权。`next_serial_batch = UNREGISTERED-AIPT-P1-B000` 保持 `NOT_STARTED` / `NOT_AUTHORIZED`，其余更晚批次也全部 `NOT_STARTED`。`M0 Development Pass = GRANTED` 继续有效，`MVP Development Pass = NOT_GRANTED`；production/release 仍为 `NOT_GRANTED`，human equivalence 仍为 `NOT_CLAIMED`，Platform Integration 仍为 `FROZEN_WAITING_M1_ENGINE`。不存在独立的 `AIPT-M1-*` 别名。
+`AIPT-MVP-B001 = MERGED_CLOSED`：Candidate `85ef3489405694cf0764867a97fb21b09fda5894`（tree `44a885569c59c428fb173e0847dc49a8111b526c`，CI `32932281680` success）由 implementation merge `ad8e39b23f5888cfb9a7f8f15f9dd996964d8f16` 精确集成，post-merge CI `32939064547` success，并由 `AIPT-MVP-B001-CLOSEOUT-001` 关闭。当前 `construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。范围仅为 Campaign/Suite/Case/Run Test Plan、不可变 Run Manifest、PostgreSQL 权威 Queue/Lease/Attempt；不含 Run Core、Agent 编排、产品模型调用或真实桌测。`next_serial_batch = UNREGISTERED-AIPT-P1-B000` 保持 `NOT_STARTED` / `NOT_AUTHORIZED`，`next_batch_authorized = false`、`next_batch_started = false`，其余更晚批次也全部 `NOT_STARTED`。`M0 Development Pass = GRANTED` 继续有效，`MVP Development Pass = NOT_GRANTED`；production/release 仍为 `NOT_GRANTED`，human equivalence 仍为 `NOT_CLAIMED`，Platform Integration 仍为 `FROZEN_WAITING_M1_ENGINE`。不存在独立的 `AIPT-M1-*` 别名。
 
 ## Mermaid 视图（可选渲染）
 
@@ -101,7 +101,7 @@ flowchart LR
 - **前一批次正式关闭后才可启动下一批次**。
 - **集成任务只读**（`INT-AIPT-UNREGISTERED-001`）：只读两个来源 Commit，不修改任一仓库。
 - **MVP 集成任务只读**（`INT-AIPT-UNREGISTERED-MVP-001`）：只读固定来源 Commit 对，不修改任一仓库。
-- **资格 Run 串行**：Clean 与 Mutant 资格 Run 只允许依照权威图串行执行；B000 与当前 B001 均不执行任何资格 Run。
+- **资格 Run 串行**：Clean 与 Mutant 资格 Run 只允许依照权威图串行执行；B000 与已关闭 B001 均未执行任何资格 Run。
 
 ## B000 Bootstrap CI 例外与 B001 追溯义务
 

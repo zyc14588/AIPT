@@ -4,9 +4,9 @@
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
 // The report preserves every historical M0 gate and adds the exact MVP
-// bootstrap authority/lifecycle gate plus the exact B001 construction gate.
-// M0 and B000 remain immutable; B001 is the sole active batch and every later
-// batch remains unauthorized/not started.
+// bootstrap authority/lifecycle gate plus the exact B001 acceptance gate.
+// M0, B000 and B001 remain immutable; no batch is active and every later batch
+// remains unauthorized/not started.
 import fs from 'node:fs';
 import path from 'node:path';
 import { run as runStatus } from './validate/status-transition.mjs';
@@ -58,7 +58,7 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B001 IN_PROGRESS / GLOBAL_WIP 1 under IMPLEMENT_AND_FREEZE_CANDIDATE_ONLY; Run Core, Agent orchestration, product-model calls, real playtest, merge, closeout and UNREGISTERED-AIPT-P1-B000 remain unauthorized; M0 Development Pass remains effective, MVP qualification remains NOT_GRANTED, and platform integration remains FROZEN_WAITING_M1_ENGINE';
+const note = 'AIPT-MVP-B001 MERGED_CLOSED / GLOBAL_WIP 0 under AIPT-MVP-B001-CLOSEOUT-001; exact Candidate, merge and post-merge CI identities are frozen; Run Core, Agent orchestration, product-model calls and real playtest remain unimplemented; UNREGISTERED-AIPT-P1-B000 remains NOT_STARTED / NOT_AUTHORIZED; M0 Development Pass remains effective, MVP qualification remains NOT_GRANTED, and platform integration remains FROZEN_WAITING_M1_ENGINE';
 const report = {
   schema: 'aipt.public.mvp-b001-validator-run/v1',
   task_id: ACTIVE_BATCH,

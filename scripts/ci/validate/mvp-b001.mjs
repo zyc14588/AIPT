@@ -6,7 +6,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { MVP_B000_IMPLEMENTATION_MERGE, MVP_B001 } from '../lib/constants.mjs';
+import {
+  MVP_B000_IMPLEMENTATION_MERGE,
+  MVP_B001,
+  MVP_B001_ACCEPTANCE,
+  MVP_B001_CLOSEOUT_ALLOWED_PATHS,
+} from '../lib/constants.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 import { checkSchemaDocument, validateInstance } from '../lib/json-schema.mjs';
 import { run as runHistoricalWebValidator } from './web-ui.mjs';
@@ -82,13 +87,39 @@ const REQUIRED_CHANGED_PATHS = [
   'scripts/ci/validate/tree-integrity.mjs', 'scripts/ci/validate/workflow.mjs',
 ];
 
-const DOCUMENT_REQUIREMENTS = new Map([
+const CANDIDATE_DOCUMENT_REQUIREMENTS = new Map([
   ['README.md', [MVP_B001.task_id, MVP_B001.authority, 'IMPLEMENT_AND_FREEZE_CANDIDATE_ONLY', MVP_B001.base_commit, MVP_B001.base_tree, 'GLOBAL_WIP = 1', MVP_B001.next_batch, 'Run Core', 'Agent']],
   ['docs/authority/PROJECT_STATUS.md', [MVP_B001.snapshot, MVP_B001.task_id, MVP_B001.authority, 'TEST_PLAN_MANIFEST_POSTGRES_QUEUE_LEASE_ONLY', 'merge_authorized = false', 'closeout_authorized = false', 'CODEX_ONLY', 'b150a551b8d465e31e418e1b2eaf5e79bbb7d28e']],
   ['docs/authority/BATCH_DEPENDENCY_GRAPH.md', [MVP_B001.task_id, 'IN_PROGRESS', MVP_B001.next_batch, 'NOT_STARTED', 'NOT_AUTHORIZED', 'GLOBAL_WIP = 1', 'Run Core']],
   ['docs/test-model/README.md', ['Campaign → Suite → Case → Run', 'SYSTEM_QUALIFICATION', 'REGRESSION', 'canonical SHA-256', 'RELEASE → HOTFIX → MILESTONE → SYSTEM → CALIBRATION → EXPLORATORY → BACKGROUND', '16', 'WIP = 1', 'pause/resume']],
   ['docs/architecture/README.md', ['000001_ledger.sql', '000002_playtest_queue.sql', 'run_id COLLATE "C"', 'WIP=1', 'TokenSource', 'Run Core']],
   ['docs/milestones/MVP.md', [MVP_B001.task_id, MVP_B001.authority, 'IN_PROGRESS', 'GLOBAL_WIP = 1', MVP_B001.next_batch, 'NOT_AUTHORIZED', 'Run Core', '真实桌测']],
+]);
+
+const CLOSEOUT_DOCUMENT_REQUIREMENTS = new Map([
+  ['README.md', [MVP_B001.task_id, 'AIPT-MVP-B001-CLOSEOUT-001', 'MERGED_CLOSED',
+    MVP_B001_ACCEPTANCE.candidate_commit, MVP_B001_ACCEPTANCE.candidate_tree,
+    MVP_B001_ACCEPTANCE.merge_commit, String(MVP_B001_ACCEPTANCE.post_merge_ci_run),
+    'GLOBAL_WIP = 0', MVP_B001.next_batch, 'NOT_AUTHORIZED', 'Run Core', 'Agent']],
+  ['docs/authority/PROJECT_STATUS.md', [MVP_B001.task_id, 'AIPT-MVP-B001-CLOSEOUT-001',
+    'MERGED_CLOSED', MVP_B001_ACCEPTANCE.candidate_commit, MVP_B001_ACCEPTANCE.candidate_tree,
+    MVP_B001_ACCEPTANCE.merge_commit, String(MVP_B001_ACCEPTANCE.post_merge_ci_run),
+    'TEST_PLAN_MANIFEST_POSTGRES_QUEUE_LEASE_ONLY', 'GLOBAL_WIP = 0', MVP_B001.next_batch,
+    'NOT_STARTED', 'NOT_AUTHORIZED', 'CODEX_ONLY']],
+  ['docs/authority/BATCH_DEPENDENCY_GRAPH.md', [MVP_B001.task_id, 'MERGED_CLOSED',
+    MVP_B001_ACCEPTANCE.candidate_commit, MVP_B001_ACCEPTANCE.merge_commit,
+    String(MVP_B001_ACCEPTANCE.post_merge_ci_run), MVP_B001.next_batch, 'NOT_STARTED',
+    'NOT_AUTHORIZED', 'GLOBAL_WIP = 0', 'Run Core']],
+  ['docs/test-model/README.md', ['Campaign → Suite → Case → Run', 'SYSTEM_QUALIFICATION',
+    'REGRESSION', 'canonical SHA-256',
+    'RELEASE → HOTFIX → MILESTONE → SYSTEM → CALIBRATION → EXPLORATORY → BACKGROUND',
+    '16', 'WIP = 1', 'pause/resume']],
+  ['docs/architecture/README.md', ['000001_ledger.sql', '000002_playtest_queue.sql',
+    'run_id COLLATE "C"', 'WIP=1', 'TokenSource', 'Run Core']],
+  ['docs/milestones/MVP.md', [MVP_B001.task_id, 'AIPT-MVP-B001-CLOSEOUT-001',
+    'MERGED_CLOSED', MVP_B001_ACCEPTANCE.candidate_commit, MVP_B001_ACCEPTANCE.merge_commit,
+    String(MVP_B001_ACCEPTANCE.post_merge_ci_run), 'GLOBAL_WIP = 0', MVP_B001.next_batch,
+    'NOT_STARTED', 'NOT_AUTHORIZED', 'Run Core', '真实桌测']],
 ]);
 
 const FROZEN_PATHS = [
@@ -358,13 +389,29 @@ function expectedCloseoutStatus(base, facts) {
     task_id: MVP_B001.task_id, state: 'MERGED_CLOSED', start_authority: MVP_B001.authority,
     closeout_authority: 'AIPT-MVP-B001-CLOSEOUT-001',
     base: { commit: MVP_B001.base_commit, tree: MVP_B001.base_tree },
-    candidate: { commit: facts.candidate, tree: facts.candidateTree },
+    candidate: {
+      commit: MVP_B001_ACCEPTANCE.candidate_commit,
+      tree: MVP_B001_ACCEPTANCE.candidate_tree,
+      ci_run: MVP_B001_ACCEPTANCE.candidate_ci_run,
+      ci_conclusion: MVP_B001_ACCEPTANCE.candidate_ci_conclusion,
+    },
     implementation_merge: {
-      commit: facts.merge?.commit, tree: facts.candidateTree,
-      parents: [MVP_B001.base_commit, facts.candidate], subject: MVP_B001.merge_subject,
+      commit: MVP_B001_ACCEPTANCE.merge_commit,
+      tree: MVP_B001_ACCEPTANCE.merge_tree,
+      parents: [...MVP_B001_ACCEPTANCE.merge_parents],
+      subject: MVP_B001_ACCEPTANCE.merge_subject,
+    },
+    post_merge_ci: {
+      run: MVP_B001_ACCEPTANCE.post_merge_ci_run,
+      head_sha: MVP_B001_ACCEPTANCE.post_merge_ci_head_sha,
+      conclusion: MVP_B001_ACCEPTANCE.post_merge_ci_conclusion,
+      jobs_passed: MVP_B001_ACCEPTANCE.post_merge_ci_jobs_passed,
+      jobs_failed: MVP_B001_ACCEPTANCE.post_merge_ci_jobs_failed,
+      jobs_skipped: MVP_B001_ACCEPTANCE.post_merge_ci_jobs_skipped,
     },
     scope: 'TEST_PLAN_MANIFEST_POSTGRES_QUEUE_LEASE_ONLY',
     real_model_calls: 0, real_playtest_executed: false,
+    merged: true, post_merge_verified: true, closed: true, open_findings: [],
   };
   return expected;
 }
@@ -404,6 +451,9 @@ export function collectLifecycleFacts(repo, env = process.env) {
     previous = parts[0];
   }
   const descendants = merge ? (lines(git(repo, ['rev-list', '--reverse', '--ancestry-path', `${merge.commit}..HEAD`], { check: false })) ?? []) : [];
+  const closeoutChangedPaths = merge && descendants.length === 1
+    ? (lines(git(repo, ['diff', '--name-only', '--no-renames', merge.commit, 'HEAD'], { check: false })) ?? []).sort()
+    : [];
   const github = {
     present: env.GITHUB_ACTIONS === 'true', event: env.GITHUB_EVENT_NAME || null,
     ref: env.GITHUB_REF || null, headRef: env.GITHUB_HEAD_REF || null,
@@ -421,6 +471,7 @@ export function collectLifecycleFacts(repo, env = process.env) {
     candidateMerges, candidateCount: Number(countCP.stdout.trim()), candidateLinear,
     candidateDescends: git(repo, ['merge-base', '--is-ancestor', MVP_B001.base_commit, candidate], { check: false }).status === 0,
     descendants, closeout: descendants.length === 1 ? readCommit(repo, descendants[0]) : null,
+    closeoutChangedPaths,
   };
 }
 
@@ -454,6 +505,16 @@ export function validateLifecycleFacts(facts) {
       validateMainBinding(facts, problems);
       validateMerge(facts, problems, true);
       if (facts.descendants.length !== 1 || facts.closeout?.commit !== facts.head || facts.closeout?.parents?.length !== 1 || facts.closeout?.parents?.[0] !== facts.merge?.commit || facts.closeout?.subject !== MVP_B001.closeout_subject) problems.push('closeout is not one exact ordinary child of implementation merge');
+      if (facts.candidate !== MVP_B001_ACCEPTANCE.candidate_commit ||
+          facts.candidateTree !== MVP_B001_ACCEPTANCE.candidate_tree ||
+          facts.merge?.commit !== MVP_B001_ACCEPTANCE.merge_commit ||
+          facts.merge?.tree !== MVP_B001_ACCEPTANCE.merge_tree) {
+        problems.push('closeout does not preserve the exact Owner-approved Candidate and merge identity');
+      }
+      if (JSON.stringify(facts.closeoutChangedPaths) !==
+          JSON.stringify([...MVP_B001_CLOSEOUT_ALLOWED_PATHS].sort())) {
+        problems.push('closeout changed paths are not the exact governance-only allowlist');
+      }
       break;
     default:
       problems.push('checkout cannot be classified into an authorized B001 lifecycle phase');
@@ -477,37 +538,44 @@ function lifecycleRegressionChecks() {
   const id = (char) => char.repeat(40);
   const candidate = {
     baseCommit: MVP_B001.base_commit, baseTree: MVP_B001.base_tree,
-    head: id('a'), headTree: id('b'), branch: MVP_B001.branch,
+    head: MVP_B001_ACCEPTANCE.candidate_commit,
+    headTree: MVP_B001_ACCEPTANCE.candidate_tree,
+    branch: MVP_B001.branch,
     github: { present: false, event: null, ref: null, headRef: null, baseRef: null, sha: null },
-    phase: 'CANDIDATE_PUSH', merges: [], merge: null, candidate: id('a'), candidateTree: id('b'),
+    phase: 'CANDIDATE_PUSH', merges: [], merge: null,
+    candidate: MVP_B001_ACCEPTANCE.candidate_commit,
+    candidateTree: MVP_B001_ACCEPTANCE.candidate_tree,
     candidateMerges: [], candidateCount: 2, candidateLinear: true, candidateDescends: true,
-    descendants: [], closeout: null,
+    descendants: [], closeout: null, closeoutChangedPaths: [],
   };
-  const prHead = { ...clone(candidate), branch: null, phase: 'PULL_REQUEST_CHECK', github: { present: true, event: 'pull_request', ref: 'refs/pull/1/head', headRef: MVP_B001.branch, baseRef: MAIN_BRANCH, sha: id('a') } };
+  const prHead = { ...clone(candidate), branch: null, phase: 'PULL_REQUEST_CHECK', github: { present: true, event: 'pull_request', ref: 'refs/pull/1/head', headRef: MVP_B001.branch, baseRef: MAIN_BRANCH, sha: MVP_B001_ACCEPTANCE.candidate_commit } };
   const synthetic = {
     ...clone(candidate), head: id('c'), branch: null, phase: 'PULL_REQUEST_CHECK',
     github: { present: true, event: 'pull_request', ref: 'refs/pull/1/merge', headRef: MVP_B001.branch, baseRef: MAIN_BRANCH, sha: id('c') },
-    merges: [id('c')], merge: { commit: id('c'), parents: [MVP_B001.base_commit, id('a')], tree: id('b'), subject: 'synthetic PR merge' },
+    merges: [id('c')], merge: { commit: id('c'), parents: [MVP_B001.base_commit, MVP_B001_ACCEPTANCE.candidate_commit], tree: MVP_B001_ACCEPTANCE.candidate_tree, subject: 'synthetic PR merge' },
   };
   const postMerge = {
-    ...clone(synthetic), head: id('d'), phase: 'POST_MERGE_MAIN',
-    github: { present: true, event: 'push', ref: 'refs/heads/main', headRef: null, baseRef: null, sha: id('d') },
-    merges: [id('d')], merge: { commit: id('d'), parents: [MVP_B001.base_commit, id('a')], tree: id('b'), subject: MVP_B001.merge_subject },
+    ...clone(synthetic), head: MVP_B001_ACCEPTANCE.merge_commit, phase: 'POST_MERGE_MAIN',
+    github: { present: true, event: 'push', ref: 'refs/heads/main', headRef: null, baseRef: null, sha: MVP_B001_ACCEPTANCE.merge_commit },
+    merges: [MVP_B001_ACCEPTANCE.merge_commit],
+    merge: { commit: MVP_B001_ACCEPTANCE.merge_commit, parents: [...MVP_B001_ACCEPTANCE.merge_parents], tree: MVP_B001_ACCEPTANCE.merge_tree, subject: MVP_B001.merge_subject },
   };
-  const closeoutCommit = { commit: id('e'), parents: [id('d')], tree: id('f'), subject: MVP_B001.closeout_subject };
-  const closeout = { ...clone(postMerge), head: id('e'), headTree: id('f'), phase: 'CLOSEOUT_MAIN', github: { ...postMerge.github, sha: id('e') }, descendants: [id('e')], closeout: closeoutCommit };
+  const closeoutCommit = { commit: id('e'), parents: [MVP_B001_ACCEPTANCE.merge_commit], tree: id('f'), subject: MVP_B001.closeout_subject };
+  const closeout = { ...clone(postMerge), head: id('e'), headTree: id('f'), phase: 'CLOSEOUT_MAIN', github: { ...postMerge.github, sha: id('e') }, descendants: [id('e')], closeout: closeoutCommit, closeoutChangedPaths: [...MVP_B001_CLOSEOUT_ALLOWED_PATHS].sort() };
   const cases = [
     ['Candidate', candidate, 'PASS'], ['PR head', prHead, 'PASS'], ['PR synthetic merge', synthetic, 'PASS'],
     ['future implementation merge', postMerge, 'PASS'], ['future closeout', closeout, 'PASS'],
     ['wrong branch', { ...clone(candidate), branch: 'task/AIPT-MVP-B002' }, 'FAIL'],
     ['Candidate merge', { ...clone(candidate), candidateMerges: [id('9')] }, 'FAIL'],
     ['too many commits', { ...clone(candidate), candidateCount: 5 }, 'FAIL'],
-    ['wrong merge parent', { ...clone(postMerge), merge: { ...postMerge.merge, parents: [id('9'), id('a')] } }, 'FAIL'],
+    ['wrong merge parent', { ...clone(postMerge), merge: { ...postMerge.merge, parents: [id('9'), MVP_B001_ACCEPTANCE.candidate_commit] } }, 'FAIL'],
     ['merge tree drift', { ...clone(postMerge), merge: { ...postMerge.merge, tree: id('9') } }, 'FAIL'],
     ['merge subject drift', { ...clone(postMerge), merge: { ...postMerge.merge, subject: 'merge: wrong' } }, 'FAIL'],
     ['second merge', { ...clone(postMerge), merges: [id('d'), id('9')] }, 'FAIL'],
     ['closeout wrong parent', { ...clone(closeout), closeout: { ...closeoutCommit, parents: [id('9')] } }, 'FAIL'],
     ['closeout wrong subject', { ...clone(closeout), closeout: { ...closeoutCommit, subject: 'closeout: wrong' } }, 'FAIL'],
+    ['closeout path missing', { ...clone(closeout), closeoutChangedPaths: MVP_B001_CLOSEOUT_ALLOWED_PATHS.slice(1) }, 'FAIL'],
+    ['closeout path added', { ...clone(closeout), closeoutChangedPaths: [...MVP_B001_CLOSEOUT_ALLOWED_PATHS, 'internal/run/engine.go'].sort() }, 'FAIL'],
   ];
   return cases.map(([label, facts, expected]) => {
     const actual = validateLifecycleFacts(facts).result;
@@ -563,9 +631,12 @@ function runtimeBoundaryProblems(repo) {
   return problems;
 }
 
-function documentationAndGateProblems(repo) {
+function documentationAndGateProblems(repo, phase) {
   const problems = [];
-  for (const [relative, needles] of DOCUMENT_REQUIREMENTS) {
+  const requirements = phase === 'CLOSEOUT_MAIN'
+    ? CLOSEOUT_DOCUMENT_REQUIREMENTS
+    : CANDIDATE_DOCUMENT_REQUIREMENTS;
+  for (const [relative, needles] of requirements) {
     const text = read(repo, relative);
     for (const needle of needles) if (!text.includes(needle)) problems.push(`${relative} misses required B001 truth: ${needle}`);
   }
@@ -589,22 +660,36 @@ function documentationAndGateProblems(repo) {
 }
 
 function statusMutationChecks(status, base, facts) {
-  const validate = (candidate) => compareExact(candidate, expectedCandidateStatus(base)).length > 0;
+  const closeoutPhase = facts.phase === 'CLOSEOUT_MAIN';
+  const expected = closeoutPhase
+    ? expectedCloseoutStatus(base, facts)
+    : expectedCandidateStatus(base);
+  const validate = (candidate) => compareExact(candidate, expected).length > 0;
   const mutations = [
-    ['GLOBAL_WIP bypass', (v) => { v.tracks['AIPT-STANDALONE'].global_wip = 0; }],
-    ['B001 prematurely closed', (v) => { v.tracks['AIPT-STANDALONE'].batch_history[MVP_B001.task_id] = 'MERGED_CLOSED'; }],
     ['next batch authorized', (v) => { v.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
     ['next batch started', (v) => { v.tracks['AIPT-STANDALONE'].next_batch_started = true; }],
     ['UNREGISTERED next started', (v) => { v.tracks['AIPT-STANDALONE'].batch_history[MVP_B001.next_batch] = 'IN_PROGRESS'; }],
     ['M0 pass revoked', (v) => { v.repositories.AIPT.verified_state.m0_development_pass.result = 'REVOKED'; }],
     ['MVP pass forged', (v) => { v.repositories.AIPT.verified_state.boundaries.mvp_development_pass = 'GRANTED'; }],
     ['platform unfrozen', (v) => { v.tracks['AIPT-PLATFORM-INTEGRATION'].status = 'UNFROZEN'; }],
-    ['merge authorization forged', (v) => { v.repositories.AIPT.pending_candidate.merge_authorized = true; }],
   ];
+  if (closeoutPhase) {
+    mutations.push(
+      ['B001 reopened', (v) => { v.tracks['AIPT-STANDALONE'].batch_history[MVP_B001.task_id] = 'IN_PROGRESS'; }],
+      ['GLOBAL_WIP reopened', (v) => { v.tracks['AIPT-STANDALONE'].global_wip = 1; }],
+      ['active batch reintroduced', (v) => { v.tracks['AIPT-STANDALONE'].current_batch = MVP_B001.task_id; }],
+      ['pending Candidate reintroduced', (v) => { v.repositories.AIPT.pending_candidate = {}; }],
+      ['accepted merge identity drift', (v) => { v.repositories.AIPT.mvp_b001.implementation_merge.commit = '0'.repeat(40); }],
+      ['post-merge CI drift', (v) => { v.repositories.AIPT.mvp_b001.post_merge_ci.run = 0; }],
+    );
+  } else {
+    mutations.push(
+      ['GLOBAL_WIP bypass', (v) => { v.tracks['AIPT-STANDALONE'].global_wip = 0; }],
+      ['B001 prematurely closed', (v) => { v.tracks['AIPT-STANDALONE'].batch_history[MVP_B001.task_id] = 'MERGED_CLOSED'; }],
+      ['merge authorization forged', (v) => { v.repositories.AIPT.pending_candidate.merge_authorized = true; }],
+    );
+  }
   const results = mutations.map(([label, mutate]) => { const value = clone(status); mutate(value); return [label, validate(value)]; });
-  const closeout = expectedCloseoutStatus(base, facts);
-  const invalidCloseout = clone(closeout); invalidCloseout.tracks['AIPT-STANDALONE'].next_batch_authorized = true;
-  results.push(['closeout authorizes next batch', compareExact(invalidCloseout, closeout).length > 0]);
   return results;
 }
 
@@ -703,17 +788,23 @@ export function run(ctx, args = {}) {
   } else ok('frozen canonical 13-item graph is byte/semantic identical to B000 closeout');
   if (read(ctx.repo, GRAPH_PATH) !== baseText(ctx.repo, GRAPH_PATH)) fail('frozen graph bytes changed');
 
-  const expectedStatus = expectedCandidateStatus(baseStatus);
+  const facts = collectLifecycleFacts(ctx.repo);
+  const lifecycle = validateLifecycleFacts(facts);
+  const expectedStatus = lifecycle.phase === 'CLOSEOUT_MAIN'
+    ? expectedCloseoutStatus(baseStatus, facts)
+    : expectedCandidateStatus(baseStatus);
   const statusProblems = compareExact(status, expectedStatus, '$status');
   for (const problem of statusProblems) fail(`authority status: ${problem}`);
-  if (statusProblems.length === 0) ok('B001 IN_PROGRESS / GLOBAL_WIP=1 / next UNREGISTERED unauthorized status is exact');
+  if (statusProblems.length === 0) {
+    ok(lifecycle.phase === 'CLOSEOUT_MAIN'
+      ? 'B001 MERGED_CLOSED / GLOBAL_WIP=0 / accepted identities / next UNREGISTERED unauthorized status is exact'
+      : 'B001 IN_PROGRESS / GLOBAL_WIP=1 / next UNREGISTERED unauthorized status is exact');
+  }
   if (status.tracks?.['AIPT-PLATFORM-INTEGRATION']?.status !== PLATFORM || status.repositories?.AIPT?.verified_state?.m0_development_pass?.result !== 'GRANTED' || status.repositories?.AIPT?.verified_state?.boundaries?.mvp_development_pass !== 'NOT_GRANTED') fail('milestone/platform preservation boundary drifted');
   else ok('M0 Development Pass remains GRANTED; MVP remains NOT_GRANTED; Platform Integration remains frozen');
   if (compareExact(status.repositories?.AIPT?.mvp_bootstrap, baseStatus.repositories?.AIPT?.mvp_bootstrap, '$mvp_bootstrap').length) fail('B000 immutable closeout record drifted');
   else ok('B000 immutable Candidate/repair/merge/closeout record preserved');
 
-  const facts = collectLifecycleFacts(ctx.repo);
-  const lifecycle = validateLifecycleFacts(facts);
   for (const problem of lifecycle.problems) fail(`lifecycle: ${problem}`);
   if (lifecycle.result === 'PASS') ok(`${lifecycle.phase} lifecycle topology PASS with zero-merge Candidate lineage`);
 
@@ -742,7 +833,7 @@ export function run(ctx, args = {}) {
   const runtime = runtimeBoundaryProblems(ctx.repo);
   for (const problem of runtime) fail(problem);
   if (runtime.length === 0) ok('no Run Core, Agent orchestration, model gateway, product-model call or real-playtest implementation');
-  const docsAndGates = documentationAndGateProblems(ctx.repo);
+  const docsAndGates = documentationAndGateProblems(ctx.repo, lifecycle.phase);
   for (const problem of docsAndGates) fail(problem);
   if (docsAndGates.length === 0) ok('human authority docs, package aggregate and dual-runner/PostgreSQL CI evidence state the exact B001 boundary');
 

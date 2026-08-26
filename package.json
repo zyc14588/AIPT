@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. Current batch AIPT-MVP-B001 implements only versioned Test Plans, immutable Run Manifests, and the PostgreSQL queue/lease authority; Run Core and later runtime work remain unauthorized.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B001 is merged/closed with versioned Test Plans, immutable Run Manifests, and PostgreSQL queue/lease authority; Run Core and later runtime work remain unauthorized.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
