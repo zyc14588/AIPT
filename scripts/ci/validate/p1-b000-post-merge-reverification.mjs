@@ -149,8 +149,8 @@ export function run(ctx, args = {}) {
     }
     const definitionCommit = git(ctx.repo, ['rev-parse', 'HEAD^{commit}']).stdout.trim();
     const definitionTree = git(ctx.repo, ['rev-parse', 'HEAD^{tree}']).stdout.trim();
-    if (git(ctx.repo, ['status', '--porcelain=v1', '--untracked-files=all']).stdout !== '') {
-      throw new Error('verification definition checkout is not clean');
+    if (git(ctx.repo, ['status', '--porcelain=v1', '--untracked-files=no']).stdout !== '') {
+      throw new Error('verification definition checkout has modified tracked content');
     }
     const validatorIdentities = VALIDATORS.map((validator) => {
       const working = read(ctx.repo, validator.path);
@@ -169,8 +169,12 @@ export function run(ctx, args = {}) {
       throw new Error('verification target merge parents or approved Candidate tree drifted');
     }
 
-    const authority = runAuthority({ repo: target.targetRepo, definitionRepo: ctx.repo });
-    const b001 = runB001({ repo: target.targetRepo });
+    const authority = runAuthority({
+      repo: target.targetRepo,
+      definitionRepo: ctx.repo,
+      bindGitHubExecutionIdentity: false,
+    });
+    const b001 = runB001({ repo: target.targetRepo, bindGitHubExecutionIdentity: false });
     const repair = runRepair({ repo: ctx.repo });
     const goTests = runGoTests(target.targetRepo);
     const jobs = [

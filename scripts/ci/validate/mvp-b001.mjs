@@ -933,8 +933,11 @@ function runSuccessorAuthorityPreservation(ctx) {
     fail('current history does not descend from exact B001 closeout');
   } else ok('current history descends from exact B001 closeout; later task merges are not misclassified as B001 Candidate commits');
   const head = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false }).stdout.trim();
-  if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_SHA !== head) fail('GITHUB_SHA is not successor Candidate HEAD');
-  else ok('successor authority checkout identity is bound to HEAD');
+  if (process.env.GITHUB_ACTIONS === 'true' && ctx.bindGitHubExecutionIdentity !== false && process.env.GITHUB_SHA !== head) {
+    fail('GITHUB_SHA is not successor Candidate HEAD');
+  } else if (process.env.GITHUB_ACTIONS === 'true' && ctx.bindGitHubExecutionIdentity === false) {
+    ok('GitHub execution identity is intentionally distinct from the exact detached verification target');
+  } else ok('successor authority checkout identity is bound to HEAD');
 
   try {
     if (read(ctx.repo, STATUS_PATH) !== closeoutText(ctx.repo, STATUS_PATH) ||

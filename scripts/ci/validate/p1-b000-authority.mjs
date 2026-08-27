@@ -975,16 +975,18 @@ function collectAuthorityLifecycleFacts(repo, state = 'MERGED') {
   };
 }
 
-function verifyGitLifecycle(repo, fail, ok, state = 'MERGED') {
+function verifyGitLifecycle(repo, fail, ok, state = 'MERGED', bindGitHubExecutionIdentity = true) {
   const facts = collectAuthorityLifecycleFacts(repo, state);
   const problems = validateAuthorityLifecycleFacts(facts);
   for (const problem of problems) fail(problem);
   if (problems.length === 0) {
     ok(`${state} lifecycle verifies the immutable Candidate, accepted no-ff merge, ancestry and exact tree preservation`);
   }
-  if (process.env.GITHUB_ACTIONS === 'true') {
+  if (process.env.GITHUB_ACTIONS === 'true' && bindGitHubExecutionIdentity) {
     if (process.env.GITHUB_SHA !== facts.head) fail('GITHUB_SHA is not checked-out HEAD');
     else ok('GitHub execution identity is bound to checked-out HEAD');
+  } else if (process.env.GITHUB_ACTIONS === 'true') {
+    ok('GitHub execution identity is intentionally distinct from the exact detached verification target');
   }
   return facts;
 }
@@ -1233,7 +1235,9 @@ function runImpl(ctx) {
     return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
   }
 
-  const lifecycleFacts = verifyGitLifecycle(ctx.repo, fail, ok, lifecycleState);
+  const lifecycleFacts = verifyGitLifecycle(
+    ctx.repo, fail, ok, lifecycleState, ctx.bindGitHubExecutionIdentity !== false,
+  );
   if (HISTORICAL_LIFECYCLE_STATES.has(lifecycleState)) verifyAcceptedAmendment(definitionRepo, fail, ok);
   const validatorIdentity = resolveValidatorIdentity(definitionRepo, fail, ok);
   verifyB001Protection(ctx.repo, fail, ok);
