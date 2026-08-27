@@ -111,8 +111,8 @@ function formalEvidence(report, args, definition) {
       event: 'workflow_dispatch',
       run_head_sha: args['run-head-sha'],
       workflow_definition_identity: {
-        path: WORKFLOW_PATH, commit: definition.commit, tree: definition.tree,
-        sha256: definition.workflowSha256, source_repair_task_id: TASK_ID,
+        path: WORKFLOW_PATH, commit: acceptedCommit, tree: acceptedTree,
+        sha256: definition.sourceWorkflowSha256, source_repair_task_id: TASK_ID,
       },
     },
     verification_target: {
@@ -225,6 +225,13 @@ export function run(ctx, args = {}) {
       const acceptedTree = /^[0-9a-f]{40}$/.test(acceptedCommit ?? '')
         ? git(ctx.repo, ['rev-parse', `${acceptedCommit}^{tree}`], { check: false }).stdout.trim()
         : '';
+      const sourceWorkflowBytes = /^[0-9a-f]{40}$/.test(acceptedCommit ?? '')
+        ? commitBlob(ctx.repo, acceptedCommit, WORKFLOW_PATH)
+        : null;
+      const validatorsFromCandidate = sourceWorkflowBytes !== null && validatorIdentities.every((identity) => {
+        const source = commitBlob(ctx.repo, acceptedCommit, identity.path);
+        return source !== null && sha256(source) === identity.sha256;
+      });
       const acceptedAncestor = acceptedCommit === ACCEPTED_REPAIR_CANDIDATE &&
         git(ctx.repo, ['merge-base', '--is-ancestor', acceptedCommit, definitionCommit], { check: false }).status === 0;
       const acceptanceAncestor =
@@ -232,7 +239,7 @@ export function run(ctx, args = {}) {
       const dispatchBound = process.env.GITHUB_ACTIONS === 'true' &&
         process.env.GITHUB_EVENT_NAME === 'workflow_dispatch' &&
         Number.isInteger(runId) && runId > 0 && String(runId) === process.env.GITHUB_RUN_ID &&
-        acceptedAncestor && acceptedTree === ACCEPTED_REPAIR_TREE && acceptanceAncestor &&
+        acceptedAncestor && acceptedTree === ACCEPTED_REPAIR_TREE && acceptanceAncestor && validatorsFromCandidate &&
         /^[0-9a-f]{40}$/.test(args['run-head-sha'] ?? '') &&
         args['run-head-sha'] === process.env.GITHUB_SHA &&
         definitionCommit === args['run-head-sha'] && acceptancePass && pass;
@@ -242,7 +249,7 @@ export function run(ctx, args = {}) {
       } else {
         return formalEvidence(report, args, {
           repo: ctx.repo, commit: definitionCommit, tree: definitionTree,
-          workflowSha256: sha256(workflowBytes), validators: validatorIdentities,
+          sourceWorkflowSha256: sha256(sourceWorkflowBytes), validators: validatorIdentities,
         });
       }
     }
