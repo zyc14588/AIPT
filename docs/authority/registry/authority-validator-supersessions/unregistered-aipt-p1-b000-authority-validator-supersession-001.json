@@ -23,7 +23,7 @@
     "REJECT_ILLEGAL_LIFECYCLE_TRANSITIONS"
   ],
   "regression_evidence": {
-    "suite_identity": "2cc2be26c57cc98f4da200e37413c800e1ae188d6d530e2621b18fcd20037abe",
+    "suite_identity": "84110c276d92d509419c163a889183216e659dda14f9e55f4c343e6674676da0",
     "result": "PASS",
     "commands": [
       "node scripts/ci/validate/p1-b000-authority.mjs",
@@ -48,10 +48,10 @@
     "candidate_ci_conclusion": "success"
   },
   "repair_acceptance": {
-    "state": "CANDIDATE_FROZEN",
-    "independent_acceptance": "PENDING",
-    "candidate_ci_run_id": null,
-    "candidate_ci_conclusion": "pending"
+    "state": "ACCEPTED",
+    "independent_acceptance": "PASS",
+    "candidate_ci_run_id": 33057642299,
+    "candidate_ci_conclusion": "success"
   },
   "provenance": {
     "created_by_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",

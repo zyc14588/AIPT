@@ -19,6 +19,12 @@ const AMENDMENT_MERGE = '33a53d53c6db474f46a886dcbbba6d083eee4f27';
 const AMENDMENT_CLOSEOUT = '2619339e53113633e02f3aef14156a1ff08c13f8';
 const AUTHORITY_MERGE = '169f9bd006dabb88eb653ab09a33b0eef5eadaed';
 const AUTHORITY_TREE = '9cf551e7bc70d4354ca21d62a2bd456ed6f401bb';
+const ACCEPTED_REPAIR_CANDIDATE = '17f09e7cd766b39651101a1cacb896b296b821c8';
+const ACCEPTED_REPAIR_TREE = 'c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8';
+const REPAIR_MERGE = 'df71476d4b8f271f3b444cace46a3d6fbd1eaea4';
+const REPAIR_MERGE_PARENTS = [AMENDMENT_CLOSEOUT, ACCEPTED_REPAIR_CANDIDATE];
+const REPAIR_CANDIDATE_CI_RUN_ID = 33057642299;
+const REPAIR_MERGE_CI_RUN_ID = 33061223575;
 const SUPERSESSION_SCHEMA = 'schemas/authority-amendment/v1/aipt-authority-validator-supersession.schema.json';
 const SUPERSESSION_DIRECTORY = 'docs/authority/registry/authority-validator-supersessions';
 const REPAIR_VALIDATOR = 'scripts/ci/validate/p1-b000-authority-repair.mjs';
@@ -79,9 +85,13 @@ const ALLOWED_REPAIR_PATHS = Object.freeze([
   'scripts/ci/validate/mvp-b001.mjs',
   'scripts/ci/validate/p1-b000-authority.mjs',
   'scripts/ci/validate/p1-b000-authority-repair.mjs',
+  'scripts/ci/validate/p1-b000-authority-closeout.mjs',
   'scripts/ci/validate/p1-b000-post-merge-reverification.mjs',
   'scripts/ci/validate/standalone-entrypoints.mjs',
   'scripts/ci/validate/workflow.mjs',
+  'schemas/authority-amendment/v1/aipt-base-authority-closeout.schema.json',
+  'docs/authority/registry/post-merge-reverification/unregistered-aipt-p1-b000-authority-post-merge-reverification-001.json',
+  'docs/authority/registry/base-authority-closeouts/unregistered-aipt-p1-b000-authority-closeout-001.json',
 ]);
 
 function read(repo, relative) {
@@ -129,6 +139,12 @@ export function validatePendingSupersessions(records, schema, options = {}) {
   if (options.amendmentClosed === false) problems.push('accepted Amendment is not CLOSED');
   if (options.protectedArtifactsValid === false) problems.push('protected schema or Authority artifact changed');
   const currentHashes = options.currentHashes ?? {};
+  const acceptanceStates = new Set(records.map((record) => record.repair_acceptance?.state));
+  if (acceptanceStates.size !== 1 ||
+      !['CANDIDATE_FROZEN', 'ACCEPTED'].includes([...acceptanceStates][0])) {
+    problems.push('supersession roles do not share one valid repair acceptance state');
+  }
+  const acceptanceState = acceptanceStates.size === 1 ? [...acceptanceStates][0] : null;
   let repairCommit = null;
   for (const record of records) {
     for (const error of validateInstance(schema, record).errors) {
@@ -152,13 +168,20 @@ export function validatePendingSupersessions(records, schema, options = {}) {
         record.amendment_acceptance?.candidate_tree !== AMENDMENT_TREE ||
         record.amendment_acceptance?.merge_commit !== AMENDMENT_MERGE ||
         record.amendment_acceptance?.merge_tree !== AMENDMENT_TREE ||
-        record.repair_acceptance?.state !== 'CANDIDATE_FROZEN' ||
-        record.repair_acceptance?.independent_acceptance !== 'PENDING' ||
-        record.repair_acceptance?.candidate_ci_run_id !== null ||
-        record.repair_acceptance?.candidate_ci_conclusion !== 'pending' ||
         record.provenance?.created_by_task !== TASK_ID ||
         record.provenance?.append_only !== true || record.provenance?.original_identity_preserved !== true) {
       problems.push(`supersession ${record.record_id} identity, constraints, acceptance or provenance drifted`);
+    }
+    const staged = record.repair_acceptance?.state === 'CANDIDATE_FROZEN' &&
+      record.repair_acceptance?.independent_acceptance === 'PENDING' &&
+      record.repair_acceptance?.candidate_ci_run_id === null &&
+      record.repair_acceptance?.candidate_ci_conclusion === 'pending';
+    const accepted = record.repair_acceptance?.state === 'ACCEPTED' &&
+      record.repair_acceptance?.independent_acceptance === 'PASS' &&
+      record.repair_acceptance?.candidate_ci_run_id === REPAIR_CANDIDATE_CI_RUN_ID &&
+      record.repair_acceptance?.candidate_ci_conclusion === 'success';
+    if (!staged && !accepted) {
+      problems.push(`supersession ${record.record_id} repair acceptance transition is invalid`);
     }
     if (repairCommit === null) repairCommit = record.repair_candidate_commit;
     else if (repairCommit !== record.repair_candidate_commit) problems.push('supersession roles name different repair artifact commits');
@@ -171,6 +194,21 @@ export function validatePendingSupersessions(records, schema, options = {}) {
       if (!blob || sha256(blob) !== record.new_sha256) {
         problems.push(`supersession ${record.record_id} new validator identity is not reproducible`);
       }
+    }
+  }
+  if (!options.skipGit && options.repo && acceptanceState === 'ACCEPTED') {
+    const candidateTree = git(options.repo, ['rev-parse', `${ACCEPTED_REPAIR_CANDIDATE}^{tree}`], { check: false });
+    const mergeTree = git(options.repo, ['rev-parse', `${REPAIR_MERGE}^{tree}`], { check: false });
+    const mergeParents = git(options.repo, ['show', '-s', '--format=%P', REPAIR_MERGE], { check: false });
+    const preserved = git(options.repo, ['diff', '--exit-code', ACCEPTED_REPAIR_CANDIDATE, REPAIR_MERGE], { check: false });
+    const candidateAncestor = git(options.repo, ['merge-base', '--is-ancestor', ACCEPTED_REPAIR_CANDIDATE, 'HEAD'], { check: false });
+    const mergeAncestor = git(options.repo, ['merge-base', '--is-ancestor', REPAIR_MERGE, 'HEAD'], { check: false });
+    if (candidateTree.status !== 0 || candidateTree.stdout.trim() !== ACCEPTED_REPAIR_TREE ||
+        mergeTree.status !== 0 || mergeTree.stdout.trim() !== ACCEPTED_REPAIR_TREE ||
+        mergeParents.status !== 0 ||
+        JSON.stringify(mergeParents.stdout.trim().split(/\s+/)) !== JSON.stringify(REPAIR_MERGE_PARENTS) ||
+        preserved.status !== 0 || candidateAncestor.status !== 0 || mergeAncestor.status !== 0) {
+      problems.push('accepted repair Candidate/merge topology, tree preservation or ancestry is invalid');
     }
   }
   return problems;
@@ -274,7 +312,12 @@ function runImpl(ctx) {
     protectedArtifactsValid: protectedProblems.length === 0,
   });
   supersessionProblems.forEach(fail);
-  if (supersessionProblems.length === 0) ok('two pending supersession links preserve old identities and bind actual new validator bytes');
+  const supersessionAccepted = records.length === 2 && records.every((record) =>
+    record.repair_acceptance?.state === 'ACCEPTED' &&
+    record.repair_acceptance?.independent_acceptance === 'PASS');
+  if (supersessionProblems.length === 0) {
+    ok(`two ${supersessionAccepted ? 'accepted' : 'pending'} supersession links preserve old identities and bind actual new validator bytes`);
+  }
 
   const probes = supersessionNegativeProbes(records, schema, currentHashes);
   probes.forEach(([name, rejected]) => { if (!rejected) fail(`${name} was accepted`); });
@@ -317,8 +360,19 @@ function runImpl(ctx) {
     amendment_closeout: AMENDMENT_CLOSEOUT,
     original_validator_identities: Object.fromEntries(Object.entries(ROLE_POLICY).map(([role, value]) => [role, value.old])),
     staged_validator_identities: currentHashes,
-    supersession_state: 'CANDIDATE_FROZEN',
-    supersession_accepted: false,
+    supersession_state: supersessionAccepted ? 'ACCEPTED' : 'CANDIDATE_FROZEN',
+    supersession_accepted: supersessionAccepted,
+    repair_acceptance: {
+      authority_basis: AMENDMENT_CLOSEOUT,
+      candidate_commit: ACCEPTED_REPAIR_CANDIDATE,
+      candidate_tree: ACCEPTED_REPAIR_TREE,
+      candidate_ci_run_id: REPAIR_CANDIDATE_CI_RUN_ID,
+      merge_commit: REPAIR_MERGE,
+      merge_tree: ACCEPTED_REPAIR_TREE,
+      merge_parents: REPAIR_MERGE_PARENTS,
+      merge_ci_run_id: REPAIR_MERGE_CI_RUN_ID,
+      merge_ci_conclusion: 'success',
+    },
     supersession_record_count: records.length,
     supersession_negative_probes: probes.every(([, rejected]) => rejected) ? 'PASS' : 'FAIL',
     supersession_negative_probe_count: probes.length,
