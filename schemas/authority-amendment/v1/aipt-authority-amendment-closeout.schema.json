@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v1/aipt-authority-amendment-closeout.schema.json",
+  "title": "AIPT Authority Amendment bootstrap closeout evidence v1",
+  "description": "Single-use governance-only evidence for closing one accepted Authority Amendment. Git topology supplies the closeout commit identity, avoiding self-reference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "closeout_id", "amendment_id", "revision_task_id", "accepted_identity",
+    "candidate_ci", "amendment_merge_ci", "post_merge_verification", "lifecycle_transition",
+    "owner_closeout_authorization", "scope", "bootstrap_permission", "open_findings"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.authority-amendment-closeout/v1" },
+    "closeout_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-CLOSEOUT-001" },
+    "amendment_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001" },
+    "revision_task_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1" },
+    "accepted_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_commit", "candidate_tree", "merge_commit", "merge_tree", "merge_parents"],
+      "properties": {
+        "candidate_commit": { "$ref": "#/$defs/gitOid" },
+        "candidate_tree": { "$ref": "#/$defs/gitOid" },
+        "merge_commit": { "$ref": "#/$defs/gitOid" },
+        "merge_tree": { "$ref": "#/$defs/gitOid" },
+        "merge_parents": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "$ref": "#/$defs/gitOid" }
+        }
+      }
+    },
+    "candidate_ci": { "$ref": "#/$defs/ciEvidence" },
+    "amendment_merge_ci": { "$ref": "#/$defs/ciEvidence" },
+    "post_merge_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amendment_validator", "amendment_artifact_hashes", "base_authority_immutability",
+        "effective_authority_resolution", "amendment_ordering", "amendment_provenance",
+        "lifecycle_transition", "closeout_path_policy", "b001_business_regression",
+        "go_test_all", "negative_probes", "legacy_validator_results", "unresolved_placeholders"
+      ],
+      "properties": {
+        "amendment_validator": { "const": "PASS" },
+        "amendment_artifact_hashes": { "const": "PASS" },
+        "base_authority_immutability": { "const": "PASS" },
+        "effective_authority_resolution": { "const": "PASS" },
+        "amendment_ordering": { "const": "PASS" },
+        "amendment_provenance": { "const": "PASS" },
+        "lifecycle_transition": { "const": "PASS" },
+        "closeout_path_policy": { "const": "PASS" },
+        "b001_business_regression": { "const": "PASS" },
+        "go_test_all": { "const": "PASS" },
+        "negative_probes": { "const": "PASS" },
+        "legacy_validator_results": {
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["defect_id", "validator", "executed", "raw_result", "classification"],
+            "properties": {
+              "defect_id": { "enum": ["F1", "F2"] },
+              "validator": { "$ref": "#/$defs/repoPath" },
+              "executed": { "const": true },
+              "raw_result": { "const": "FAIL" },
+              "classification": { "const": "KNOWN_PREEXISTING_BOOTSTRAP_DEFECT" }
+            }
+          }
+        },
+        "unresolved_placeholders": { "const": 0 }
+      }
+    },
+    "lifecycle_transition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from", "through", "to"],
+      "properties": {
+        "from": { "const": "MERGED" },
+        "through": { "const": "POST_MERGE_VERIFIED" },
+        "to": { "const": "CLOSED" }
+      }
+    },
+    "owner_closeout_authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authorized", "authorized_by", "directive"],
+      "properties": {
+        "authorized": { "const": true },
+        "authorized_by": { "const": "Owner" },
+        "directive": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["governance_only", "business_code_changed", "validator_repair_executed", "b000_implementation_started"],
+      "properties": {
+        "governance_only": { "const": true },
+        "business_code_changed": { "const": false },
+        "validator_repair_executed": { "const": false },
+        "b000_implementation_started": { "const": false }
+      }
+    },
+    "bootstrap_permission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["use_count", "single_use", "expired_after_this_transition"],
+      "properties": {
+        "use_count": { "const": 1 },
+        "single_use": { "const": true },
+        "expired_after_this_transition": { "const": true }
+      }
+    },
+    "open_findings": { "type": "array", "maxItems": 0 }
+  },
+  "$defs": {
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "repoPath": {
+      "type": "string", "minLength": 1, "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "ciEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["run_id", "head_sha", "conclusion", "jobs_failed"],
+      "properties": {
+        "run_id": { "type": "integer", "minimum": 1 },
+        "head_sha": { "$ref": "#/$defs/gitOid" },
+        "conclusion": { "const": "success" },
+        "jobs_failed": { "const": 0 }
+      }
+    }
+  }
+}

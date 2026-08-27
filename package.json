@@ -21,6 +21,7 @@
     "check:mvp-bootstrap": "node scripts/ci/validate/mvp-bootstrap.mjs",
     "check:mvp-b001": "node scripts/ci/validate/mvp-b001.mjs",
     "check:p1-b000-authority": "node scripts/ci/validate/p1-b000-authority.mjs",
+    "check:p1-b000-authority-amendment": "node scripts/ci/validate/p1-b000-authority-amendment.mjs",
     "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
     "test:protocol-go": "go test ./internal/protocol -count=1",
     "test:harness-adapter": "pnpm --filter @aipt/harness-adapter test",
