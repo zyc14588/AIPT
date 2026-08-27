@@ -31,6 +31,27 @@ const TEST_PLAN_SCHEMA_PATH = 'schemas/testplan/v1/aipt-test-plan.schema.json';
 const RUN_MANIFEST_SCHEMA_PATH = 'schemas/run-manifest/v1/aipt-run-manifest.schema.json';
 const MIGRATION_PATH = 'internal/storage/postgres/migrations/000002_playtest_queue.sql';
 const VALIDATOR_PATH = 'scripts/ci/validate/p1-b000-authority.mjs';
+const AUTHORITY_CANDIDATE = 'c9f7729f666d11716c04d7682da16044ca965236';
+const AUTHORITY_CANDIDATE_TREE = '9cf551e7bc70d4354ca21d62a2bd456ed6f401bb';
+const AUTHORITY_MERGE = '169f9bd006dabb88eb653ab09a33b0eef5eadaed';
+const AUTHORITY_MERGE_PARENTS = [AIPT_BASE_COMMIT, AUTHORITY_CANDIDATE];
+const AUTHORITY_MERGE_SUBJECT = 'merge: accept UNREGISTERED P1 B000 Authority contract';
+const ORIGINAL_VALIDATOR_SHA256 = 'f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c';
+const AMENDMENT_ID = 'UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001';
+const AMENDMENT_CANDIDATE = 'a1d614c7468f67d13bcbf32f65ade7613a85e202';
+const AMENDMENT_CANDIDATE_TREE = 'c03ce80729cce470e35325fd4d4a35e221221c55';
+const AMENDMENT_MERGE = '33a53d53c6db474f46a886dcbbba6d083eee4f27';
+const AMENDMENT_CLOSEOUT = '2619339e53113633e02f3aef14156a1ff08c13f8';
+const AMENDMENT_CLOSEOUT_PATH = 'docs/authority/registry/authority-amendment-closeouts/unregistered-aipt-p1-b000-authority-amendment-001-closeout.json';
+const SUPERSESSION_DIRECTORY = 'docs/authority/registry/authority-validator-supersessions';
+const REPAIR_TASK_ID = 'UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001';
+
+const CANDIDATE_LIFECYCLE_STATES = new Set([
+  'CANDIDATE_FROZEN', 'CODEX_STAGE_PASS', 'MERGE_ELIGIBLE',
+]);
+const HISTORICAL_LIFECYCLE_STATES = new Set([
+  'MERGED', 'POST_MERGE_VERIFIED', 'CLOSED',
+]);
 
 const AUTHORITY_ALLOWED_PATHS = [
   '.github/workflows/ci.yml',
@@ -789,41 +810,185 @@ function textFromMigrationSibling(_migration, name) {
   return text(migrationRepoForProbe, `internal/storage/postgres/migrations/${name}`);
 }
 
-function changedPaths(repo) {
-  const tracked = git(repo, ['diff', '--name-only', '--no-renames', AIPT_BASE_COMMIT], { check: false });
-  const untracked = git(repo, ['ls-files', '--others', '--exclude-standard'], { check: false });
+function changedPaths(repo, base = AIPT_BASE_COMMIT, target = 'HEAD') {
+  const tracked = git(repo, ['diff', '--name-only', '--no-renames', base, target], { check: false });
+  const untracked = target === 'HEAD'
+    ? git(repo, ['ls-files', '--others', '--exclude-standard'], { check: false })
+    : { status: 0, stdout: '' };
   const lines = (output) => output.status === 0 ? output.stdout.split('\n').filter(Boolean) : [];
   return sortedUnique([...lines(tracked), ...lines(untracked)]
     .filter((relative) => !relative.split('/').includes('node_modules')));
 }
 
-function verifyGitLifecycle(repo, fail, ok) {
-  const baseTree = git(repo, ['rev-parse', `${AIPT_BASE_COMMIT}^{tree}`], { check: false });
-  if (baseTree.status !== 0 || baseTree.stdout.trim() !== AIPT_BASE_TREE) {
-    fail('AIPT ancestry anchor commit/tree is missing or drifted');
-  } else ok('AIPT B001 closeout ancestry anchor commit/tree verified');
-  const ancestor = git(repo, ['merge-base', '--is-ancestor', AIPT_BASE_COMMIT, 'HEAD'], { check: false });
-  if (ancestor.status !== 0) fail('AIPT B001 closeout is not an ancestor of candidate HEAD');
-  else ok('candidate descends from exact AIPT B001 closeout');
-  const merges = git(repo, ['rev-list', '--merges', `${AIPT_BASE_COMMIT}..HEAD`], { check: false });
-  if (merges.status !== 0 || merges.stdout.trim() !== '') fail('authority Candidate contains a merge commit');
-  else ok('authority Candidate lineage after B001 closeout is zero-merge');
+function commitFacts(repo, commit) {
+  if (!/^[0-9a-f]{40}$/.test(commit ?? '')) return null;
+  const parents = git(repo, ['show', '-s', '--format=%P', commit], { check: false });
+  const tree = git(repo, ['rev-parse', `${commit}^{tree}`], { check: false });
+  const subject = git(repo, ['show', '-s', '--format=%s', commit], { check: false });
+  if (parents.status !== 0 || tree.status !== 0 || subject.status !== 0) return null;
+  return {
+    commit,
+    parents: parents.stdout.trim().split(/\s+/).filter(Boolean),
+    tree: tree.stdout.trim(),
+    subject: subject.stdout.trim(),
+  };
+}
 
+export function validateAuthorityLifecycleFacts(facts) {
+  const problems = [];
+  if (!LIFECYCLE_STATES.includes(facts.state)) problems.push('unknown Authority lifecycle state');
+  if (facts.baseCommit !== AIPT_BASE_COMMIT || facts.baseTree !== AIPT_BASE_TREE) {
+    problems.push('AIPT ancestry anchor commit/tree drifted');
+  }
+  if (facts.candidate?.commit !== AUTHORITY_CANDIDATE ||
+      facts.candidate?.tree !== AUTHORITY_CANDIDATE_TREE ||
+      !facts.candidateDescendsFromBase || !facts.candidateLinear ||
+      facts.candidateMergeCount !== 0) {
+    problems.push('approved Authority Candidate identity or zero-merge ancestry drifted');
+  }
+  if (!same(facts.candidateChangedPaths, [...AUTHORITY_ALLOWED_PATHS].sort())) {
+    problems.push('Authority Candidate changed paths drifted from the frozen allowlist');
+  }
+
+  if (CANDIDATE_LIFECYCLE_STATES.has(facts.state)) {
+    if (facts.branch !== AUTHORITY_BRANCH || facts.head !== AUTHORITY_CANDIDATE) {
+      problems.push('Candidate lifecycle is not bound to the exact branch and approved Candidate identity');
+    }
+    if (facts.mergePresent || facts.postMergeVerified || facts.closed) {
+      problems.push('Candidate lifecycle contains accepted merge, reverification or closeout state');
+    }
+    return problems;
+  }
+
+  if (HISTORICAL_LIFECYCLE_STATES.has(facts.state)) {
+    if (!facts.mergePresent || facts.merge?.commit !== AUTHORITY_MERGE ||
+        facts.merge?.tree !== AUTHORITY_CANDIDATE_TREE ||
+        !same(facts.merge?.parents, AUTHORITY_MERGE_PARENTS) ||
+        facts.merge?.subject !== AUTHORITY_MERGE_SUBJECT ||
+        !facts.mergeTreeEqualsCandidate || !facts.mergeContainsOnlyCandidateTree ||
+        !facts.headDescendsFromMerge) {
+      problems.push('accepted Authority merge identity, parents, ancestry or tree preservation drifted');
+    }
+    if (facts.state === 'MERGED' && (facts.postMergeVerified || facts.closed)) {
+      problems.push('MERGED state carries premature reverification or closeout');
+    }
+    if (facts.state === 'POST_MERGE_VERIFIED' && (!facts.postMergeVerified || facts.closed)) {
+      problems.push('POST_MERGE_VERIFIED state lacks exact reverification or is prematurely closed');
+    }
+    if (facts.state === 'CLOSED' && (!facts.postMergeVerified || !facts.closed || !facts.closeoutValid)) {
+      problems.push('CLOSED state lacks accepted reverification and closeout provenance');
+    }
+    return problems;
+  }
+
+  if (['PLANNED', 'AUTHORIZED', 'ACTIVE'].includes(facts.state) &&
+      (facts.mergePresent || facts.postMergeVerified || facts.closed)) {
+    problems.push('pre-Candidate lifecycle contains later-stage acceptance fields');
+  }
+  return problems;
+}
+
+function lifecycleRegressionChecks() {
+  const base = {
+    state: 'MERGED', baseCommit: AIPT_BASE_COMMIT, baseTree: AIPT_BASE_TREE,
+    head: AUTHORITY_MERGE, branch: 'main',
+    candidate: { commit: AUTHORITY_CANDIDATE, tree: AUTHORITY_CANDIDATE_TREE },
+    candidateDescendsFromBase: true, candidateLinear: true, candidateMergeCount: 0,
+    candidateChangedPaths: [...AUTHORITY_ALLOWED_PATHS].sort(),
+    mergePresent: true,
+    merge: {
+      commit: AUTHORITY_MERGE, tree: AUTHORITY_CANDIDATE_TREE,
+      parents: [...AUTHORITY_MERGE_PARENTS], subject: AUTHORITY_MERGE_SUBJECT,
+    },
+    mergeTreeEqualsCandidate: true, mergeContainsOnlyCandidateTree: true,
+    headDescendsFromMerge: true, postMergeVerified: false, closed: false,
+    closeoutValid: false,
+  };
+  const candidate = {
+    ...clone(base), state: 'CANDIDATE_FROZEN', head: AUTHORITY_CANDIDATE,
+    branch: AUTHORITY_BRANCH, mergePresent: false, merge: null,
+    mergeTreeEqualsCandidate: false, mergeContainsOnlyCandidateTree: false,
+    headDescendsFromMerge: false,
+  };
+  const postMerge = { ...clone(base), state: 'POST_MERGE_VERIFIED', postMergeVerified: true };
+  const closed = { ...clone(postMerge), state: 'CLOSED', closed: true, closeoutValid: true };
+  const cases = [
+    ['F1-R01 valid Candidate branch', candidate, 'PASS'],
+    ['F1-R02 valid no-ff Authority merge', base, 'PASS'],
+    ['F1-R03 valid post-merge main', postMerge, 'PASS'],
+    ['F1-R04 valid CLOSED historical Authority', closed, 'PASS'],
+    ['F1-R05 wrong merge parent', { ...clone(base), merge: { ...clone(base.merge), parents: ['0'.repeat(40), AUTHORITY_CANDIDATE] } }, 'FAIL'],
+    ['F1-R06 wrong Candidate identity', { ...clone(base), candidate: { ...clone(base.candidate), commit: '0'.repeat(40) } }, 'FAIL'],
+    ['F1-R07 unauthorized extra content', { ...clone(base), mergeContainsOnlyCandidateTree: false }, 'FAIL'],
+    ['F1-R08 Candidate tree drift', { ...clone(base), candidate: { ...clone(base.candidate), tree: '0'.repeat(40) } }, 'FAIL'],
+    ['F1-R09 Authority artifact drift', { ...clone(base), candidateChangedPaths: [...base.candidateChangedPaths, 'internal/run/core.go'].sort() }, 'FAIL'],
+    ['F1-R10 invalid lifecycle transition', { ...clone(base), state: 'MERGED', closed: true }, 'FAIL'],
+    ['F1-R11 unrelated main merge', { ...clone(base), merge: { ...clone(base.merge), commit: '0'.repeat(40) } }, 'FAIL'],
+    ['F1-R12 mutable/latest authority shortcut', { ...clone(base), candidate: { commit: 'f'.repeat(40), tree: AUTHORITY_CANDIDATE_TREE } }, 'FAIL'],
+  ];
+  return cases.map(([name, facts, expected]) => {
+    const actual = validateAuthorityLifecycleFacts(facts).length === 0 ? 'PASS' : 'FAIL';
+    return { name, expected, actual, matched: expected === actual };
+  });
+}
+
+function collectAuthorityLifecycleFacts(repo, state = 'MERGED') {
+  const baseTree = git(repo, ['rev-parse', `${AIPT_BASE_COMMIT}^{tree}`], { check: false });
   const head = git(repo, ['rev-parse', 'HEAD^{commit}'], { check: false }).stdout.trim();
   const branch = git(repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
-  const github = process.env.GITHUB_ACTIONS === 'true';
-  if (github) {
-    if (process.env.GITHUB_EVENT_NAME === 'push' &&
-        process.env.GITHUB_REF !== `refs/heads/${AUTHORITY_BRANCH}`) {
-      fail('authority Candidate push is not bound to the exact authority branch');
-    }
-    if (process.env.GITHUB_SHA !== head) fail('GITHUB_SHA is not candidate HEAD');
-  } else if (branch.status !== 0 || branch.stdout.trim() !== AUTHORITY_BRANCH) {
-    fail('local authority checkout is not the exact authority branch');
+  const candidate = commitFacts(repo, AUTHORITY_CANDIDATE);
+  const merge = commitFacts(repo, AUTHORITY_MERGE);
+  const candidateHistory = git(repo, ['rev-list', '--reverse', '--parents', `${AIPT_BASE_COMMIT}..${AUTHORITY_CANDIDATE}`], { check: false });
+  let previous = AIPT_BASE_COMMIT;
+  let candidateLinear = candidateHistory.status === 0 && candidateHistory.stdout.trim() !== '';
+  for (const line of candidateHistory.stdout.split('\n').filter(Boolean)) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length !== 2 || parts[1] !== previous) candidateLinear = false;
+    previous = parts[0];
   }
-  if ((github && process.env.GITHUB_SHA === head) || (!github && branch.stdout.trim() === AUTHORITY_BRANCH)) {
-    ok('authority branch and checked-out HEAD binding verified');
+  const candidateMerges = git(repo, ['rev-list', '--merges', `${AIPT_BASE_COMMIT}..${AUTHORITY_CANDIDATE}`], { check: false });
+  const candidateDiff = git(repo, ['diff', '--name-only', '--no-renames', AIPT_BASE_COMMIT, AUTHORITY_CANDIDATE], { check: false });
+  const mergeDiff = git(repo, ['diff', '--name-only', '--no-renames', `${AUTHORITY_MERGE}^1`, AUTHORITY_MERGE], { check: false });
+  const headDescends = git(repo, ['merge-base', '--is-ancestor', AUTHORITY_MERGE, 'HEAD'], { check: false }).status === 0;
+  const baseToCandidate = candidateDiff.status === 0 ? candidateDiff.stdout.split('\n').filter(Boolean).sort() : [];
+  const firstParentToMerge = mergeDiff.status === 0 ? mergeDiff.stdout.split('\n').filter(Boolean).sort() : [];
+  return {
+    state,
+    baseCommit: AIPT_BASE_COMMIT,
+    baseTree: baseTree.status === 0 ? baseTree.stdout.trim() : null,
+    head,
+    branch: branch.status === 0 ? branch.stdout.trim() : null,
+    candidate,
+    candidateDescendsFromBase: git(repo, ['merge-base', '--is-ancestor', AIPT_BASE_COMMIT, AUTHORITY_CANDIDATE], { check: false }).status === 0,
+    candidateLinear,
+    candidateMergeCount: candidateMerges.status === 0 && candidateMerges.stdout.trim() !== ''
+      ? candidateMerges.stdout.split('\n').filter(Boolean).length : 0,
+    candidateChangedPaths: baseToCandidate,
+    mergePresent: merge !== null,
+    merge,
+    mergeTreeEqualsCandidate: merge?.tree === candidate?.tree,
+    mergeContainsOnlyCandidateTree: same(firstParentToMerge, baseToCandidate) && merge?.tree === candidate?.tree,
+    headDescendsFromMerge: headDescends,
+    postMergeVerified: state === 'POST_MERGE_VERIFIED' || state === 'CLOSED',
+    closed: state === 'CLOSED',
+    closeoutValid: state === 'CLOSED',
+  };
+}
+
+function verifyGitLifecycle(repo, fail, ok, state = 'MERGED', bindGitHubExecutionIdentity = true) {
+  const facts = collectAuthorityLifecycleFacts(repo, state);
+  const problems = validateAuthorityLifecycleFacts(facts);
+  for (const problem of problems) fail(problem);
+  if (problems.length === 0) {
+    ok(`${state} lifecycle verifies the immutable Candidate, accepted no-ff merge, ancestry and exact tree preservation`);
   }
+  if (process.env.GITHUB_ACTIONS === 'true' && bindGitHubExecutionIdentity) {
+    if (process.env.GITHUB_SHA !== facts.head) fail('GITHUB_SHA is not checked-out HEAD');
+    else ok('GitHub execution identity is bound to checked-out HEAD');
+  } else if (process.env.GITHUB_ACTIONS === 'true') {
+    ok('GitHub execution identity is intentionally distinct from the exact detached verification target');
+  }
+  return facts;
 }
 
 function verifyB001Protection(repo, fail, ok) {
@@ -928,7 +1093,97 @@ function verifyNoPlaceholders(repo, authority, fail, ok) {
   else ok('machine authority contains no globstar expression');
 }
 
-function verifyArtifacts(repo, manifest, fail, ok) {
+function gitBlob(repo, commit, relative) {
+  const cp = git(repo, ['show', `${commit}:${relative}`], { check: false });
+  return cp.status === 0 ? Buffer.from(cp.stdout, 'utf8') : null;
+}
+
+function readSupersessionRecords(repo) {
+  const directory = path.join(repo, SUPERSESSION_DIRECTORY);
+  if (!fs.existsSync(directory)) return [];
+  const entries = fs.readdirSync(directory)
+    .filter((name) => name.endsWith('.json'))
+    .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+  return entries.map((name) => readJSON(repo, `${SUPERSESSION_DIRECTORY}/${name}`));
+}
+
+function verifyAcceptedAmendment(repo, fail, ok) {
+  let closeout;
+  try {
+    closeout = readJSON(repo, AMENDMENT_CLOSEOUT_PATH);
+  } catch (error) {
+    fail(`accepted Amendment closeout unreadable: ${error.message}`);
+    return false;
+  }
+  const candidate = commitFacts(repo, AMENDMENT_CANDIDATE);
+  const merge = commitFacts(repo, AMENDMENT_MERGE);
+  const closeoutCommit = commitFacts(repo, AMENDMENT_CLOSEOUT);
+  const valid = closeout?.amendment_id === AMENDMENT_ID &&
+    closeout?.accepted_identity?.candidate_commit === AMENDMENT_CANDIDATE &&
+    closeout?.accepted_identity?.candidate_tree === AMENDMENT_CANDIDATE_TREE &&
+    closeout?.accepted_identity?.merge_commit === AMENDMENT_MERGE &&
+    closeout?.accepted_identity?.merge_tree === AMENDMENT_CANDIDATE_TREE &&
+    same(closeout?.accepted_identity?.merge_parents, [AUTHORITY_MERGE, AMENDMENT_CANDIDATE]) &&
+    closeout?.post_merge_verification?.effective_authority_resolution === 'PASS' &&
+    closeout?.bootstrap_permission?.expired_after_this_transition === true &&
+    candidate?.tree === AMENDMENT_CANDIDATE_TREE &&
+    merge?.tree === AMENDMENT_CANDIDATE_TREE &&
+    same(merge?.parents, [AUTHORITY_MERGE, AMENDMENT_CANDIDATE]) &&
+    closeoutCommit?.parents?.length === 1 && closeoutCommit.parents[0] === AMENDMENT_MERGE &&
+    git(repo, ['merge-base', '--is-ancestor', AMENDMENT_CLOSEOUT, 'HEAD'], { check: false }).status === 0;
+  if (!valid) fail('accepted Amendment R1 Candidate/merge/closeout provenance drifted');
+  else ok('accepted Amendment R1 exact Candidate, merge, closeout and expired bootstrap provenance verified');
+  return valid;
+}
+
+function resolveValidatorIdentity(repo, fail, ok) {
+  const current = sha256(read(repo, VALIDATOR_PATH));
+  const records = readSupersessionRecords(repo)
+    .filter((record) => record.role === 'AUTHORITY_VALIDATOR_IDENTITY');
+  if (current === ORIGINAL_VALIDATOR_SHA256 && records.length === 0) {
+    ok('current Authority validator is the original frozen identity');
+    return { current, records, superseded: false };
+  }
+  if (records.length !== 1) {
+    fail(`Authority validator identity changed without one unambiguous supersession link (found ${records.length})`);
+    return { current, records, superseded: true };
+  }
+  const record = records[0];
+  const acceptance = record.amendment_acceptance;
+  const repairCommit = commitFacts(repo, record.repair_candidate_commit);
+  const requiredConstraints = [
+    'SUPPORT_CANDIDATE_MERGED_POST_MERGE_CLOSED_TOPOLOGY',
+    'PRESERVE_ARTIFACT_HASH_VALIDATION',
+    'PRESERVE_ANCESTRY_VALIDATION',
+    'PRESERVE_CANDIDATE_IDENTITY_VALIDATION',
+    'PRESERVE_SCOPE_VALIDATION',
+    'PRESERVE_NEGATIVE_LIFECYCLE_CHECKS',
+    'REJECT_UNAUTHORIZED_COMMITS',
+    'REJECT_ARTIFACT_DRIFT',
+    'REJECT_ILLEGAL_LIFECYCLE_TRANSITIONS',
+  ];
+  const valid = record.schema === 'aipt.public.authority-validator-supersession/v1' &&
+    record.chain_sequence === 1 && record.predecessor_record_id === null &&
+    record.path === VALIDATOR_PATH && record.old_sha256 === ORIGINAL_VALIDATOR_SHA256 &&
+    record.new_sha256 === current && record.amendment_id === AMENDMENT_ID &&
+    record.repair_task_id === REPAIR_TASK_ID &&
+    requiredConstraints.every((constraint) => record.semantic_constraints?.includes(constraint)) &&
+    acceptance?.accepted === true && acceptance?.candidate_commit === AMENDMENT_CANDIDATE &&
+    acceptance?.candidate_tree === AMENDMENT_CANDIDATE_TREE && acceptance?.merge_commit === AMENDMENT_MERGE &&
+    acceptance?.merge_tree === AMENDMENT_CANDIDATE_TREE &&
+    same(acceptance?.merge_parents, [AUTHORITY_MERGE, AMENDMENT_CANDIDATE]) &&
+    ['CANDIDATE_FROZEN', 'ACCEPTED'].includes(record.repair_acceptance?.state) &&
+    repairCommit !== null &&
+    git(repo, ['merge-base', '--is-ancestor', AMENDMENT_CLOSEOUT, record.repair_candidate_commit], { check: false }).status === 0 &&
+    git(repo, ['merge-base', '--is-ancestor', record.repair_candidate_commit, 'HEAD'], { check: false }).status === 0 &&
+    sha256(gitBlob(repo, record.repair_candidate_commit, VALIDATOR_PATH) ?? Buffer.alloc(0)) === current &&
+    record.provenance?.original_identity_preserved === true;
+  if (!valid) fail('Authority validator supersession provenance, chain, hash or semantic constraints are invalid');
+  else ok('original validator identity remains historical and one explicit staged/accepted supersession resolves current bytes');
+  return { current, records, superseded: true };
+}
+
+function verifyArtifacts(repo, definitionRepo, manifest, validatorIdentity, fail, ok) {
   const expectedPaths = [HUMAN_PATH, AUTHORITY_PATH, PACKAGE_SCHEMA_PATH, ADAPTER_SCHEMA_PATH, VALIDATOR_PATH];
   if (manifest?.schema !== 'aipt.public.authority-artifacts/v1' || manifest?.task_id !== TASK_ID ||
       manifest?.authority_version !== AUTHORITY_VERSION || manifest?.hash_algorithm !== 'SHA-256' ||
@@ -939,18 +1194,33 @@ function verifyArtifacts(repo, manifest, fail, ok) {
   }
   let matched = 0;
   for (const artifact of manifest.artifacts) {
-    if (artifact.sha256 === sha256(read(repo, artifact.path)) &&
-        typeof artifact.role === 'string' && artifact.role.length > 0) matched += 1;
-    else fail(`artifact SHA-256 or role mismatch: ${artifact.path}`);
+    const candidateBlob = gitBlob(repo, AUTHORITY_CANDIDATE, artifact.path);
+    const mergeBlob = gitBlob(repo, AUTHORITY_MERGE, artifact.path);
+    const historicalMatch = candidateBlob !== null && mergeBlob !== null &&
+      artifact.sha256 === sha256(candidateBlob) && artifact.sha256 === sha256(mergeBlob);
+    const currentMatch = artifact.path === VALIDATOR_PATH
+      ? artifact.sha256 === ORIGINAL_VALIDATOR_SHA256 &&
+        (validatorIdentity.current === ORIGINAL_VALIDATOR_SHA256 || validatorIdentity.superseded)
+      : artifact.sha256 === sha256(read(definitionRepo, artifact.path));
+    if (historicalMatch && currentMatch && typeof artifact.role === 'string' && artifact.role.length > 0) {
+      matched += 1;
+    } else fail(`historical/current artifact SHA-256 or role mismatch: ${artifact.path}`);
   }
-  if (matched === expectedPaths.length) ok(`all ${matched} authority artifact SHA-256 identities verified`);
+  if (matched === expectedPaths.length) {
+    ok(`all ${matched} immutable Authority artifacts reconstruct at Candidate and merge; superseded validator history is preserved`);
+  }
 }
 
-export function run(ctx) {
+function runImpl(ctx) {
   const details = [];
   let pass = true;
   const ok = (message) => details.push(`ok: ${message}`);
   const fail = (message) => { pass = false; details.push(`FAIL: ${message}`); };
+  const definitionRepo = ctx.definitionRepo ?? ctx.repo;
+  const head = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false }).stdout.trim();
+  const branch = git(ctx.repo, ['symbolic-ref', '--short', 'HEAD'], { check: false });
+  const lifecycleState = head === AUTHORITY_CANDIDATE && branch.status === 0 &&
+    branch.stdout.trim() === AUTHORITY_BRANCH ? 'CANDIDATE_FROZEN' : 'MERGED';
   let authority, artifactManifest, packageSchema, adapterSchema, testPlanSchema, runManifestSchema, migration;
   try {
     authority = readJSON(ctx.repo, AUTHORITY_PATH);
@@ -965,12 +1235,16 @@ export function run(ctx) {
     return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
   }
 
-  verifyGitLifecycle(ctx.repo, fail, ok);
+  const lifecycleFacts = verifyGitLifecycle(
+    ctx.repo, fail, ok, lifecycleState, ctx.bindGitHubExecutionIdentity !== false,
+  );
+  if (HISTORICAL_LIFECYCLE_STATES.has(lifecycleState)) verifyAcceptedAmendment(definitionRepo, fail, ok);
+  const validatorIdentity = resolveValidatorIdentity(definitionRepo, fail, ok);
   verifyB001Protection(ctx.repo, fail, ok);
   verifyAuthorityShape(authority, fail, ok);
   verifyNoPlaceholders(ctx.repo, authority, fail, ok);
 
-  const actualChanged = changedPaths(ctx.repo);
+  const actualChanged = changedPaths(ctx.repo, AIPT_BASE_COMMIT, AUTHORITY_CANDIDATE);
   if (!same(actualChanged, [...AUTHORITY_ALLOWED_PATHS].sort())) {
     fail(`authority candidate path set drifted: ${JSON.stringify(actualChanged)}`);
   } else ok(`authority Candidate changes exactly ${actualChanged.length} frozen governance paths`);
@@ -1022,12 +1296,20 @@ export function run(ctx) {
   if (probes.length === 39 && probeMatches === 39) ok('all N01-N39 generic contract and B001 regression probes reject with their frozen result class');
   else if (probes.length !== 39) fail(`negative probe implementation count is ${probes.length}, expected 39`);
 
-  verifyArtifacts(ctx.repo, artifactManifest, fail, ok);
+  verifyArtifacts(ctx.repo, definitionRepo, artifactManifest, validatorIdentity, fail, ok);
 
-  const index = text(ctx.repo, 'docs/authority/README.md');
-  const packageJSON = readJSON(ctx.repo, 'package.json');
-  const aggregate = text(ctx.repo, 'scripts/ci/run-checks.mjs');
-  const workflow = text(ctx.repo, '.github/workflows/ci.yml');
+  const lifecycleProbes = lifecycleRegressionChecks();
+  for (const probe of lifecycleProbes) {
+    if (!probe.matched) fail(`${probe.name} expected ${probe.expected}, got ${probe.actual}`);
+  }
+  if (lifecycleProbes.every((probe) => probe.matched)) {
+    ok(`all ${lifecycleProbes.length} F1 lifecycle/topology/identity regression probes matched`);
+  }
+
+  const index = text(definitionRepo, 'docs/authority/README.md');
+  const packageJSON = readJSON(definitionRepo, 'package.json');
+  const aggregate = text(definitionRepo, 'scripts/ci/run-checks.mjs');
+  const workflow = text(definitionRepo, '.github/workflows/ci.yml');
   for (const [label, condition] of [
     ['authority index', index.includes('unregistered-aipt-p1-b000-authority.json') && index.includes('UNREGISTERED_AIPT_P1_B000_AUTHORITY.md')],
     ['package command', packageJSON.scripts?.['check:p1-b000-authority'] === `node ${VALIDATOR_PATH}`],
@@ -1047,15 +1329,40 @@ export function run(ctx) {
     aipt_base_tree: AIPT_BASE_TREE,
     unregistered_source_commit: UNREGISTERED_COMMIT,
     unregistered_source_tree: UNREGISTERED_TREE,
+    lifecycle_phase: lifecycleState,
+    authority_candidate_commit: lifecycleFacts.candidate?.commit ?? null,
+    authority_merge_commit: lifecycleFacts.merge?.commit ?? null,
     changed_paths: actualChanged,
     negative_probes: probes.length === 39 && probeMatches === 39 ? 'PASS' : 'FAIL',
     negative_probe_count: probes.length,
+    lifecycle_regression: lifecycleProbes.every((probe) => probe.matched) ? 'PASS' : 'FAIL',
+    lifecycle_regression_count: lifecycleProbes.length,
+    original_validator_sha256: ORIGINAL_VALIDATOR_SHA256,
+    effective_validator_sha256: validatorIdentity.current,
     b001_regression: pass ? 'PASS' : 'FAIL',
     real_model_calls: 0,
     real_playtest_executed: false,
     implementation_started: false,
     merge_authorized: false,
   };
+}
+
+export function run(ctx) {
+  try {
+    return runImpl(ctx);
+  } catch (error) {
+    return {
+      result: 'FAIL',
+      details: [`FAIL: structured Authority validator error: ${error.message}`],
+      task_id: TASK_ID,
+      negative_probes: 'NOT_RUN',
+      uncaught_validator_errors: 0,
+      real_model_calls: 0,
+      real_playtest_executed: false,
+      implementation_started: false,
+      merge_authorized: false,
+    };
+  }
 }
 
 runAsMain(import.meta.url, 'p1-b000-authority', run);

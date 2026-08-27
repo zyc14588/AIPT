@@ -248,8 +248,27 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run check:p1-b000-authority',
     nameTokens: ['p1', 'b000', 'authority', 'contract', 'schemas', 'scope', 'lifecycle', 'n01-n39', 'gate'],
   },
+  {
+    command: 'pnpm run check:p1-b000-authority-repair',
+    nameTokens: ['p1', 'b000', 'authority', 'post-merge', 'repair', 'f1', 'f2', 'supersession', 's01-s10', 'gate'],
+  },
   { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
+
+// The accepted Amendment's classifier remains executable as immutable
+// provenance, but after its closeout it must emit applicable=false and route
+// every normal/repair gate. Only these exact conditions are permitted; an
+// arbitrary conditional remains a fail-closed workflow violation.
+const EXACT_LIFECYCLE_STEP_CONDITIONS = new Map([
+  ['Authority Amendment schema provenance closeout fingerprints and A01-A20 R01-R20 gate', "steps.authority_amendment_classify.outputs.applicable == 'true'"],
+  ['B008 M0 Development Pass final gate (MERGED_CLOSED + boundary probes)', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['AIPT MVP B001 Test Plan + immutable Manifest + PostgreSQL queue/lease gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['AIPT MVP B000 bootstrap gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['P1 B000 authority contract schemas scope lifecycle and N01-N39 gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['P1 B000 Authority post-merge repair F1 F2 supersession and S01-S10 gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['MVP-B001+B001+B002+B003+B004+B005+B006+B007+B008 aggregate validators (pnpm run check)', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['Exact Base Authority candidate-stage post-merge reverification', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+]);
 
 // Retained single-line gate commands: each must be exactly one real inline
 // `run:` step of its intended job. A comment, a step name, another job, or a
@@ -1140,7 +1159,10 @@ function checkWorkflowText(text, lock) {
     }
     for (const s of analyzed) {
       const label = s.name ? JSON.stringify(s.name) : '(unnamed step)';
-      for (const c of s.conditions.if) {
+      const exactLifecycleCondition = required === 'toolchain' &&
+        s.conditions.if.length === 1 &&
+        EXACT_LIFECYCLE_STEP_CONDITIONS.get(s.name) === s.conditions.if[0].value;
+      for (const c of exactLifecycleCondition ? [] : s.conditions.if) {
         clean = false;
         fail(`${required} step ${label} must not be conditionally skipped (if: ${c.value} at line ${c.lineNo})`);
       }
@@ -1153,7 +1175,7 @@ function checkWorkflowText(text, lock) {
         fail(`${required} step ${label} must not set a custom shell (shell: ${c.value} at line ${c.lineNo})`);
       }
     }
-    if (clean) ok(`${required} job and every step are unconditional and failure-visible`);
+    if (clean) ok(`${required} job and every step are unconditional or exact Amendment-lifecycle routed, and failure-visible`);
   }
 
   // ---- toolchain job: matrix, B002 focused commands, auditable step names ----
@@ -2021,7 +2043,7 @@ export function run(ctx) {
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) => {
-            const step = '      - name: AIPT MVP B000 bootstrap gate\n        run: pnpm run check:mvp-bootstrap';
+            const step = "      - name: AIPT MVP B000 bootstrap gate\n        if: steps.authority_amendment_classify.outputs.applicable != 'true'\n        run: pnpm run check:mvp-bootstrap";
             return t.replace(step, `${step}\n${step}`);
           }),
           lock,

@@ -419,6 +419,131 @@ function expectedCloseoutStatus(base, facts) {
   return expected;
 }
 
+function validateHistoricalB001Record(record) {
+  const problems = [];
+  if (!isObject(record)) return ['accepted B001 historical record is missing or malformed'];
+  if (record.task_id !== MVP_B001.task_id ||
+      record.base?.commit !== MVP_B001.base_commit || record.base?.tree !== MVP_B001.base_tree ||
+      record.candidate?.commit !== MVP_B001_ACCEPTANCE.candidate_commit ||
+      record.candidate?.tree !== MVP_B001_ACCEPTANCE.candidate_tree ||
+      record.implementation_merge?.commit !== MVP_B001_ACCEPTANCE.merge_commit ||
+      record.implementation_merge?.tree !== MVP_B001_ACCEPTANCE.merge_tree ||
+      JSON.stringify(record.implementation_merge?.parents) !== JSON.stringify(MVP_B001_ACCEPTANCE.merge_parents) ||
+      record.implementation_merge?.subject !== MVP_B001_ACCEPTANCE.merge_subject) {
+    problems.push('accepted B001 Candidate/merge identity drifted');
+  }
+  const state = record.state;
+  if (state === 'MERGED') {
+    if (record.merged !== true || record.post_merge_verified !== false || record.closed !== false ||
+        Object.hasOwn(record, 'closeout_authority') || Object.hasOwn(record, 'post_merge_ci')) {
+      problems.push('MERGED B001 record carries an invalid later-stage field combination');
+    }
+  } else if (state === 'POST_MERGE_VERIFIED') {
+    if (record.merged !== true || record.post_merge_verified !== true || record.closed !== false ||
+        Object.hasOwn(record, 'closeout_authority') ||
+        record.post_merge_ci?.head_sha !== MVP_B001_ACCEPTANCE.post_merge_ci_head_sha ||
+        record.post_merge_ci?.conclusion !== 'success') {
+      problems.push('POST_MERGE_VERIFIED B001 record lacks exact CI or carries premature closeout');
+    }
+  } else if (['CLOSED', 'MERGED_CLOSED'].includes(state)) {
+    if (record.merged !== true || record.post_merge_verified !== true || record.closed !== true ||
+        record.closeout_authority !== 'AIPT-MVP-B001-CLOSEOUT-001' ||
+        record.post_merge_ci?.run !== MVP_B001_ACCEPTANCE.post_merge_ci_run ||
+        record.post_merge_ci?.head_sha !== MVP_B001_ACCEPTANCE.post_merge_ci_head_sha ||
+        record.post_merge_ci?.conclusion !== MVP_B001_ACCEPTANCE.post_merge_ci_conclusion ||
+        record.post_merge_ci?.jobs_failed !== 0) {
+      problems.push('CLOSED B001 record lacks immutable closeout/post-merge identity');
+    }
+  } else {
+    problems.push('unknown B001 historical lifecycle state');
+  }
+  return problems;
+}
+
+export function validateB001RegistryLifecycle(status, baseStatus) {
+  const problems = [];
+  if (!isObject(status) || !isObject(status.repositories?.AIPT) || !isObject(status.tracks?.['AIPT-STANDALONE'])) {
+    return { result: 'FAIL', phase: 'INVALID', problems: ['project status registry is malformed'] };
+  }
+  const aipt = status.repositories.AIPT;
+  const hasPending = Object.hasOwn(aipt, 'pending_candidate');
+  const historical = aipt.mvp_b001;
+  if (hasPending) {
+    if (!isObject(aipt.pending_candidate) || aipt.pending_candidate.task_id !== MVP_B001.task_id) {
+      problems.push('active/candidate lifecycle has malformed or wrong pending_candidate');
+    }
+    if (historical !== undefined) problems.push('active pending_candidate conflicts with an accepted historical B001 record');
+    if (isObject(baseStatus)) {
+      for (const problem of compareExact(status, expectedCandidateStatus(baseStatus), '$status')) problems.push(problem);
+    }
+    return { result: problems.length === 0 ? 'PASS' : 'FAIL', phase: 'ACTIVE_CANDIDATE', problems };
+  }
+  if (!isObject(historical)) {
+    problems.push('candidate lifecycle is missing pending_candidate and no accepted historical record exists');
+    return { result: 'FAIL', phase: 'INVALID', problems };
+  }
+  problems.push(...validateHistoricalB001Record(historical));
+  const closed = ['CLOSED', 'MERGED_CLOSED'].includes(historical.state);
+  if (closed && isObject(baseStatus)) {
+    for (const problem of compareExact(status, expectedCloseoutStatus(baseStatus, {}), '$status')) problems.push(problem);
+  }
+  const phase = historical.state === 'MERGED' ? 'MERGED_HISTORICAL'
+    : historical.state === 'POST_MERGE_VERIFIED' ? 'POST_MERGE_VERIFIED_HISTORICAL'
+      : closed ? 'CLOSED_HISTORICAL' : 'INVALID';
+  return { result: problems.length === 0 ? 'PASS' : 'FAIL', phase, problems };
+}
+
+function historicalStatusFixture(baseStatus, state) {
+  const status = expectedCloseoutStatus(baseStatus, {});
+  const record = status.repositories.AIPT.mvp_b001;
+  if (state === 'MERGED') {
+    record.state = 'MERGED';
+    record.post_merge_verified = false;
+    record.closed = false;
+    delete record.closeout_authority;
+    delete record.post_merge_ci;
+  } else if (state === 'POST_MERGE_VERIFIED') {
+    record.state = 'POST_MERGE_VERIFIED';
+    record.closed = false;
+    delete record.closeout_authority;
+  }
+  return status;
+}
+
+function registryLifecycleRegressionChecks(baseStatus) {
+  const active = expectedCandidateStatus(baseStatus);
+  const missingPending = clone(active);
+  delete missingPending.repositories.AIPT.pending_candidate;
+  const merged = historicalStatusFixture(baseStatus, 'MERGED');
+  const closed = expectedCloseoutStatus(baseStatus, {});
+  const mismatch = clone(closed);
+  mismatch.repositories.AIPT.mvp_b001.candidate.commit = '0'.repeat(40);
+  const invalidCombination = clone(merged);
+  invalidCombination.repositories.AIPT.mvp_b001.closed = true;
+  const malformed = { schema: 'aipt.public.project-status/v1', repositories: null };
+  const cases = [
+    ['F2-R01 ACTIVE + valid pending Candidate', active, 'PASS'],
+    ['F2-R02 Candidate missing pending Candidate', missingPending, 'FAIL'],
+    ['F2-R03 MERGED historical state', merged, 'PASS'],
+    ['F2-R04 CLOSED without pending Candidate', closed, 'PASS'],
+    ['F2-R05 accepted identity mismatch', mismatch, 'FAIL'],
+    ['F2-R06 invalid state-field combination', invalidCombination, 'FAIL'],
+    ['F2-R07 malformed historical closeout', malformed, 'FAIL'],
+  ];
+  const results = cases.map(([name, value, expected]) => {
+    let actual = 'FAIL';
+    let threw = false;
+    try { actual = validateB001RegistryLifecycle(value, baseStatus).result; } catch { threw = true; }
+    return { name, expected, actual, threw, matched: !threw && expected === actual };
+  });
+  results.push({
+    name: 'F2-R08 uncaught exceptions', expected: 'PASS',
+    actual: results.some((item) => item.threw) ? 'FAIL' : 'PASS', threw: false,
+    matched: !results.some((item) => item.threw),
+  });
+  return results;
+}
+
 function readCommit(repo, commit) {
   if (!commit) return null;
   const cp = git(repo, ['rev-list', '--parents', '-n', '1', commit], { check: false });
@@ -805,14 +930,14 @@ function runSuccessorAuthorityPreservation(ctx) {
     fail('exact B001 closeout commit/tree/topology drifted');
   } else ok('exact B001 closeout commit/tree/topology verified');
   if (git(ctx.repo, ['merge-base', '--is-ancestor', B001_CLOSEOUT_COMMIT, 'HEAD'], { check: false }).status !== 0) {
-    fail('successor authority Candidate does not descend from exact B001 closeout');
-  } else ok('successor authority Candidate descends from exact B001 closeout');
-  const laterMerges = lines(git(ctx.repo, ['rev-list', '--merges', `${B001_CLOSEOUT_COMMIT}..HEAD`], { check: false })) ?? [];
-  if (laterMerges.length !== 0) fail('successor authority Candidate contains a merge');
-  else ok('successor authority Candidate has zero post-closeout merges');
+    fail('current history does not descend from exact B001 closeout');
+  } else ok('current history descends from exact B001 closeout; later task merges are not misclassified as B001 Candidate commits');
   const head = git(ctx.repo, ['rev-parse', 'HEAD^{commit}'], { check: false }).stdout.trim();
-  if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_SHA !== head) fail('GITHUB_SHA is not successor Candidate HEAD');
-  else ok('successor authority checkout identity is bound to HEAD');
+  if (process.env.GITHUB_ACTIONS === 'true' && ctx.bindGitHubExecutionIdentity !== false && process.env.GITHUB_SHA !== head) {
+    fail('GITHUB_SHA is not successor Candidate HEAD');
+  } else if (process.env.GITHUB_ACTIONS === 'true' && ctx.bindGitHubExecutionIdentity === false) {
+    ok('GitHub execution identity is intentionally distinct from the exact detached verification target');
+  } else ok('successor authority checkout identity is bound to HEAD');
 
   try {
     if (read(ctx.repo, STATUS_PATH) !== closeoutText(ctx.repo, STATUS_PATH) ||
@@ -858,6 +983,14 @@ function runSuccessorAuthorityPreservation(ctx) {
   const expectedStatus = JSON.parse(closeoutText(ctx.repo, STATUS_PATH));
   const statusProblems = compareExact(status, expectedStatus, '$status');
   statusProblems.forEach((problem) => fail(`B001 status: ${problem}`));
+  const registryLifecycle = validateB001RegistryLifecycle(status, JSON.parse(baseText(ctx.repo, STATUS_PATH)));
+  registryLifecycle.problems.forEach((problem) => fail(`B001 registry lifecycle: ${problem}`));
+  if (registryLifecycle.result === 'PASS') {
+    ok('CLOSED B001 lifecycle resolves from immutable accepted Candidate, merge, post-merge CI and closeout identity without pending_candidate');
+  }
+  const registryProbes = registryLifecycleRegressionChecks(JSON.parse(baseText(ctx.repo, STATUS_PATH)));
+  registryProbes.forEach((probe) => { if (!probe.matched) fail(`${probe.name} expected ${probe.expected}, got ${probe.actual}`); });
+  if (registryProbes.every((probe) => probe.matched)) ok(`all ${registryProbes.length} F2 lifecycle/field/malformed-input probes matched with zero uncaught exceptions`);
   const statusMutation = clone(status);
   statusMutation.tracks['AIPT-STANDALONE'].next_batch_authorized = true;
   if (compareExact(statusMutation, expectedStatus).length === 0) fail('B001 unauthorized-next mutation was accepted');
@@ -877,21 +1010,24 @@ function runSuccessorAuthorityPreservation(ctx) {
     result: pass ? 'PASS' : 'FAIL',
     details,
     task_id: MVP_B001.task_id,
-    lifecycle_phase: 'SUCCESSOR_AUTHORITY_CANDIDATE',
+    lifecycle_phase: 'CLOSED_HISTORICAL',
     candidate_commit: head,
     candidate_tree: git(ctx.repo, ['rev-parse', 'HEAD^{tree}'], { check: false }).stdout.trim(),
     migration: MVP_B001.migration,
     migration_sha256: MVP_B001.migration_sha256,
     changed_paths: changed,
     negative_probes: pass ? 'PASS' : 'FAIL',
-    negative_probe_count: schemaChecks.probeCount + migrationProbes.length + lifecycleProbes.length + 1,
+    negative_probe_count: schemaChecks.probeCount + migrationProbes.length + lifecycleProbes.length + registryProbes.length + 1,
+    lifecycle_regression: registryProbes.every((probe) => probe.matched) ? 'PASS' : 'FAIL',
+    lifecycle_regression_count: registryProbes.length,
+    uncaught_validator_errors: 0,
     external_model_calls: 0,
     next_batch_authorized: false,
     next_batch_started: false,
   };
 }
 
-export function run(ctx, args = {}) {
+function runImpl(ctx, args = {}) {
   if (args['historical-web']) return runHistoricalWeb(ctx);
   if (args['historical-launcher-integration']) return runHistoricalLauncherIntegration(ctx, args);
   if (isSuccessorAuthorityCheckout(ctx.repo)) return runSuccessorAuthorityPreservation(ctx);
@@ -911,6 +1047,20 @@ export function run(ctx, args = {}) {
   } catch (error) {
     fail(`B001 authority input unreadable: ${error.message}`);
     return { result: 'FAIL', details, negative_probes: 'NOT_RUN' };
+  }
+
+  const registryLifecycle = validateB001RegistryLifecycle(status, baseStatus);
+  if (registryLifecycle.phase === 'CLOSED_HISTORICAL' && registryLifecycle.result === 'PASS') {
+    return runSuccessorAuthorityPreservation(ctx);
+  }
+  if (registryLifecycle.result === 'FAIL') {
+    registryLifecycle.problems.forEach((problem) => fail(`B001 registry lifecycle: ${problem}`));
+    return {
+      result: 'FAIL', details, task_id: MVP_B001.task_id,
+      lifecycle_phase: registryLifecycle.phase,
+      negative_probes: 'NOT_RUN', uncaught_validator_errors: 0,
+      external_model_calls: 0, next_batch_authorized: false, next_batch_started: false,
+    };
   }
 
   const baseTree = git(ctx.repo, ['rev-parse', `${MVP_B001.base_commit}^{tree}`], { check: false }).stdout.trim();
@@ -994,6 +1144,24 @@ export function run(ctx, args = {}) {
     negative_probes: pass ? 'PASS' : 'FAIL', negative_probe_count: allProbes,
     external_model_calls: 0, next_batch_authorized: false, next_batch_started: false,
   };
+}
+
+export function run(ctx, args = {}) {
+  try {
+    return runImpl(ctx, args);
+  } catch (error) {
+    return {
+      result: 'FAIL',
+      details: [`FAIL: structured B001 validator error: ${error.message}`],
+      task_id: MVP_B001.task_id,
+      lifecycle_phase: 'INVALID',
+      negative_probes: 'NOT_RUN',
+      uncaught_validator_errors: 0,
+      external_model_calls: 0,
+      next_batch_authorized: false,
+      next_batch_started: false,
+    };
+  }
 }
 
 runAsMain(import.meta.url, 'mvp-b001', run);
