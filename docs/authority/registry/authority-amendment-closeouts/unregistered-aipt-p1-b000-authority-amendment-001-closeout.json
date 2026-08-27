@@ -1,0 +1,80 @@
+{
+  "schema": "aipt.public.authority-amendment-closeout/v1",
+  "closeout_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-CLOSEOUT-001",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+  "revision_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+  "accepted_identity": {
+    "candidate_commit": "a1d614c7468f67d13bcbf32f65ade7613a85e202",
+    "candidate_tree": "c03ce80729cce470e35325fd4d4a35e221221c55",
+    "merge_commit": "33a53d53c6db474f46a886dcbbba6d083eee4f27",
+    "merge_tree": "c03ce80729cce470e35325fd4d4a35e221221c55",
+    "merge_parents": [
+      "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+      "a1d614c7468f67d13bcbf32f65ade7613a85e202"
+    ]
+  },
+  "candidate_ci": {
+    "run_id": 33040174063,
+    "head_sha": "a1d614c7468f67d13bcbf32f65ade7613a85e202",
+    "conclusion": "success",
+    "jobs_failed": 0
+  },
+  "amendment_merge_ci": {
+    "run_id": 33043946214,
+    "head_sha": "33a53d53c6db474f46a886dcbbba6d083eee4f27",
+    "conclusion": "success",
+    "jobs_failed": 0
+  },
+  "post_merge_verification": {
+    "amendment_validator": "PASS",
+    "amendment_artifact_hashes": "PASS",
+    "base_authority_immutability": "PASS",
+    "effective_authority_resolution": "PASS",
+    "amendment_ordering": "PASS",
+    "amendment_provenance": "PASS",
+    "lifecycle_transition": "PASS",
+    "closeout_path_policy": "PASS",
+    "b001_business_regression": "PASS",
+    "go_test_all": "PASS",
+    "negative_probes": "PASS",
+    "legacy_validator_results": [
+      {
+        "defect_id": "F1",
+        "validator": "scripts/ci/validate/p1-b000-authority.mjs",
+        "executed": true,
+        "raw_result": "FAIL",
+        "classification": "KNOWN_PREEXISTING_BOOTSTRAP_DEFECT"
+      },
+      {
+        "defect_id": "F2",
+        "validator": "scripts/ci/validate/mvp-b001.mjs",
+        "executed": true,
+        "raw_result": "FAIL",
+        "classification": "KNOWN_PREEXISTING_BOOTSTRAP_DEFECT"
+      }
+    ],
+    "unresolved_placeholders": 0
+  },
+  "lifecycle_transition": {
+    "from": "MERGED",
+    "through": "POST_MERGE_VERIFIED",
+    "to": "CLOSED"
+  },
+  "owner_closeout_authorization": {
+    "authorized": true,
+    "authorized_by": "Owner",
+    "directive": "MERGE_AND_CLOSEOUT_AMENDMENT_R1"
+  },
+  "scope": {
+    "governance_only": true,
+    "business_code_changed": false,
+    "validator_repair_executed": false,
+    "b000_implementation_started": false
+  },
+  "bootstrap_permission": {
+    "use_count": 1,
+    "single_use": true,
+    "expired_after_this_transition": true
+  },
+  "open_findings": []
+}
