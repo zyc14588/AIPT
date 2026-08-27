@@ -13,6 +13,7 @@ AIPT 的权威信息分两层：
    - [registry/batch-graph.json](registry/batch-graph.json)：M0 closeout 后的 13 项 MVP 权威串行图。
    - [registry/project-status.json](registry/project-status.json)：工作轨、仓库与审计状态快照。
    - [registry/unregistered-aipt-p1-b000-authority.json](registry/unregistered-aipt-p1-b000-authority.json)：`UNREGISTERED-AIPT-P1-B000` 的版本化、机器可验证 task-scoped Authority Contract；其优先级低于当前 ACTIVE/REFINED decision chain，高于 roadmap prose。
+   - [registry/unregistered-aipt-p1-b000-authority-amendment-001.json](registry/unregistered-aipt-p1-b000-authority-amendment-001.json)：R1 replacement Amendment；在不修改上述冻结 Authority 的前提下，追加授权 validator identity supersession、B001 historical CLOSED-state repair、exact-target post-merge reverification，以及一次性 direct governance closeout successor；只有按序且已接受的 Amendment/supersession record 才进入 effective Authority。
 2. **人类文档**——可读解释与施工合同。若与机器登记冲突，以机器登记为准；人类文档**不是**第二份独立权威。
 
 ## 冲突处理顺序
@@ -39,6 +40,14 @@ AIPT 的权威信息分两层：
 | [registry/batch-graph.json](registry/batch-graph.json) | 机器可读 MVP 批次图（13 项，顺序与字段冻结） |
 | [UNREGISTERED_AIPT_P1_B000_AUTHORITY.md](UNREGISTERED_AIPT_P1_B000_AUTHORITY.md) | P1 B000 的目标、边界、package/adapter/source/visibility/compatibility 与验收解释 |
 | [registry/unregistered-aipt-p1-b000-authority.json](registry/unregistered-aipt-p1-b000-authority.json) | P1 B000 执行机器权威、精确路径策略、N01–N39 与 lifecycle/stop contract |
+| [amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md](amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md) | P1 B000 Authority Amendment 001 的人类可读解释；原冻结身份与缺失历史 CI 事实保持不变 |
+| [registry/unregistered-aipt-p1-b000-authority-amendment-001.json](registry/unregistered-aipt-p1-b000-authority-amendment-001.json) | append-only Amendment、确定性 effective-authority resolution、supersession chain 与 recovery evidence 的机器权威 |
+
+## Authority Amendment 解析规则
+
+Authority Amendment 不采用“最新文件获胜”或“main 当前 hash 即权威”。解析顺序固定为：不可变 base Authority → 按唯一 sequence 与 accepted merge first-parent ancestry 排序的已接受 Amendment → 由这些 Amendment 授权、并通过独立验收的连续 supersession chain。原 artifact hash、授权 Amendment、变更理由、repair Candidate 与独立验收身份必须同时保留；冲突或断链一律 fail closed。
+
+Amendment-001/R1 的 bootstrap 权限只覆盖 replacement Candidate、其 legal merge 和一个直接治理 closeout child。该 child 只能新增精确 closeout evidence 路径，不能修改 Base Authority、Amendment 语义、validator、schema 或业务代码；`CLOSED` 后权限自动失效。F1/F2 仍实际执行并保留原始失败证据，只有冻结 hash 与精确缺陷指纹同时匹配才可分类为 `KNOWN_PREEXISTING_BOOTSTRAP_DEFECT`。
 
 领域文档：架构 [../architecture/README.md](../architecture/README.md) · 安全 [../security/README.md](../security/README.md) · 证据 [../evidence/README.md](../evidence/README.md) · 测试模型 [../test-model/README.md](../test-model/README.md) · 集成 [../integration/README.md](../integration/README.md) · 许可 [../licensing/README.md](../licensing/README.md) · 供应链 [../supply-chain/README.md](../supply-chain/README.md)
 

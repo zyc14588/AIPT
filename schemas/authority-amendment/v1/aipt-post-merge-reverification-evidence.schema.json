@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v1/aipt-post-merge-reverification-evidence.schema.json",
+  "title": "AIPT post-merge reverification evidence v1",
+  "description": "Evidence for a narrow recovery run when required historical post-merge CI is absent. It cannot replace a CI run that exists and failed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "evidence_id", "authority_task_id", "amendment_id", "original_merge_ci",
+    "candidate_identity", "merge_identity", "workflow_execution", "verification_target",
+    "validator_identities", "jobs", "b001_regression", "effective_authority_identities",
+    "repair_authority", "result", "provenance"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.post-merge-reverification-evidence/v1" },
+    "evidence_id": { "$ref": "#/$defs/identity" },
+    "authority_task_id": { "$ref": "#/$defs/identity" },
+    "amendment_id": { "$ref": "#/$defs/identity" },
+    "original_merge_ci": {
+      "type": "object", "additionalProperties": false,
+      "required": ["check_run", "conclusion", "historical_merge_ci_claim"],
+      "properties": {
+        "check_run": { "const": "ABSENT" },
+        "conclusion": { "type": "null" },
+        "historical_merge_ci_claim": { "const": "NOT_CLAIMED_PASS" }
+      }
+    },
+    "candidate_identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "verified"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "verified": { "const": true }
+      }
+    },
+    "merge_identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["commit", "tree", "parents", "ancestry_verified", "tree_equals_candidate", "no_unauthorized_content"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "parents": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "$ref": "#/$defs/gitOid" }
+        },
+        "ancestry_verified": { "const": true },
+        "tree_equals_candidate": { "const": true },
+        "no_unauthorized_content": { "const": true }
+      }
+    },
+    "workflow_execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["workflow_run_id", "event", "run_head_sha", "workflow_definition_identity"],
+      "properties": {
+        "workflow_run_id": { "type": "integer", "minimum": 1 },
+        "event": { "const": "workflow_dispatch" },
+        "run_head_sha": { "$ref": "#/$defs/gitOid" },
+        "workflow_definition_identity": {
+          "type": "object", "additionalProperties": false,
+          "required": ["path", "commit", "tree", "sha256", "source_repair_task_id"],
+          "properties": {
+            "path": { "$ref": "#/$defs/repoPath" },
+            "commit": { "$ref": "#/$defs/gitOid" },
+            "tree": { "$ref": "#/$defs/gitOid" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "source_repair_task_id": { "$ref": "#/$defs/identity" }
+          }
+        }
+      }
+    },
+    "verification_target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requested_target_sha", "resolved_target_sha", "target_tree", "checkout_mode", "clean_checkout", "modified_worktree_used"],
+      "properties": {
+        "requested_target_sha": { "$ref": "#/$defs/gitOid" },
+        "resolved_target_sha": { "$ref": "#/$defs/gitOid" },
+        "target_tree": { "$ref": "#/$defs/gitOid" },
+        "checkout_mode": { "const": "DETACHED_EXACT_COMMIT" },
+        "clean_checkout": { "const": true },
+        "modified_worktree_used": { "const": false }
+      }
+    },
+    "validator_identities": {
+      "type": "array", "minItems": 2, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["role", "path", "sha256", "source_repair_candidate_commit"],
+        "properties": {
+          "role": { "enum": ["AUTHORITY_VALIDATOR_IDENTITY", "B001_HISTORICAL_VALIDATOR_IDENTITY"] },
+          "path": { "$ref": "#/$defs/repoPath" },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "source_repair_candidate_commit": { "$ref": "#/$defs/gitOid" }
+        }
+      }
+    },
+    "jobs": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["name", "conclusion"],
+        "properties": {
+          "name": { "$ref": "#/$defs/nonEmpty" },
+          "conclusion": { "const": "success" }
+        }
+      }
+    },
+    "b001_regression": { "const": "PASS" },
+    "effective_authority_identities": { "const": "PASS" },
+    "repair_authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repair_task_id", "accepted_repair_candidate_commit", "accepted_repair_candidate_tree", "independent_acceptance"],
+      "properties": {
+        "repair_task_id": { "$ref": "#/$defs/identity" },
+        "accepted_repair_candidate_commit": { "$ref": "#/$defs/gitOid" },
+        "accepted_repair_candidate_tree": { "$ref": "#/$defs/gitOid" },
+        "independent_acceptance": { "const": "PASS" }
+      }
+    },
+    "result": { "const": "PASS" },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["execution_identity_distinct_from_verification_target", "append_only", "recovery_not_historical_ci"],
+      "properties": {
+        "execution_identity_distinct_from_verification_target": { "const": true },
+        "append_only": { "const": true },
+        "recovery_not_historical_ci": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string", "minLength": 1, "maxLength": 180,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,179}$"
+    },
+    "nonEmpty": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": {
+      "type": "string", "minLength": 1, "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    }
+  }
+}

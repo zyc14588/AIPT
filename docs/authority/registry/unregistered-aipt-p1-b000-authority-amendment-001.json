@@ -1,0 +1,608 @@
+{
+  "schema": "aipt.public.authority-amendment/v1",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+  "amendment_sequence": 1,
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "authority_candidate_commit": "c9f7729f666d11716c04d7682da16044ca965236",
+  "authority_candidate_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+  "authority_merge_commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+  "authority_merge_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+  "authority_merge_parents": [
+    "eede815e818d87362605f55d5bfd2a0460e6e130",
+    "c9f7729f666d11716c04d7682da16044ca965236"
+  ],
+  "authority_pr": 6,
+  "base_authority_artifact_manifest": "docs/authority/registry/unregistered-aipt-p1-b000-authority-artifacts.json",
+  "base_authority_artifact_manifest_sha256": "3e7d5ee752ac01ae4034fdaf2ec71231bb4f58eca9174e99619d0a13b200cd4f",
+  "revision": {
+    "revision_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+    "accepted_amendment_identity": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+    "revision_kind": "REPLACEMENT_BEFORE_MERGE",
+    "semantic_change": "BOOTSTRAP_CLOSEOUT_SUCCESSOR_ONLY",
+    "changed_semantics": [
+      "BOOTSTRAP_CLOSEOUT_SUCCESSOR_ACCEPTANCE",
+      "DIRECTLY_REQUIRED_CI_CLASSIFIER_SEMANTICS"
+    ],
+    "supersedes_candidate": {
+      "commit": "00c9a25ea3df7436339a104de4c412d6d6f39322",
+      "tree": "f308f1885112e0826dc6be4b70b0d7713d1a8dba",
+      "ci_run": 32987673859,
+      "merged": false,
+      "classification": "SUPERSEDED_BEFORE_MERGE",
+      "reason": "BOOTSTRAP_CLOSEOUT_MODEL_INCOMPLETE",
+      "history_preserved": true
+    },
+    "replacement_candidate_recording": "STRUCTURED_STAGE_REVIEW_REMOTE_CI_AND_IMMUTABLE_GIT_OBJECTS",
+    "prior_revision_attempts": [
+      {
+        "commit": "2296eb5ec90c64976b014663d04faff4530b4c48",
+        "tree": "f05010b18f63c9833e5ed2c2d7f1cdad212fe844",
+        "ci_run": 33039836247,
+        "conclusion": "failure",
+        "failed_stage": "BOOTSTRAP_CLASSIFIER",
+        "reason": "F1_GITHUB_PUSH_CONTEXT_VARIANT_NOT_MODELLED",
+        "recovery_override": false,
+        "provenance_preserved": true
+      }
+    ],
+    "validator_repair_performed": false,
+    "base_authority_modified": false,
+    "b000_contract_modified": false
+  },
+  "amendment_reason": [
+    {
+      "finding_id": "F1",
+      "summary": "The frozen Authority validator applies candidate-only zero-merge and fixed-branch invariants to legitimate merged and post-merge main states.",
+      "observed_effect": "The approved candidate, lawful no-fast-forward merge and byte-identical merge tree cannot be accepted on main by the frozen validator."
+    },
+    {
+      "finding_id": "F2",
+      "summary": "The B001 validator selects active-candidate mutation probes for the immutable historical CLOSED state.",
+      "observed_effect": "The validator dereferences an absent pending_candidate and throws an unstructured TypeError instead of producing a structured failure report."
+    },
+    {
+      "finding_id": "F3",
+      "summary": "The lawful Authority merge has no GitHub check run even though post-merge main CI was required.",
+      "observed_effect": "The immutable fact is original_merge_check_run equals ABSENT; a narrow exact-target reverification path is required without inventing a historical PASS."
+    }
+  ],
+  "authorized_changes": [
+    {
+      "change_id": "AC01",
+      "kind": "VALIDATOR_SUPERSESSION",
+      "role": "AUTHORITY_VALIDATOR_IDENTITY",
+      "path": "scripts/ci/validate/p1-b000-authority.mjs",
+      "old_sha256": "f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c",
+      "reason": "Permit one independently accepted repair chain to make Authority validation lifecycle-aware while retaining every integrity and scope invariant.",
+      "semantic_constraints": [
+        "SUPPORT_CANDIDATE_MERGED_POST_MERGE_CLOSED_TOPOLOGY",
+        "PRESERVE_ARTIFACT_HASH_VALIDATION",
+        "PRESERVE_ANCESTRY_VALIDATION",
+        "PRESERVE_CANDIDATE_IDENTITY_VALIDATION",
+        "PRESERVE_SCOPE_VALIDATION",
+        "PRESERVE_NEGATIVE_LIFECYCLE_CHECKS",
+        "REJECT_UNAUTHORIZED_COMMITS",
+        "REJECT_ARTIFACT_DRIFT",
+        "REJECT_ILLEGAL_LIFECYCLE_TRANSITIONS"
+      ]
+    },
+    {
+      "change_id": "AC02",
+      "kind": "HISTORICAL_VALIDATOR_REPAIR",
+      "role": "B001_HISTORICAL_VALIDATOR_IDENTITY",
+      "path": "scripts/ci/validate/mvp-b001.mjs",
+      "old_sha256": "ba29c75b68c282484cbdceeb7ae035c010b51181ce8e2b5f5b54b9c11a241aaf",
+      "reason": "Permit an independently accepted repair to validate CLOSED from immutable accepted and closeout identities while requiring pending_candidate only for active candidate states.",
+      "semantic_constraints": [
+        "PRESERVE_B001_BUSINESS_SEMANTICS",
+        "CLOSED_USES_IMMUTABLE_ACCEPTED_CLOSEOUT_IDENTITY",
+        "ACTIVE_CANDIDATE_REQUIRES_PENDING_CANDIDATE",
+        "INVALID_COMBINATION_RETURNS_STRUCTURED_FAIL",
+        "PRESERVE_CAMPAIGN_SUITE_CASE_RUN",
+        "PRESERVE_ATTEMPT_INTERNAL_ONLY",
+        "PRESERVE_RUN_MANIFEST_IMMUTABILITY",
+        "PRESERVE_POSTGRESQL_QUEUE_AUTHORITY",
+        "PRESERVE_WIP_ONE_LEASE_HEARTBEAT_EXPIRY_RECOVERY",
+        "PRESERVE_APPEND_ONLY_ATTEMPT_HISTORY"
+      ]
+    },
+    {
+      "change_id": "AC03",
+      "kind": "POST_MERGE_REVERIFICATION_INFRASTRUCTURE",
+      "role": "POST_MERGE_REVERIFICATION_DEFINITION",
+      "path": "docs/authority/registry/post-merge-reverification",
+      "reason": "Permit a repair candidate to add an exact-target workflow definition and append-only evidence that can replace only an absent required historical check run.",
+      "semantic_constraints": [
+        "WORKFLOW_AND_VALIDATORS_FROM_ACCEPTED_REPAIR_CANDIDATE",
+        "CHECKOUT_EXACT_REQUESTED_TARGET_SHA",
+        "REQUESTED_AND_RESOLVED_SHA_EQUAL",
+        "TARGET_TREE_EXACT",
+        "CLEAN_DETACHED_TARGET_CHECKOUT",
+        "EXECUTION_IDENTITY_DISTINCT_FROM_VERIFICATION_TARGET",
+        "REAL_FAILED_CI_NOT_OVERRIDABLE"
+      ]
+    }
+  ],
+  "forbidden_changes": [
+    "MODIFY_BASE_HUMAN_AUTHORITY",
+    "MODIFY_BASE_MACHINE_AUTHORITY",
+    "MODIFY_BASE_AUTHORITY_ARTIFACT_MANIFEST",
+    "WEAKEN_ARTIFACT_HASH_VALIDATION",
+    "REMOVE_ANCESTRY_VALIDATION",
+    "REMOVE_CANDIDATE_IDENTITY_VALIDATION",
+    "REMOVE_SCOPE_VALIDATION",
+    "REMOVE_NEGATIVE_LIFECYCLE_CHECKS",
+    "ACCEPT_UNAUTHORIZED_COMMITS",
+    "ACCEPT_ARTIFACT_DRIFT",
+    "ACCEPT_ILLEGAL_LIFECYCLE_TRANSITION",
+    "CHANGE_PLAYTEST_PACKAGE_CONTRACT",
+    "CHANGE_RUNTIME_ADAPTER_INPUT_CONTRACT",
+    "CHANGE_B000_OBJECTIVE_OR_NON_GOALS",
+    "CHANGE_B001_BUSINESS_SEMANTICS",
+    "TREAT_REAL_FAILED_CI_AS_RECOVERABLE",
+    "CLAIM_ABSENT_HISTORICAL_CI_AS_PASS",
+    "VERIFY_OLD_SHA_WITH_MODIFIED_WORKTREE",
+    "START_B000_IMPLEMENTATION",
+    "START_POSTMERGE_REPAIR_IN_THIS_TASK"
+  ],
+  "supersession_policy": {
+    "original_frozen_authority_validator_identity": {
+      "role": "ORIGINAL_FROZEN_AUTHORITY_VALIDATOR_IDENTITY",
+      "artifact_role": "AUTHORITY_VALIDATOR_IDENTITY",
+      "path": "scripts/ci/validate/p1-b000-authority.mjs",
+      "sha256": "f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c",
+      "historical_identity_remains_authoritative": true,
+      "deletion_or_overwrite_of_history_permitted": false
+    },
+    "superseding_identity_role": "SUPERSEDING_AUTHORITY_VALIDATOR_IDENTITY",
+    "record_schema": "schemas/authority-amendment/v1/aipt-authority-validator-supersession.schema.json",
+    "record_directory": "docs/authority/registry/authority-validator-supersessions",
+    "record_extension": ".json",
+    "record_timing": "APPEND_AFTER_THE_REPAIR_ARTIFACT_COMMIT_IT_NAMES",
+    "repair_candidate_self_reference_permitted": false,
+    "record_commit_must_descend_from_repair_candidate_commit": true,
+    "required_fields": [
+      "role",
+      "path",
+      "old_sha256",
+      "new_sha256",
+      "amendment_id",
+      "repair_task_id",
+      "repair_candidate_commit",
+      "reason",
+      "semantic_constraints",
+      "regression_evidence"
+    ],
+    "allowed_roles": [
+      {
+        "role": "AUTHORITY_VALIDATOR_IDENTITY",
+        "path": "scripts/ci/validate/p1-b000-authority.mjs",
+        "required_initial_old_sha256": "f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c"
+      },
+      {
+        "role": "B001_HISTORICAL_VALIDATOR_IDENTITY",
+        "path": "scripts/ci/validate/mvp-b001.mjs",
+        "required_initial_old_sha256": "ba29c75b68c282484cbdceeb7ae035c010b51181ce8e2b5f5b54b9c11a241aaf"
+      }
+    ],
+    "chain_rule": "FOR_EACH_ROLE_SEQUENCE_STARTS_AT_ONE_AND_EACH_OLD_SHA256_EQUALS_THE_PREVIOUS_ACCEPTED_NEW_SHA256",
+    "first_link_predecessor": null,
+    "subsequent_link_predecessor_required": true,
+    "conflicting_same_role_records": "REJECT_UNLESS_EXPLICIT_CONTIGUOUS_CHAIN",
+    "unknown_role": "REJECT",
+    "unaccepted_amendment": "REJECT",
+    "unaccepted_repair": "NOT_EFFECTIVE",
+    "original_identity_preservation": "VERIFY_BYTES_AT_AUTHORITY_MERGE_COMMIT_AND_KEEP_BASE_MANIFEST_UNCHANGED"
+  },
+  "effective_authority_resolution": {
+    "algorithm": "IMMUTABLE_BASE_THEN_ORDERED_ACCEPTED_AMENDMENTS_THEN_ACCEPTED_SUPERSESSION_CHAIN",
+    "base_identity": {
+      "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+      "candidate_commit": "c9f7729f666d11716c04d7682da16044ca965236",
+      "merge_commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+      "merge_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+      "artifact_manifest_sha256": "3e7d5ee752ac01ae4034fdaf2ec71231bb4f58eca9174e99619d0a13b200cd4f"
+    },
+    "accepted_amendment_test": "OWNER_APPROVED_NO_FAST_FORWARD_MERGE_WITH_CANDIDATE_TREE_PRESERVED_AND_MERGE_ON_FIRST_PARENT_ANCESTRY",
+    "amendment_ordering": {
+      "primary": "amendment_sequence_ASCENDING",
+      "secondary": "accepted_merge_first_parent_ancestry_ASCENDING",
+      "unique_sequence_required": true,
+      "candidate_and_merge_identity_required": true,
+      "filesystem_mtime_permitted": false,
+      "directory_enumeration_order_permitted": false,
+      "human_interpretation_permitted": false
+    },
+    "supersession_ordering": {
+      "primary": "role_ASCENDING",
+      "secondary": "chain_sequence_ASCENDING",
+      "repair_candidate_must_be_in_accepted_commit_ancestry": true
+    },
+    "latest_file_wins": false,
+    "latest_main_hash_wins": false,
+    "unaccepted_record_effective": false,
+    "conflict_policy": "FAIL_CLOSED",
+    "resolution_output_fields": [
+      "base_authority_identity",
+      "amendment_identity",
+      "original_artifact_sha256",
+      "effective_artifact_sha256",
+      "change_reason",
+      "repair_candidate_commit",
+      "independent_acceptance"
+    ]
+  },
+  "post_merge_reverification_policy": {
+    "evidence_schema": "schemas/authority-amendment/v1/aipt-post-merge-reverification-evidence.schema.json",
+    "evidence_directory": "docs/authority/registry/post-merge-reverification",
+    "original_merge_check_run": "ABSENT",
+    "historical_merge_ci": "NOT_CLAIMED_PASS",
+    "verification_target_sha": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "verification_target_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "approved_candidate_commit": "c9f7729f666d11716c04d7682da16044ca965236",
+    "approved_candidate_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "eligibility_all": [
+      "REQUIRED_POST_MERGE_CHECK_RUN_ABSENT",
+      "APPROVED_CANDIDATE_IDENTITY_VERIFIED",
+      "MERGE_TREE_EQUALS_APPROVED_CANDIDATE_TREE",
+      "MERGE_ANCESTRY_VERIFIED",
+      "NO_UNAUTHORIZED_MERGE_CONTENT",
+      "EXACT_TARGET_SHA_CHECKED_OUT_CLEAN",
+      "REQUIRED_CI_EQUIVALENT_SUITE_EXECUTED",
+      "MACHINE_TRACEABLE_RUN_EVIDENCE_PRODUCED",
+      "WORKFLOW_DEFINITION_FROM_ACCEPTED_REPAIR_CANDIDATE",
+      "VALIDATOR_IDENTITIES_FROM_ACCEPTED_REPAIR_CANDIDATE",
+      "B001_REGRESSION_PASS",
+      "EFFECTIVE_AUTHORITY_IDENTITIES_PASS"
+    ],
+    "prohibited_when_any": [
+      "REAL_REQUIRED_CI_RAN_AND_FAILED",
+      "REAL_REQUIRED_CI_CONCLUSION_FAILURE",
+      "MERGE_CONTENT_UNKNOWN",
+      "TARGET_TREE_DRIFT",
+      "UNAUTHORIZED_COMMIT_PRESENT",
+      "VALIDATOR_FAILURE",
+      "SCOPE_FAILURE",
+      "MODIFIED_WORKTREE_USED_AS_OLD_TARGET"
+    ],
+    "workflow_contract": {
+      "trigger": "workflow_dispatch",
+      "input": "target_sha",
+      "requested_target_must_equal_resolved_target": true,
+      "checkout": "DETACHED_EXACT_COMMIT_IN_SEPARATE_CLEAN_TARGET_DIRECTORY",
+      "run_head_sha_is_verification_target": false,
+      "execution_identity_distinct_from_verification_target": true,
+      "definition_source": "ACCEPTED_POSTMERGE_REPAIR_CANDIDATE_ONLY"
+    },
+    "required_evidence_fields": [
+      "workflow_run_id",
+      "workflow_definition_identity",
+      "requested_target_sha",
+      "resolved_target_sha",
+      "target_tree",
+      "validator_identities",
+      "result",
+      "jobs"
+    ],
+    "real_failed_ci_overridable": false,
+    "recovery_is_historical_ci": false
+  },
+  "bootstrap_closeout_successor": {
+    "rule_id": "AMENDMENT_BOOTSTRAP_CLOSEOUT_SUCCESSOR_RULE_V1",
+    "accepted_amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+    "revision_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+    "eligible_lifecycle_classes": [
+      "CANDIDATE",
+      "LEGAL_MERGE",
+      "BOOTSTRAP_CLOSEOUT_SUCCESSOR"
+    ],
+    "replacement_candidate": {
+      "branch": "task/UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+      "base_commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+      "base_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+      "ordinary_commit_count": 2,
+      "identity_source": "EXACT_BRANCH_HEAD_WITH_CANDIDATE_BOUND_REMOTE_CI_AND_OWNER_APPROVAL",
+      "superseded_candidate_is_not_ancestor": true
+    },
+    "legal_merge": {
+      "mechanism": "OWNER_APPROVED_NO_FAST_FORWARD_MERGE",
+      "first_parent": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+      "second_parent": "CURRENT_APPROVED_REPLACEMENT_CANDIDATE",
+      "merge_tree_equals_candidate_tree": true,
+      "candidate_tree_preserved": true,
+      "real_merge_ci_required": true
+    },
+    "closeout_successor": {
+      "maximum_depth": 1,
+      "parent_rule": "PARENT_EQUALS_ACCEPTED_AMENDMENT_MERGE_COMMIT",
+      "commit_parent_count": 1,
+      "governance_only": true,
+      "record_schema": "schemas/authority-amendment/v1/aipt-authority-amendment-closeout.schema.json",
+      "record_path": "docs/authority/registry/authority-amendment-closeouts/unregistered-aipt-p1-b000-authority-amendment-001-closeout.json",
+      "exact_allowed_paths": [
+        "docs/authority/registry/authority-amendment-closeouts/unregistered-aipt-p1-b000-authority-amendment-001-closeout.json"
+      ],
+      "forbidden_exact_paths": [
+        "scripts/ci/validate/p1-b000-authority.mjs",
+        "scripts/ci/validate/mvp-b001.mjs",
+        "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+        "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+        "docs/authority/registry/unregistered-aipt-p1-b000-authority-artifacts.json",
+        "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md",
+        "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001.json",
+        "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001-artifacts.json",
+        "schemas/authority-amendment/v1/aipt-authority-amendment.schema.json",
+        "schemas/authority-amendment/v1/aipt-authority-amendment-closeout.schema.json",
+        "schemas/authority-amendment/v1/aipt-authority-validator-supersession.schema.json",
+        "schemas/authority-amendment/v1/aipt-post-merge-reverification-evidence.schema.json",
+        ".github/workflows/ci.yml",
+        "package.json",
+        "scripts/ci/run-checks.mjs",
+        "scripts/ci/validate/p1-b000-authority-amendment.mjs"
+      ],
+      "forbidden_path_prefixes": [
+        "internal/",
+        "cmd/",
+        "packages/",
+        "schemas/playtest-package/",
+        "schemas/runtime-adapter-input/"
+      ],
+      "only_transition": "MERGED_THROUGH_POST_MERGE_VERIFIED_TO_CLOSED",
+      "business_code_changed": false,
+      "validator_repair_executed": false,
+      "b000_implementation_started": false
+    },
+    "single_use": true,
+    "permission_expires_when": "AMENDMENT_CLOSED",
+    "duplicate_closeout_successor": "REJECT",
+    "rejected_lifecycle_classes": [
+      "UNRELATED_SUCCESSOR",
+      "MULTI_HOP_SUCCESSOR",
+      "BUSINESS_SUCCESSOR",
+      "VALIDATOR_REPAIR_SUCCESSOR",
+      "UNKNOWN_TOPOLOGY"
+    ],
+    "repair_task_bootstrap_use": "REJECT"
+  },
+  "legacy_defect_fingerprints": {
+    "classification": "KNOWN_PREEXISTING_BOOTSTRAP_DEFECT",
+    "exact_failure_count": 2,
+    "raw_execution_required": true,
+    "raw_stdout_stderr_preserved": true,
+    "skipping_permitted": false,
+    "F1": {
+      "validator": "scripts/ci/validate/p1-b000-authority.mjs",
+      "sha256": "f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c",
+      "failure_class": "STRUCTURED_VALIDATOR_FAIL",
+      "exit_status": 1,
+      "report_schema": "aipt.public.b001-validator-report/v1",
+      "report_name": "p1-b000-authority",
+      "expected_failure_semantics": [
+        "POST_BASE_MERGE_PRESENT_UNDER_CANDIDATE_ONLY_ZERO_MERGE_RULE",
+        "NON_BASE_AUTHORITY_BRANCH_REJECTED_BY_FIXED_BRANCH_RULE",
+        "EXACT_GOVERNANCE_LIFECYCLE_DIFF_REJECTED_BY_BASE_CANDIDATE_SCOPE_RULE"
+      ],
+      "lifecycle_context_messages": {
+        "LOCAL": "local authority checkout is not the exact authority branch",
+        "GITHUB_PUSH": "authority Candidate push is not bound to the exact authority branch",
+        "GITHUB_PULL_REQUEST": "NO_BRANCH_FAILURE_BECAUSE_FROZEN_VALIDATOR_ONLY_BRANCH_GATES_PUSH"
+      },
+      "additional_failure": "REJECT"
+    },
+    "F2": {
+      "validator": "scripts/ci/validate/mvp-b001.mjs",
+      "sha256": "ba29c75b68c282484cbdceeb7ae035c010b51181ce8e2b5f5b54b9c11a241aaf",
+      "failure_class": "UNCAUGHT_TYPE_ERROR",
+      "exit_status": 1,
+      "error_name": "TypeError",
+      "error_message": "Cannot set properties of undefined (setting 'merge_authorized')",
+      "stable_failure_site": "statusMutationChecks:692:102;mutation-map:695:85;run:981:24;entrypoint:999:1",
+      "additional_error": "REJECT"
+    },
+    "hash_change": "REJECT",
+    "unknown_failure_class": "REJECT",
+    "third_failure": "REJECT",
+    "artifact_ancestry_scope_or_provenance_failure": "REJECT"
+  },
+  "ci_contract": {
+    "classifier_command": "node scripts/ci/validate/p1-b000-authority-amendment.mjs --ci-bootstrap-classify",
+    "classifier_pipeline": [
+      "RUN_LEGACY_VALIDATORS",
+      "CAPTURE_RAW_RESULT",
+      "VERIFY_EXACT_FROZEN_HASH",
+      "VERIFY_EXACT_DEFECT_FINGERPRINT",
+      "FAIL_UNLESS_ONLY_F1_AND_F2_MATCH",
+      "EMIT_BOOTSTRAP_ROUTE"
+    ],
+    "candidate_ci": {
+      "real_run_required": true,
+      "head_sha": "CURRENT_APPROVED_REPLACEMENT_CANDIDATE",
+      "required_jobs_conclusion": "success"
+    },
+    "legal_merge_ci": {
+      "real_run_required": true,
+      "head_sha": "ACCEPTED_AMENDMENT_MERGE_COMMIT",
+      "required_jobs_conclusion": "success"
+    },
+    "closeout_ci": {
+      "real_run_required": true,
+      "head_sha": "BOOTSTRAP_CLOSEOUT_SUCCESSOR_COMMIT",
+      "required_jobs_conclusion": "success"
+    },
+    "legacy_validator_results": {
+      "executed": true,
+      "raw_result": "FAIL",
+      "permitted_classification": "KNOWN_PREEXISTING_BOOTSTRAP_DEFECT",
+      "claimed_pass": false
+    },
+    "exact_non_applicable_closed_task_stages": [
+      "pnpm run check:m0-development-pass",
+      "pnpm run check:mvp-bootstrap",
+      "pnpm run check"
+    ],
+    "required_amendment_command": "pnpm run check:p1-b000-authority-amendment",
+    "go_test_all_unconditional": true,
+    "business_contract_gates_unconditional": true,
+    "real_failed_ci_overridable": false,
+    "bootstrap_available_to_postmerge_repair": false,
+    "expires_after_closeout": true
+  },
+  "acceptance": {
+    "record_state": "CANDIDATE_FROZEN",
+    "accepted": false,
+    "append_only_acceptance": true,
+    "candidate_requirements": [
+      "BASE_AUTHORITY_IDENTITIES_EXACT",
+      "ORIGINAL_FREEZE_PRESERVED",
+      "AMENDMENT_SCHEMA_PASS",
+      "SUPERSESSION_SCHEMA_PASS",
+      "RECOVERY_EVIDENCE_SCHEMA_PASS",
+      "CLOSEOUT_EVIDENCE_SCHEMA_PASS",
+      "AMENDMENT_VALIDATOR_PASS",
+      "A01_A20_NEGATIVE_PROBES_PASS",
+      "R01_R20_REVISION_NEGATIVE_PROBES_PASS",
+      "F1_F2_RAW_EXECUTION_AND_EXACT_FINGERPRINT_PASS",
+      "BOOTSTRAP_TOPOLOGY_CLASSIFIER_PASS",
+      "B001_PROTECTED_BASELINE_PASS",
+      "GO_TEST_ALL_PASS",
+      "REMOTE_CANDIDATE_CI_PASS",
+      "CANDIDATE_COMMIT_AND_TREE_FROZEN",
+      "WORKTREE_CLEAN",
+      "OPEN_FINDINGS_EMPTY"
+    ],
+    "acceptance_event": {
+      "method": "SEPARATE_OWNER_APPROVED_GITHUB_PR_NO_FAST_FORWARD_MERGE",
+      "record_mutation_required": false,
+      "candidate_tree_must_be_preserved": true,
+      "merge_must_be_on_first_parent_ancestry": true,
+      "candidate_ci_head_sha_must_equal_candidate_commit": true
+    },
+    "candidate_ci_bootstrap": {
+      "classifier_command": "node scripts/ci/validate/p1-b000-authority-amendment.mjs --ci-bootstrap-classify",
+      "applicable_only_when": "EXACT_CANDIDATE_LEGAL_MERGE_OR_DIRECT_GOVERNANCE_CLOSEOUT_SUCCESSOR_AND_ALL_AMENDMENT_CHECKS_PASS",
+      "legacy_validators_executed": [
+        "scripts/ci/validate/p1-b000-authority.mjs",
+        "scripts/ci/validate/mvp-b001.mjs"
+      ],
+      "raw_failure_evidence_preserved": true,
+      "exact_known_defects_only": ["F1", "F2"],
+      "legacy_results_claimed_pass": false,
+      "unknown_or_additional_failure": "FAIL",
+      "unclassified_pre_closeout_successor": "FAIL",
+      "post_closeout_behavior": "BOOTSTRAP_EXPIRED_EXECUTE_NORMAL_GATES",
+      "required_amendment_command": "pnpm run check:p1-b000-authority-amendment",
+      "go_test_all_unconditional": true,
+      "business_contract_gates_unconditional": true
+    },
+    "accepted_identity_recording": "IMMUTABLE_GIT_MERGE_TOPOLOGY_REMOTE_CI_AND_FUTURE_SUPERSESSION_PROVENANCE",
+    "merge_eligible_when_all_requirements_true": true,
+    "merge_authorized": false,
+    "repair_authorized_before_acceptance": false,
+    "closeout_authorized": false
+  },
+  "lifecycle": {
+    "states": [
+      "AUTHORIZED",
+      "ACTIVE",
+      "CANDIDATE_FROZEN",
+      "CODEX_STAGE_PASS",
+      "MERGE_ELIGIBLE",
+      "MERGED",
+      "POST_MERGE_VERIFIED",
+      "CLOSED",
+      "BLOCKED",
+      "FAIL"
+    ],
+    "transitions": [
+      { "from": "AUTHORIZED", "to": "ACTIVE", "requires": "EXACT_BASE_BRANCH_AND_CLEAN_WORKTREE" },
+      { "from": "ACTIVE", "to": "CANDIDATE_FROZEN", "requires": "LOCAL_AMENDMENT_ACCEPTANCE_PASS_AND_ORDINARY_CANDIDATE_COMMIT" },
+      { "from": "CANDIDATE_FROZEN", "to": "CODEX_STAGE_PASS", "requires": "INDEPENDENT_REVIEW_PASS_AND_OPEN_FINDINGS_EMPTY" },
+      { "from": "CODEX_STAGE_PASS", "to": "MERGE_ELIGIBLE", "requires": "REMOTE_CANDIDATE_CI_SUCCESS_BOUND_TO_CANDIDATE" },
+      { "from": "MERGE_ELIGIBLE", "to": "MERGED", "requires": "SEPARATE_OWNER_MERGE_AUTHORIZATION_AND_EXACT_NO_FAST_FORWARD_MERGE" },
+      { "from": "MERGED", "to": "POST_MERGE_VERIFIED", "requires": "MAIN_IDENTITY_AND_APPLICABLE_POST_MERGE_VALIDATION_PASS" },
+      { "from": "POST_MERGE_VERIFIED", "to": "CLOSED", "requires": "SEPARATE_OWNER_CLOSEOUT_AUTHORIZATION_AND_DIRECT_SINGLE_USE_GOVERNANCE_CLOSEOUT_SUCCESSOR" },
+      { "from": "AUTHORIZED", "to": "BLOCKED", "requires": "DECLARED_STOP_CONDITION" },
+      { "from": "ACTIVE", "to": "BLOCKED", "requires": "DECLARED_STOP_CONDITION" },
+      { "from": "CANDIDATE_FROZEN", "to": "BLOCKED", "requires": "REMOTE_IDENTITY_OR_CI_BLOCKER" },
+      { "from": "AUTHORIZED", "to": "FAIL", "requires": "NON_RECOVERABLE_AUTHORITY_OR_SCOPE_FAILURE" },
+      { "from": "ACTIVE", "to": "FAIL", "requires": "NON_RECOVERABLE_VALIDATION_OR_SCOPE_FAILURE" },
+      { "from": "CANDIDATE_FROZEN", "to": "FAIL", "requires": "CANDIDATE_DRIFT_OR_REMOTE_CI_FAILURE" }
+    ],
+    "unlisted_transition": "REJECT",
+    "closed_state_terminal": true,
+    "fail_state_terminal": true,
+    "repair_task_state": "NOT_AUTHORIZED_NOT_STARTED",
+    "b000_implementation_state": "NOT_AUTHORIZED_NOT_STARTED"
+  },
+  "provenance": {
+    "owner_authorization": {
+      "authorized": true,
+      "authorized_by": "Owner",
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+      "scope": "APPEND_ONLY_AUTHORITY_AMENDMENT_ONLY"
+    },
+    "authority_merge": {
+      "mechanism": "github_pr_merge_commit",
+      "pull_request": 6,
+      "candidate_preserved": true,
+      "ancestry_verified": true,
+      "merge_tree_equals_candidate_tree": true,
+      "authority_artifacts_preserved": true,
+      "no_unauthorized_commit_in_merge": true
+    },
+    "authority_lifecycle_before_amendment": {
+      "merged": true,
+      "post_merge_verified": false,
+      "closed": false
+    },
+    "historical_ci_fact": {
+      "original_merge_check_run": "ABSENT",
+      "historical_pass_claimed": false
+    },
+    "amendment_base_commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "amendment_base_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "candidate_git_identity_embedded": false,
+    "candidate_identity_recording": "STRUCTURED_STAGE_REVIEW_AND_IMMUTABLE_GIT_OBJECTS",
+    "superseded_candidate": {
+      "commit": "00c9a25ea3df7436339a104de4c412d6d6f39322",
+      "tree": "f308f1885112e0826dc6be4b70b0d7713d1a8dba",
+      "ci_run": 32987673859,
+      "reason": "BOOTSTRAP_CLOSEOUT_MODEL_INCOMPLETE",
+      "history_preserved": true
+    },
+    "base_authority_modified": false,
+    "original_artifact_manifest_modified": false,
+    "append_only": true
+  },
+  "scope": {
+    "default_write_policy": "DENY",
+    "allowed_paths": [
+      ".github/workflows/ci.yml",
+      "docs/authority/README.md",
+      "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001-artifacts.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001.json",
+      "package.json",
+      "schemas/authority-amendment/v1/aipt-authority-amendment-closeout.schema.json",
+      "schemas/authority-amendment/v1/aipt-authority-amendment.schema.json",
+      "schemas/authority-amendment/v1/aipt-authority-validator-supersession.schema.json",
+      "schemas/authority-amendment/v1/aipt-post-merge-reverification-evidence.schema.json",
+      "scripts/ci/run-checks.mjs",
+      "scripts/ci/validate/p1-b000-authority-amendment.mjs"
+    ],
+    "explicitly_frozen_paths": [
+      "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-artifacts.json",
+      "schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+      "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+      "scripts/ci/validate/p1-b000-authority.mjs",
+      "scripts/ci/validate/mvp-b001.mjs",
+      "internal/storage/postgres/migrations/000002_playtest_queue.sql"
+    ],
+    "business_code_changed": false,
+    "frozen_authority_semantics_changed": false,
+    "repair_started": false,
+    "b000_implementation_started": false
+  }
+}
