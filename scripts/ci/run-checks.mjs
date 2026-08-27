@@ -28,6 +28,7 @@ import { run as runP1B000Authority } from './validate/p1-b000-authority.mjs';
 import { run as runP1B000AuthorityAmendment } from './validate/p1-b000-authority-amendment.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
+import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
 import { ACTIVE_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
@@ -51,6 +52,7 @@ const checks = await Promise.all([
   runP1B000Authority(ctx),
   runP1B000AuthorityAmendment(ctx),
   runP1B000AuthorityRepair(ctx),
+  runP1B000AuthorityCloseout(ctx),
 ]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';

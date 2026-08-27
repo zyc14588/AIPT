@@ -252,6 +252,10 @@ const FOCUSED_COMMANDS = [
     command: 'pnpm run check:p1-b000-authority-repair',
     nameTokens: ['p1', 'b000', 'authority', 'post-merge', 'repair', 'f1', 'f2', 'supersession', 's01-s10', 'gate'],
   },
+  {
+    command: 'pnpm run check:p1-b000-authority-closeout',
+    nameTokens: ['p1', 'b000', 'base authority', 'formal evidence', 'governance-only', 'closeout', 'gate'],
+  },
   { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
 
@@ -266,6 +270,7 @@ const EXACT_LIFECYCLE_STEP_CONDITIONS = new Map([
   ['AIPT MVP B000 bootstrap gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
   ['P1 B000 authority contract schemas scope lifecycle and N01-N39 gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
   ['P1 B000 Authority post-merge repair F1 F2 supersession and S01-S10 gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
+  ['P1 B000 Base Authority formal evidence and governance-only closeout gate', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
   ['MVP-B001+B001+B002+B003+B004+B005+B006+B007+B008 aggregate validators (pnpm run check)', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
   ['Exact Base Authority candidate-stage post-merge reverification', "steps.authority_amendment_classify.outputs.applicable != 'true'"],
 ]);

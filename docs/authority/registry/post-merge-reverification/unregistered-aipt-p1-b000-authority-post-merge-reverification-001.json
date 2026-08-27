@@ -1,0 +1,97 @@
+{
+  "schema": "aipt.public.post-merge-reverification-evidence/v1",
+  "evidence_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-POST-MERGE-REVERIFICATION-001",
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+  "original_merge_ci": {
+    "check_run": "ABSENT",
+    "conclusion": null,
+    "historical_merge_ci_claim": "NOT_CLAIMED_PASS"
+  },
+  "candidate_identity": {
+    "commit": "c9f7729f666d11716c04d7682da16044ca965236",
+    "tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "verified": true
+  },
+  "merge_identity": {
+    "commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "parents": [
+      "eede815e818d87362605f55d5bfd2a0460e6e130",
+      "c9f7729f666d11716c04d7682da16044ca965236"
+    ],
+    "ancestry_verified": true,
+    "tree_equals_candidate": true,
+    "no_unauthorized_content": true
+  },
+  "workflow_execution": {
+    "workflow_run_id": 33071069334,
+    "event": "workflow_dispatch",
+    "run_head_sha": "bdace30f311bfa953846569e06a892a2ed59acd3",
+    "workflow_definition_identity": {
+      "path": ".github/workflows/p1-b000-post-merge-reverification.yml",
+      "commit": "17f09e7cd766b39651101a1cacb896b296b821c8",
+      "tree": "c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8",
+      "sha256": "addf3763c525d12e2ef4bc153ed2948948fa5104710184a8d57b7f40812a282d",
+      "source_repair_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001"
+    }
+  },
+  "verification_target": {
+    "requested_target_sha": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "resolved_target_sha": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "target_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "checkout_mode": "DETACHED_EXACT_COMMIT",
+    "clean_checkout": true,
+    "modified_worktree_used": false
+  },
+  "validator_identities": [
+    {
+      "role": "AUTHORITY_VALIDATOR_IDENTITY",
+      "path": "scripts/ci/validate/p1-b000-authority.mjs",
+      "sha256": "c6f0c8e01397200ce15f48bf1fc2412d9db477dddc37d3f99e0478d26956dd0c",
+      "source_repair_candidate_commit": "17f09e7cd766b39651101a1cacb896b296b821c8"
+    },
+    {
+      "role": "B001_HISTORICAL_VALIDATOR_IDENTITY",
+      "path": "scripts/ci/validate/mvp-b001.mjs",
+      "sha256": "319c8d4a3466c20d14e2d5fc74cc246c9b796d36f884fcc39e2b0a25317351c4",
+      "source_repair_candidate_commit": "17f09e7cd766b39651101a1cacb896b296b821c8"
+    }
+  ],
+  "jobs": [
+    {
+      "name": "exact-target-identity",
+      "conclusion": "success"
+    },
+    {
+      "name": "authority-validator",
+      "conclusion": "success"
+    },
+    {
+      "name": "b001-historical-validator",
+      "conclusion": "success"
+    },
+    {
+      "name": "effective-authority-resolution",
+      "conclusion": "success"
+    },
+    {
+      "name": "go-test-all-at-target",
+      "conclusion": "success"
+    }
+  ],
+  "b001_regression": "PASS",
+  "effective_authority_identities": "PASS",
+  "repair_authority": {
+    "repair_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+    "accepted_repair_candidate_commit": "17f09e7cd766b39651101a1cacb896b296b821c8",
+    "accepted_repair_candidate_tree": "c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8",
+    "independent_acceptance": "PASS"
+  },
+  "result": "PASS",
+  "provenance": {
+    "execution_identity_distinct_from_verification_target": true,
+    "append_only": true,
+    "recovery_not_historical_ci": true
+  }
+}

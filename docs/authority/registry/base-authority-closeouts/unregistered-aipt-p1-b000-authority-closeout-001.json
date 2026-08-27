@@ -1,0 +1,133 @@
+{
+  "schema": "aipt.public.base-authority-closeout/v1",
+  "closeout_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-CLOSEOUT-001",
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "owner_directive": "MERGE_REPAIR_AND_CLOSE_BASE_AUTHORITY",
+  "accepted_base_authority_identity": {
+    "candidate_commit": "c9f7729f666d11716c04d7682da16044ca965236",
+    "candidate_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "merge_commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "merge_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "merge_parents": [
+      "eede815e818d87362605f55d5bfd2a0460e6e130",
+      "c9f7729f666d11716c04d7682da16044ca965236"
+    ]
+  },
+  "authority_basis": {
+    "amendment_closeout_commit": "2619339e53113633e02f3aef14156a1ff08c13f8",
+    "owner_authorized": true,
+    "append_only": true,
+    "base_semantics_modified": false
+  },
+  "repair_closeout": {
+    "repair_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+    "approved_candidate": {
+      "commit": "17f09e7cd766b39651101a1cacb896b296b821c8",
+      "tree": "c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8"
+    },
+    "candidate_ci": {
+      "run_id": 33057642299,
+      "head_sha": "17f09e7cd766b39651101a1cacb896b296b821c8",
+      "conclusion": "success",
+      "jobs_passed": 5,
+      "jobs_failed": 0,
+      "jobs_skipped": 0
+    },
+    "merge_identity": {
+      "commit": "df71476d4b8f271f3b444cace46a3d6fbd1eaea4",
+      "tree": "c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8",
+      "parents": [
+        "2619339e53113633e02f3aef14156a1ff08c13f8",
+        "17f09e7cd766b39651101a1cacb896b296b821c8"
+      ]
+    },
+    "merge_ci": {
+      "run_id": 33061223575,
+      "head_sha": "df71476d4b8f271f3b444cace46a3d6fbd1eaea4",
+      "conclusion": "success",
+      "jobs_passed": 5,
+      "jobs_failed": 0,
+      "jobs_skipped": 0
+    },
+    "supersession_acceptance_commit": "c5cb2354af72df18c9323b6a1401e3cc874c7581",
+    "lifecycle": {
+      "from": "MERGED",
+      "through": "POST_MERGE_VERIFIED",
+      "to": "CLOSED",
+      "merged": true,
+      "post_merge_verified": true,
+      "closed": true
+    }
+  },
+  "effective_authority": {
+    "resolution_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-EFFECTIVE-001",
+    "acceptance_commit": "c5cb2354af72df18c9323b6a1401e3cc874c7581",
+    "acceptance_tree": "b52e4024ca39b9206eb00e2d1a23ab0985e145e4",
+    "validator_identities": [
+      {
+        "role": "AUTHORITY_VALIDATOR_IDENTITY",
+        "path": "scripts/ci/validate/p1-b000-authority.mjs",
+        "sha256": "c6f0c8e01397200ce15f48bf1fc2412d9db477dddc37d3f99e0478d26956dd0c"
+      },
+      {
+        "role": "B001_HISTORICAL_VALIDATOR_IDENTITY",
+        "path": "scripts/ci/validate/mvp-b001.mjs",
+        "sha256": "319c8d4a3466c20d14e2d5fc74cc246c9b796d36f884fcc39e2b0a25317351c4"
+      }
+    ],
+    "accepted_supersession_record_ids": [
+      "AIPT-MVP-B001-HISTORICAL-VALIDATOR-SUPERSESSION-001",
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-VALIDATOR-SUPERSESSION-001"
+    ],
+    "deterministic_ordering": true,
+    "conflicts": false
+  },
+  "formal_reverification": {
+    "evidence_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-POST-MERGE-REVERIFICATION-001",
+    "evidence_path": "docs/authority/registry/post-merge-reverification/unregistered-aipt-p1-b000-authority-post-merge-reverification-001.json",
+    "evidence_sha256": "858fd690dcee1f7ed2c95c49f8a3c831bc0e498c9e7d83dffb9b875a5abda708",
+    "workflow_run_id": 33071069334,
+    "run_head_sha": "bdace30f311bfa953846569e06a892a2ed59acd3",
+    "workflow_definition_source_commit": "17f09e7cd766b39651101a1cacb896b296b821c8",
+    "target_commit": "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+    "target_tree": "9cf551e7bc70d4354ca21d62a2bd456ed6f401bb",
+    "historical_merge_ci": "ABSENT_NOT_CLAIMED_PASS",
+    "authorized_result": "PASS",
+    "schema_validation": "PASS",
+    "provenance_validation": "PASS",
+    "required_jobs": 5
+  },
+  "lifecycle": {
+    "from": "MERGED",
+    "through": "POST_MERGE_VERIFIED",
+    "to": "CLOSED",
+    "merged": true,
+    "post_merge_verified": true,
+    "closed": true
+  },
+  "required_gates": {
+    "f1_authority": "PASS",
+    "f2_b001": "PASS",
+    "uncaught_validator_errors": 0,
+    "amendment": "PASS",
+    "repair": "PASS",
+    "effective_authority": "PASS",
+    "b001_regression": "PASS",
+    "migration_integrity": "PASS",
+    "aggregate": "PASS",
+    "go_test_all": "PASS",
+    "formal_evidence": "PASS"
+  },
+  "scope": {
+    "governance_only": true,
+    "business_code_changed": false,
+    "base_authority_semantics_changed": false,
+    "run_core_started": false,
+    "agent_or_model_started": false,
+    "real_model_calls": 0,
+    "real_playtest_executed": false,
+    "b000_authorized": false,
+    "b000_started": false
+  },
+  "open_findings": []
+}

@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v1/aipt-base-authority-closeout.schema.json",
+  "title": "AIPT Base Authority governance closeout evidence v1",
+  "description": "Governance-only closeout of the accepted UNREGISTERED P1 B000 Base Authority after exact repair acceptance and formal post-merge reverification. Git topology supplies the closeout commit identity to avoid self-reference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "closeout_id", "authority_task_id", "owner_directive",
+    "accepted_base_authority_identity", "authority_basis", "repair_closeout",
+    "effective_authority", "formal_reverification", "lifecycle", "required_gates",
+    "scope", "open_findings"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.base-authority-closeout/v1" },
+    "closeout_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-CLOSEOUT-001" },
+    "authority_task_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001" },
+    "owner_directive": { "const": "MERGE_REPAIR_AND_CLOSE_BASE_AUTHORITY" },
+    "accepted_base_authority_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_commit", "candidate_tree", "merge_commit", "merge_tree", "merge_parents"],
+      "properties": {
+        "candidate_commit": { "$ref": "#/$defs/gitOid" },
+        "candidate_tree": { "$ref": "#/$defs/gitOid" },
+        "merge_commit": { "$ref": "#/$defs/gitOid" },
+        "merge_tree": { "$ref": "#/$defs/gitOid" },
+        "merge_parents": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/gitOid" }
+        }
+      }
+    },
+    "authority_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amendment_closeout_commit", "owner_authorized", "append_only", "base_semantics_modified"],
+      "properties": {
+        "amendment_closeout_commit": { "$ref": "#/$defs/gitOid" },
+        "owner_authorized": { "const": true },
+        "append_only": { "const": true },
+        "base_semantics_modified": { "const": false }
+      }
+    },
+    "repair_closeout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repair_task_id", "approved_candidate", "candidate_ci", "merge_identity",
+        "merge_ci", "supersession_acceptance_commit", "lifecycle"
+      ],
+      "properties": {
+        "repair_task_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001" },
+        "approved_candidate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "tree"],
+          "properties": {
+            "commit": { "$ref": "#/$defs/gitOid" },
+            "tree": { "$ref": "#/$defs/gitOid" }
+          }
+        },
+        "candidate_ci": { "$ref": "#/$defs/ciEvidence" },
+        "merge_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "tree", "parents"],
+          "properties": {
+            "commit": { "$ref": "#/$defs/gitOid" },
+            "tree": { "$ref": "#/$defs/gitOid" },
+            "parents": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "$ref": "#/$defs/gitOid" }
+            }
+          }
+        },
+        "merge_ci": { "$ref": "#/$defs/ciEvidence" },
+        "supersession_acceptance_commit": { "$ref": "#/$defs/gitOid" },
+        "lifecycle": { "$ref": "#/$defs/closedLifecycle" }
+      }
+    },
+    "effective_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolution_id", "acceptance_commit", "acceptance_tree", "validator_identities",
+        "accepted_supersession_record_ids", "deterministic_ordering", "conflicts"
+      ],
+      "properties": {
+        "resolution_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-EFFECTIVE-001" },
+        "acceptance_commit": { "$ref": "#/$defs/gitOid" },
+        "acceptance_tree": { "$ref": "#/$defs/gitOid" },
+        "validator_identities": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "path", "sha256"],
+            "properties": {
+              "role": { "enum": ["AUTHORITY_VALIDATOR_IDENTITY", "B001_HISTORICAL_VALIDATOR_IDENTITY"] },
+              "path": { "$ref": "#/$defs/repoPath" },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        },
+        "accepted_supersession_record_ids": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "deterministic_ordering": { "const": true },
+        "conflicts": { "const": false }
+      }
+    },
+    "formal_reverification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id", "evidence_path", "evidence_sha256", "workflow_run_id",
+        "run_head_sha", "workflow_definition_source_commit", "target_commit", "target_tree",
+        "historical_merge_ci", "authorized_result", "schema_validation", "provenance_validation",
+        "required_jobs"
+      ],
+      "properties": {
+        "evidence_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001-POST-MERGE-REVERIFICATION-001" },
+        "evidence_path": { "const": "docs/authority/registry/post-merge-reverification/unregistered-aipt-p1-b000-authority-post-merge-reverification-001.json" },
+        "evidence_sha256": { "$ref": "#/$defs/sha256" },
+        "workflow_run_id": { "const": 33071069334 },
+        "run_head_sha": { "$ref": "#/$defs/gitOid" },
+        "workflow_definition_source_commit": { "$ref": "#/$defs/gitOid" },
+        "target_commit": { "$ref": "#/$defs/gitOid" },
+        "target_tree": { "$ref": "#/$defs/gitOid" },
+        "historical_merge_ci": { "const": "ABSENT_NOT_CLAIMED_PASS" },
+        "authorized_result": { "const": "PASS" },
+        "schema_validation": { "const": "PASS" },
+        "provenance_validation": { "const": "PASS" },
+        "required_jobs": { "const": 5 }
+      }
+    },
+    "lifecycle": { "$ref": "#/$defs/closedLifecycle" },
+    "required_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "f1_authority", "f2_b001", "uncaught_validator_errors", "amendment",
+        "repair", "effective_authority", "b001_regression", "migration_integrity",
+        "aggregate", "go_test_all", "formal_evidence"
+      ],
+      "properties": {
+        "f1_authority": { "const": "PASS" },
+        "f2_b001": { "const": "PASS" },
+        "uncaught_validator_errors": { "const": 0 },
+        "amendment": { "const": "PASS" },
+        "repair": { "const": "PASS" },
+        "effective_authority": { "const": "PASS" },
+        "b001_regression": { "const": "PASS" },
+        "migration_integrity": { "const": "PASS" },
+        "aggregate": { "const": "PASS" },
+        "go_test_all": { "const": "PASS" },
+        "formal_evidence": { "const": "PASS" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "governance_only", "business_code_changed", "base_authority_semantics_changed",
+        "run_core_started", "agent_or_model_started", "real_model_calls",
+        "real_playtest_executed", "b000_authorized", "b000_started"
+      ],
+      "properties": {
+        "governance_only": { "const": true },
+        "business_code_changed": { "const": false },
+        "base_authority_semantics_changed": { "const": false },
+        "run_core_started": { "const": false },
+        "agent_or_model_started": { "const": false },
+        "real_model_calls": { "const": 0 },
+        "real_playtest_executed": { "const": false },
+        "b000_authorized": { "const": false },
+        "b000_started": { "const": false }
+      }
+    },
+    "open_findings": { "type": "array", "maxItems": 0 }
+  },
+  "$defs": {
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "ciEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "head_sha", "conclusion", "jobs_passed", "jobs_failed", "jobs_skipped"],
+      "properties": {
+        "run_id": { "type": "integer", "minimum": 1 },
+        "head_sha": { "$ref": "#/$defs/gitOid" },
+        "conclusion": { "const": "success" },
+        "jobs_passed": { "const": 5 },
+        "jobs_failed": { "const": 0 },
+        "jobs_skipped": { "const": 0 }
+      }
+    },
+    "closedLifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "through", "to", "merged", "post_merge_verified", "closed"],
+      "properties": {
+        "from": { "const": "MERGED" },
+        "through": { "const": "POST_MERGE_VERIFIED" },
+        "to": { "const": "CLOSED" },
+        "merged": { "const": true },
+        "post_merge_verified": { "const": true },
+        "closed": { "const": true }
+      }
+    }
+  }
+}

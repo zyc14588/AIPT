@@ -135,6 +135,12 @@ export function run(ctx) {
       result: 'PASS',
     },
     {
+      name: 'p1-b000-authority-closeout',
+      label: 'P1 B000 Base Authority formal evidence and governance-only closeout gate',
+      args: ['--repo', ctx.repo],
+      result: 'PASS',
+    },
+    {
       name: 'p1-b000-authority',
       label: 'P1 B000 machine authority, schemas, scope and N01-N39 gate',
       args: ['--repo', ctx.repo],

@@ -23,6 +23,7 @@
     "check:p1-b000-authority": "node scripts/ci/validate/p1-b000-authority.mjs",
     "check:p1-b000-authority-amendment": "node scripts/ci/validate/p1-b000-authority-amendment.mjs",
     "check:p1-b000-authority-repair": "node scripts/ci/validate/p1-b000-authority-repair.mjs",
+    "check:p1-b000-authority-closeout": "node scripts/ci/validate/p1-b000-authority-closeout.mjs",
     "check:p1-b000-post-merge-reverification": "node scripts/ci/validate/p1-b000-post-merge-reverification.mjs",
     "check:historical-governance": "node scripts/ci/validate/historical-governance.mjs",
     "test:adapter-sdk": "pnpm --filter @aipt/adapter-sdk test",
