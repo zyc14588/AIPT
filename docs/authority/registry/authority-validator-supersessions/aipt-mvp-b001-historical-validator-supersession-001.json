@@ -6,10 +6,10 @@
   "role": "B001_HISTORICAL_VALIDATOR_IDENTITY",
   "path": "scripts/ci/validate/mvp-b001.mjs",
   "old_sha256": "ba29c75b68c282484cbdceeb7ae035c010b51181ce8e2b5f5b54b9c11a241aaf",
-  "new_sha256": "7845eb0f26d705dca2f3acad676a55c3de14b2fd1703f2a935298507fb098336",
+  "new_sha256": "319c8d4a3466c20d14e2d5fc74cc246c9b796d36f884fcc39e2b0a25317351c4",
   "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
   "repair_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
-  "repair_candidate_commit": "dd432d96f44844f89c058acd2a47edd71a1277a6",
+  "repair_candidate_commit": "f9704100ad651b81758caf0aa20e63877b8a6d48",
   "reason": "Supersede the historical active-Candidate-only validator with lifecycle-aware CLOSED validation and structured failure semantics while preserving every protected B001 business invariant.",
   "semantic_constraints": [
     "PRESERVE_B001_BUSINESS_SEMANTICS",

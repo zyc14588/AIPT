@@ -6,10 +6,10 @@
   "role": "AUTHORITY_VALIDATOR_IDENTITY",
   "path": "scripts/ci/validate/p1-b000-authority.mjs",
   "old_sha256": "f5ed47898ad13b193cd685ae9649c18cada3a6fb5893c1810867c91869ad8c7c",
-  "new_sha256": "4808222ac5316c73ceb91de9b3ee0d6e0f954f174259debef56e06aefba8d441",
+  "new_sha256": "c6f0c8e01397200ce15f48bf1fc2412d9db477dddc37d3f99e0478d26956dd0c",
   "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
   "repair_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
-  "repair_candidate_commit": "dd432d96f44844f89c058acd2a47edd71a1277a6",
+  "repair_candidate_commit": "f9704100ad651b81758caf0aa20e63877b8a6d48",
   "reason": "Supersede the historical Candidate-only validator with a lifecycle-aware validator while preserving the immutable original identity and every Authority integrity gate.",
   "semantic_constraints": [
     "SUPPORT_CANDIDATE_MERGED_POST_MERGE_CLOSED_TOPOLOGY",
