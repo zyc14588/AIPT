@@ -33,13 +33,13 @@ concurrency:
 
 jobs:
   exact-reverification:
-    name: Exact detached target with accepted repair definitions
+    name: Exact detached target with accepted effective definitions
     runs-on: ubuntu-26.04
     steps:
-      - name: Checkout accepted repair Candidate definitions with full history
+      - name: Checkout accepted workflow execution identity with full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.accepted_repair_candidate }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - name: Setup exact Go 1.26.6
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -50,13 +50,18 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.19.0
-      - name: Verify accepted definition identity is present on main ancestry
+      - name: Verify execution and accepted repair definition identities
         env:
           ACCEPTED_REPAIR_CANDIDATE: ${{ inputs.accepted_repair_candidate }}
+          ACCEPTED_REPAIR_TREE: c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8
+          SUPERSESSION_ACCEPTANCE_COMMIT: c5cb2354af72df18c9323b6a1401e3cc874c7581
         run: |
-          test "$(git rev-parse HEAD^{commit})" = "${ACCEPTED_REPAIR_CANDIDATE}"
+          test "$(git rev-parse HEAD^{commit})" = "${GITHUB_SHA}"
+          test "${ACCEPTED_REPAIR_CANDIDATE}" = "17f09e7cd766b39651101a1cacb896b296b821c8"
+          test "$(git rev-parse "${ACCEPTED_REPAIR_CANDIDATE}^{tree}")" = "${ACCEPTED_REPAIR_TREE}"
           git fetch --no-tags origin main
           git merge-base --is-ancestor "${ACCEPTED_REPAIR_CANDIDATE}" origin/main
+          git merge-base --is-ancestor "${SUPERSESSION_ACCEPTANCE_COMMIT}" HEAD
       - name: Execute exact-target reverification and emit schema evidence
         env:
           ACCEPTED_REPAIR_CANDIDATE: ${{ inputs.accepted_repair_candidate }}

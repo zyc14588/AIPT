@@ -19,6 +19,9 @@ const TARGET_COMMIT = '169f9bd006dabb88eb653ab09a33b0eef5eadaed';
 const TARGET_TREE = '9cf551e7bc70d4354ca21d62a2bd456ed6f401bb';
 const CANDIDATE_COMMIT = 'c9f7729f666d11716c04d7682da16044ca965236';
 const CANDIDATE_TREE = TARGET_TREE;
+const ACCEPTED_REPAIR_CANDIDATE = '17f09e7cd766b39651101a1cacb896b296b821c8';
+const ACCEPTED_REPAIR_TREE = 'c3a8f4f1e73a0ee60b6d29491d6981f0a01159d8';
+const SUPERSESSION_ACCEPTANCE_COMMIT = 'c5cb2354af72df18c9323b6a1401e3cc874c7581';
 const TARGET_PARENTS = [
   'eede815e818d87362605f55d5bfd2a0460e6e130',
   CANDIDATE_COMMIT,
@@ -108,7 +111,7 @@ function formalEvidence(report, args, definition) {
       event: 'workflow_dispatch',
       run_head_sha: args['run-head-sha'],
       workflow_definition_identity: {
-        path: WORKFLOW_PATH, commit: acceptedCommit, tree: acceptedTree,
+        path: WORKFLOW_PATH, commit: definition.commit, tree: definition.tree,
         sha256: definition.workflowSha256, source_repair_task_id: TASK_ID,
       },
     },
@@ -219,18 +222,26 @@ export function run(ctx, args = {}) {
       const runId = Number(args['workflow-run-id']);
       const acceptedCommit = args['accepted-repair-candidate'];
       const acceptancePass = args['independent-acceptance'] === 'PASS';
+      const acceptedTree = /^[0-9a-f]{40}$/.test(acceptedCommit ?? '')
+        ? git(ctx.repo, ['rev-parse', `${acceptedCommit}^{tree}`], { check: false }).stdout.trim()
+        : '';
+      const acceptedAncestor = acceptedCommit === ACCEPTED_REPAIR_CANDIDATE &&
+        git(ctx.repo, ['merge-base', '--is-ancestor', acceptedCommit, definitionCommit], { check: false }).status === 0;
+      const acceptanceAncestor =
+        git(ctx.repo, ['merge-base', '--is-ancestor', SUPERSESSION_ACCEPTANCE_COMMIT, definitionCommit], { check: false }).status === 0;
       const dispatchBound = process.env.GITHUB_ACTIONS === 'true' &&
         process.env.GITHUB_EVENT_NAME === 'workflow_dispatch' &&
         Number.isInteger(runId) && runId > 0 && String(runId) === process.env.GITHUB_RUN_ID &&
-        /^[0-9a-f]{40}$/.test(acceptedCommit ?? '') &&
+        acceptedAncestor && acceptedTree === ACCEPTED_REPAIR_TREE && acceptanceAncestor &&
         /^[0-9a-f]{40}$/.test(args['run-head-sha'] ?? '') &&
-        args['run-head-sha'] === process.env.GITHUB_SHA && acceptancePass && pass;
+        args['run-head-sha'] === process.env.GITHUB_SHA &&
+        definitionCommit === args['run-head-sha'] && acceptancePass && pass;
       if (!dispatchBound) {
         report.result = 'FAIL';
         report.details.push('FAIL: formal evidence requires a successful workflow_dispatch bound to an independently accepted repair Candidate');
       } else {
         return formalEvidence(report, args, {
-          repo: ctx.repo, commit: definitionCommit,
+          repo: ctx.repo, commit: definitionCommit, tree: definitionTree,
           workflowSha256: sha256(workflowBytes), validators: validatorIdentities,
         });
       }
