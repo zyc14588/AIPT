@@ -1,0 +1,86 @@
+name: P1 B000 Authority exact post-merge reverification
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact historical Authority merge commit
+        required: true
+        default: 169f9bd006dabb88eb653ab09a33b0eef5eadaed
+        type: string
+      expected_tree:
+        description: Exact expected historical Authority merge tree
+        required: true
+        default: 9cf551e7bc70d4354ca21d62a2bd456ed6f401bb
+        type: string
+      accepted_repair_candidate:
+        description: Independently accepted repair Candidate commit containing these definitions
+        required: true
+        type: string
+      independent_acceptance:
+        description: Owner acceptance gate; only PASS is valid
+        required: true
+        type: choice
+        options:
+          - PASS
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-b000-authority-reverification-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  exact-reverification:
+    name: Exact detached target with accepted repair definitions
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout accepted repair Candidate definitions with full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.accepted_repair_candidate }}
+          fetch-depth: 0
+      - name: Setup exact Go 1.26.6
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.6
+          cache: false
+      - name: Setup exact Node.js 24.19.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+      - name: Verify accepted definition identity is present on main ancestry
+        env:
+          ACCEPTED_REPAIR_CANDIDATE: ${{ inputs.accepted_repair_candidate }}
+        run: |
+          test "$(git rev-parse HEAD^{commit})" = "${ACCEPTED_REPAIR_CANDIDATE}"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "${ACCEPTED_REPAIR_CANDIDATE}" origin/main
+      - name: Execute exact-target reverification and emit schema evidence
+        env:
+          ACCEPTED_REPAIR_CANDIDATE: ${{ inputs.accepted_repair_candidate }}
+          INDEPENDENT_ACCEPTANCE: ${{ inputs.independent_acceptance }}
+          TARGET_SHA: ${{ inputs.target_sha }}
+          EXPECTED_TREE: ${{ inputs.expected_tree }}
+        run: |
+          node scripts/ci/validate/p1-b000-post-merge-reverification.mjs \
+            --target-sha "${TARGET_SHA}" \
+            --expected-tree "${EXPECTED_TREE}" \
+            --emit-formal-evidence \
+            --workflow-run-id "${GITHUB_RUN_ID}" \
+            --run-head-sha "${GITHUB_SHA}" \
+            --accepted-repair-candidate "${ACCEPTED_REPAIR_CANDIDATE}" \
+            --independent-acceptance "${INDEPENDENT_ACCEPTANCE}" \
+            > post-merge-reverification-evidence.json
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync("post-merge-reverification-evidence.json","utf8"));if(value.schema!=="aipt.public.post-merge-reverification-evidence/v1"||value.result!=="PASS")process.exit(1)'
+          cat post-merge-reverification-evidence.json
+          {
+            echo '## P1 B000 Authority post-merge reverification'
+            echo
+            echo '- Original merge CI: `ABSENT`'
+            echo '- Historical CI pass claimed: `false`'
+            echo '- Authorized post-merge reverification: `PASS`'
+            echo '- Target: `${{ inputs.target_sha }}`'
+            echo '- Tree: `${{ inputs.expected_tree }}`'
+          } >> "${GITHUB_STEP_SUMMARY}"

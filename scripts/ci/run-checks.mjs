@@ -9,11 +9,9 @@
 // remains unauthorized/not started.
 import fs from 'node:fs';
 import path from 'node:path';
-import { run as runStatus } from './validate/status-transition.mjs';
 import { run as runDefer } from './validate/defer-016.mjs';
 import { run as runToolchain } from './validate/toolchain-lock.mjs';
 import { run as runWorkflow } from './validate/workflow.mjs';
-import { run as runTree } from './validate/tree-integrity.mjs';
 import { run as runRetro } from './validate/b000-retro.mjs';
 import { run as runSupplyChain } from './validate/supply-chain.mjs';
 import { run as runSbom } from './validate/sbom.mjs';
@@ -25,21 +23,20 @@ import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
 import { run as runHarnessAdapter } from './validate/harness-adapter.mjs';
 import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
-import { run as runM0DevelopmentPass } from './validate/m0-development-pass.mjs';
-import { run as runMvpBootstrap } from './validate/mvp-bootstrap.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001.mjs';
 import { run as runP1B000Authority } from './validate/p1-b000-authority.mjs';
 import { run as runP1B000AuthorityAmendment } from './validate/p1-b000-authority-amendment.mjs';
+import { runHistoricalGovernance } from './validate/historical-governance.mjs';
+import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { ACTIVE_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
 const checks = await Promise.all([
-  runStatus(ctx),
+  runHistoricalGovernance(ctx),
   runProtocol(ctx),
   runDefer(ctx),
   runToolchain(ctx),
   runWorkflow(ctx),
-  runTree(ctx),
   runRetro(ctx),
   runSupplyChain(ctx),
   runSbom(ctx),
@@ -50,11 +47,10 @@ const checks = await Promise.all([
   runHarnessAdapter(ctx),
   runEvidence(ctx),
   runHistoricalWeb(ctx),
-  runM0DevelopmentPass(ctx),
-  runMvpBootstrap(ctx),
   runMvpB001(ctx),
   runP1B000Authority(ctx),
   runP1B000AuthorityAmendment(ctx),
+  runP1B000AuthorityRepair(ctx),
 ]);
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';

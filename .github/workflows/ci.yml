@@ -156,9 +156,18 @@ jobs:
       - name: P1 B000 authority contract schemas scope lifecycle and N01-N39 gate
         if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check:p1-b000-authority
+      - name: P1 B000 Authority post-merge repair F1 F2 supersession and S01-S10 gate
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
+        run: pnpm run check:p1-b000-authority-repair
       - name: MVP-B001+B001+B002+B003+B004+B005+B006+B007+B008 aggregate validators (pnpm run check)
         if: steps.authority_amendment_classify.outputs.applicable != 'true'
         run: pnpm run check
+      - name: Exact Base Authority candidate-stage post-merge reverification
+        if: steps.authority_amendment_classify.outputs.applicable != 'true'
+        run: >-
+          node scripts/ci/validate/p1-b000-post-merge-reverification.mjs
+          --target-sha 169f9bd006dabb88eb653ab09a33b0eef5eadaed
+          --expected-tree 9cf551e7bc70d4354ca21d62a2bd456ed6f401bb
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |
           docker pull "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
