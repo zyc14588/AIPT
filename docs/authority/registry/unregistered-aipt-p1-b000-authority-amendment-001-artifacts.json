@@ -12,12 +12,12 @@
   "artifacts": [
     {
       "path": "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md",
-      "sha256": "f1bfa2494844949448a3c71110550556bd2444607fb748f2a5410ae7bb48d123",
+      "sha256": "d735eebb7bbd089a8c4910ce2fcaa79f2592e4137db92a119475c34cf7937afc",
       "role": "HUMAN_READABLE_AUTHORITY_AMENDMENT"
     },
     {
       "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001.json",
-      "sha256": "36da7114b8e09a130e0b08568147331210d41e11fc6f7547001b178d1653a7a9",
+      "sha256": "dce73114f73e2e82cafd37519411116b6af739fc8ba9a862ebdb0691c8cc1130",
       "role": "MACHINE_EXECUTION_AUTHORITY_AMENDMENT"
     },
     {
@@ -42,7 +42,7 @@
     },
     {
       "path": "scripts/ci/validate/p1-b000-authority-amendment.mjs",
-      "sha256": "b27979000dbde92fa4ec106178e718fd9696daea01a6c1221a1178fe569106a4",
+      "sha256": "5fb0da8bf7fb3e71f71805560fc7be64e60c86c4fd0838592ebe32e3233235b6",
       "role": "AUTHORITY_AMENDMENT_VALIDATOR_IDENTITY"
     }
   ],

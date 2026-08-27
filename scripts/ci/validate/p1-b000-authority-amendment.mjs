@@ -39,6 +39,9 @@ const CLOSEOUT_PATH = `${CLOSEOUT_DIRECTORY}/unregistered-aipt-p1-b000-authority
 const SUPERSEDED_CANDIDATE = '00c9a25ea3df7436339a104de4c412d6d6f39322';
 const SUPERSEDED_CANDIDATE_TREE = 'f308f1885112e0826dc6be4b70b0d7713d1a8dba';
 const SUPERSEDED_CANDIDATE_CI = 32987673859;
+const PRIOR_R1_CANDIDATE = '2296eb5ec90c64976b014663d04faff4530b4c48';
+const PRIOR_R1_CANDIDATE_TREE = 'f05010b18f63c9833e5ed2c2d7f1cdad212fe844';
+const PRIOR_R1_CANDIDATE_CI = 33039836247;
 const REPAIR_TASK_ID = 'UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001';
 
 const ORIGINAL_AUTHORITY_VALIDATOR = 'scripts/ci/validate/p1-b000-authority.mjs';
@@ -283,10 +286,12 @@ export function classifyBootstrapTopology(facts) {
   }
   if (!allowedClasses.includes(facts.lifecycleClass)) problems.push('lifecycle class is not bootstrap-eligible');
   if (facts.closedBeforeCommit === true) problems.push('bootstrap permission already expired at CLOSED');
-  if (facts.candidate?.parent !== AUTHORITY_MERGE || facts.candidate?.ordinaryCommitCount !== 1 ||
+  if (facts.candidate?.parent !== AUTHORITY_MERGE || facts.candidate?.ordinaryCommitCount !== 2 ||
       facts.candidate?.containsMerge !== false || facts.candidate?.containsSupersededCandidate !== false ||
+      facts.candidate?.priorAttemptCommit !== PRIOR_R1_CANDIDATE ||
+      facts.candidate?.priorAttemptTree !== PRIOR_R1_CANDIDATE_TREE ||
       !same(facts.candidate?.changedPaths, STAGE_PATHS)) {
-    problems.push('replacement Candidate is not the exact single-commit R1 Candidate');
+    problems.push('replacement Candidate is not the exact two-commit R1 lineage');
   }
 
   if (['LEGAL_MERGE', 'BOOTSTRAP_CLOSEOUT_SUCCESSOR'].includes(facts.lifecycleClass)) {
@@ -320,12 +325,15 @@ export function classifyBootstrapTopology(facts) {
   };
 }
 
-function expectedF1Failures(changedPathsValue) {
-  return [
-    'FAIL: authority Candidate contains a merge commit',
-    'FAIL: local authority checkout is not the exact authority branch',
-    `FAIL: authority candidate path set drifted: ${JSON.stringify(changedPathsValue)}`,
-  ];
+function expectedF1Failures(changedPathsValue, executionContext = {}) {
+  const failures = ['FAIL: authority Candidate contains a merge commit'];
+  if (executionContext.github_actions === true && executionContext.event_name === 'push') {
+    failures.push('FAIL: authority Candidate push is not bound to the exact authority branch');
+  } else if (executionContext.github_actions !== true) {
+    failures.push('FAIL: local authority checkout is not the exact authority branch');
+  }
+  failures.push(`FAIL: authority candidate path set drifted: ${JSON.stringify(changedPathsValue)}`);
+  return failures;
 }
 
 export function classifyLegacyDefect(observation, expectedChangedPaths = []) {
@@ -339,6 +347,10 @@ export function classifyLegacyDefect(observation, expectedChangedPaths = []) {
     }
     if ((observation.stderr ?? '').trim() !== '') problems.push('F1 emitted unexpected stderr');
     const report = observation.report;
+    const executionContext = observation.execution_context ?? {};
+    if (executionContext.github_actions === true && !['push', 'pull_request'].includes(executionContext.event_name)) {
+      problems.push('F1 GitHub lifecycle context is not a supported push or pull_request event');
+    }
     if (!report || report.schema !== 'aipt.public.b001-validator-report/v1' || report.name !== 'p1-b000-authority' ||
         report.result !== 'FAIL' || report.task_id !== AUTHORITY_TASK_ID || report.negative_probes !== 'PASS' ||
         report.negative_probe_count !== 39 || report.real_model_calls !== 0 || report.real_playtest_executed !== false ||
@@ -347,7 +359,7 @@ export function classifyLegacyDefect(observation, expectedChangedPaths = []) {
       problems.push('F1 structured report identity, protected baseline or lifecycle path inventory drifted');
     }
     const failures = Array.isArray(report?.details) ? report.details.filter((line) => line.startsWith('FAIL:')) : [];
-    if (!same(failures, expectedF1Failures(expectedChangedPaths))) {
+    if (!same(failures, expectedF1Failures(expectedChangedPaths, executionContext))) {
       problems.push('F1 failure set is not the exact known candidate-only topology defect');
     }
   } else if (observation.defect_id === 'F2') {
@@ -564,6 +576,16 @@ export function validateAmendmentPolicy(amendment, context = {}) {
       superseded?.ci_run !== SUPERSEDED_CANDIDATE_CI || superseded?.merged !== false ||
       superseded?.classification !== 'SUPERSEDED_BEFORE_MERGE' ||
       superseded?.reason !== 'BOOTSTRAP_CLOSEOUT_MODEL_INCOMPLETE' || superseded?.history_preserved !== true ||
+      !same(revision?.prior_revision_attempts, [{
+        commit: PRIOR_R1_CANDIDATE,
+        tree: PRIOR_R1_CANDIDATE_TREE,
+        ci_run: PRIOR_R1_CANDIDATE_CI,
+        conclusion: 'failure',
+        failed_stage: 'BOOTSTRAP_CLASSIFIER',
+        reason: 'F1_GITHUB_PUSH_CONTEXT_VARIANT_NOT_MODELLED',
+        recovery_override: false,
+        provenance_preserved: true,
+      }]) ||
       revision?.validator_repair_performed !== false || revision?.base_authority_modified !== false ||
       revision?.b000_contract_modified !== false) {
     problems.push('R1 replacement provenance or minimal semantic-change inventory drifted');
@@ -577,7 +599,7 @@ export function validateAmendmentPolicy(amendment, context = {}) {
       bootstrapRule?.replacement_candidate?.branch !== BRANCH ||
       bootstrapRule?.replacement_candidate?.base_commit !== AUTHORITY_MERGE ||
       bootstrapRule?.replacement_candidate?.base_tree !== AUTHORITY_TREE ||
-      bootstrapRule?.replacement_candidate?.ordinary_commit_count !== 1 ||
+      bootstrapRule?.replacement_candidate?.ordinary_commit_count !== 2 ||
       bootstrapRule?.replacement_candidate?.superseded_candidate_is_not_ancestor !== true ||
       bootstrapRule?.legal_merge?.first_parent !== AUTHORITY_MERGE ||
       bootstrapRule?.legal_merge?.second_parent !== 'CURRENT_APPROVED_REPLACEMENT_CANDIDATE' ||
@@ -620,6 +642,11 @@ export function validateAmendmentPolicy(amendment, context = {}) {
       fingerprints?.F1?.validator !== ORIGINAL_AUTHORITY_VALIDATOR ||
       fingerprints?.F1?.sha256 !== ORIGINAL_AUTHORITY_VALIDATOR_SHA ||
       fingerprints?.F1?.failure_class !== 'STRUCTURED_VALIDATOR_FAIL' || fingerprints?.F1?.exit_status !== 1 ||
+      !same(fingerprints?.F1?.lifecycle_context_messages, {
+        LOCAL: 'local authority checkout is not the exact authority branch',
+        GITHUB_PUSH: 'authority Candidate push is not bound to the exact authority branch',
+        GITHUB_PULL_REQUEST: 'NO_BRANCH_FAILURE_BECAUSE_FROZEN_VALIDATOR_ONLY_BRANCH_GATES_PUSH',
+      }) ||
       fingerprints?.F1?.additional_failure !== 'REJECT' ||
       fingerprints?.F2?.validator !== ORIGINAL_B001_VALIDATOR ||
       fingerprints?.F2?.sha256 !== ORIGINAL_B001_VALIDATOR_SHA ||
@@ -991,12 +1018,15 @@ function negativeProbeResults(amendment, supersessionSchema, recoverySchema, bas
 }
 
 function syntheticF1Observation(expectedChangedPaths) {
+  const executionContext = {
+    github_actions: false, event_name: null, ref: null, head_ref: null,
+  };
   const report = {
     schema: 'aipt.public.b001-validator-report/v1',
     name: 'p1-b000-authority',
     result: 'FAIL',
     task_id: AUTHORITY_TASK_ID,
-    details: expectedF1Failures(expectedChangedPaths),
+    details: expectedF1Failures(expectedChangedPaths, executionContext),
     changed_paths: [...expectedChangedPaths],
     negative_probes: 'PASS',
     negative_probe_count: 39,
@@ -1008,7 +1038,7 @@ function syntheticF1Observation(expectedChangedPaths) {
   return {
     defect_id: 'F1', validator: ORIGINAL_AUTHORITY_VALIDATOR,
     sha256: ORIGINAL_AUTHORITY_VALIDATOR_SHA, executed: true, status: 1, signal: null,
-    stdout: JSON.stringify(report), stderr: '', report,
+    stdout: JSON.stringify(report), stderr: '', report, execution_context: executionContext,
   };
 }
 
@@ -1049,7 +1079,8 @@ function syntheticBootstrapTopology() {
     closedBeforeCommit: false,
     candidate: {
       commit: candidate, tree: candidateTree, parent: AUTHORITY_MERGE,
-      ordinaryCommitCount: 1, containsMerge: false, containsSupersededCandidate: false,
+      ordinaryCommitCount: 2, containsMerge: false, containsSupersededCandidate: false,
+      priorAttemptCommit: PRIOR_R1_CANDIDATE, priorAttemptTree: PRIOR_R1_CANDIDATE_TREE,
       changedPaths: [...STAGE_PATHS],
     },
     merge: {
@@ -1368,8 +1399,10 @@ function classifyLifecycle(repo, env = process.env) {
       if (!same(changed, STAGE_PATHS)) problems.push(`active R1 worktree path set drifted: ${JSON.stringify(changed)}`);
     } else if (candidate) {
       candidateTree = gitOut(repo, ['rev-parse', `${candidate}^{tree}`]);
-      const candidateParents = parentsOf(candidate);
-      const candidateCount = Number(gitOut(repo, ['rev-list', '--count', `${AUTHORITY_MERGE}..${candidate}`]) ?? '-1');
+      const candidateCommitsOutput = gitOut(repo, ['rev-list', '--reverse', `${AUTHORITY_MERGE}..${candidate}`]);
+      const candidateCommits = candidateCommitsOutput ? candidateCommitsOutput.split('\n').filter(Boolean) : [];
+      const candidateCount = candidateCommits.length;
+      const candidateRootParent = candidateCommits[0] ? parentsOf(candidateCommits[0])[0] : null;
       const candidateMerges = gitOut(repo, ['rev-list', '--merges', `${AUTHORITY_MERGE}..${candidate}`]);
       const containsSuperseded = git(repo, ['merge-base', '--is-ancestor', SUPERSEDED_CANDIDATE, candidate], { check: false }).status === 0;
       topology = {
@@ -1377,9 +1410,11 @@ function classifyLifecycle(repo, env = process.env) {
         lifecycleClass: 'CANDIDATE',
         closedBeforeCommit: false,
         candidate: {
-          commit: candidate, tree: candidateTree, parent: candidateParents[0] ?? null,
+          commit: candidate, tree: candidateTree, parent: candidateRootParent,
           ordinaryCommitCount: candidateCount, containsMerge: Boolean(candidateMerges),
           containsSupersededCandidate: containsSuperseded,
+          priorAttemptCommit: candidateCommits[0] ?? null,
+          priorAttemptTree: candidateCommits[0] ? gitOut(repo, ['rev-parse', `${candidateCommits[0]}^{tree}`]) : null,
           changedPaths: commitPaths(AUTHORITY_MERGE, candidate),
         },
         merge: null,
@@ -1401,8 +1436,10 @@ function classifyLifecycle(repo, env = process.env) {
       candidate = mergeParents[1] ?? null;
       candidateTree = candidate ? gitOut(repo, ['rev-parse', `${candidate}^{tree}`]) : null;
       amendmentMergeTree = gitOut(repo, ['rev-parse', `${amendmentMerge}^{tree}`]);
-      const candidateParents = candidate ? parentsOf(candidate) : [];
-      const candidateCount = candidate ? Number(gitOut(repo, ['rev-list', '--count', `${AUTHORITY_MERGE}..${candidate}`]) ?? '-1') : -1;
+      const candidateCommitsOutput = candidate ? gitOut(repo, ['rev-list', '--reverse', `${AUTHORITY_MERGE}..${candidate}`]) : null;
+      const candidateCommits = candidateCommitsOutput ? candidateCommitsOutput.split('\n').filter(Boolean) : [];
+      const candidateCount = candidateCommits.length;
+      const candidateRootParent = candidateCommits[0] ? parentsOf(candidateCommits[0])[0] : null;
       const candidateMerges = candidate ? gitOut(repo, ['rev-list', '--merges', `${AUTHORITY_MERGE}..${candidate}`]) : 'unknown';
       const containsSuperseded = candidate
         ? git(repo, ['merge-base', '--is-ancestor', SUPERSEDED_CANDIDATE, candidate], { check: false }).status === 0
@@ -1411,9 +1448,11 @@ function classifyLifecycle(repo, env = process.env) {
         taskId: REVISION_TASK_ID,
         closedBeforeCommit: false,
         candidate: {
-          commit: candidate, tree: candidateTree, parent: candidateParents[0] ?? null,
+          commit: candidate, tree: candidateTree, parent: candidateRootParent,
           ordinaryCommitCount: candidateCount, containsMerge: Boolean(candidateMerges),
           containsSupersededCandidate: containsSuperseded,
+          priorAttemptCommit: candidateCommits[0] ?? null,
+          priorAttemptTree: candidateCommits[0] ? gitOut(repo, ['rev-parse', `${candidateCommits[0]}^{tree}`]) : null,
           changedPaths: candidate ? commitPaths(AUTHORITY_MERGE, candidate) : [],
         },
         merge: {
@@ -1509,6 +1548,12 @@ function executeLegacyValidator(repo, defectId, relative) {
     stdout: cp.stdout ?? '',
     stderr: cp.stderr ?? '',
     report,
+    execution_context: {
+      github_actions: process.env.GITHUB_ACTIONS === 'true',
+      event_name: process.env.GITHUB_EVENT_NAME || null,
+      ref: process.env.GITHUB_REF || null,
+      head_ref: process.env.GITHUB_HEAD_REF || null,
+    },
   };
 }
 
@@ -1769,6 +1814,7 @@ export function run(ctx, args = {}) {
       raw_result: observation.status === 0 ? 'PASS' : 'FAIL',
       status: observation.status,
       signal: observation.signal,
+      execution_context: observation.execution_context,
       classification: bootstrapDecision?.legacy?.[index]?.classification ?? 'NOT_CLASSIFIED',
       fingerprint_problems: bootstrapDecision?.legacy?.[index]?.problems ?? [],
       raw_stdout: observation.stdout,
