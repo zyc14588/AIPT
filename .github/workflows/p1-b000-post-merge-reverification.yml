@@ -69,6 +69,7 @@ jobs:
           TARGET_SHA: ${{ inputs.target_sha }}
           EXPECTED_TREE: ${{ inputs.expected_tree }}
         run: |
+          EVIDENCE_PATH="${RUNNER_TEMP}/post-merge-reverification-evidence.json"
           node scripts/ci/validate/p1-b000-post-merge-reverification.mjs \
             --target-sha "${TARGET_SHA}" \
             --expected-tree "${EXPECTED_TREE}" \
@@ -77,9 +78,9 @@ jobs:
             --run-head-sha "${GITHUB_SHA}" \
             --accepted-repair-candidate "${ACCEPTED_REPAIR_CANDIDATE}" \
             --independent-acceptance "${INDEPENDENT_ACCEPTANCE}" \
-            > post-merge-reverification-evidence.json
-          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync("post-merge-reverification-evidence.json","utf8"));if(value.schema!=="aipt.public.post-merge-reverification-evidence/v1"||value.result!=="PASS")process.exit(1)'
-          cat post-merge-reverification-evidence.json
+            > "${EVIDENCE_PATH}"
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(value.schema!=="aipt.public.post-merge-reverification-evidence/v1"||value.result!=="PASS")process.exit(1)' "${EVIDENCE_PATH}"
+          cat "${EVIDENCE_PATH}"
           {
             echo '## P1 B000 Authority post-merge reverification'
             echo
