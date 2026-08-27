@@ -187,8 +187,14 @@ function supersessionNegativeProbes(records, schema, currentHashes) {
     ['S03 Amendment not CLOSED', validate(clone(records), { amendmentClosed: false })],
     ['S04 wrong repair task', validate(mutate((v) => { v[0].repair_task_id = 'WRONG-REPAIR'; }))],
     ['S05 schema semantic change', validate(clone(records), { protectedArtifactsValid: false })],
-    ['S06 ancestry validation weakened', validate(mutate((v) => { v[0].semantic_constraints = v[0].semantic_constraints.filter((x) => x !== 'PRESERVE_ANCESTRY_VALIDATION'); }))],
-    ['S07 artifact validation weakened', validate(mutate((v) => { v[0].semantic_constraints = v[0].semantic_constraints.filter((x) => x !== 'PRESERVE_ARTIFACT_HASH_VALIDATION'); }))],
+    ['S06 ancestry validation weakened', validate(mutate((v) => {
+      const record = v.find((entry) => entry.role === 'AUTHORITY_VALIDATOR_IDENTITY');
+      record.semantic_constraints = record.semantic_constraints.filter((x) => x !== 'PRESERVE_ANCESTRY_VALIDATION');
+    }))],
+    ['S07 artifact validation weakened', validate(mutate((v) => {
+      const record = v.find((entry) => entry.role === 'AUTHORITY_VALIDATOR_IDENTITY');
+      record.semantic_constraints = record.semantic_constraints.filter((x) => x !== 'PRESERVE_ARTIFACT_HASH_VALIDATION');
+    }))],
     ['S08 missing regression evidence', validate(mutate((v) => { delete v[0].regression_evidence; }))],
     ['S09 new validator hash missing', validate(mutate((v) => { delete v[0].new_sha256; }))],
     ['S10 duplicate/conflicting supersession', validate([...clone(records), clone(records[0])])],

@@ -1,0 +1,62 @@
+{
+  "schema": "aipt.public.authority-validator-supersession/v1",
+  "record_id": "AIPT-MVP-B001-HISTORICAL-VALIDATOR-SUPERSESSION-001",
+  "chain_sequence": 1,
+  "predecessor_record_id": null,
+  "role": "B001_HISTORICAL_VALIDATOR_IDENTITY",
+  "path": "scripts/ci/validate/mvp-b001.mjs",
+  "old_sha256": "ba29c75b68c282484cbdceeb7ae035c010b51181ce8e2b5f5b54b9c11a241aaf",
+  "new_sha256": "7845eb0f26d705dca2f3acad676a55c3de14b2fd1703f2a935298507fb098336",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+  "repair_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+  "repair_candidate_commit": "dd432d96f44844f89c058acd2a47edd71a1277a6",
+  "reason": "Supersede the historical active-Candidate-only validator with lifecycle-aware CLOSED validation and structured failure semantics while preserving every protected B001 business invariant.",
+  "semantic_constraints": [
+    "PRESERVE_B001_BUSINESS_SEMANTICS",
+    "CLOSED_USES_IMMUTABLE_ACCEPTED_CLOSEOUT_IDENTITY",
+    "ACTIVE_CANDIDATE_REQUIRES_PENDING_CANDIDATE",
+    "INVALID_COMBINATION_RETURNS_STRUCTURED_FAIL",
+    "PRESERVE_CAMPAIGN_SUITE_CASE_RUN",
+    "PRESERVE_ATTEMPT_INTERNAL_ONLY",
+    "PRESERVE_RUN_MANIFEST_IMMUTABILITY",
+    "PRESERVE_POSTGRESQL_QUEUE_AUTHORITY",
+    "PRESERVE_WIP_ONE_LEASE_HEARTBEAT_EXPIRY_RECOVERY",
+    "PRESERVE_APPEND_ONLY_ATTEMPT_HISTORY"
+  ],
+  "regression_evidence": {
+    "suite_identity": "2cc2be26c57cc98f4da200e37413c800e1ae188d6d530e2621b18fcd20037abe",
+    "result": "PASS",
+    "commands": [
+      "node scripts/ci/validate/mvp-b001.mjs",
+      "node scripts/ci/validate/p1-b000-authority-repair.mjs",
+      "node scripts/ci/validate/p1-b000-post-merge-reverification.mjs --target-sha 169f9bd006dabb88eb653ab09a33b0eef5eadaed --expected-tree 9cf551e7bc70d4354ca21d62a2bd456ed6f401bb"
+    ],
+    "negative_probe_count": 8,
+    "b001_regression": "PASS"
+  },
+  "amendment_acceptance": {
+    "accepted": true,
+    "candidate_commit": "a1d614c7468f67d13bcbf32f65ade7613a85e202",
+    "candidate_tree": "c03ce80729cce470e35325fd4d4a35e221221c55",
+    "merge_commit": "33a53d53c6db474f46a886dcbbba6d083eee4f27",
+    "merge_tree": "c03ce80729cce470e35325fd4d4a35e221221c55",
+    "merge_parents": [
+      "169f9bd006dabb88eb653ab09a33b0eef5eadaed",
+      "a1d614c7468f67d13bcbf32f65ade7613a85e202"
+    ],
+    "owner_approved": true,
+    "candidate_ci_run_id": 33040174063,
+    "candidate_ci_conclusion": "success"
+  },
+  "repair_acceptance": {
+    "state": "CANDIDATE_FROZEN",
+    "independent_acceptance": "PENDING",
+    "candidate_ci_run_id": null,
+    "candidate_ci_conclusion": "pending"
+  },
+  "provenance": {
+    "created_by_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+    "append_only": true,
+    "original_identity_preserved": true
+  }
+}
