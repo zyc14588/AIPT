@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v2/aipt-predecessor-successor-acceptance-evidence.schema.json",
+  "title": "AIPT predecessor/successor acceptance evidence v1",
+  "description": "Machine evidence that keeps the historical P0 validation target distinct from the P1 candidate target and records preservation, controlled delta, P1 validation and B001 compatibility results.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "task_id",
+    "authority_amendment_id",
+    "predecessor_validation_target",
+    "candidate_validation_target",
+    "p0_gate_results",
+    "protected_inventory_identity",
+    "p0_preservation",
+    "p1_delta",
+    "p1_validation",
+    "b001_compatibility",
+    "acceptance"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.predecessor-successor-acceptance-evidence/v1" },
+    "task_id": { "const": "UNREGISTERED-AIPT-P1-B000" },
+    "authority_amendment_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002" },
+    "predecessor_validation_target": { "$ref": "#/$defs/predecessorTarget" },
+    "candidate_validation_target": { "$ref": "#/$defs/candidateTarget" },
+    "p0_gate_results": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/gateResult" }
+    },
+    "protected_inventory_identity": { "$ref": "#/$defs/artifactIdentity" },
+    "p0_preservation": { "$ref": "#/$defs/comparisonResult" },
+    "p1_delta": { "$ref": "#/$defs/deltaResult" },
+    "p1_validation": { "$ref": "#/$defs/validatorResult" },
+    "b001_compatibility": { "$ref": "#/$defs/validatorResult" },
+    "acceptance": { "$ref": "#/$defs/acceptanceResult" }
+  },
+  "$defs": {
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "pathArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/repoPath" }
+    },
+    "result": { "enum": ["PASS", "FAIL"] },
+    "predecessorTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree", "detached", "clean", "candidate_overlay", "node_version"],
+      "properties": {
+        "repository": { "const": "zyc14588/UNREGISTERED" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "detached": { "const": true },
+        "clean": { "const": true },
+        "candidate_overlay": { "const": false },
+        "node_version": { "const": "v24.19.0" }
+      }
+    },
+    "candidateTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree", "detached", "clean"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "detached": { "const": true },
+        "clean": { "const": true }
+      }
+    },
+    "gateResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "validator_path", "validator_sha256", "exit_status", "result"],
+      "properties": {
+        "gate_id": { "enum": ["P0-B000", "P0-B001", "P0-B002", "P0-B003"] },
+        "validator_path": { "$ref": "#/$defs/repoPath" },
+        "validator_sha256": { "$ref": "#/$defs/sha256" },
+        "exit_status": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "result": { "$ref": "#/$defs/result" }
+      }
+    },
+    "artifactIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "inventory_projection_sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repoPath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "inventory_projection_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "comparisonResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "unexpected_modifications", "unexpected_deletions", "renames", "identity_mismatches"],
+      "properties": {
+        "result": { "$ref": "#/$defs/result" },
+        "unexpected_modifications": { "$ref": "#/$defs/pathArray" },
+        "unexpected_deletions": { "$ref": "#/$defs/pathArray" },
+        "renames": { "$ref": "#/$defs/pathArray" },
+        "identity_mismatches": { "$ref": "#/$defs/pathArray" }
+      }
+    },
+    "deltaResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "allowed_additions",
+        "allowed_modifications",
+        "observed_additions",
+        "observed_modifications",
+        "observed_deletions",
+        "unexpected_additions",
+        "unexpected_modifications",
+        "unexpected_deletions"
+      ],
+      "properties": {
+        "result": { "$ref": "#/$defs/result" },
+        "allowed_additions": { "$ref": "#/$defs/pathArray" },
+        "allowed_modifications": { "$ref": "#/$defs/pathArray" },
+        "observed_additions": { "$ref": "#/$defs/pathArray" },
+        "observed_modifications": { "$ref": "#/$defs/pathArray" },
+        "observed_deletions": { "$ref": "#/$defs/pathArray" },
+        "unexpected_additions": { "$ref": "#/$defs/pathArray" },
+        "unexpected_modifications": { "$ref": "#/$defs/pathArray" },
+        "unexpected_deletions": { "$ref": "#/$defs/pathArray" }
+      }
+    },
+    "validatorResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "validator_path", "validator_sha256", "exit_status"],
+      "properties": {
+        "result": { "$ref": "#/$defs/result" },
+        "validator_path": { "$ref": "#/$defs/repoPath" },
+        "validator_sha256": { "$ref": "#/$defs/sha256" },
+        "exit_status": { "type": "integer", "minimum": 0, "maximum": 255 }
+      }
+    },
+    "acceptanceResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "failure_code", "all_required_gates_executed"],
+      "properties": {
+        "result": { "$ref": "#/$defs/result" },
+        "failure_code": {
+          "type": ["string", "null"],
+          "pattern": "^(?:FAIL_PREDECESSOR_P0_VALIDATION|FAIL_P0_PRESERVATION|FAIL_P1_DELTA_POLICY|FAIL_P1_B000_VALIDATION|FAIL_B001_REGRESSION)$"
+        },
+        "all_required_gates_executed": { "type": "boolean" }
+      }
+    }
+  }
+}

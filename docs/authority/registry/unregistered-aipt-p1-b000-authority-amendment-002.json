@@ -1,0 +1,515 @@
+{
+  "schema": "aipt.public.authority-acceptance-semantics-amendment/v1",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+  "amendment_sequence": 2,
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "authority_state": "CANDIDATE_FROZEN",
+  "authority_task": {
+    "repository": "zyc14588/AIPT",
+    "branch": "task/UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+    "base_commit": "8d6a438d051fb635e769285215e70536958a8f42",
+    "base_tree": "9ef6f121bd0d9a6484d7cc39a22450250e9ac489",
+    "kind": "GOVERNANCE_ACCEPTANCE_INFRASTRUCTURE_ONLY",
+    "implementation_candidate": false,
+    "business_code_changed": false,
+    "merge_authorized": false,
+    "candidate_validation_environment": {
+      "dependency_install": "PNPM_11_4_0_FROZEN_LOCKFILE",
+      "generated_dependency_path": "node_modules/",
+      "candidate_tree_membership_permitted": false,
+      "checkout_local_git_info_exclude_required": true,
+      "non_dependency_untracked_paths_permitted": false
+    }
+  },
+  "authority_basis": {
+    "base_authority": {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+      "accepted_closeout": "8d6a438d051fb635e769285215e70536958a8f42",
+      "status": "CLOSED"
+    },
+    "accepted_amendments": [
+      {
+        "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001",
+        "revision_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+        "candidate": "a1d614c7468f67d13bcbf32f65ade7613a85e202",
+        "merge": "33a53d53c6db474f46a886dcbbba6d083eee4f27",
+        "closeout": "2619339e53113633e02f3aef14156a1ff08c13f8",
+        "status": "CLOSED"
+      }
+    ],
+    "accepted_repairs": [
+      {
+        "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+        "candidate": "17f09e7cd766b39651101a1cacb896b296b821c8",
+        "merge": "df71476d4b8f271f3b444cace46a3d6fbd1eaea4",
+        "status": "CLOSED"
+      }
+    ],
+    "effective_validator_identities": {
+      "authority_validator": {
+        "path": "scripts/ci/validate/p1-b000-authority.mjs",
+        "sha256": "c6f0c8e01397200ce15f48bf1fc2412d9db477dddc37d3f99e0478d26956dd0c"
+      },
+      "b001_validator": {
+        "path": "scripts/ci/validate/mvp-b001.mjs",
+        "sha256": "319c8d4a3466c20d14e2d5fc74cc246c9b796d36f884fcc39e2b0a25317351c4"
+      },
+      "superseded_validator_restore_permitted": false
+    },
+    "governance_regression_targets": {
+      "amendment_candidate_target": {
+        "validators": [
+          "scripts/ci/validate/p1-b000-authority.mjs",
+          "scripts/ci/validate/mvp-b001.mjs",
+          "scripts/ci/validate/p1-b000-authority-amendment.mjs",
+          "scripts/ci/validate/p1-b000-authority-amendment-002.mjs"
+        ]
+      },
+      "closed_historical_target": {
+        "commit": "8d6a438d051fb635e769285215e70536958a8f42",
+        "tree": "9ef6f121bd0d9a6484d7cc39a22450250e9ac489",
+        "validators": [
+          "scripts/ci/validate/p1-b000-authority-repair.mjs",
+          "scripts/ci/validate/p1-b000-authority-closeout.mjs"
+        ],
+        "current_candidate_github_execution_identity_inherited": false,
+        "target_identity_source": "EXACT_DETACHED_TARGET_GIT_COMMIT_AND_TREE",
+        "reason": "CLOSED_CANDIDATE_SCOPE_VALIDATORS_ARE_REPLAYED_ON_THEIR_ACCEPTED_TARGET_AND_ARE_NOT_REWRITTEN_FOR_A_LATER_APPEND_ONLY_SUCCESSOR"
+      },
+      "composite_aggregate_target": {
+        "entrypoint": "scripts/ci/run-checks.mjs",
+        "current_candidate_checks": true,
+        "closed_repair_and_closeout_subchecks_target_exact_base": true,
+        "standalone_entrypoints_subcheck_target_exact_base": true,
+        "closed_target_dependency_setup": "PNPM_11_4_0_OFFLINE_FROZEN_LOCKFILE_IGNORE_SCRIPTS",
+        "target_identity_reported_per_subcheck": true
+      }
+    }
+  },
+  "reason": {
+    "finding_id": "B000-P0-CLOSED-SET-ACCEPTANCE-CONTRADICTION",
+    "original_acceptance_contract_satisfiable": false,
+    "summary": "The Base Authority simultaneously requires legal P1 additions and requires the historical P0 closed-set validators to accept the resulting P1 candidate tree.",
+    "minimal_reproduction": {
+      "evidence_path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-predecessor-evidence.json",
+      "evidence_sha256": "08e9bcc0a1bb5f73686a73cf0ee3d42999e1fd84053982e71662b2b4616f003c",
+      "package_addition_result": "P0_B003_UNEXPECTED_PATH_REJECT",
+      "validator_addition_result": "P0_B003_VALIDATOR_INVENTORY_DRIFT_REJECT",
+      "contradiction_reproduced": true
+    },
+    "owner_decision": "DO_NOT_MODIFY_HISTORICAL_P0_VALIDATORS",
+    "replacement_model": "EXACT_PREDECESSOR_P0_VALIDATION_PLUS_CANDIDATE_P0_PRESERVATION_PLUS_CONTROLLED_P1_DELTA"
+  },
+  "predecessor_identity": {
+    "authority_role": "P0_PREDECESSOR_AUTHORITY",
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+    "tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+    "identity_kind": "IMMUTABLE_GIT_COMMIT_AND_TREE",
+    "mutable_ref_substitution_permitted": false
+  },
+  "predecessor_validation_contract": {
+    "target": "EXACT_FROZEN_PREDECESSOR",
+    "checkout_requirements": [
+      "SEPARATE_CHECKOUT",
+      "DETACHED_HEAD",
+      "RESOLVED_COMMIT_EXACT",
+      "RESOLVED_TREE_EXACT",
+      "WORKTREE_CLEAN",
+      "NO_CANDIDATE_OVERLAY",
+      "NO_MODIFIED_PREDECESSOR_FILE",
+      "NO_SYMLINK_INJECTION",
+      "NO_ENVIRONMENT_DEPENDENT_SOURCE_SUBSTITUTION"
+    ],
+    "runtime": {
+      "node": "24.19.0",
+      "dependency_installation": "NONE",
+      "network": false,
+      "model_calls": false
+    },
+    "workflow_identity": {
+      "path": ".github/workflows/aipt-content-gate.yml",
+      "sha256": "48d7b4c42d303c73978de685cd378042efa517238155d6c7ede656059ce84cb4",
+      "runner": "ubuntu-24.04",
+      "aggregate_p0_command": null
+    },
+    "gates": [
+      {
+        "gate_id": "P0-B000",
+        "path": "scripts/aipt/validate-p0-b000.mjs",
+        "sha256": "bf27739727b86a4c174ea52da54fb17e741d7c7e95062ccbe1cf16da96ecb7d2",
+        "invocation": "node scripts/aipt/validate-p0-b000.mjs"
+      },
+      {
+        "gate_id": "P0-B001",
+        "path": "scripts/aipt/validate-p0-b001.mjs",
+        "sha256": "d464034da401d1056b42d9910bd87d85adf6d9f6a39df44be81e6dc0b5b1bb71",
+        "invocation": "node scripts/aipt/validate-p0-b001.mjs"
+      },
+      {
+        "gate_id": "P0-B002",
+        "path": "scripts/aipt/validate-p0-b002.mjs",
+        "sha256": "d1508d6449f4436064ac567dc9f58050837fab9e4f051512985f26358faa82b5",
+        "invocation": "node scripts/aipt/validate-p0-b002.mjs"
+      },
+      {
+        "gate_id": "P0-B003",
+        "path": "scripts/aipt/validate-p0-b003.mjs",
+        "sha256": "ef08ce52d27b33dfb00152c2d29dc9056a0b09fdadeafcc2dd9f1d1c59ddfe45",
+        "invocation": "node scripts/aipt/validate-p0-b003.mjs"
+      }
+    ],
+    "all_gates_required": true,
+    "historical_p0_closed_set_run_on_p1_candidate_is_required_gate": false,
+    "p0_gates_may_be_skipped": false,
+    "failure": "FAIL_PREDECESSOR_P0_VALIDATION"
+  },
+  "p0_preservation_contract": {
+    "inventory": {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-p0-inventory.json",
+      "artifact_sha256": "e1b3b1353a1c7cbba570bdc6ae1fdc5ad5b60a25082f6896d37ec50a71afc958",
+      "projection_sha256": "55480de50eb218163db4d2bcb20b8c64ce0bc44858c6a4fa722e1a37ca6751ac",
+      "generation_source": "FROZEN_PREDECESSOR_COMPLETE_TRACKED_TREE",
+      "candidate_declared_inventory_permitted": false,
+      "tracked_entry_count": 136,
+      "preserve_exact_count": 133,
+      "controlled_successor_surface_count": 3
+    },
+    "preserve_exact_comparison": [
+      "PATH_EXISTS",
+      "PATH_BYTE_IDENTITY",
+      "FILE_MODE_IDENTITY",
+      "GIT_BLOB_IDENTITY",
+      "SHA256_EXACT_GIT_BLOB_BYTES",
+      "ARTIFACT_ROLE_IDENTITY"
+    ],
+    "protected_modification": "REJECT",
+    "protected_deletion": "REJECT",
+    "protected_rename": "REJECT",
+    "protected_replacement": "REJECT",
+    "p0_validator_modification": "REJECT",
+    "p0_manifest_modification": "REJECT",
+    "logical_identity_change": "REJECT",
+    "failure": "FAIL_P0_PRESERVATION"
+  },
+  "p1_delta_contract": {
+    "comparison": "CANDIDATE_TREE_MINUS_FROZEN_PREDECESSOR_TREE",
+    "default_policy": "DENY",
+    "canonicalization": "GIT_TREE_ENTRIES_WITH_POSIX_NFC_PATH_MODE_OBJECT_AND_EXACT_BLOB_HASH",
+    "classifications": [
+      "UNCHANGED_P0",
+      "AUTHORIZED_P1_ADD",
+      "AUTHORIZED_P1_CONTROL_SURFACE_MODIFICATION",
+      "FORBIDDEN_MODIFICATION",
+      "FORBIDDEN_DELETION",
+      "FORBIDDEN_ADDITION"
+    ],
+    "allowed_additions": [
+      "aipt/p1-b000/compatibility-evidence.json",
+      "aipt/p1-b000/playtest-package.json",
+      "aipt/p1-b000/runtime-adapter-input.json",
+      "scripts/aipt/validate-p1-b000.mjs"
+    ],
+    "allowed_controlled_modifications": [
+      ".github/workflows/aipt-content-gate.yml",
+      "aipt/README.md",
+      "aipt/status.json"
+    ],
+    "allowed_deletions": [],
+    "allowed_changed_paths": [
+      ".github/workflows/aipt-content-gate.yml",
+      "aipt/README.md",
+      "aipt/p1-b000/compatibility-evidence.json",
+      "aipt/p1-b000/playtest-package.json",
+      "aipt/p1-b000/runtime-adapter-input.json",
+      "aipt/status.json",
+      "scripts/aipt/validate-p1-b000.mjs"
+    ],
+    "path_policy": {
+      "exact_paths_only": true,
+      "unbounded_aipt_glob": false,
+      "unbounded_scripts_aipt_glob": false,
+      "relative_posix_nfc": true,
+      "case_fold_collision": "REJECT",
+      "unicode_normalization_collision": "REJECT",
+      "duplicate_canonical_path": "REJECT",
+      "symlink": "REJECT",
+      "submodule": "REJECT",
+      "non_blob": "REJECT"
+    },
+    "source_of_allowlist": "FROZEN_BASE_AUTHORITY_SCOPE_IMPLEMENTATION_TASK_ALLOWED_PATHS",
+    "failure": "FAIL_P1_DELTA_POLICY"
+  },
+  "p1_candidate_validation_contract": {
+    "validation_target": "P1_CANDIDATE_ONLY",
+    "validator_path": "scripts/aipt/validate-p1-b000.mjs",
+    "responsibilities": [
+      "PLAYTEST_PACKAGE_SCHEMA",
+      "PACKAGE_IDENTITY",
+      "SOURCE_IDENTITY",
+      "SOURCE_DIGEST",
+      "MAPPING",
+      "VISIBILITY",
+      "RUNTIME_ADAPTER_INPUT",
+      "PROVENANCE",
+      "B001_COMPATIBILITY",
+      "NEGATIVE_PROBES",
+      "CONTROLLED_DELTA_CONTROL_SURFACE_SEMANTICS"
+    ],
+    "playtest_package_schema": {
+      "path": "schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+      "sha256": "88e55b63c8a6366c872edf0d886202a5c375e224c801433364332ddc4e4e7549"
+    },
+    "runtime_adapter_schema": {
+      "path": "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+      "sha256": "935b88f2409e604d01a13657a7790dae16e19ebe0c4e96f054c580102ec17413"
+    },
+    "b001_protected_baseline": {
+      "hierarchy": "CAMPAIGN_SUITE_CASE_RUN",
+      "attempt": "INTERNAL_ONLY",
+      "run_manifest": "IMMUTABLE",
+      "queue_authority": "POSTGRESQL",
+      "wip": 1,
+      "selection": "DETERMINISTIC",
+      "lease_heartbeat_expiry_recovery": true,
+      "attempt_history": "APPEND_ONLY",
+      "migration_path": "internal/storage/postgres/migrations/000002_playtest_queue.sql",
+      "migration_sha256": "47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997"
+    },
+    "runtime_boundary": {
+      "run_core_implemented": false,
+      "agent_orchestration_implemented": false,
+      "real_model_gateway_implemented": false,
+      "real_model_calls": 0,
+      "real_playtest_executed": false
+    },
+    "failure": "FAIL_P1_B000_VALIDATION"
+  },
+  "acceptance_formula": {
+    "operator": "AND",
+    "ordered_gates": [
+      {
+        "gate": "P0_PREDECESSOR_IDENTITY",
+        "target": "UNREGISTERED@358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+        "required_result": "PASS"
+      },
+      {
+        "gate": "P0_GATES",
+        "target": "EXACT_FROZEN_PREDECESSOR",
+        "required_result": "PASS"
+      },
+      {
+        "gate": "P0_PRESERVATION",
+        "target": "P1_CANDIDATE_VS_PREDECESSOR",
+        "required_result": "PASS"
+      },
+      {
+        "gate": "P1_ALLOWED_DELTA",
+        "target": "P1_CANDIDATE_VS_PREDECESSOR",
+        "required_result": "PASS"
+      },
+      {
+        "gate": "P1_B000_VALIDATION",
+        "target": "P1_CANDIDATE",
+        "required_result": "PASS"
+      },
+      {
+        "gate": "AIPT_B001_COMPATIBILITY",
+        "target": "P1_CANDIDATE",
+        "required_result": "PASS"
+      }
+    ],
+    "p0_validation_target_field": "predecessor_validation_target",
+    "p1_validation_target_field": "candidate_validation_target",
+    "ambiguous_validation_target_field_permitted": false
+  },
+  "failure_semantics": {
+    "predecessor_identity_or_gate_failure": "FAIL_PREDECESSOR_P0_VALIDATION",
+    "candidate_protected_asset_drift": "FAIL_P0_PRESERVATION",
+    "candidate_delta_policy_failure": "FAIL_P1_DELTA_POLICY",
+    "candidate_p1_validation_failure": "FAIL_P1_B000_VALIDATION",
+    "candidate_b001_regression": "FAIL_B001_REGRESSION"
+  },
+  "allowed_semantic_change": [
+    "PREDECESSOR_P0_EXECUTION_PLUS_SUCCESSOR_PRESERVATION_AND_CONTROLLED_DELTA"
+  ],
+  "forbidden_semantic_changes": [
+    "MODIFY_BASE_AUTHORITY",
+    "MODIFY_AMENDMENT_001_R1",
+    "RESTORE_SUPERSEDED_VALIDATORS",
+    "MODIFY_HISTORICAL_UNREGISTERED_P0_VALIDATOR",
+    "ADD_P1_EXCEPTION_TO_HISTORICAL_P0_VALIDATOR",
+    "RUN_HISTORICAL_P0_CLOSED_SET_ON_P1_CANDIDATE_AS_REQUIRED_GATE",
+    "SKIP_P0_GATES",
+    "USE_MUTABLE_BRANCH_AS_PREDECESSOR",
+    "ALLOW_CANDIDATE_TO_DECLARE_PROTECTED_INVENTORY",
+    "ALLOW_UNBOUNDED_P1_PATH_GLOB",
+    "CHANGE_B000_OBJECTIVE",
+    "CHANGE_B000_DELIVERABLES",
+    "CHANGE_B000_NON_GOALS",
+    "CHANGE_PLAYTEST_PACKAGE_SCHEMA",
+    "CHANGE_RUNTIME_ADAPTER_SCHEMA",
+    "CHANGE_B001_BUSINESS_SEMANTICS",
+    "CHANGE_RUNTIME_BOUNDARY",
+    "START_B000_IMPLEMENTATION",
+    "MERGE_AMENDMENT_WITHOUT_SEPARATE_OWNER_AUTHORIZATION",
+    "CLOSEOUT_AMENDMENT_IN_CANDIDATE_STAGE"
+  ],
+  "negative_probes": [
+    { "id": "A2-N01", "case": "exact predecessor identity", "expectation": "ACCEPT" },
+    { "id": "A2-N02", "case": "wrong predecessor commit", "expectation": "REJECT" },
+    { "id": "A2-N03", "case": "wrong predecessor tree", "expectation": "REJECT" },
+    { "id": "A2-N04", "case": "mutable branch used as predecessor", "expectation": "REJECT" },
+    { "id": "A2-N05", "case": "P0 gates pass on exact predecessor", "expectation": "ACCEPT" },
+    { "id": "A2-N06", "case": "predecessor P0 gate failure", "expectation": "REJECT" },
+    { "id": "A2-N07", "case": "candidate overlay used in P0 checkout", "expectation": "REJECT" },
+    { "id": "A2-N08", "case": "modified predecessor worktree", "expectation": "REJECT" },
+    { "id": "A2-N09", "case": "candidate preserves all P0 artifacts", "expectation": "ACCEPT" },
+    { "id": "A2-N10", "case": "candidate modifies P0 asset", "expectation": "REJECT" },
+    { "id": "A2-N11", "case": "candidate deletes P0 asset", "expectation": "REJECT" },
+    { "id": "A2-N12", "case": "candidate renames P0 asset", "expectation": "REJECT" },
+    { "id": "A2-N13", "case": "candidate modifies P0 validator", "expectation": "REJECT" },
+    { "id": "A2-N14", "case": "candidate modifies P0 manifest", "expectation": "REJECT" },
+    { "id": "A2-N15", "case": "allowed P1 package addition", "expectation": "ACCEPT" },
+    { "id": "A2-N16", "case": "allowed P1 validator addition", "expectation": "ACCEPT" },
+    { "id": "A2-N17", "case": "addition outside P1 allowlist", "expectation": "REJECT" },
+    { "id": "A2-N18", "case": "deletion outside allowed delta", "expectation": "REJECT" },
+    { "id": "A2-N19", "case": "modification outside allowed delta", "expectation": "REJECT" },
+    { "id": "A2-N20", "case": "predecessor pass and preservation fail", "expectation": "REJECT" },
+    { "id": "A2-N21", "case": "predecessor pass and delta fail", "expectation": "REJECT" },
+    { "id": "A2-N22", "case": "predecessor pass and P1 validation fail", "expectation": "REJECT" },
+    { "id": "A2-N23", "case": "historical P0 closed-set run on P1 candidate used as required gate", "expectation": "REJECT" },
+    { "id": "A2-N24", "case": "P0 gates skipped", "expectation": "REJECT" },
+    { "id": "A2-N25", "case": "fake predecessor identity", "expectation": "REJECT" },
+    { "id": "A2-N26", "case": "wrong historical validator identity", "expectation": "REJECT" },
+    { "id": "A2-N27", "case": "non-clean predecessor worktree", "expectation": "REJECT" },
+    { "id": "A2-N28", "case": "P0 inventory hash mismatch", "expectation": "REJECT" },
+    { "id": "A2-N29", "case": "unauthorized P0 supersession", "expectation": "REJECT" },
+    { "id": "A2-N30", "case": "B001 regression", "expectation": "REJECT" }
+  ],
+  "additional_security_probes": [
+    { "id": "A2-S01", "case": "symlink-based P0 escape", "expectation": "REJECT" },
+    { "id": "A2-S02", "case": "case-folding path collision", "expectation": "REJECT" },
+    { "id": "A2-S03", "case": "Unicode normalization path collision", "expectation": "REJECT" },
+    { "id": "A2-S04", "case": "duplicate canonical path", "expectation": "REJECT" },
+    { "id": "A2-S05", "case": "submodule or reference substitution", "expectation": "REJECT" },
+    { "id": "A2-S06", "case": "generated file masquerading as P0 original", "expectation": "REJECT" }
+  ],
+  "acceptance_evidence_contract": {
+    "schema_path": "schemas/authority-amendment/v2/aipt-predecessor-successor-acceptance-evidence.schema.json",
+    "required_distinct_targets": [
+      "predecessor_validation_target",
+      "candidate_validation_target"
+    ],
+    "required_evidence": [
+      "predecessor_commit",
+      "predecessor_tree",
+      "p0_gate_results",
+      "protected_inventory_identity",
+      "p0_preservation_result",
+      "candidate_commit",
+      "candidate_tree",
+      "allowed_delta",
+      "observed_delta",
+      "unexpected_additions",
+      "unexpected_modifications",
+      "unexpected_deletions",
+      "p1_validation_result",
+      "b001_compatibility_result"
+    ]
+  },
+  "effective_authority_resolution": {
+    "algorithm": "IMMUTABLE_BASE_THEN_ORDERED_ACCEPTED_AMENDMENTS_THEN_ACCEPTED_SUPERSESSIONS",
+    "current_effective_chain": [
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001"
+    ],
+    "current_effective_authority_unchanged_by_unaccepted_candidate": true,
+    "prospective_chain_after_owner_accepted_merge": [
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+      "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002"
+    ],
+    "prospective_change": "ACCEPTANCE_EXECUTION_SEMANTICS_ONLY",
+    "business_semantics_changed": false,
+    "latest_file_wins": false,
+    "unaccepted_record_effective": false,
+    "conflict_policy": "FAIL_CLOSED"
+  },
+  "lifecycle": {
+    "record_state": "CANDIDATE_FROZEN",
+    "accepted": false,
+    "merge_eligible_when_all_stage_requirements_true": true,
+    "merge_authorized": false,
+    "closeout_authorized": false,
+    "b000_implementation_started": false,
+    "b000_candidate_created": false,
+    "b000_merge_authorized": false,
+    "next_task": "MERGE_AND_CLOSEOUT_AMENDMENT_002",
+    "next_task_authorized": false,
+    "candidate_remote_ci": {
+      "real_run_required": true,
+      "head_sha_must_equal_candidate_commit": true,
+      "all_required_jobs": "SUCCESS"
+    }
+  },
+  "stop_conditions": [
+    "GOVERNANCE_CHAIN_DRIFT",
+    "PREDECESSOR_COMMIT_OR_TREE_MISMATCH",
+    "PREDECESSOR_P0_GATE_FAILURE",
+    "HISTORICAL_P0_VALIDATOR_IDENTITY_MISMATCH",
+    "P0_INVENTORY_GENERATION_MISMATCH",
+    "P0_PRESERVATION_MODEL_FAILURE",
+    "P1_DELTA_MODEL_FAILURE",
+    "EFFECTIVE_AUTHORITY_REGRESSION",
+    "B001_REGRESSION",
+    "SCOPE_DRIFT",
+    "REMOTE_CI_FAILURE"
+  ],
+  "scope": {
+    "default_write_policy": "DENY",
+    "allowed_paths": [
+      ".github/workflows/ci.yml",
+      "docs/authority/README.md",
+      "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_002.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-artifacts.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-p0-inventory.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-predecessor-evidence.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002.json",
+      "package.json",
+      "schemas/authority-amendment/v2/aipt-authority-acceptance-semantics-amendment.schema.json",
+      "schemas/authority-amendment/v2/aipt-predecessor-successor-acceptance-evidence.schema.json",
+      "scripts/ci/generate/p1-b000-amendment-002-inventory.mjs",
+      "scripts/ci/run-checks.mjs",
+      "scripts/ci/validate/p1-b000-authority-amendment-002.mjs"
+    ],
+    "explicitly_frozen_paths": [
+      "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+      "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_001.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-001.json",
+      "schemas/playtest-package/v1/aipt-playtest-package.schema.json",
+      "schemas/runtime-adapter-input/v1/aipt-runtime-adapter-input.schema.json",
+      "scripts/ci/validate/p1-b000-authority.mjs",
+      "scripts/ci/validate/mvp-b001.mjs",
+      "internal/storage/postgres/migrations/000002_playtest_queue.sql"
+    ],
+    "historical_unregistered_p0_validator_changed": false,
+    "b000_business_code_changed": false,
+    "b000_implementation_started": false
+  },
+  "provenance": {
+    "append_only": true,
+    "base_authority_modified": false,
+    "amendment_001_modified": false,
+    "historical_p0_validator_modified": false,
+    "contradiction_reproduced": true,
+    "exact_predecessor_p0_gates_executed": true,
+    "exact_predecessor_p0_gates_result": "PASS",
+    "inventory_generated_from_candidate": false,
+    "candidate_git_identity_recording": "STRUCTURED_STAGE_REVIEW_REMOTE_CI_AND_IMMUTABLE_GIT_OBJECTS",
+    "automatic_merge_permitted": false
+  }
+}

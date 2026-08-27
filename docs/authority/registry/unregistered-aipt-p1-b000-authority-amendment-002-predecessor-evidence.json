@@ -1,0 +1,97 @@
+{
+  "schema": "aipt.public.predecessor-validation-stage-evidence/v1",
+  "evidence_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002-PREDECESSOR-EVIDENCE-001",
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+  "recorded_date": "2026-08-28",
+  "predecessor_validation_target": {
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+    "tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+    "checkout_kind": "SEPARATE_LOCAL_CLONE_DETACHED_EXACT_COMMIT",
+    "detached": true,
+    "clean": true,
+    "candidate_overlay": false,
+    "modified_predecessor_files": false,
+    "node_version": "v24.19.0"
+  },
+  "workflow_identity": {
+    "path": ".github/workflows/aipt-content-gate.yml",
+    "sha256": "48d7b4c42d303c73978de685cd378042efa517238155d6c7ede656059ce84cb4",
+    "runner": "ubuntu-24.04",
+    "node_version": "24.19.0",
+    "aggregate_p0_command_defined": false,
+    "dependency_installation_required": false,
+    "network_or_model_call_required": false
+  },
+  "p0_gate_results": [
+    {
+      "gate_id": "P0-B000",
+      "validator_path": "scripts/aipt/validate-p0-b000.mjs",
+      "validator_sha256": "bf27739727b86a4c174ea52da54fb17e741d7c7e95062ccbe1cf16da96ecb7d2",
+      "invocation": "node scripts/aipt/validate-p0-b000.mjs",
+      "exit_status": 0,
+      "stdout_sha256": "d9da5176b674e5692d1a58c1ce5a9da8b88f054a2174bcc861fd8a9b574053b5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "result": "PASS"
+    },
+    {
+      "gate_id": "P0-B001",
+      "validator_path": "scripts/aipt/validate-p0-b001.mjs",
+      "validator_sha256": "d464034da401d1056b42d9910bd87d85adf6d9f6a39df44be81e6dc0b5b1bb71",
+      "invocation": "node scripts/aipt/validate-p0-b001.mjs",
+      "exit_status": 0,
+      "stdout_sha256": "93f4207ade1cdff1d588221cabe91cc27d01624fc55b413cf1a538caf9e569c0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "result": "PASS"
+    },
+    {
+      "gate_id": "P0-B002",
+      "validator_path": "scripts/aipt/validate-p0-b002.mjs",
+      "validator_sha256": "d1508d6449f4436064ac567dc9f58050837fab9e4f051512985f26358faa82b5",
+      "invocation": "node scripts/aipt/validate-p0-b002.mjs",
+      "exit_status": 0,
+      "stdout_sha256": "a33c4287d56dec764d965a8c3158a128c88f1f72bb0d65268192e51ce257630b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "result": "PASS"
+    },
+    {
+      "gate_id": "P0-B003",
+      "validator_path": "scripts/aipt/validate-p0-b003.mjs",
+      "validator_sha256": "ef08ce52d27b33dfb00152c2d29dc9056a0b09fdadeafcc2dd9f1d1c59ddfe45",
+      "invocation": "node scripts/aipt/validate-p0-b003.mjs",
+      "exit_status": 0,
+      "stdout_sha256": "ef8122ad216d39389b5ce50c7451342cb7e9520fd0ec265dd01bad662adc9102",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "result": "PASS"
+    }
+  ],
+  "contradiction_reproduction": {
+    "original_acceptance_contract_satisfiable": false,
+    "historical_validator_modified": false,
+    "fixtures_derived_from_exact_predecessor": true,
+    "real_source_repository_modified": false,
+    "probes": [
+      {
+        "probe_id": "CONTRADICTION-PACKAGE-ADDITION",
+        "only_added_path": "aipt/p1-b000/playtest-package.json",
+        "validator_path": "scripts/aipt/validate-p0-b003.mjs",
+        "exit_status": 1,
+        "stdout_sha256": "d1e49ab39f411b0b8c9c9f0e22f73b7ee290a78f98d711ee9d05037d8babaac6",
+        "stderr_sha256": "2d18eb08a63e6334cb8a4d6337a384c5c9041fca603b71213b5fac4b8781f262",
+        "failure_class": "AIPT_EXACT_FILE_ALLOWLIST_UNEXPECTED",
+        "result": "REJECT"
+      },
+      {
+        "probe_id": "CONTRADICTION-VALIDATOR-ADDITION",
+        "only_added_path": "scripts/aipt/validate-p1-b000.mjs",
+        "validator_path": "scripts/aipt/validate-p0-b003.mjs",
+        "exit_status": 1,
+        "stdout_sha256": "d1e49ab39f411b0b8c9c9f0e22f73b7ee290a78f98d711ee9d05037d8babaac6",
+        "stderr_sha256": "e8766ca9d754607cd7cb1608251aff8dce51baa54c6d745da85e5cd8f0c837f8",
+        "failure_class": "SCRIPTS_AIPT_VALIDATOR_INVENTORY_DRIFT",
+        "result": "REJECT"
+      }
+    ]
+  },
+  "result": "PASS"
+}
