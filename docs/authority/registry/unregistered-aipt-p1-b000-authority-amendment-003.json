@@ -1,0 +1,339 @@
+{
+  "schema": "aipt.public.authority-lifecycle-amendment/v1",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+  "amendment_sequence": 3,
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+  "authority_state": "CANDIDATE_FROZEN",
+  "semantic_snapshot_accepted": false,
+  "objective": {
+    "model_conflict": "IMMUTABLE_SEMANTICS_VS_MUTABLE_LIFECYCLE_STATE",
+    "decision": "IMMUTABLE_SEMANTICS_PLUS_APPEND_ONLY_LIFECYCLE_ACCEPTANCE_RECORD",
+    "semantic_artifact_role": "IMMUTABLE_CONTRACT_SNAPSHOT",
+    "lifecycle_record_role": "APPEND_ONLY_CURRENT_STATUS_AND_PROVENANCE",
+    "business_contract_changed": false
+  },
+  "authority_basis": {
+    "base_authority": {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+      "status": "CLOSED",
+      "closeout": "8d6a438d051fb635e769285215e70536958a8f42"
+    },
+    "amendment_001_r1": {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+      "status": "CLOSED",
+      "candidate": "a1d614c7468f67d13bcbf32f65ade7613a85e202",
+      "merge": "33a53d53c6db474f46a886dcbbba6d083eee4f27",
+      "closeout": "2619339e53113633e02f3aef14156a1ff08c13f8"
+    },
+    "post_merge_repair_001": {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+      "status": "CLOSED",
+      "merge": "df71476d4b8f271f3b444cace46a3d6fbd1eaea4"
+    },
+    "amendment_002": {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+      "candidate": "45067db875b7bc3ee657ef117ae13ce55ce2af85",
+      "candidate_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+      "merge": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+      "merge_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+      "merge_parents": [
+        "8d6a438d051fb635e769285215e70536958a8f42",
+        "45067db875b7bc3ee657ef117ae13ce55ce2af85"
+      ],
+      "merge_ci": {
+        "run_id": 33131896928,
+        "head_sha": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+        "conclusion": "success",
+        "jobs_passed": 5,
+        "jobs_failed": 0,
+        "jobs_skipped": 0
+      },
+      "merged": true,
+      "post_merge_verified": true,
+      "closed": false,
+      "blocker": "BLOCKED_AMENDMENT_002_CLOSEOUT_MODEL_CONFLICT"
+    }
+  },
+  "root_cause_matrix": [
+    {
+      "source": "FROZEN_SEMANTIC_ARTIFACT",
+      "old_rule": "accepted=false_and_state=CANDIDATE_FROZEN_are_current_truth",
+      "conflict": "frozen_artifact_cannot_be_mutated_to_advance_state",
+      "new_rule": "fields_are_freeze_time_snapshot_metadata"
+    },
+    {
+      "source": "EFFECTIVE_AUTHORITY_RESOLVER",
+      "old_rule": "semantic_artifact_must_itself_be_accepted",
+      "conflict": "immutable_candidate_can_never_become_effective",
+      "new_rule": "exact_semantic_identity_plus_accepted_lifecycle_chain"
+    },
+    {
+      "source": "AMENDMENT_002_VALIDATION_TARGET",
+      "old_rule": "current_checkout_must_be_candidate_or_legal_merge",
+      "conflict": "lawful_governance_successor_is_rejected",
+      "new_rule": "semantic_gate_replays_exact_005ec002_merge_content"
+    },
+    {
+      "source": "AMENDMENT_001_CLOSED_WORLD_LOGIC",
+      "old_rule": "task_specific_closeout_classifier",
+      "conflict": "future_authority_lifecycle_is_not_representable",
+      "new_rule": "generic_record_schema_resolver_and_explicit_predecessor_chain"
+    }
+  ],
+  "canonical_lifecycle_authority": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "registry_path": "docs/authority/registry/authority-lifecycle/registry.json",
+    "record_schema_path": "schemas/authority-lifecycle/v1/aipt-authority-lifecycle-record.schema.json",
+    "resolver_path": "scripts/ci/lib/authority-lifecycle.mjs",
+    "validator_path": "scripts/ci/validate/p1-b000-authority-amendment-003.mjs",
+    "truth_source": "ACCEPTED_APPEND_ONLY_LIFECYCLE_RECORD_CHAIN",
+    "semantic_fields_are_snapshot_metadata": true,
+    "semantic_artifact_mutation_permitted": false,
+    "project_status_is_projection_only": true,
+    "latest_file_wins": false,
+    "current_main_descendant_implies_acceptance": false,
+    "conflict_policy": "FAIL_CLOSED"
+  },
+  "lifecycle_record_contract": {
+    "required_fields": [
+      "record_id",
+      "task_id",
+      "semantic_artifact_identity",
+      "event",
+      "event_sequence",
+      "predecessor_lifecycle_record",
+      "authority_basis",
+      "event_evidence",
+      "record_identity",
+      "created_by_task",
+      "provenance",
+      "effective"
+    ],
+    "events": [
+      "MERGED",
+      "POST_MERGE_VERIFIED",
+      "CLOSED"
+    ],
+    "append_only": true,
+    "accepted_record_edit": "REJECT",
+    "accepted_record_delete": "REJECT",
+    "accepted_record_reorder": "REJECT",
+    "accepted_event_overwrite": "REJECT",
+    "new_state_mechanism": "ADD_NEW_RECORD_ONLY",
+    "closeout_record_relationship": "CLOSED_LIFECYCLE_RECORD_IS_THE_ONLY_CLOSEOUT_STATE_SOURCE",
+    "extra_closeout_state_schema_created": false
+  },
+  "transition_policy": {
+    "initial_state": "SEMANTIC_ONLY",
+    "ordered_events": [
+      "MERGED",
+      "POST_MERGE_VERIFIED",
+      "CLOSED"
+    ],
+    "predecessor_digest_required": true,
+    "sequence_contiguous": true,
+    "wrong_task_or_semantic_identity": "REJECT",
+    "fork_or_duplicate": "REJECT",
+    "closed_terminal": true,
+    "unlisted_transition": "REJECT"
+  },
+  "effective_authority_resolution": {
+    "formula": "BASE_AUTHORITY_PLUS_ACCEPTED_AMENDMENTS_PLUS_ACCEPTED_SUPERSESSIONS_PLUS_ACCEPTED_LIFECYCLE_RECORDS",
+    "effective_when": "SEMANTIC_IDENTITY_VALID_AND_MERGED_AND_POST_MERGE_VERIFIED_AND_CLOSED_RECORDS_VALID",
+    "semantic_snapshot_accepted_false_with_closed_chain": "EFFECTIVE",
+    "semantic_snapshot_accepted_true_without_closed_chain": "NOT_EFFECTIVE",
+    "deterministic_ordering": {
+      "primary": "event_sequence_ASCENDING",
+      "secondary": "explicit_predecessor_digest_chain",
+      "tertiary": "accepted_commit_ordinal_ASCENDING",
+      "filesystem_enumeration_authoritative": false,
+      "filesystem_mtime_authoritative": false,
+      "lexical_latest_filename_authoritative": false,
+      "human_interpretation_authoritative": false
+    }
+  },
+  "projection_policy": {
+    "canonical_source": "ACCEPTED_APPEND_ONLY_LIFECYCLE_RECORD_CHAIN",
+    "project_status_role": "DERIVED_PROJECTION_ONLY",
+    "projection_disagreement": "REJECT",
+    "deterministic_regeneration_required": true,
+    "projection_is_independent_authority": false
+  },
+  "historical_migration": {
+    "registry_migration_anchor_path": "docs/authority/registry/authority-lifecycle/registry.json",
+    "legacy_closed_evidence_is_immutable_adapter_input": true,
+    "new_historical_event_fabrication": false,
+    "new_legacy_anchor_after_model_activation": "REJECT",
+    "future_events_use_v1_records": true
+  },
+  "amendment_002_recovery": {
+    "authorized_only_after_amendment_003_closed": true,
+    "semantic_artifact_path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002.json",
+    "semantic_artifact_sha256": "1ecce52415f4c1fff93383250d2e4df88d8aa381d93e81711681534d59df72e5",
+    "semantic_candidate_commit": "45067db875b7bc3ee657ef117ae13ce55ce2af85",
+    "semantic_candidate_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+    "merge_commit": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+    "merge_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+    "post_merge_ci_run": 33131896928,
+    "current_state": "POST_MERGE_VERIFIED_NOT_CLOSED",
+    "semantic_mutation_permitted": false,
+    "recovery_record_paths": [
+      "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-002/001-merged.json",
+      "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-002/002-post-merge-verified.json",
+      "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-002/003-closed.json"
+    ],
+    "synthetic_recovery_required": "PASS",
+    "current_closeout_claim": false,
+    "recovery_uses_amendment_003_bootstrap": false
+  },
+  "self_closeout_bootstrap": {
+    "rule_id": "AMENDMENT_003_SELF_CLOSEOUT_BOOTSTRAP",
+    "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "base_commit": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+    "candidate_branch": "task/UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "candidate_identity_source": "EXACT_ACCEPTED_GIT_CANDIDATE_AND_TREE",
+    "eligible_classes": [
+      "VALID_CANDIDATE",
+      "VALID_LEGAL_MERGE",
+      "VALID_DIRECT_SELF_CLOSEOUT"
+    ],
+    "candidate_allowed_paths": [
+      ".github/workflows/ci.yml",
+      "docs/authority/README.md",
+      "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_003.md",
+      "docs/authority/registry/authority-lifecycle/registry.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-003-artifacts.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-003.json",
+      "package.json",
+      "schemas/authority-amendment/v3/aipt-authority-lifecycle-amendment.schema.json",
+      "schemas/authority-lifecycle/v1/aipt-authority-lifecycle-record.schema.json",
+      "scripts/ci/lib/authority-lifecycle.mjs",
+      "scripts/ci/run-checks.mjs",
+      "scripts/ci/validate/p1-b000-authority-amendment-003.mjs"
+    ],
+    "closeout_allowed_paths": [
+      "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-003/001-merged.json",
+      "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-003/002-post-merge-verified.json",
+      "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-003/003-closed.json"
+    ],
+    "forbidden_exact_paths": [
+      "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_003.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-003.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-003-artifacts.json",
+      "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_002.md",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-p0-inventory.json",
+      "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-predecessor-evidence.json",
+      "docs/authority/UNREGISTERED_AIPT_P1_B000_AUTHORITY.md",
+      "scripts/ci/validate/p1-b000-authority.mjs",
+      "scripts/ci/validate/mvp-b001.mjs"
+    ],
+    "forbidden_path_prefixes": [
+      "internal/",
+      "cmd/",
+      "packages/",
+      "schemas/playtest-package/",
+      "schemas/runtime-adapter-input/"
+    ],
+    "direct_child_depth": 1,
+    "governance_only": true,
+    "single_use": true,
+    "use_count_before_closeout": 0,
+    "permission_expires_when": "AMENDMENT_003_CLOSED",
+    "post_closeout_bootstrap_use": "REJECT",
+    "other_task_use": "REJECT",
+    "semantic_mutation": "REJECT",
+    "business_change": "REJECT"
+  },
+  "validation_contract": {
+    "semantic_validation_target": "EXACT_FROZEN_CANDIDATE_OR_EXACT_LEGAL_MERGE_TREE",
+    "amendment_002_semantic_replay_target": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+    "lifecycle_validation_target": "CURRENT_ACCEPTED_LIFECYCLE_RECORD_CHAIN",
+    "closed_governance_replay_target": {
+      "commit": "8d6a438d051fb635e769285215e70536958a8f42",
+      "tree": "9ef6f121bd0d9a6484d7cc39a22450250e9ac489",
+      "gates": [
+        "repair",
+        "closeout",
+        "reverification"
+      ],
+      "current_successor_head_permitted": false,
+      "github_execution_identity_inherited": false
+    },
+    "required_negative_probe_ids": [
+      "A3-N01",
+      "A3-N02",
+      "A3-N03",
+      "A3-N04",
+      "A3-N05",
+      "A3-N06",
+      "A3-N07",
+      "A3-N08",
+      "A3-N09",
+      "A3-N10",
+      "A3-N11",
+      "A3-N12",
+      "A3-N13",
+      "A3-N14",
+      "A3-N15",
+      "A3-N16",
+      "A3-N17",
+      "A3-N18",
+      "A3-N19",
+      "A3-N20",
+      "A3-N21",
+      "A3-N22",
+      "A3-N23",
+      "A3-N24",
+      "A3-N25",
+      "A3-N26",
+      "A3-N27",
+      "A3-N28",
+      "A3-N29",
+      "A3-N30"
+    ],
+    "required_negative_probe_count": 30,
+    "unexpected_acceptances": 0,
+    "uncaught_validation_errors": 0,
+    "no_uncaught_errors": true
+  },
+  "scope": {
+    "governance_only": true,
+    "business_code_changed": false,
+    "b000_objective_changed": false,
+    "b000_deliverables_changed": false,
+    "p0_validator_modified": false,
+    "amendment_002_modified": false,
+    "authority_validator_modified": false,
+    "b001_validator_modified": false,
+    "playtest_package_schema_modified": false,
+    "runtime_adapter_schema_modified": false,
+    "historical_migration_modified": false,
+    "run_core_implemented": false,
+    "agent_orchestration_implemented": false,
+    "real_model_gateway_implemented": false,
+    "real_model_calls": 0,
+    "real_playtest_executed": false
+  },
+  "lifecycle": {
+    "record_state": "CANDIDATE_FROZEN",
+    "accepted": false,
+    "merge_eligible_when_all_stage_requirements_true": true,
+    "merge_authorized": false,
+    "self_closeout_authorized": false,
+    "amendment_002_closeout_authorized": false,
+    "b000_implementation_started": false,
+    "next_task": "MERGE_AND_CLOSEOUT_AMENDMENT_003",
+    "next_task_authorized": false
+  },
+  "provenance": {
+    "owner_authorized_stage": true,
+    "owner_authorized_merge": false,
+    "owner_authorized_closeout": false,
+    "base_commit": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+    "base_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+    "amendment_002_semantic_artifacts_modified": false,
+    "append_only": true,
+    "automatic_merge_permitted": false
+  }
+}

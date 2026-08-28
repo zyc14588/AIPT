@@ -28,7 +28,7 @@ import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001.mjs';
 import { run as runP1B000Authority } from './validate/p1-b000-authority.mjs';
 import { run as runP1B000AuthorityAmendment } from './validate/p1-b000-authority-amendment.mjs';
-import { run as runP1B000AuthorityAmendment002 } from './validate/p1-b000-authority-amendment-002.mjs';
+import { run as runP1B000AuthorityAmendment003 } from './validate/p1-b000-authority-amendment-003.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
@@ -170,7 +170,7 @@ const checks = await Promise.all([
   runMvpB001(ctx),
   runP1B000Authority(ctx),
   runP1B000AuthorityAmendment(ctx),
-  runP1B000AuthorityAmendment002(ctx),
+  runP1B000AuthorityAmendment003(ctx),
   repairCheck,
   closeoutCheck,
 ]);

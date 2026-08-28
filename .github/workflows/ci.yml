@@ -124,17 +124,26 @@ jobs:
       - name: Authority Amendment schema provenance closeout fingerprints and A01-A20 R01-R20 gate
         if: steps.authority_amendment_classify.outputs.applicable == 'true'
         run: pnpm run check:p1-b000-authority-amendment
-      - name: Authority Amendment-002 predecessor preservation delta and A2-N01-N30 gate
-        run: pnpm run check:p1-b000-authority-amendment-002
-      - name: Authority Amendment-002 exact frozen UNREGISTERED predecessor P0 gates
+      - name: Authority Amendment-003 immutable semantics append-only lifecycle and A3-N01-N30 gate
+        run: pnpm run check:p1-b000-authority-amendment-003
+      - name: Authority Amendment-002 exact semantic target and frozen UNREGISTERED predecessor P0 gates
         run: |
+          A3_A2_SEMANTIC_TARGET="${RUNNER_TEMP}/a3-a2-semantic-target"
           A2_PREDECESSOR_TARGET="${RUNNER_TEMP}/a2-unregistered-predecessor"
+          git clone --no-local --no-checkout . "${A3_A2_SEMANTIC_TARGET}"
+          git -C "${A3_A2_SEMANTIC_TARGET}" checkout --detach "005ec002e7d8bcccd83d3f3994fddf9da30ff82a"
+          test "$(git -C "${A3_A2_SEMANTIC_TARGET}" rev-parse HEAD)" = "005ec002e7d8bcccd83d3f3994fddf9da30ff82a"
+          test "$(git -C "${A3_A2_SEMANTIC_TARGET}" rev-parse 'HEAD^{tree}')" = "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca"
+          test -z "$(git -C "${A3_A2_SEMANTIC_TARGET}" status --porcelain=v1 --untracked-files=all)"
           git clone --no-checkout https://github.com/zyc14588/UNREGISTERED.git "${A2_PREDECESSOR_TARGET}"
           git -C "${A2_PREDECESSOR_TARGET}" checkout --detach "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe"
           test "$(git -C "${A2_PREDECESSOR_TARGET}" rev-parse HEAD)" = "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe"
           test "$(git -C "${A2_PREDECESSOR_TARGET}" rev-parse 'HEAD^{tree}')" = "5585271c78d1fe5cd8357c7b36a501bee34f0240"
           test -z "$(git -C "${A2_PREDECESSOR_TARGET}" status --porcelain=v1 --untracked-files=all)"
-          node scripts/ci/validate/p1-b000-authority-amendment-002.mjs --require-predecessor --predecessor-checkout "${A2_PREDECESSOR_TARGET}"
+          node "${A3_A2_SEMANTIC_TARGET}/scripts/ci/validate/p1-b000-authority-amendment-002.mjs" \
+            --repo "${A3_A2_SEMANTIC_TARGET}" \
+            --require-predecessor \
+            --predecessor-checkout "${A2_PREDECESSOR_TARGET}"
       - name: "B002 protocol assets: schema + JSON-RPC wire envelopes + shared fixture (hidden-leak mutant rejection, replay determinism)"
         run: pnpm run check:protocol-assets
       - name: B002 Adapter SDK contract tests (packages/adapter-sdk)

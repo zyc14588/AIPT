@@ -1,0 +1,110 @@
+{
+  "schema": "aipt.public.authority-lifecycle-registry/v1",
+  "registry_id": "AIPT-AUTHORITY-LIFECYCLE-REGISTRY-001",
+  "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+  "canonical_activation": {
+    "authorized_by_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "requires_state": "CLOSED",
+    "candidate_or_merged_amendment_is_not_activation": true,
+    "bootstrap_is_not_available_to_other_tasks": true
+  },
+  "canonical_truth_source": "ACCEPTED_APPEND_ONLY_LIFECYCLE_RECORD_CHAIN",
+  "record_contract": {
+    "schema_path": "schemas/authority-lifecycle/v1/aipt-authority-lifecycle-record.schema.json",
+    "record_root": "docs/authority/registry/authority-lifecycle/records",
+    "filename_shape": "<task-slug>/<event-sequence>-<event-slug>.json",
+    "file_presence_alone_is_acceptance": false,
+    "acceptance_requires_containing_commit_on_accepted_first_parent_ancestry": true,
+    "accepted_record_mutation": "REJECT",
+    "accepted_record_deletion": "REJECT",
+    "accepted_record_reordering": "REJECT",
+    "event_overwrite": "REJECT"
+  },
+  "ordering": {
+    "primary": "event_sequence_ASCENDING",
+    "secondary": "explicit_predecessor_digest_chain",
+    "tertiary": "accepted_commit_ordinal_ASCENDING",
+    "filesystem_enumeration_authoritative": false,
+    "filesystem_mtime_authoritative": false,
+    "lexical_latest_filename_authoritative": false,
+    "current_branch_contents_authoritative": false
+  },
+  "transitions": [
+    {
+      "from": "SEMANTIC_ONLY",
+      "to": "MERGED",
+      "sequence": 1
+    },
+    {
+      "from": "MERGED",
+      "to": "POST_MERGE_VERIFIED",
+      "sequence": 2
+    },
+    {
+      "from": "POST_MERGE_VERIFIED",
+      "to": "CLOSED",
+      "sequence": 3
+    }
+  ],
+  "invalid_transition_policy": "REJECT",
+  "closed_terminal": true,
+  "effective_gate": "EXACT_SEMANTIC_IDENTITY_AND_ACCEPTED_MERGED_POST_MERGE_VERIFIED_CLOSED_CHAIN",
+  "semantic_snapshot_fields": {
+    "state_or_lifecycle_fields": "FREEZE_TIME_METADATA_ONLY",
+    "accepted_field": "FREEZE_TIME_METADATA_ONLY",
+    "mutation_to_advance_lifecycle": false
+  },
+  "projection_policy": {
+    "project_status_role": "DERIVED_PROJECTION_ONLY",
+    "projection_must_match_canonical_resolution": true,
+    "projection_can_be_regenerated": true,
+    "projection_is_independent_authority": false
+  },
+  "historical_migration_anchors": [
+    {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001",
+      "adapter": "IMMUTABLE_LEGACY_CLOSEOUT_TO_TERMINAL_LIFECYCLE_CHAIN",
+      "evidence_path": "docs/authority/registry/base-authority-closeouts/unregistered-aipt-p1-b000-authority-closeout-001.json",
+      "evidence_sha256": "0c05dbd804e3eee439569eada73c5e1663c1b708cef481a255c7d43b05aa3384",
+      "accepted_closeout_commit": "8d6a438d051fb635e769285215e70536958a8f42",
+      "historical_state": "CLOSED",
+      "new_event_claim_fabricated": false
+    },
+    {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-001-R1",
+      "adapter": "IMMUTABLE_LEGACY_CLOSEOUT_TO_TERMINAL_LIFECYCLE_CHAIN",
+      "evidence_path": "docs/authority/registry/authority-amendment-closeouts/unregistered-aipt-p1-b000-authority-amendment-001-closeout.json",
+      "evidence_sha256": "d9e74c22b06d1e2660fb759f7bdbc8b7c73d79758a33017a983103ce6048500f",
+      "accepted_closeout_commit": "2619339e53113633e02f3aef14156a1ff08c13f8",
+      "historical_state": "CLOSED",
+      "new_event_claim_fabricated": false
+    },
+    {
+      "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-POSTMERGE-REPAIR-001",
+      "adapter": "IMMUTABLE_EMBEDDED_REPAIR_CLOSEOUT_TO_TERMINAL_LIFECYCLE_CHAIN",
+      "evidence_path": "docs/authority/registry/base-authority-closeouts/unregistered-aipt-p1-b000-authority-closeout-001.json",
+      "evidence_sha256": "0c05dbd804e3eee439569eada73c5e1663c1b708cef481a255c7d43b05aa3384",
+      "evidence_pointer": "/repair_closeout",
+      "accepted_merge_commit": "df71476d4b8f271f3b444cace46a3d6fbd1eaea4",
+      "accepted_closeout_commit": "8d6a438d051fb635e769285215e70536958a8f42",
+      "historical_state": "CLOSED",
+      "new_event_claim_fabricated": false
+    }
+  ],
+  "legacy_adapter_policy": {
+    "anchors_are_immutable_migration_roots": true,
+    "new_legacy_anchor_after_activation": "REJECT",
+    "new_authority_uses_v1_records": true,
+    "parallel_mutable_lifecycle_source": false
+  },
+  "general_purpose": {
+    "supported_authority_classes": [
+      "BASE_AUTHORITY",
+      "AUTHORITY_AMENDMENT",
+      "AUTHORITY_SUPERSESSION",
+      "FUTURE_GOVERNANCE_AUTHORITY"
+    ],
+    "task_specific_framework_branching": false,
+    "amendment_002_identity_is_recovery_configuration_only": true
+  }
+}
