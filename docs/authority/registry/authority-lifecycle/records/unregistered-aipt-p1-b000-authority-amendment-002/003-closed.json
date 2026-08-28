@@ -1,0 +1,50 @@
+{
+  "schema": "aipt.public.authority-lifecycle-record/v1",
+  "record_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002-LIFECYCLE-003-CLOSED",
+  "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+  "semantic_artifact_identity": {
+    "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+    "artifact_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+    "artifact_path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002.json",
+    "artifact_sha256": "1ecce52415f4c1fff93383250d2e4df88d8aa381d93e81711681534d59df72e5",
+    "candidate_commit": "45067db875b7bc3ee657ef117ae13ce55ce2af85",
+    "candidate_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+    "semantic_snapshot_state": "CANDIDATE_FROZEN",
+    "semantic_snapshot_accepted": false
+  },
+  "event": "CLOSED",
+  "event_sequence": 3,
+  "predecessor_lifecycle_record": {
+    "record_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002-LIFECYCLE-002-POST-MERGE-VERIFIED",
+    "record_sha256": "8d62f716a0fe73b1ba98a452b80f437f05352e02b645cbcf58713d75a67bd30e"
+  },
+  "authority_basis": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "authorized_by_task": "CLOSEOUT_AMENDMENT_002_WITH_CANONICAL_LIFECYCLE",
+    "authorization_kind": "ACCEPTED_LIFECYCLE_MODEL"
+  },
+  "event_evidence": {
+    "kind": "GOVERNANCE_CLOSEOUT",
+    "closeout_identity": {
+      "commit_source": "CONTAINING_GIT_COMMIT",
+      "governance_only": true,
+      "owner_authorized": true
+    }
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-002/003-closed.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "created_by_task": "CLOSEOUT_AMENDMENT_002_WITH_CANONICAL_LIFECYCLE",
+  "provenance": {
+    "source_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+    "source_commit": "005ec002e7d8bcccd83d3f3994fddf9da30ff82a",
+    "source_tree": "1b173e129ccb3df1e1a9bc80385f9dc4f530b6ca",
+    "record_creation_authority": "CLOSEOUT_AMENDMENT_002_WITH_CANONICAL_LIFECYCLE",
+    "record_creator_task": "CLOSEOUT_AMENDMENT_002_WITH_CANONICAL_LIFECYCLE",
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "effective": true
+}
