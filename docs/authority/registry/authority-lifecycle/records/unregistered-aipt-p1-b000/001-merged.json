@@ -1,0 +1,50 @@
+{
+  "schema": "aipt.public.authority-lifecycle-record/v1",
+  "record_id": "UNREGISTERED-AIPT-P1-B000-LIFECYCLE-001-MERGED",
+  "task_id": "UNREGISTERED-AIPT-P1-B000",
+  "semantic_artifact_identity": {
+    "task_id": "UNREGISTERED-AIPT-P1-B000",
+    "artifact_id": "UNREGISTERED-AIPT-P1-B000",
+    "artifact_path": "aipt/status.json",
+    "artifact_sha256": "9feb0c9cd1e0ff80a63ce887d266eec8db11e75097008b509de20386206349d5",
+    "candidate_commit": "c9350e734027d5fbdee6c109a7a689f8273f7dfc",
+    "candidate_tree": "34597e79c586fb034256daa32d67640692ec589d",
+    "semantic_snapshot_state": "CANDIDATE_FROZEN",
+    "semantic_snapshot_accepted": false
+  },
+  "event": "MERGED",
+  "event_sequence": 1,
+  "predecessor_lifecycle_record": null,
+  "authority_basis": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "authorized_by_task": "MERGE_AND_CLOSEOUT_UNREGISTERED_AIPT_P1_B000",
+    "authorization_kind": "ACCEPTED_LIFECYCLE_MODEL"
+  },
+  "event_evidence": {
+    "kind": "GIT_MERGE",
+    "merge_identity": {
+      "commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+      "tree": "34597e79c586fb034256daa32d67640692ec589d",
+      "parents": [
+        "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+        "c9350e734027d5fbdee6c109a7a689f8273f7dfc"
+      ]
+    }
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000/001-merged.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "created_by_task": "MERGE_AND_CLOSEOUT_UNREGISTERED_AIPT_P1_B000",
+  "provenance": {
+    "source_task": "UNREGISTERED-AIPT-P1-B000",
+    "source_commit": "c9350e734027d5fbdee6c109a7a689f8273f7dfc",
+    "source_tree": "34597e79c586fb034256daa32d67640692ec589d",
+    "record_creation_authority": "MERGE_AND_CLOSEOUT_UNREGISTERED_AIPT_P1_B000",
+    "record_creator_task": "MERGE_AND_CLOSEOUT_UNREGISTERED_AIPT_P1_B000",
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "effective": false
+}
