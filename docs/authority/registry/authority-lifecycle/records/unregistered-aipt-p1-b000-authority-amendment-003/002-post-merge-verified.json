@@ -1,0 +1,53 @@
+{
+  "schema": "aipt.public.authority-lifecycle-record/v1",
+  "record_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003-LIFECYCLE-002-POST-MERGE-VERIFIED",
+  "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+  "semantic_artifact_identity": {
+    "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "artifact_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "artifact_path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-003.json",
+    "artifact_sha256": "3fb6dc5d8d4272daaff871b781c4d993b8bfdae4861c582b9472d50f127c1d32",
+    "candidate_commit": "6d5ce51f8d288a87e05dccf2aeaf88defa15cc04",
+    "candidate_tree": "3facea0f747ddc718bee7416ce3889031f309d9f",
+    "semantic_snapshot_state": "CANDIDATE_FROZEN",
+    "semantic_snapshot_accepted": false
+  },
+  "event": "POST_MERGE_VERIFIED",
+  "event_sequence": 2,
+  "predecessor_lifecycle_record": {
+    "record_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003-LIFECYCLE-001-MERGED",
+    "record_sha256": "c1e7ff804784e91145d442fefa73334eab738af8a25a932e613c3762c9f9def3"
+  },
+  "authority_basis": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "authorized_by_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "authorization_kind": "SELF_CLOSEOUT_BOOTSTRAP"
+  },
+  "event_evidence": {
+    "kind": "POST_MERGE_CI",
+    "post_merge_evidence": {
+      "run_id": 33138508086,
+      "head_sha": "8ea2eaba9f7785cd215c4db46652cf6cdec950fa",
+      "conclusion": "success",
+      "jobs_passed": 5,
+      "jobs_failed": 0,
+      "jobs_skipped": 0
+    }
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/authority-lifecycle/records/unregistered-aipt-p1-b000-authority-amendment-003/002-post-merge-verified.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "created_by_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+  "provenance": {
+    "source_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "source_commit": "8ea2eaba9f7785cd215c4db46652cf6cdec950fa",
+    "source_tree": "3facea0f747ddc718bee7416ce3889031f309d9f",
+    "record_creation_authority": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "record_creator_task": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "effective": false
+}
