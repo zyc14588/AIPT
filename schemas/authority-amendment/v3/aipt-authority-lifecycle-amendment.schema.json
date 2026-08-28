@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v3/aipt-authority-lifecycle-amendment.schema.json",
+  "title": "AIPT Authority lifecycle externalization Amendment v1",
+  "description": "Fail-closed semantic contract for separating immutable Authority artifacts from append-only lifecycle acceptance records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "amendment_id",
+    "amendment_sequence",
+    "authority_task_id",
+    "authority_state",
+    "semantic_snapshot_accepted",
+    "objective",
+    "authority_basis",
+    "root_cause_matrix",
+    "canonical_lifecycle_authority",
+    "lifecycle_record_contract",
+    "transition_policy",
+    "effective_authority_resolution",
+    "projection_policy",
+    "historical_migration",
+    "amendment_002_recovery",
+    "self_closeout_bootstrap",
+    "validation_contract",
+    "scope",
+    "lifecycle",
+    "provenance"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.authority-lifecycle-amendment/v1" },
+    "amendment_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003" },
+    "amendment_sequence": { "const": 3 },
+    "authority_task_id": { "const": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-001" },
+    "authority_state": { "const": "CANDIDATE_FROZEN" },
+    "semantic_snapshot_accepted": { "const": false },
+    "objective": { "$ref": "#/$defs/openObject" },
+    "authority_basis": { "$ref": "#/$defs/openObject" },
+    "root_cause_matrix": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/openObject" }
+    },
+    "canonical_lifecycle_authority": { "$ref": "#/$defs/openObject" },
+    "lifecycle_record_contract": { "$ref": "#/$defs/openObject" },
+    "transition_policy": { "$ref": "#/$defs/openObject" },
+    "effective_authority_resolution": { "$ref": "#/$defs/openObject" },
+    "projection_policy": { "$ref": "#/$defs/openObject" },
+    "historical_migration": { "$ref": "#/$defs/openObject" },
+    "amendment_002_recovery": { "$ref": "#/$defs/openObject" },
+    "self_closeout_bootstrap": { "$ref": "#/$defs/openObject" },
+    "validation_contract": { "$ref": "#/$defs/openObject" },
+    "scope": { "$ref": "#/$defs/openObject" },
+    "lifecycle": { "$ref": "#/$defs/openObject" },
+    "provenance": { "$ref": "#/$defs/openObject" }
+  },
+  "$defs": {
+    "openObject": { "type": "object", "minProperties": 1 }
+  }
+}

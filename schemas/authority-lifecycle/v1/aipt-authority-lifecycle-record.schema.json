@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-lifecycle/v1/aipt-authority-lifecycle-record.schema.json",
+  "title": "AIPT append-only Authority lifecycle record v1",
+  "description": "Immutable accepted lifecycle event for an exact frozen semantic artifact. Current state is resolved from an explicit predecessor chain, never by mutating semantic snapshot fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "record_id",
+    "task_id",
+    "semantic_artifact_identity",
+    "event",
+    "event_sequence",
+    "predecessor_lifecycle_record",
+    "authority_basis",
+    "event_evidence",
+    "record_identity",
+    "created_by_task",
+    "provenance",
+    "effective"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.authority-lifecycle-record/v1" },
+    "record_id": { "$ref": "#/$defs/identity" },
+    "task_id": { "$ref": "#/$defs/identity" },
+    "semantic_artifact_identity": { "$ref": "#/$defs/semanticIdentity" },
+    "event": { "enum": ["MERGED", "POST_MERGE_VERIFIED", "CLOSED"] },
+    "event_sequence": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "predecessor_lifecycle_record": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/predecessor" }
+      ]
+    },
+    "authority_basis": { "$ref": "#/$defs/authorityBasis" },
+    "event_evidence": {
+      "oneOf": [
+        { "$ref": "#/$defs/mergeEvidence" },
+        { "$ref": "#/$defs/postMergeEvidence" },
+        { "$ref": "#/$defs/closeoutEvidence" }
+      ]
+    },
+    "record_identity": { "$ref": "#/$defs/recordIdentity" },
+    "created_by_task": { "$ref": "#/$defs/identity" },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "effective": { "type": "boolean" }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,239}$"
+    },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "semanticIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "artifact_id",
+        "artifact_path",
+        "artifact_sha256",
+        "candidate_commit",
+        "candidate_tree",
+        "semantic_snapshot_state",
+        "semantic_snapshot_accepted"
+      ],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/identity" },
+        "artifact_id": { "$ref": "#/$defs/identity" },
+        "artifact_path": { "$ref": "#/$defs/repoPath" },
+        "artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "candidate_commit": { "$ref": "#/$defs/gitOid" },
+        "candidate_tree": { "$ref": "#/$defs/gitOid" },
+        "semantic_snapshot_state": { "$ref": "#/$defs/identity" },
+        "semantic_snapshot_accepted": { "type": "boolean" }
+      }
+    },
+    "predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "record_sha256"],
+      "properties": {
+        "record_id": { "$ref": "#/$defs/identity" },
+        "record_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "authorityBasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "authorized_by_task", "authorization_kind"],
+      "properties": {
+        "model_id": { "const": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1" },
+        "authorized_by_task": { "$ref": "#/$defs/identity" },
+        "authorization_kind": {
+          "enum": ["SELF_CLOSEOUT_BOOTSTRAP", "ACCEPTED_LIFECYCLE_MODEL", "HISTORICAL_BACKFILL"]
+        }
+      }
+    },
+    "mergeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree", "parents"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "parents": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/gitOid" }
+        }
+      }
+    },
+    "mergeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "merge_identity"],
+      "properties": {
+        "kind": { "const": "GIT_MERGE" },
+        "merge_identity": { "$ref": "#/$defs/mergeIdentity" }
+      }
+    },
+    "postMergeCi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "head_sha", "conclusion", "jobs_passed", "jobs_failed", "jobs_skipped"],
+      "properties": {
+        "run_id": { "type": "integer", "minimum": 1 },
+        "head_sha": { "$ref": "#/$defs/gitOid" },
+        "conclusion": { "const": "success" },
+        "jobs_passed": { "type": "integer", "minimum": 1 },
+        "jobs_failed": { "const": 0 },
+        "jobs_skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "postMergeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "post_merge_evidence"],
+      "properties": {
+        "kind": { "const": "POST_MERGE_CI" },
+        "post_merge_evidence": { "$ref": "#/$defs/postMergeCi" }
+      }
+    },
+    "closeoutIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit_source", "governance_only", "owner_authorized"],
+      "properties": {
+        "commit_source": { "const": "CONTAINING_GIT_COMMIT" },
+        "governance_only": { "const": true },
+        "owner_authorized": { "const": true }
+      }
+    },
+    "closeoutEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "closeout_identity"],
+      "properties": {
+        "kind": { "const": "GOVERNANCE_CLOSEOUT" },
+        "closeout_identity": { "$ref": "#/$defs/closeoutIdentity" }
+      }
+    },
+    "recordIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_scheme", "path", "accepted_commit_source", "append_only"],
+      "properties": {
+        "identity_scheme": { "const": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT" },
+        "path": { "$ref": "#/$defs/repoPath" },
+        "accepted_commit_source": { "const": "CONTAINING_GIT_COMMIT" },
+        "append_only": { "const": true }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_task",
+        "source_commit",
+        "source_tree",
+        "record_creation_authority",
+        "record_creator_task",
+        "historical_evidence_claimed_only_if_proven"
+      ],
+      "properties": {
+        "source_task": { "$ref": "#/$defs/identity" },
+        "source_commit": { "$ref": "#/$defs/gitOid" },
+        "source_tree": { "$ref": "#/$defs/gitOid" },
+        "record_creation_authority": { "$ref": "#/$defs/identity" },
+        "record_creator_task": { "$ref": "#/$defs/identity" },
+        "historical_evidence_claimed_only_if_proven": { "const": true }
+      }
+    }
+  }
+}

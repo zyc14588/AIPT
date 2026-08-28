@@ -1,0 +1,58 @@
+{
+  "schema": "aipt.public.authority-amendment-artifact-manifest/v3",
+  "task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-003",
+  "artifacts": [
+    {
+      "path": "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_003.md",
+      "sha256": "220a672a58bfb916988debab00ae39c2f1764de9ae3085c85f51f7fdceca0d42",
+      "role": "HUMAN_SEMANTIC_CONTRACT"
+    },
+    {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-003.json",
+      "sha256": "3fb6dc5d8d4272daaff871b781c4d993b8bfdae4861c582b9472d50f127c1d32",
+      "role": "MACHINE_SEMANTIC_CONTRACT"
+    },
+    {
+      "path": "docs/authority/registry/authority-lifecycle/registry.json",
+      "sha256": "9c2238d43dd95402c0b173b337736f577ae75dc3901fc435611eb32ac0038d70",
+      "role": "CANONICAL_LIFECYCLE_REGISTRY_POLICY"
+    },
+    {
+      "path": "schemas/authority-amendment/v3/aipt-authority-lifecycle-amendment.schema.json",
+      "sha256": "f512782c54ab7f9c16da8e5283c6d1fc86b7ec34d5f990b3b5a8b1117b913153",
+      "role": "AMENDMENT_SCHEMA"
+    },
+    {
+      "path": "schemas/authority-lifecycle/v1/aipt-authority-lifecycle-record.schema.json",
+      "sha256": "d847ed0fac3f32f7cbe09f7d0e45bb774328351f2619561e1cec38b2c1063e25",
+      "role": "GENERIC_LIFECYCLE_RECORD_SCHEMA"
+    },
+    {
+      "path": "scripts/ci/lib/authority-lifecycle.mjs",
+      "sha256": "7dbcc454580e449af347f65ae2fd3d3b6746da3676875ea692bf0ec427a0c282",
+      "role": "GENERIC_LIFECYCLE_RESOLVER"
+    },
+    {
+      "path": "scripts/ci/validate/p1-b000-authority-amendment-003.mjs",
+      "sha256": "00f607e689fba24670f95c7419096ff11738b8f344f66a56c8c579a64ba486f1",
+      "role": "AMENDMENT_003_VALIDATOR_AND_SELF_CLOSEOUT_CLASSIFIER"
+    }
+  ],
+  "protected_unchanged": [
+    {
+      "path": "scripts/ci/validate/p1-b000-authority.mjs",
+      "sha256": "c6f0c8e01397200ce15f48bf1fc2412d9db477dddc37d3f99e0478d26956dd0c"
+    },
+    {
+      "path": "scripts/ci/validate/mvp-b001.mjs",
+      "sha256": "319c8d4a3466c20d14e2d5fc74cc246c9b796d36f884fcc39e2b0a25317351c4"
+    },
+    {
+      "path": "internal/storage/postgres/migrations/000002_playtest_queue.sql",
+      "sha256": "47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997"
+    }
+  ],
+  "amendment_002_semantic_artifacts_modified": false,
+  "business_code_changed": false,
+  "b000_implementation_started": false
+}
