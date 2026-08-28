@@ -1,0 +1,1125 @@
+{
+  "schema": "aipt.public.p0-predecessor-protected-inventory/v1",
+  "authority_task_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+  "repository": "zyc14588/UNREGISTERED",
+  "predecessor_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+  "predecessor_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+  "generation_contract": {
+    "source": "IMMUTABLE_GIT_COMMIT_TREE_ONLY",
+    "invocation": "git ls-tree -r -z --full-tree 358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+    "candidate_declared_inventory_permitted": false,
+    "entry_order": "UTF8_BYTE_LEX_ASC",
+    "content_hash": "SHA-256_OF_EXACT_GIT_BLOB_BYTES",
+    "path_identity": "REPOSITORY_RELATIVE_POSIX_NFC_CASE_COLLISION_FREE",
+    "supported_modes": [
+      "100644",
+      "100755"
+    ],
+    "symlink_submodule_or_non_blob": "REJECT"
+  },
+  "counts": {
+    "tracked_entries": 136,
+    "preserve_exact": 133,
+    "controlled_successor_modification": 3
+  },
+  "controlled_successor_surfaces": [
+    ".github/workflows/aipt-content-gate.yml",
+    "aipt/README.md",
+    "aipt/status.json"
+  ],
+  "entries": [
+    {
+      "path": ".github/workflows/aipt-content-gate.yml",
+      "mode": "100644",
+      "git_blob_sha1": "1adeecd4f0c551a08e16cb5e41a582fc7732162f",
+      "sha256": "48d7b4c42d303c73978de685cd378042efa517238155d6c7ede656059ce84cb4",
+      "role": "SUCCESSOR_CI_CONTROL_SURFACE",
+      "protection": "CONTROLLED_SUCCESSOR_MODIFICATION"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "git_blob_sha1": "0532b38f2296a0eac4eed81c36566b3384939637",
+      "sha256": "8b495febd3105843278ef4d9e9e9ce344ee42c2ac9c0b15b99dc9ac4973a0168",
+      "role": "REPOSITORY_CONTROL_FILE",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/campaign-state-keeper/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "f11c52c9f4629559bce12aa5e0881c0c56e6e92a",
+      "sha256": "5ad3d534e1fc12d8f86a74a15d5c57785fdfec3a95463c9e88f1d57a1dab53e9",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/character-progression-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "9a39e69a888d3a4acdb18c45fb2efef2196c019d",
+      "sha256": "45d66ea380d2bacb2cbe9f0680f4b8588a6bf65494e10ac66e34e6c2f3522dc9",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/conflict-engine-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "a1fd8d6de7985f5e49c7745cb2b196afd8be4379",
+      "sha256": "2b7bb2d86a090f0ac580778f174d75ccf64d6f27bf6be9138b6c9e5a5740b7af",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/core-resolution-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "13c5bbdc5271afec41b58d0f49dd287f2a13348c",
+      "sha256": "dd95fcb4b310f12a16ee3b8607757a8876eaf63a06d553cb99ccce2f056150e3",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/dialogue-voice/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "428d78c3c51546d67e7fea81b7b5f99632cbdcb2",
+      "sha256": "368a654ed9d0ef90a897b2c0074066a85a673739a0bf399d2c6b6bff2aec3a39",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/encounter-situation-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "cb2dfed2e0bdf58ee7808ea3643b71fe46387efd",
+      "sha256": "67b3d4a571db29bcb4289d3b1d6778b8d36fa1632e1117115b991b985835e100",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/faction-simulator/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "4e2916c73a8e2790795d395c3295bb0f58d576e3",
+      "sha256": "9130bfdcc1d6ad0c8a101d3732896cdfbb698539c29c6bde392286a3eefe9da5",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/gm-procedure-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "83a8ba3d7902a289649f8e62c0561766a6b44c12",
+      "sha256": "1761e20fb5212399e28c4dcd7d9232c2da7c5d61823f3cd6ef12f65f3df88ae1",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/improv-oracle/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "63dbf37be5482e435bad6b64fa28b00d94c5feb3",
+      "sha256": "f9e1c938c461dabed4e82514d91203b88d5a71550268120cf8ff57d0c831aa2e",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/location-site-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "7e66fd581341b06fcc718558cc9d6252bbe528e9",
+      "sha256": "891960fb2360ea3ff0f4671f15746389b6d0bbe7cc62b34a0640d5ca24ff5112",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/mystery-clue-engine/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "38ebad2bd2a8f37cdd0e5767422639f9e0ad4e34",
+      "sha256": "a86161d8fedf74067b795ebe6264d220fd30c28ceb3ffc731bcdf674b0a3e43d",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/npc-web/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "f98510dd3d4c8ee5fbe3ac3b293a2e9df76d086e",
+      "sha256": "2d939b71ab8a7980a9e7bab8694525f8d91acd25ea5360c8df982f4488be196b",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/playtest-rules-auditor/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "c885ee5fc8344174d8c244ec1d662dfc18863591",
+      "sha256": "41fab8c3cb025af5b37e78bff93b52240a0cacfd94c37d779b326b6cd641c73a",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/probability-balance-lab/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "23bcef8f8832090dfe3c95d23d6451115c795bd4",
+      "sha256": "e9bba9a654dac2f7fd0cb5e45cce0a2e58779e80ca6f6232130ebfb247cf3011",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/probability-balance-lab/scripts/dice_prob.py",
+      "mode": "100755",
+      "git_blob_sha1": "0cb3205b6df4f8328968ab6f69d02b43606abb76",
+      "sha256": "065fc9914e08d94eb5d242009600c5abdd663c2b1efbdac8fcf747d67b7c8d68",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/quest-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "aae1ebe90c1aafe7a8fcbb61d29b9a933e455a45",
+      "sha256": "44c33ec71eed7b4afd8d4c3c3adaab0d2b5b85fd696679f0557357baa6ad9364",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/resource-economy-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "deec5a58e316720b7cb0d9b57a6c6443ce339b87",
+      "sha256": "2e662bac21a011c39ac7b82d8d87a26fe0c5193eac74ea11f7e3f8ef02f4f414",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/rules-content-forge/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "273887b837658d52da3dc84fcc495fd0c7590c9b",
+      "sha256": "b2da91e4d715e06fccf7a8cd9b2dd4dec18d15af8e5bd325b686f6ce4938d65a",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/rules-reference-writer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "267d0ba26bb30ce3862cd9d6d3cc9f2ab67ae612",
+      "sha256": "1c6e7493fa93a9c56f7b8bce157362ef51bd7cee164aa0c31da18d92eb168027",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/rules-system-adapter/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "efd19ab9323f7a31e4842046c967aa77b4715051",
+      "sha256": "1fd05911fb1f641332983e3c80a420e3cd331149b5a1b8180658316414a48af8",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/sandbox-world-engine/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "82cc0280563f813eab10ac38942055d486010047",
+      "sha256": "c8de39c3ccac66be5ed2d0bea1c44b93c95d72eff97cf5e311cf6febe1241c17",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/session-prep-recap/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "ed441bc32582055db8463425edacb791c4d252ab",
+      "sha256": "50c6ea010e1e580be9248bd3f09b90a4c04c8dd75b0e3fcec2e7b6621edb19fb",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/situation-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "949110a33b75149ea9a75224fb73131094c254b4",
+      "sha256": "4403aefba0e697b7d094679fb63af0c3aa6d59e7215096abafc9ffe257a7de93",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/trpg-campaign-director/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "af9593d15e79552758b03c8a769bad0bfc38b101",
+      "sha256": "44db2551df5731020d75c80bd5818b09d7e915fdded1cc4f9747da86c8633229",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/trpg-prose-writer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "be5385bb83662077d3947e5efc6e246916245500",
+      "sha256": "ddb51e9424ba3860006d640aab8c2f106f9aeb9bb870ff8d846daddba5b2e69a",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": ".opencode/skills/trpg-system-designer/SKILL.md",
+      "mode": "100644",
+      "git_blob_sha1": "c67795b34260781fc4b415cf87818c774e1189e9",
+      "sha256": "bf04cd91e039275eacfdfa2dacb45b780d7b211527615f785423f941b93d3063",
+      "role": "PREDECESSOR_TOOLING_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "git_blob_sha1": "f618753ee7b3a7202976c744f7e213956a114563",
+      "sha256": "8af9e78a22b97ed097a03dd68a97dcafeb6033a8ba4adb4d0da3a04fbf153241",
+      "role": "REPOSITORY_OPERATING_RULES",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "LICENSES/README.md",
+      "mode": "100644",
+      "git_blob_sha1": "971d0997bb608a0c7e61081d0bdfb0d1261b491d",
+      "sha256": "dfed73ce1f790650de33bfcce25cbcdc141ff510c120403da0f7150c4665b159",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "LICENSES/UNREGISTERED-CONTENT-POLICY-1.0.md",
+      "mode": "100644",
+      "git_blob_sha1": "d1f25b621bb3ae63c3d02dfb0a33ea26833811ee",
+      "sha256": "2aab086afd0fc6a0d9455a56ae9052039b4af3d098e5fd2fc4cc22551972bc11",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "git_blob_sha1": "11399a2607efeb2a8a0deee8eca8244c6f69e0d6",
+      "sha256": "ebb1db18a1f0cb8735f09c730942e4697e6cb42cc21ccbed96fc3849cbfe8ca6",
+      "role": "PREDECESSOR_TRACKED_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "SOURCES.md",
+      "mode": "100644",
+      "git_blob_sha1": "17782be169af870f15c77bc7cb345c8c4f97351a",
+      "sha256": "5bf9ab416ad12d3c765f468812ea8063f64cbb7a54f525024325c050fdf1a997",
+      "role": "PREDECESSOR_TRACKED_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "TRPG-ADAPTATION.md",
+      "mode": "100644",
+      "git_blob_sha1": "208604162c49fa0aaee4e11da29f2cf0c6c7b28a",
+      "sha256": "dbfe4ade2b65ed3753201ec76ed13c896035c7ed9ff4b62324fb0d9c288cc432",
+      "role": "PREDECESSOR_TRACKED_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "VALIDATION.md",
+      "mode": "100644",
+      "git_blob_sha1": "be25811b624010cfc775184b48081b366d45b84c",
+      "sha256": "30d2122386c70cd6c779af9e314ee51742e353ed4787104c3bc0e5c0fb56fb69",
+      "role": "PREDECESSOR_TRACKED_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/README.md",
+      "mode": "100644",
+      "git_blob_sha1": "eb073a01ddc5980ac9abdd5affca47a0c69f16c1",
+      "sha256": "0eae04d05badf66430406a79fa2ecd5bb2733c340234b498164ed08cba9a5b8f",
+      "role": "SUCCESSOR_DOCUMENTATION_CONTROL_SURFACE",
+      "protection": "CONTROLLED_SUCCESSOR_MODIFICATION"
+    },
+    {
+      "path": "aipt/input-manifest.json",
+      "mode": "100644",
+      "git_blob_sha1": "bf574f8e96bad8c0bfbbfd82f1a23c2169b2dd59",
+      "sha256": "0b5f13c4dbfe429fc07a59a67b2d1c10db9ba74d205f1b3e7a9a1e896577608a",
+      "role": "P0_INPUT_MANIFEST",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b000/identity.json",
+      "mode": "100644",
+      "git_blob_sha1": "a4092c167f6d80299cc9cdb8032045e01d817f29",
+      "sha256": "b2302eb17c6ab08bbc47bbcb884ff03f92de8b0159d7508c25c565b4ef31d22d",
+      "role": "P0_B000_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b000/licensing.json",
+      "mode": "100644",
+      "git_blob_sha1": "351e09bfd89cfe6e61408ae2a72ac6a86f75d09f",
+      "sha256": "480b8924a928bdd8ed3e4eabadf2cb4bdfb4ee4021c7a8c5c0c2f1564d9ed17e",
+      "role": "P0_B000_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b000/premades-v2.json",
+      "mode": "100644",
+      "git_blob_sha1": "a4fc80dae681b92483372e76f2343ff5261cb40d",
+      "sha256": "5bbd5bb9ca180004b4407e558961dc679dde888df78f3dd1b9d1ea2b8c9b2163",
+      "role": "P0_B000_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b001/safety-profile.json",
+      "mode": "100644",
+      "git_blob_sha1": "f6888c3f729c48066bcda86c71ee9cf854136082",
+      "sha256": "dea0b7a62ba8ac81cb9314546afebca400642d9923f9ae928d97c9a40a29304f",
+      "role": "P0_B001_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b001/stable-ids.json",
+      "mode": "100644",
+      "git_blob_sha1": "0c01973c544a8416d346038c773909435235756a",
+      "sha256": "c7e296bf7f7595ec17e67e44fef60ac38e979d4906ab31d1d9081e6bed53dba6",
+      "role": "P0_B001_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b001/visibility.json",
+      "mode": "100644",
+      "git_blob_sha1": "faf69080abdb3a2fa504929123c2703a646f37ff",
+      "sha256": "e232a2f95c6359cf54dd5f4147c72e0c3433614e00555226cd2993716f7bbb70",
+      "role": "P0_B001_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b002/README.md",
+      "mode": "100644",
+      "git_blob_sha1": "c001c07a8a93c024563b38d81a711acc6175a38c",
+      "sha256": "660ba7147db95029e2c609419b2b63f204dee8d9275d19223c2c11dbc3b4c119",
+      "role": "P0_B002_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b002/machine-rules.json",
+      "mode": "100644",
+      "git_blob_sha1": "4dd5bab8b96b7331f3de3aa9dcbb213aec3c5d4b",
+      "sha256": "139d095fe54926e1599edf208b65f7a89061f1cda6d8b492f83b5e47c0693c78",
+      "role": "P0_B002_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b002/rule-id-map.json",
+      "mode": "100644",
+      "git_blob_sha1": "9f8b401587ce29e011280b8252ecb96ad5bd2866",
+      "sha256": "321550a1bb91066c263e5857c8095878d708af3f296430bc00011d70f5bb242c",
+      "role": "P0_B002_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b002/semantic-graph.json",
+      "mode": "100644",
+      "git_blob_sha1": "cc6f8a9bbf6b3414cd48ed1559a02ebbd9fdc268",
+      "sha256": "8c9ad9ade247ac6195019b7225725c70cd26b55270979d31c7b3701d02092562",
+      "role": "P0_B002_MACHINE_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/action-intent.json",
+      "mode": "100644",
+      "git_blob_sha1": "7586348aab537c19021ae28cd4a9e6a03e9210ee",
+      "sha256": "6c1de67bdd4e408c68b72a5a358debbc13a4c8b3b016a50367a2efc53d2f43cd",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/event.json",
+      "mode": "100644",
+      "git_blob_sha1": "2eac71615e2e3476731e30c242d1c5f4d5aa16fb",
+      "sha256": "e93542b0abfff511ba3274dd7c308628a2a692fb40f84349c6afb02f52a5aef5",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/final-state.json",
+      "mode": "100644",
+      "git_blob_sha1": "ad454af3cc8861588a482b3eafdd5c9979a6ceb7",
+      "sha256": "fde86125510dc2505ea84e5b606c4076e65050c436c1bcd3d9e0602b6df98980",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/manifest.json",
+      "mode": "100644",
+      "git_blob_sha1": "cbf673baef19a68dda46b551fe9b47d5f5322f59",
+      "sha256": "e52d53541afd15b86dcf79e1e89baa74b8f2c494e342bc02ee8863b0e9ce8faa",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/projection-seat-01.json",
+      "mode": "100644",
+      "git_blob_sha1": "2fe6fe27f0d14328b5a4bba6fd4b983823a6b68a",
+      "sha256": "8869026afa22a3194f5765b56004eb1a89b5ac60c53551091ace1fa8d1b38b81",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/projection-seat-02.json",
+      "mode": "100644",
+      "git_blob_sha1": "5e5f48016bee9161410a050f7f99df782668a737",
+      "sha256": "e5c9a45a221d47bf32434fd8c0751b8102cfb2acf51caa6e5bbeeff496251970",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/projection-seat-03.json",
+      "mode": "100644",
+      "git_blob_sha1": "666fb606ba9090112745585ed37a827e02fb9471",
+      "sha256": "fde9ad4695208becba67c2de853cfab894cb89e916f7625ef52f3d95941640e3",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/projection-seat-04.json",
+      "mode": "100644",
+      "git_blob_sha1": "c9220eb4d884923f2dce533070bfd6ce1e2b2302",
+      "sha256": "6b53b52a22a04d8f6e58904a136add7f4af32a38d4259e788c0a204b638ce6c4",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/replay-assertion.json",
+      "mode": "100644",
+      "git_blob_sha1": "8fb6e2297d52f7d52b3c1397590cb1cb5958ac0b",
+      "sha256": "be692ae4bfb9646d7654ba6c364d22de20b7d1ec54a641b46d0b34dc6253b716",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/seats.json",
+      "mode": "100644",
+      "git_blob_sha1": "c3fbfb08ffc8ec03a74f6d3dc6fbbdee97b1302f",
+      "sha256": "5e3f9c1ebc6ebc7c32f43eca558a941d6af544b5071ac628a477cb17a28ac9e3",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/state.json",
+      "mode": "100644",
+      "git_blob_sha1": "d1eac300d83aff605c026d9f167b8cf1ca495915",
+      "sha256": "7455a4d286c71e4096c34ac69fc2540b21756c159b8d093bdeb7611e712cd6a8",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/clean/transition.json",
+      "mode": "100644",
+      "git_blob_sha1": "4bced2e97ff0fac3656f13794b2dc7e26b6579ac",
+      "sha256": "c738b49e07954c243ae4cfdfec75434b1a3ce9c650f489a17237f6a4d965a058",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/UNR-MUTATION-0001/oracle.json",
+      "mode": "100644",
+      "git_blob_sha1": "88d77b046adbc42d62fc34da7e976337ef803ba3",
+      "sha256": "d1c08236054dfc34fa57170b91828a3069408da088c9e91659d168ee342fbde9",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/UNR-MUTATION-0001/overlay.json",
+      "mode": "100644",
+      "git_blob_sha1": "56600fe3b4270bd2ca65727779416cfbb05c719a",
+      "sha256": "2646980bbba810014f66c796fc5ac2f126ac77f397c6eb2e472115cb2ad5f46d",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/UNR-MUTATION-0002/oracle.json",
+      "mode": "100644",
+      "git_blob_sha1": "3834a27c4a724242581a071220fcd0b63eb75e31",
+      "sha256": "fb17f531211a57f34159e508588d9bcea807230247ea8a479c4fa4d9bcda1b2d",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/UNR-MUTATION-0002/overlay.json",
+      "mode": "100644",
+      "git_blob_sha1": "c8fecdbc1aaf38b85617d178df9c55f278fcde59",
+      "sha256": "a5e893bbdd844ba8ee050ff0364ef6c911c0c523c82aba874c5c395e8532bcf1",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/UNR-MUTATION-0003/oracle.json",
+      "mode": "100644",
+      "git_blob_sha1": "9f428b48a8d524715c5f0656e18450bb11788fd0",
+      "sha256": "42d90ce2642582fadd3e2fad94b3420dce6ecfffd630138b54402d3bc888025e",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/UNR-MUTATION-0003/overlay.json",
+      "mode": "100644",
+      "git_blob_sha1": "968b8aef79f850f6d8120abed7ef8779ca220bc8",
+      "sha256": "a9fab32feff93792f61292fe76e509565297973567b606ba32963ac94ca89ecf",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/NON_CANON_TEST_FIXTURE/mutants/manifest.json",
+      "mode": "100644",
+      "git_blob_sha1": "eca637df68239aacc64d50082c84ddabf91ca66c",
+      "sha256": "8904b4c884b046d1dd5637aaec4deb1c518db2297b9cae3af4375ddb11894841",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/README.md",
+      "mode": "100644",
+      "git_blob_sha1": "b30507517a9c374b9e7017c41c969ddd9c247693",
+      "sha256": "dfea988c554fbf623556eb945e3b0d4f4d8a6b7cc30f56db9058f846590889b3",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/compatibility.json",
+      "mode": "100644",
+      "git_blob_sha1": "72e31d7c909c30b881e3d4a8354caae0b710b9f1",
+      "sha256": "cfe8f112a5bbff6a95286953f2d9cfd5629ed1fe1f58d0a578ae17ee87a52d06",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/game-adapter.json",
+      "mode": "100644",
+      "git_blob_sha1": "2b467f0fd72436ea59e405c82d9ebebe54bc7762",
+      "sha256": "5ddef252e1b93a4b9348fb71e9490f106c02e9e0b8b11fa9a11a589bbc3effc5",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/human-guide-map.json",
+      "mode": "100644",
+      "git_blob_sha1": "227a5841ac88cefda235f579dee152dfe1c8a1b4",
+      "sha256": "3e0dcc3106afaa10307ed42894c2e761a14783070dcd540bc383a7679f31b867",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/human-guide/core-map.json",
+      "mode": "100644",
+      "git_blob_sha1": "2c60002263abdc59d390c04eece6928b4c1a7f09",
+      "sha256": "5d06362f1993502f0f2f7b6488f65196a3a9a31256b46328846078b9f1935635",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/human-guide/safety-observer-map.json",
+      "mode": "100644",
+      "git_blob_sha1": "382f9d7c188ee33bd822b15f3e99ce6ab09bfe8d",
+      "sha256": "e280c39c6b28241e9a66cb50354b4e307a5241699279a6038ba65ee7d3933e0d",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/p0-b003/mutation-id-map.json",
+      "mode": "100644",
+      "git_blob_sha1": "e06dbb4805f1008378be29fa5242d2952824d256",
+      "sha256": "ea2dfaf379e9f99e6a3e2ae292d9cbf5787e45d9f7270e894728dbbb66cc50ae",
+      "role": "P0_B003_MACHINE_OR_TEST_ARTIFACT",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "aipt/status.json",
+      "mode": "100644",
+      "git_blob_sha1": "f4cd0bb27807d09a933128e8b9c4e210fbdc7ea1",
+      "sha256": "b8d272ec8d980184b2fb2f7f1d359a31ffbb0bf65752d2de79498b226a159662",
+      "role": "SUCCESSOR_LIFECYCLE_CONTROL_SURFACE",
+      "protection": "CONTROLLED_SUCCESSOR_MODIFICATION"
+    },
+    {
+      "path": "campaign/00-campaign.md",
+      "mode": "100644",
+      "git_blob_sha1": "64b83c00bd8397bf63c375f33d1d975668b92f1c",
+      "sha256": "f3d571052e3791dc3ab3a67dbcec0a9bf8bf66bdef61a5d4f2729823499ec5d3",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/platform-notes.md",
+      "mode": "100644",
+      "git_blob_sha1": "ccba0d65d35d2ea7fb48e6a770a35676a5146a2f",
+      "sha256": "f45b08f94a87797f7087d29052716dd533522a2e900bd89e1eca5eef9a49d5d7",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/platform-package-plan.md",
+      "mode": "100644",
+      "git_blob_sha1": "c509a840414852fb991eed0db0b16253b0c65554",
+      "sha256": "741a399f5586a6cc5f33d377f3810226e4e373dcc668d294678c4b1bf9782d07",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/gm-screen-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "189060e90daf042e35539157560082daff4447d8",
+      "sha256": "2a054d42eb48e378a29db07ddd6c5cd751b4d2340f6426552fea516d63bf2b8a",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/observation-sheet-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "82de5268652f388d4d981643909baa1ccf6adff2",
+      "sha256": "dea8b39c372be9134caaf7813f2c0ef72884a5c936c0ddb5bdd98006995b3908",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/observer-cheatsheet-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "20c023f3e413eba8b25213aa481f097d6c1a4bca",
+      "sha256": "02ea5cf8d0280f16e0cab5cdc83930069363055c43366ae2e409ecea65694a62",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/prototype-table-test-guide-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "bf3cf471fe82dedc4165901f9b2bdc5d75467e4f",
+      "sha256": "a3cef11993fbf9765bc8e614bfca01d6dc84fe41452ffa0cf96af004e799bd40",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/rule-knowledge-sheet-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "cf50c8d862d02662705777c30710241771f08d0c",
+      "sha256": "61af1a1beaede971b50508bc38954533b18e3706587dc96e472406c0260d3691",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/scripts/sim_infiltration_v1.py",
+      "mode": "100644",
+      "git_blob_sha1": "abf60799dee926327c1c36b9a4b651da98e7786a",
+      "sha256": "2667285421d3c88eb24165eee73494e5a47b7fd1b71a4344943f222de6d05941",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/sim-report-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "f85a7d6a5166f2edc1a6ac08e63d5c6410683c76",
+      "sha256": "e5d19b227d79aab07ba544f3844f874854841d526a1f9de4cfc485559041ff19",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/solo-kit-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "8178c41d25e2e1ec2e4c2bf042f5f4f68081ed62",
+      "sha256": "042dd0a33ae16af8f7ba8201a514988cc5233ecf243f49d157949c97c44aa435",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/solo-report-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "8aa823d252f0e9a51eeb3c1b45ae0c9c26c96531",
+      "sha256": "988072a521426b499c694f96a9bc173c2223d3148951bc4145d62dd68b7035d1",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/stage3-run-guide-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "1a55b70106dc93735d7ff2081af6f22b241040a7",
+      "sha256": "c1ccd8a77d917e05f86f0604731344b22c8902c508858ef71a39ed9da3cce17f",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/stage4-5-guide-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "a167b2af4f8c0306b489dd9fd6108de3186b4a4e",
+      "sha256": "895ed99909637322e232175d6bbd99ccf0c655306127e379e273c31389b1320f",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/task0-handouts-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "99895e93e50b89643e43ccceedb4e1e4bb37db76",
+      "sha256": "56f1a9fba799f5c281162290c27b39db9bbbaa9d83cdaa83dd235506f3d68288",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/playtest/task0-intel-pack-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "d3701090c6003f56abe80dbb41ccd0c9de1858d9",
+      "sha256": "38908bcaa6155e5e916aa1e9f73c58289054e3a0f333a0f2114f3e239009acf0",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/proposals/point-pools-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "ebbdd5ffaf779536b7afba8c1cca08b226ec2d99",
+      "sha256": "044cfb266de167ed2d29b5b200efbffea2c39dc8935a8d427927e45827dc524d",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/proposals/premades-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "e2bad3b71d673ac3c99690d6df438a33fd0d9148",
+      "sha256": "26957ead0809e953e2eabdfcffc09101f10cf35d0f324e65c804804c21f39172",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/proposals/premades-v2.md",
+      "mode": "100644",
+      "git_blob_sha1": "f2bd1db43c50df29b4d90a49e8e750e4f0992698",
+      "sha256": "051a5ce180f4dc3c9882c5da4d7f2b6b6d38427dfe4fe0bd108bd79b0b532757",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/proposals/skill-list-v2.md",
+      "mode": "100644",
+      "git_blob_sha1": "401174218475621948b743380040f333bdeedad7",
+      "sha256": "dc8fe4b1f342965bcc7a04e3a8a6ac93d11abfe3f75d67e0cc0609c1db066455",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/proposals/tasks-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "da76be5ac7c0a09c28b2c06e64188677d6e85d6b",
+      "sha256": "df4d6c7afe0a891ce29a21306ab810ad32cc0b54c8ccf3d7ff3281d43cac2a72",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/design-pillars.md",
+      "mode": "100644",
+      "git_blob_sha1": "47fc9d3d52e6bd8483fa086aeefe6ddf8d1a0302",
+      "sha256": "01aa0cb98b8f8e13f812a6f498c9bcdf1cff08bde649fab14fd13fb2a8689279",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/logic-map-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "c4d77e519d2a4233c73dc91abf7a415b4e800581",
+      "sha256": "7ba536f1d235981b32a8a8f27c7429d6b53ead6daa4c0f3e82e465584a89f1b4",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/mechanics-fine-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "35fd6b59ed7a41c381718f1defabd9053a6b5174",
+      "sha256": "69c6effd923b18b8bbb83331489fbd8f7949197501ab897a92e9338fdb62c37a",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/mechanics-ledger.md",
+      "mode": "100644",
+      "git_blob_sha1": "cd98e3f05ef2f90020068d9e2d691b62f3d21d6c",
+      "sha256": "677b85ad19162bab43fc9868d191252b71133960983db51593ae7d9fbcdae435",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/playtest-log.md",
+      "mode": "100644",
+      "git_blob_sha1": "9fc60736e53cacd7c3c2a9bfa554f2ea902abae0",
+      "sha256": "e60814a9b6aa7db073d9a70ef2f1451d4cdba3534fd4ce1a3549ad7ac52464d9",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/playtest-plan-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "f0140245f12d6f577029a0e3df9e3dde4f2a5f4c",
+      "sha256": "e396e0fb98024ae5741036dfbc6198f0888773303a32ad400820bcdc1e4c2b27",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/probability-targets.md",
+      "mode": "100644",
+      "git_blob_sha1": "7bcd58ea45de3a06b614594428419b6210c119dd",
+      "sha256": "bec76d0d7f61f0b72a85c4ce200a6c7a164838f847b33d8c1891a4a9d599085f",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/rules-changelog.md",
+      "mode": "100644",
+      "git_blob_sha1": "aebbb92398f63676e0bf04014cefd46bca282a33",
+      "sha256": "63fbf8573f60dcea6e26b9e0be4bf42d11e598c96e815d7b9e2330b02d33d906",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/system-notes.md",
+      "mode": "100644",
+      "git_blob_sha1": "92f45666a389f4fd1a02dfcc146ed08b4bf5dea5",
+      "sha256": "bfbd6113fcf0ee7f8dcd966d26dd1d672206e31c2247c7e6d133e04ed52da629",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/terminology.md",
+      "mode": "100644",
+      "git_blob_sha1": "7fc5f7de0b760fd82ae29d860b2f191a68a604ed",
+      "sha256": "7b7fe8859a2bb3231352ec83f83d526ca9817213980223511167690adc11037f",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/rules/vertical-slice-v0.md",
+      "mode": "100644",
+      "git_blob_sha1": "2ddff1661f6c66e2961ae9ab78be44f148ec055f",
+      "sha256": "e4fa4070ee48ed97e7483d844f04f233967cb04ea2c2abfd6672af4ad07433c2",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/session0-redlines.md",
+      "mode": "100644",
+      "git_blob_sha1": "0413db968f85192e56d324f580a098831243c596",
+      "sha256": "d5d9246e07b2d4c9de9ce602835ec763ac33f5dd01a8b5e83c9b2318f9b6e630",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/sessions/README.md",
+      "mode": "100644",
+      "git_blob_sha1": "37ad8745666d0fd213ab0a389dfd48669f173cdc",
+      "sha256": "efea7b0caacc297a110a715f32aa48d1b88ced7d8770361a02c0ff1c4973341a",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/state/thread-index.md",
+      "mode": "100644",
+      "git_blob_sha1": "cab808f8e617a8830dd6660c037d529e0e28e173",
+      "sha256": "237eb1644e53e443df79f76d19e476f78fa87fed4ec59108bf64d033f05c7714",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/state/timeline.md",
+      "mode": "100644",
+      "git_blob_sha1": "2ad44e7c2bb4a2b35029644bc6a7f6772e1fca47",
+      "sha256": "f504f540c26fba8038ee6793dbb3f4e7dd70894ffcb6946d0245185ec42e1dc0",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/state/world-state.yaml",
+      "mode": "100644",
+      "git_blob_sha1": "dad9a78ffe2b23e0ee2bef7d5922553830407396",
+      "sha256": "15edea1d29943c1bfae901228100a3560b842e4d2e8e3ff9742515ec506b9105",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/faction-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "a0d87a4852b76fc90ddb3d3d5c42a2060cb99a89",
+      "sha256": "15ca9057739ce769c85f1cf1c7bada43c82a5ead96f2603aad68cb56588f9ab1",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/location-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "4f93e4ad4c357546b4519712693ff19ad997134e",
+      "sha256": "aad0dc352a33a262cbc0c7d92447b462c7fd3590c2ced0c576de6190e7ccf11f",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/mystery-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "57f0295f12fc8b3bcf022a5566a1ea64b6a4bf80",
+      "sha256": "929c4d00a7d02240489361bd178c6e753f5c103324ce105ff9ecb321ea06ace4",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/npc-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "b152d902c9c79e1258793b1f0b6f0b4eb55374b4",
+      "sha256": "9216b3f5aa82d6676e2e5116dd6597276e141cb58870f63c0bdabb694e368fd0",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/quest-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "4657f5c094c4eebd9157f7f5e90305ddedef4741",
+      "sha256": "1a8d033060846897f962313d59ee92ec57c9a85b6d0d6936da25a3a7b6131f05",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/region-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "b9fcff284f2ff729b5b28c29f8ad9fda6993ad61",
+      "sha256": "aa4f9ae0d625499dd1bb91dfce1d733d9ad0f396360fbdecd920331e83b3b45a",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/session-run-guide-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "4185122f84f878ee301755182512e1d4e1a549a8",
+      "sha256": "6659b6b05ab8759c6ea678052085550b73ce5f63a06677f306f6ff9b667a4fe0",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/templates/situation-template.md",
+      "mode": "100644",
+      "git_blob_sha1": "1f8b50422088402dc44f779410fbaf761eb2e2b3",
+      "sha256": "3a1bd54d6b3d728432c27a5ae7f33d03f2b0ac67505183777dd79c10894d8b6a",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/validation/causal-audit-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "a9bfce354aea8cb49a7b205efcdab8e6f2c8e49f",
+      "sha256": "6ebb4d90e3680543eb6d9f14099b2e4cf224bbee2b5a2340ed6f466803a8c8ed",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/validation/lead-audit-notes-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "f8e27938294ef8d1a55b5639071b4a4c118821be",
+      "sha256": "d032887d692a94609f331fc2606b264339b5293665142f32d55b208a0236bf8e",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "campaign/validation/rules-audit-v1.md",
+      "mode": "100644",
+      "git_blob_sha1": "a40f3119e499e1698bea8f84182e4053121576ff",
+      "sha256": "6afe741ec6cd9e1350952dcebd4c84781d7278802a0b679b6e8953cbfdd022ce",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/styles/01-守则手册告示体.md",
+      "mode": "100644",
+      "git_blob_sha1": "39eca4630d699d9a3c6a045c593d0863a8e142fa",
+      "sha256": "73c62fcbee204371f7014580795496080b925ae01fa2f5b66b96adb6ea2ce2e0",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/styles/02-公文档案媒体体.md",
+      "mode": "100644",
+      "git_blob_sha1": "5ce1170c4c5e43e17274a4b9c1fdb712ff7cab6f",
+      "sha256": "8aec8b498fbc86ae4f56162f723cb6fe9c02324d0547a43557d7296b08ff69dd",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/styles/03-叙事与私人文本体.md",
+      "mode": "100644",
+      "git_blob_sha1": "98bf8ff1a3afea4d283bdb635e98b2ae1fb9dc40",
+      "sha256": "958fd7564be07e695c3f7b531ab36570aefa603eab9cab4723cac0beb81c7e9c",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/styles/04-海外英译系.md",
+      "mode": "100644",
+      "git_blob_sha1": "f19b24b3f86e24263d6211306c77ed2cb9a8def1",
+      "sha256": "2e75826d7fae817364e5beca0990958e76f4b0bd1c42ed9157ad053b803ea205",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/styles/05-互文教义经典改写系.md",
+      "mode": "100644",
+      "git_blob_sha1": "43f2cdcef9436a8039be1e086afd6ee214c164a9",
+      "sha256": "5abc5abc9d724fd1af01c667111dcfc0e7c7303eceee5cae466ec79418f25e12",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/styles/06-元层戏仿双声道系.md",
+      "mode": "100644",
+      "git_blob_sha1": "4a19468e4eaca9c2efab9272bf0b5570cfc1ce87",
+      "sha256": "ecbcc67030f0ee3a8a64aa3ca74b2d8fe8df358e6064dda90369ebcc80641859",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/无限流知识库.md",
+      "mode": "100644",
+      "git_blob_sha1": "efb8ba65481bc3495a19bf8f50553bd85ccdae3d",
+      "sha256": "c98291a298155644853b2a971abbb3be426a9602ec7d3f3f78fabab7d19608fe",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/规则怪谈案例库.md",
+      "mode": "100644",
+      "git_blob_sha1": "155b21f6e12a6a179560acc7367c68972017fdff",
+      "sha256": "3d99a502caef0eba3659cd77f4f755559a482828ba37403f8e0dd9c7de5a01c7",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "knowledge/规则怪谈知识库.md",
+      "mode": "100644",
+      "git_blob_sha1": "87dfde48475e5e32f52afd4289ccc5565e156cab",
+      "sha256": "09f14386ea65fb0e4a0116d49f73b5174bbeb6c2989618d7040bbcfece95c2c0",
+      "role": "P0_SOURCE_OR_POLICY_ASSET",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "pack-manifest.json",
+      "mode": "100644",
+      "git_blob_sha1": "15048aec3d685a55796b9ba90bf6f5ea1a7f331b",
+      "sha256": "4793edf52fa98e2f84e752a8074ed82d14fb5bf5d12038350abd641195cba852",
+      "role": "GAME_PACKAGE_MANIFEST",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "scripts/aipt/validate-p0-b000.mjs",
+      "mode": "100644",
+      "git_blob_sha1": "6c0a6917fd58e290f4ee76575ba127628b2e973d",
+      "sha256": "bf27739727b86a4c174ea52da54fb17e741d7c7e95062ccbe1cf16da96ecb7d2",
+      "role": "P0_HISTORICAL_VALIDATOR",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "scripts/aipt/validate-p0-b001.mjs",
+      "mode": "100644",
+      "git_blob_sha1": "ef8dccf38c4013eb820ff5aa11aeafdcdafec802",
+      "sha256": "d464034da401d1056b42d9910bd87d85adf6d9f6a39df44be81e6dc0b5b1bb71",
+      "role": "P0_HISTORICAL_VALIDATOR",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "scripts/aipt/validate-p0-b002.mjs",
+      "mode": "100644",
+      "git_blob_sha1": "d664eb033fa03635346b353b38f64785fc06b258",
+      "sha256": "d1508d6449f4436064ac567dc9f58050837fab9e4f051512985f26358faa82b5",
+      "role": "P0_HISTORICAL_VALIDATOR",
+      "protection": "PRESERVE_EXACT"
+    },
+    {
+      "path": "scripts/aipt/validate-p0-b003.mjs",
+      "mode": "100644",
+      "git_blob_sha1": "05ccc37294f4c72a567baee8d0a64e4586865ab0",
+      "sha256": "ef08ce52d27b33dfb00152c2d29dc9056a0b09fdadeafcc2dd9f1d1c59ddfe45",
+      "role": "P0_HISTORICAL_VALIDATOR",
+      "protection": "PRESERVE_EXACT"
+    }
+  ],
+  "inventory_identity": {
+    "algorithm": "SHA-256",
+    "projection": "UTF8_JSON_STRINGIFY_OF_REPOSITORY_PREDECESSOR_COMMIT_PREDECESSOR_TREE_AND_ENTRIES",
+    "sha256": "55480de50eb218163db4d2bcb20b8c64ce0bc44858c6a4fa722e1a37ca6751ac"
+  }
+}

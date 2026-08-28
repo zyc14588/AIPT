@@ -1,0 +1,50 @@
+{
+  "schema": "aipt.public.authority-amendment-artifacts/v2",
+  "amendment_id": "UNREGISTERED-AIPT-P1-B000-AUTHORITY-AMENDMENT-002",
+  "hash_algorithm": "SHA-256",
+  "artifacts": [
+    {
+      "path": "docs/authority/amendments/UNREGISTERED_AIPT_P1_B000_AUTHORITY_AMENDMENT_002.md",
+      "sha256": "f5c8d2c39d7624ec3709e9413386dca7be85fef59232cd82b8d64cbf835b832d",
+      "role": "HUMAN_READABLE_AUTHORITY_AMENDMENT"
+    },
+    {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002.json",
+      "sha256": "1ecce52415f4c1fff93383250d2e4df88d8aa381d93e81711681534d59df72e5",
+      "role": "MACHINE_EXECUTION_AUTHORITY_AMENDMENT"
+    },
+    {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-p0-inventory.json",
+      "sha256": "e1b3b1353a1c7cbba570bdc6ae1fdc5ad5b60a25082f6896d37ec50a71afc958",
+      "role": "P0_PREDECESSOR_PROTECTED_INVENTORY"
+    },
+    {
+      "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority-amendment-002-predecessor-evidence.json",
+      "sha256": "08e9bcc0a1bb5f73686a73cf0ee3d42999e1fd84053982e71662b2b4616f003c",
+      "role": "PREDECESSOR_VALIDATION_AND_CONTRADICTION_EVIDENCE"
+    },
+    {
+      "path": "schemas/authority-amendment/v2/aipt-authority-acceptance-semantics-amendment.schema.json",
+      "sha256": "db231c9e37c530c88049a426f2a2568b80a3df9546f5f28707fa682bec1042a6",
+      "role": "ACCEPTANCE_SEMANTICS_AMENDMENT_SCHEMA"
+    },
+    {
+      "path": "schemas/authority-amendment/v2/aipt-predecessor-successor-acceptance-evidence.schema.json",
+      "sha256": "72cb12e6dba198901c053e078dd3bd39b73b570a4aa7f62fc55f5b16eb77cb77",
+      "role": "PREDECESSOR_SUCCESSOR_ACCEPTANCE_EVIDENCE_SCHEMA"
+    },
+    {
+      "path": "scripts/ci/generate/p1-b000-amendment-002-inventory.mjs",
+      "sha256": "aedccd5f7c924cbea785ddfaed64c1b1c34762afdeefabe9b0f498c6d63feddd",
+      "role": "P0_INVENTORY_GENERATOR"
+    },
+    {
+      "path": "scripts/ci/validate/p1-b000-authority-amendment-002.mjs",
+      "sha256": "c2ef1e825674006f3ef82b2aa65e65b343d8ebc0e9a51725f11e09669abcd383",
+      "role": "AUTHORITY_AMENDMENT_002_VALIDATOR"
+    }
+  ],
+  "self_hash_excluded": true,
+  "candidate_git_identity_embedded": false,
+  "candidate_git_identity_recording": "STRUCTURED_STAGE_REVIEW_REMOTE_CI_AND_IMMUTABLE_GIT_OBJECTS"
+}

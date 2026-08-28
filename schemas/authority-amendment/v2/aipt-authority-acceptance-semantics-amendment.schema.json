@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/authority-amendment/v2/aipt-authority-acceptance-semantics-amendment.schema.json",
+  "title": "AIPT predecessor/successor acceptance-semantics Amendment v1",
+  "description": "Fail-closed machine authority for validating historical gates on an immutable predecessor while separately preserving predecessor assets and constraining a successor delta.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "amendment_id",
+    "amendment_sequence",
+    "authority_task_id",
+    "authority_state",
+    "authority_task",
+    "authority_basis",
+    "reason",
+    "predecessor_identity",
+    "predecessor_validation_contract",
+    "p0_preservation_contract",
+    "p1_delta_contract",
+    "p1_candidate_validation_contract",
+    "acceptance_formula",
+    "failure_semantics",
+    "allowed_semantic_change",
+    "forbidden_semantic_changes",
+    "negative_probes",
+    "additional_security_probes",
+    "acceptance_evidence_contract",
+    "effective_authority_resolution",
+    "lifecycle",
+    "stop_conditions",
+    "scope",
+    "provenance"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.authority-acceptance-semantics-amendment/v1" },
+    "amendment_id": { "$ref": "#/$defs/identity" },
+    "amendment_sequence": { "const": 2 },
+    "authority_task_id": { "$ref": "#/$defs/identity" },
+    "authority_state": { "enum": ["CANDIDATE_FROZEN", "MERGED", "CLOSED"] },
+    "authority_task": { "$ref": "#/$defs/openObject" },
+    "authority_basis": { "$ref": "#/$defs/openObject" },
+    "reason": { "$ref": "#/$defs/openObject" },
+    "predecessor_identity": { "$ref": "#/$defs/predecessorIdentity" },
+    "predecessor_validation_contract": { "$ref": "#/$defs/openObject" },
+    "p0_preservation_contract": { "$ref": "#/$defs/openObject" },
+    "p1_delta_contract": { "$ref": "#/$defs/openObject" },
+    "p1_candidate_validation_contract": { "$ref": "#/$defs/openObject" },
+    "acceptance_formula": { "$ref": "#/$defs/openObject" },
+    "failure_semantics": {
+      "type": "object",
+      "minProperties": 4,
+      "additionalProperties": { "$ref": "#/$defs/identity" }
+    },
+    "allowed_semantic_change": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "const": "PREDECESSOR_P0_EXECUTION_PLUS_SUCCESSOR_PRESERVATION_AND_CONTROLLED_DELTA" }
+    },
+    "forbidden_semantic_changes": { "$ref": "#/$defs/stringArray" },
+    "negative_probes": {
+      "type": "array",
+      "minItems": 30,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/probe" }
+    },
+    "additional_security_probes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/probe" }
+    },
+    "acceptance_evidence_contract": { "$ref": "#/$defs/openObject" },
+    "effective_authority_resolution": { "$ref": "#/$defs/openObject" },
+    "lifecycle": { "$ref": "#/$defs/openObject" },
+    "stop_conditions": { "$ref": "#/$defs/stringArray" },
+    "scope": { "$ref": "#/$defs/openObject" },
+    "provenance": { "$ref": "#/$defs/openObject" }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,199}$"
+    },
+    "nonEmpty": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "stringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonEmpty" }
+    },
+    "openObject": { "type": "object", "minProperties": 1 },
+    "predecessorIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority_role",
+        "repository",
+        "commit",
+        "tree",
+        "identity_kind",
+        "mutable_ref_substitution_permitted"
+      ],
+      "properties": {
+        "authority_role": { "const": "P0_PREDECESSOR_AUTHORITY" },
+        "repository": { "const": "zyc14588/UNREGISTERED" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "identity_kind": { "const": "IMMUTABLE_GIT_COMMIT_AND_TREE" },
+        "mutable_ref_substitution_permitted": { "const": false }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "case", "expectation"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^A2-(?:N|S)[0-9]{2}$" },
+        "case": { "$ref": "#/$defs/nonEmpty" },
+        "expectation": { "enum": ["ACCEPT", "REJECT"] }
+      }
+    }
+  }
+}
