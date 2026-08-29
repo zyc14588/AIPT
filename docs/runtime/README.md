@@ -2,6 +2,12 @@
 
 `AIPT-M0-B004` 已 `MERGED_CLOSED`，交付 Go Launcher、严格共享配置基础与 Core lifecycle shell。`AIPT-M0-B007` 也已 `MERGED_CLOSED`，在不改变固定门禁顺序的前提下实现最终 `WEB` 组件；verified implementation identity 为 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb`（tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`）。整个 runtime 仍然**失败关闭且尚未 ready**：真实启动会完成配置、PostgreSQL 连接和 B003 迁移，然后在首个尚未实现的强制 `MODEL` 门禁返回稳定错误 `AIPT_LAUNCH_GATE_NOT_IMPLEMENTED`。更晚的已实现 Web 不能绕过这个前序门禁。
 
+## AIPT-MVP-B002 Deterministic Run Core
+
+`AIPT-MVP-B002` Candidate 在 [`internal/runcore`](../../internal/runcore) 提供独立、game-neutral 的 Run Core library。它接受严格的 versioned action proposal，绑定不可变 Manifest/runtime-adapter/source-package identity，执行 authorization、Rule/source、precondition、invariant、versioned RNG 与 PostgreSQL ledger commit，并从 committed state 产生 deterministic derived projection。RNG 身份固定为 `AIPT_RNG_HMAC_SHA256_V1`，seed commitment 固定为 `AIPT_SEED_COMMITMENT_SHA256_V1`；root seed 不进入普通 projection、event 或 receipt。
+
+Replay 会重新验证 ledger hash chain、binding、commitment、RNG evidence 和每次 state transition，live/replayed final canonical state hash 必须相同。B002 没有把该 library 接到真实 Launcher：MODEL、HARNESS 与 IPC gate 仍失败关闭，也没有 Agent orchestration、persistent session、prompt/context assembly、real model call 或 real playtest。
+
 ## 固定启动计划
 
 门禁顺序由 `internal/launcher` 固定，调用者和配置都不能重排：
@@ -79,6 +85,9 @@ Core 状态为 `NEW → STARTING → RUNNING → STOPPING → STOPPED`，启动�
 
 ```text
 go test ./...
+go test -race ./internal/runcore ./internal/storage/postgres
+pnpm run check:mvp-b002
+pnpm run test:run-core
 go test -race ./internal/config/... ./internal/core/... ./internal/launcher/... ./cmd/aipt/...
 pnpm run check:runtime-shell
 pnpm run check:web-ui
@@ -91,4 +100,4 @@ pnpm run smoke:web-ui
 
 ## B007 明确边界
 
-B007 不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine、game adapter 或完整动作管线。closeout 后 `construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`；下一串行项 `INT-AIPT-UNREGISTERED-001` 仅为 `AUTHORIZED_TO_PREPARE`（`next_batch_authorized = true`，`next_batch_started = false`），尚未执行 Integration；B008 同样未开始。
+B007 的历史交付不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine 或 game adapter。当前状态由 B002 Candidate 单独推进为 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B002`、`GLOBAL_WIP = 1`；这不会追溯改写 B007 closeout，也不会启动 B003。

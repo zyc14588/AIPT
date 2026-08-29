@@ -5,7 +5,7 @@
 
 ## 范围与禁止
 
-- 本层只实现**确定性基础设施**：迁移运行器、追加式哈希链账本（Append/VerifyStream）。Core、Launcher、Harness Host、Web UI 与 `AIPT-M0-B004` 均不在范围。
+- B003 的历史存储层只实现**确定性基础设施**：迁移运行器、追加式哈希链账本（Append/VerifyStream）。B002 不追溯重写该范围，只让新的 Run Core 通过现有公开 ledger boundary 使用它；Launcher、Harness Host 与 Web UI 均未被 B002 改动。
 - **禁止生产数据库与真实凭据**：所有集成测试只在临时、随机命名的 `aipt_it_*` 数据库上运行；任何代码路径都不得接触生产 PostgreSQL 或真实 DSN 凭据。
 - 运行时依赖为已资格化的 **pgx v5.10.0 闭包**（`go.mod` 直接 `github.com/jackc/pgx/v5 v5.10.0` + 五个间接模块；MIT / BSD-3-Clause，见 [../../tools/supply-chain/licenses.json](../../tools/supply-chain/licenses.json)），版本精确锁定，禁止静默升级/降级。
 
@@ -27,8 +27,9 @@
 
 ## Append 与 VerifyStream
 
-- `Append`：先以既有 `internal/protocol.CanonicalJSON` 严格规范化原始 JSON（**任何数据库访问之前**；非法载荷即使 nil pool 也被拒绝并返回协议类型化原因），再在**单事务**内：确保流行 → 锁游标并核对真实 `ledger_events` 尾部（绝不只信游标）→ 拒绝 `math.MaxInt64` 序列耗尽 → 计算版本化事件哈希 → 插入事件（`committed_at` 由数据库 `RETURNING` 返回，**绝不使用 `time.Now()`**）→ 守卫式更新游标（必须恰好影响 1 行）。提交是最后一步：任何失败整体回滚，游标不可能脱离成功插入而推进。
+- `Append`：先以既有 `internal/protocol.CanonicalJSON` 严格规范化原始 JSON（**任何数据库访问之前**；非法载荷即使 nil pool 也被拒绝并返回协议类型化原因），再在**单事务**内：确保流行 → 锁游标并核对真实 `ledger_events` 尾部（绝不只信游标）→ 若提供 `ExpectedSequence`，在同一锁与事务下要求它精确等于游标 → 拒绝 `math.MaxInt64` 序列耗尽 → 计算版本化事件哈希 → 插入事件（`committed_at` 由数据库 `RETURNING` 返回，**绝不使用 `time.Now()`**）→ 守卫式更新游标（必须恰好影响 1 行）。提交是最后一步：任何失败整体回滚，游标不可能脱离成功插入而推进。
 - `VerifyStream`：同一 fail-closed 标识符校验后在**单个 RepeatableRead + ReadOnly 快照**内读取游标与全部事件；校验序列恰为 1..N、genesis 前哈希为 SQL NULL、其后每行前哈希等于前一行已验证哈希、记录 payload SHA-256 等于精确存储的 canonical TEXT 的 SHA-256（绝不重新规范化）、记录事件哈希等于 `hashLedgerBlock` 重算摘要、存储游标等于实际已验证尾部（空流 `(0, NULL)` 语义）。验证只读、绝不改动数据。
+- `VerifyLedgerEvents` 对已读取的 ordered event copy 执行同一 canonical payload、sequence、prev-hash、payload-hash 与 `AIPT_LEDGER_V1` event-hash 校验，供 B002 strict replay 在应用任何 transition 前 fail-closed。
 
 ## 类型化失败（TYPED FAILURES）
 
@@ -44,11 +45,18 @@
 | `AIPT_LEDGER_EVENT_HASH_MISMATCH` | `*LedgerEventHashMismatchError` | 记录事件哈希与重算摘要不符 |
 | `AIPT_LEDGER_MALFORMED_HASH` | `*LedgerMalformedHashError` | 哈希列既非 NULL 也非 32 字节 |
 | `AIPT_INVALID_LEDGER_HASH_INPUT` | `*LedgerHashInputError` | 版本化 preimage 输入非法（空/非 UTF-8/超长/非正序列） |
+| `AIPT_LEDGER_EXPECTED_SEQUENCE` | `*LedgerExpectedSequenceError` | 锁定游标与 action 所绑定的 `ExpectedSequence` 不同；事务在 insert 前拒绝 |
+
+## B002 Run Core ledger integration
+
+[`internal/runcore`](../../internal/runcore) 的 `PostgreSQLStore` 不创建表、缓存或第二套状态 Authority；append-only ledger 仍是 authoritative persistent history。每个 Run 使用独立 ledger stream；genesis 与 action event 都通过 `Append` 提交。两个恢复自同一 state hash/sequence 的并发 action 会在同一 PostgreSQL 行锁下竞争，恰好一个成功，另一方返回结构化 `STATE_CONFLICT`，不会形成 sequence fork。`Load` 使用单个 RepeatableRead/ReadOnly 快照读取游标与 events，验证链和 cursor-tail 后才交给 replay。
+
+历史迁移保持严格不变：`000001_ledger.sql` SHA-256 为 `cbab234c8d6a265397dcc553bd9bdb17006712f77ec482b0ef8332f050c9f591`，`000002_playtest_queue.sql` SHA-256 为 `47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997`；B002 新 migration 为 `NONE`。
 
 ## 测试契约（仅测试用 PostgreSQL 18.4）
 
-- 集成测试（`migration_integration_test.go`、`ledger_integration_test.go`）需要环境变量 **`AIPT_POSTGRES_DSN`**；缺失时**正常 skip**，但 **`AIPT_REQUIRE_POSTGRES_INTEGRATION=1` 会把 skip 变成硬失败**（fail-closed：不得假装通过）；DSN 必须命名 dbname，否则拒绝。
-- 只使用**临时、随机、防碰撞**的 `aipt_it_*` 数据库；夹具 cleanup 终止该库全部连接、**精确 DROP 该库**（`pgx.Identifier` 消毒，绝无通配符）、并验证服务器上**无任何 `aipt_*` 数据库残留**（`left(datname, 5) = 'aipt_'` 字面前缀，无 LIKE 通配歧义）。
+- 集成测试（`migration_integration_test.go`、`ledger_integration_test.go`、`internal/runcore/postgres_integration_test.go`）需要环境变量 **`AIPT_POSTGRES_DSN`**；缺失时**正常 skip**，但 **`AIPT_REQUIRE_POSTGRES_INTEGRATION=1` 会把 skip 变成硬失败**（fail-closed：不得假装通过）；DSN 必须命名 dbname，否则拒绝。
+- 只使用**临时、随机、防碰撞**的测试数据库：历史 storage fixture 使用 `aipt_it_*`，B002 Run Core fixture 使用 `aipt_rc_*`；两者 cleanup 都终止各自数据库连接并以 `pgx.Identifier` 消毒后的精确名称 DROP，不使用通配目标。历史 storage suite 继续验证服务器上无 `aipt_*` 测试数据库残留。
 - PostgreSQL 镜像**仅用于测试**：Docker Official Image `library/postgres:18.4`，multi-arch digest `sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`、linux/amd64 platform digest `sha256:4cc13dede823cab4e05290c7fb3350fb4e599ecabd9b07e6706b5d5e8f5bc929`（冻结于 [../../tools/toolchain.lock.json](../../tools/toolchain.lock.json)），CI 以 digest 拉取并校验 `postgres --version` 精确 18.4 前缀。
 
 ## 并发与篡改覆盖

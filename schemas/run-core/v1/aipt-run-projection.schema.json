@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/run-core/v1/aipt-run-projection.schema.json",
+  "title": "AIPT derived Run projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "manifest_id", "sequence", "state_sha256", "domain_state"],
+  "properties": {
+    "schema": { "const": "aipt.run-projection/v1" },
+    "run_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "manifest_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "state_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "domain_state": {}
+  }
+}

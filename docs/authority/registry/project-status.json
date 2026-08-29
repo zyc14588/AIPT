@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-08-26",
-  "authority_snapshot_id": "AIPT-MVP-B001-CLOSEOUT-001",
+  "as_of": "2026-08-29",
+  "authority_snapshot_id": "AIPT-MVP-B002-CANDIDATE-STATUS-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "UNREGISTERED-AIPT-P1-B000",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B002",
+      "next_serial_batch": "AIPT-MVP-B003",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -23,8 +23,8 @@
         "AIPT-M0-B008": "MERGED_CLOSED",
         "AIPT-MVP-B000": "MERGED_CLOSED",
         "AIPT-MVP-B001": "MERGED_CLOSED",
-        "UNREGISTERED-AIPT-P1-B000": "NOT_STARTED",
-        "AIPT-MVP-B002": "NOT_STARTED",
+        "UNREGISTERED-AIPT-P1-B000": "MERGED_CLOSED",
+        "AIPT-MVP-B002": "IN_PROGRESS",
         "AIPT-MVP-B003": "NOT_STARTED",
         "AIPT-MVP-B004": "NOT_STARTED",
         "INT-AIPT-UNREGISTERED-MVP-001": "NOT_STARTED",
@@ -36,15 +36,15 @@
         "AIPT-MVP-B010": "NOT_STARTED"
       },
       "external_serial_predecessor": {
-        "id": "UNREGISTERED-AIPT-P0-B003",
+        "id": "UNREGISTERED-AIPT-P1-B000",
         "status": "MERGED_CLOSED",
-        "candidate_commit": "a304070b2a31c8717b6bacbb2a2c3b7aa5e49ad4",
-        "candidate_tree": "aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc",
-        "implementation_merge": "5d25dad0dbcb648de565ea723027f999ec5b3a37",
-        "closeout_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
-        "closeout_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
-        "closeout_ci_run": 32621464543,
-        "closeout_ci_conclusion": "success"
+        "candidate_commit": "c9350e734027d5fbdee6c109a7a689f8273f7dfc",
+        "candidate_tree": "34597e79c586fb034256daa32d67640692ec589d",
+        "implementation_merge": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+        "post_merge_ci_run": 33186880614,
+        "post_merge_ci_conclusion": "success",
+        "canonical_lifecycle_closeout_commit": "411bf2997cd0f10ba1a022ac687d27a1bd19eb36",
+        "canonical_lifecycle_closeout_tree": "d1daaeede13a2ba07c3b528c1792ef9fd5600a63"
       },
       "external_batch_history": [
         {
@@ -64,9 +64,20 @@
           "closeout_tree": "84c5abd8ca74fca7c00ccf77b798481de8f3d7f7",
           "closeout_ci_run": 32589300293,
           "closeout_ci_conclusion": "success"
+        },
+        {
+          "id": "UNREGISTERED-AIPT-P0-B003",
+          "status": "MERGED_CLOSED",
+          "candidate_commit": "a304070b2a31c8717b6bacbb2a2c3b7aa5e49ad4",
+          "candidate_tree": "aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc",
+          "implementation_merge": "5d25dad0dbcb648de565ea723027f999ec5b3a37",
+          "closeout_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+          "closeout_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+          "closeout_ci_run": 32621464543,
+          "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -77,6 +88,23 @@
     "AIPT": {
       "url": "https://github.com/zyc14588/AIPT",
       "default_branch": "main",
+      "pending_candidate": {
+        "task_id": "AIPT-MVP-B002",
+        "state": "IN_PROGRESS",
+        "start_authority": "OWNER_DIRECTIVE_AIPT-MVP-B002",
+        "branch": "task/AIPT-MVP-B002",
+        "base": {
+          "commit": "411bf2997cd0f10ba1a022ac687d27a1bd19eb36",
+          "tree": "d1daaeede13a2ba07c3b528c1792ef9fd5600a63"
+        },
+        "scope": "DETERMINISTIC_RUN_CORE_ONLY",
+        "merge_authorized": false,
+        "closeout_authorized": false,
+        "real_model_gateway_implemented": false,
+        "real_model_calls": 0,
+        "real_playtest_executed": false,
+        "open_findings": []
+      },
       "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",
       "verified_tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
       "verified_state": {
@@ -245,17 +273,18 @@
       "url": "https://github.com/zyc14588/UNREGISTERED",
       "default_branch": "main",
       "planning_snapshot": "3e4a28bba1caf44828412f90bb6715b6955e3604",
-      "verified_batch": "UNREGISTERED-AIPT-P0-B003",
-      "verified_head": "5d25dad0dbcb648de565ea723027f999ec5b3a37",
-      "verified_tree": "aa86d842c82d2a7f33eb3e6c44378cbe5ab338cc",
-      "verified_closeout": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
-      "verified_closeout_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+      "verified_batch": "UNREGISTERED-AIPT-P1-B000",
+      "verified_head": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+      "verified_tree": "34597e79c586fb034256daa32d67640692ec589d",
+      "verified_closeout": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+      "verified_closeout_tree": "34597e79c586fb034256daa32d67640692ec589d",
+      "aipt_canonical_lifecycle_closeout": "411bf2997cd0f10ba1a022ac687d27a1bd19eb36",
       "readiness": "PLAYTESTABLE_DRAFT",
       "formal_name_zh": "《未登记》"
     }
   },
   "runtime": {
-    "status": "secure local Web dashboard merged/closed",
+    "status": "AIPT-MVP-B002 deterministic Run Core candidate in progress; launcher remains model-gated",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

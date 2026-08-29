@@ -23,6 +23,16 @@ const HISTORICAL_GATES = Object.freeze({
     tree: '1a6feabb1796af9f66fd78fc842f249ec03a5251',
     validators: ['scripts/ci/validate/mvp-bootstrap.mjs'],
   },
+  'p1-b000-authority': {
+    commit: '8d6a438d051fb635e769285215e70536958a8f42',
+    tree: '9ef6f121bd0d9a6484d7cc39a22450250e9ac489',
+    validators: ['scripts/ci/validate/p1-b000-authority.mjs'],
+  },
+  'p1-b000-authority-amendment': {
+    commit: '8d6a438d051fb635e769285215e70536958a8f42',
+    tree: '9ef6f121bd0d9a6484d7cc39a22450250e9ac489',
+    validators: ['scripts/ci/validate/p1-b000-authority-amendment.mjs'],
+  },
 });
 
 function executeAtCloseout(repo, name, gate) {
@@ -77,6 +87,7 @@ function executeAtCloseout(repo, name, gate) {
 
 export function runHistoricalGovernance(ctx, args = {}) {
   const requested = args.gate ?? 'all';
+  const routeClosedAuthority = args['route-closed-authority'] === true;
   const names = requested === 'all' ? Object.keys(HISTORICAL_GATES) : [requested];
   const details = [];
   const executions = [];
@@ -85,6 +96,15 @@ export function runHistoricalGovernance(ctx, args = {}) {
     return {
       result: 'FAIL',
       details: [`FAIL: unknown historical governance gate ${requested}`],
+      executions,
+      external_model_calls: 0,
+      real_playtest_executed: false,
+    };
+  }
+  if (routeClosedAuthority && requested !== 'p1-b000-authority-amendment') {
+    return {
+      result: 'FAIL',
+      details: ['FAIL: closed Authority routing is restricted to the exact p1-b000-authority-amendment replay'],
       executions,
       external_model_calls: 0,
       real_playtest_executed: false,
@@ -107,11 +127,24 @@ export function runHistoricalGovernance(ctx, args = {}) {
       details.push(`FAIL: structured historical replay error: ${error.message}`);
     }
   }
+  let closedAuthorityRouted = false;
+  if (routeClosedAuthority && pass) {
+    const githubOutput = args['github-output'];
+    if (typeof githubOutput !== 'string' || githubOutput.length === 0 || githubOutput !== process.env.GITHUB_OUTPUT) {
+      pass = false;
+      details.push('FAIL: --github-output must equal the exact GitHub-provided GITHUB_OUTPUT path');
+    } else {
+      fs.appendFileSync(githubOutput, 'applicable=false\n', { encoding: 'utf8' });
+      closedAuthorityRouted = true;
+      details.push('ok: closed Amendment replay PASS; bootstrap permission remains expired and normal gates are routed');
+    }
+  }
   return {
     result: pass ? 'PASS' : 'FAIL',
     details,
     execution_mode: 'IMMUTABLE_CLOSEOUT_REPLAY',
     executions,
+    closed_authority_routed: closedAuthorityRouted,
     external_model_calls: 0,
     real_playtest_executed: false,
   };

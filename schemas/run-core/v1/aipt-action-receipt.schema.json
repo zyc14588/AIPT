@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/run-core/v1/aipt-action-receipt.schema.json",
+  "title": "AIPT action receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "action_id", "sequence", "event_hash", "state_hash", "projection_hash", "rng_draws"],
+  "properties": {
+    "schema": { "const": "aipt.action-receipt/v1" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "action_id": { "$ref": "#/$defs/identity" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "event_hash": { "$ref": "#/$defs/sha256" },
+    "state_hash": { "$ref": "#/$defs/sha256" },
+    "projection_hash": { "$ref": "#/$defs/sha256" },
+    "rng_draws": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/draw" } }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "draw": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "stream_id", "draw_index", "value_hex"],
+      "properties": {
+        "version": { "const": "AIPT_RNG_HMAC_SHA256_V1" },
+        "stream_id": { "$ref": "#/$defs/identity" },
+        "draw_index": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "value_hex": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+      }
+    }
+  }
+}

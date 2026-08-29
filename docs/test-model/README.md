@@ -1,7 +1,13 @@
 # 测试模型（TEST MODEL）
 
 > 公开测试模型设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> `AIPT-MVP-B001` 已实现本页所述 Test Plan、Manifest 与 Queue/Lease/Attempt 合同；Run Core、Agent 编排与真实桌测仍只是后续目标。
+> `AIPT-MVP-B001` 已实现本页所述 Test Plan、Manifest 与 Queue/Lease/Attempt 合同；`AIPT-MVP-B002` Candidate 只实现 Deterministic Run Core，Agent 编排与真实桌测仍只是后续目标。
+
+## B002 验证矩阵
+
+`AIPT-MVP-B002` 使用 synthetic、game-neutral fixture 与固定 injected seed 覆盖 action happy path、schema/auth/Rule-source/precondition/invariant reject、ledger rollback、duplicate/stale/cross-Run conflict、RNG repeatability/domain separation/seed commitment、derived projection non-authority、strict replay tamper reject 与 malformed input no-panic。相同 initial state、actions、seed 和 versions 重复 20 次必须产生相同 ordered events、RNG evidence、state hash 与 projection hash。
+
+PostgreSQL 18.4 集成仅使用 loopback-only 临时数据库，证明同一 expected sequence 的两个并发 action 恰好一个提交、persisted replay 等于 live state、rollback 保留旧 cursor/hash。历史 B001 Test Plan/Manifest/Queue/Lease/Attempt gate 在精确 B002 Base 上重放；B002 没有执行 Clean Run、Mutant Run、qualification Run、产品模型调用或真实桌测。
 
 ## 三条测试轨
 

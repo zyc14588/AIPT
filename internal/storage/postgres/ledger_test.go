@@ -349,6 +349,16 @@ func TestAppendNilPoolRejected(t *testing.T) {
 	}
 }
 
+func TestAppendRejectsNegativeExpectedSequenceBeforeNilPool(t *testing.T) {
+	value := int64(-1)
+	in := ledgerTestInput()
+	in.ExpectedSequence = &value
+	_, err := Append(context.Background(), nil, in)
+	if !errors.Is(err, ErrLedgerExpectedSequence) || strings.Contains(err.Error(), "nil *pgxpool.Pool") {
+		t.Fatalf("error = %v, want expected-sequence rejection before pool access", err)
+	}
+}
+
 // ---- append transaction body: empty and matching cursor-tail states ----
 
 // TestAppendLedgerEventGenesis drives the full genesis append: empty cursor
@@ -524,6 +534,31 @@ func TestAppendLedgerEventChained(t *testing.T) {
 	}
 	if !bytes.Equal(upd.args[4].([]byte), tailHash[:]) {
 		t.Errorf("UPDATE old cursor hash arg = %x, want %x", upd.args[4], tailHash)
+	}
+}
+
+func TestAppendLedgerEventExpectedSequenceConflictBeforeInsert(t *testing.T) {
+	f := newFakeTx()
+	tailHash := fillHash(0xAB)
+	f.cursorSeq = 7
+	f.cursorHash = tailHash[:]
+	f.tailSeq = 7
+	f.tailHash = tailHash[:]
+	f.tailErr = nil
+	want := int64(6)
+	in, canonical, payloadHash := mustPrepare(t)
+	in.ExpectedSequence = &want
+
+	event, err := appendLedgerEvent(context.Background(), f, in, canonical, payloadHash)
+	if event != (LedgerEvent{}) || !errors.Is(err, ErrLedgerExpectedSequence) {
+		t.Fatalf("event=%+v error=%v", event, err)
+	}
+	var typed *LedgerExpectedSequenceError
+	if !errors.As(err, &typed) || typed.Expected != 6 || typed.Actual != 7 || typed.StreamID != in.StreamID {
+		t.Fatalf("typed error = %+v", typed)
+	}
+	if len(f.queryRows) != 2 || len(f.execs) != 1 {
+		t.Fatalf("expected conflict reached insert/update: queryRows=%d execs=%d", len(f.queryRows), len(f.execs))
 	}
 }
 

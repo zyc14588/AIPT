@@ -1,13 +1,21 @@
 # 安全（SECURITY）
 
 > 公开安全设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> 除下列明确标注的 B007 Web 控制外，本节仍是冻结设计合同；不得把设计目标误报为已实现能力。
+> 除下列明确标注的 B007 Web 控制与 B002 Run Core 完整性边界外，本节仍是冻结设计合同；不得把设计目标误报为已实现能力。
 
 ## 信任边界
 
 - **来源只读**：游戏与代码来源以固定 Commit 独立只读检出，运行目录分离（`R2-Q004`）；Codex 对远端仓库只读（`R10-Q005`）。
 - **Agent 不可直接写状态**：Agent 只提交意图；Core 经 Schema、授权、规则、不变量校验后提交权威事件（`R5-Q008`）。
 - 外层容器/OS 沙箱 + Harness 沙箱 + 只读来源 + 最小权限，纵深防御（`R4-Q014`）。
+
+## B002 Run Core 完整性边界
+
+- action proposal 是唯一 caller-controlled mutation input；返回的 state/projection 都是深复制派生值，没有直接写 ledger、sequence、RNG cursor 或 immutable binding 的 API。所有 gate 与 transition 均 fail-closed，错误只暴露稳定类别与有界 identity，不渲染 cause、payload、DSN、credential、seed 或私有路径。
+- PostgreSQL append-only hash chain 是唯一持久状态 Authority。`ExpectedSequence` 在 ledger stream 行锁内比较，duplicate/stale/concurrent conflict 在 insert 前拒绝；state、RNG cursor 与 projection 只在 successful commit 后推进。
+- root seed 由可注入 `SeedSource` 提供；seed commitment 在任何 draw 前固定。普通 event/state/projection/receipt 只携带 commitment 与版本化 RNG evidence，不携带 root seed；evidence-authorized verification 通过 constant-time digest comparison 验证 commitment。
+- replay 在应用 transition 前验证完整 ledger chain、Run/Manifest/adapter/source binding、RNG/commitment version、draw evidence、state invariant 与 final state hash；缺失、重排、替换或篡改不会触发 silent repair。
+- B002 未实现 Agent orchestration、model gateway 或网络 client；`real model calls = 0`，真实 playtest 为 false，测试只使用 synthetic public fixture 与 loopback-only PostgreSQL 18.4。
 
 ## 信息隔离与 ACL
 
@@ -55,7 +63,7 @@ Commit/Tree、哈希/签名、凭据、隐藏信息、权威状态、账本完�
 
 ## 设计状态声明
 
-除“本地端点与界面”中明确列出的 B007 Web 控制已实现外，以上能力均为**冻结设计合同**，仍由后续获授权批次实现。
+“本地端点与界面”中的 B007 Web 控制与“B002 Run Core 完整性边界”已由对应历史/当前 Candidate 实现；Agent/session、模型调用、完整产品 runtime 与资格运行仍只是**冻结设计合同**，由后续获授权批次实现。
 
 ## 相邻文档
 

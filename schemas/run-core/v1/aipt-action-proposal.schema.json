@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/run-core/v1/aipt-action-proposal.schema.json",
+  "title": "AIPT action proposal v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "action_id", "run_id", "actor_id", "action_type", "expected_sequence", "source", "payload", "rng_requests"],
+  "properties": {
+    "schema": { "const": "aipt.action-proposal/v1" },
+    "action_id": { "$ref": "#/$defs/identity" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "actor_id": { "$ref": "#/$defs/identity" },
+    "action_type": { "$ref": "#/$defs/identity" },
+    "expected_sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+    "source": { "$ref": "#/$defs/ruleSource" },
+    "payload": {},
+    "rng_requests": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/rngRequest" }
+    },
+    "temporary_ruling": { "$ref": "#/$defs/temporaryRuling" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$" },
+    "ruleSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": { "enum": ["RULE_ID", "EXPLICIT_SOURCE"] },
+        "reference": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "rngRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream_id", "count"],
+      "properties": {
+        "stream_id": { "$ref": "#/$defs/identity" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 4096 }
+      }
+    },
+    "temporaryRuling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruling_id", "scope", "reason", "reversible", "valid_through_sequence"],
+      "properties": {
+        "ruling_id": { "$ref": "#/$defs/identity" },
+        "scope": { "$ref": "#/$defs/identity" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "reversible": { "type": "boolean" },
+        "valid_through_sequence": { "type": "integer", "minimum": 2, "maximum": 9007199254740991 }
+      }
+    }
+  }
+}
