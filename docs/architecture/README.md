@@ -2,7 +2,7 @@
 
 > 公开顶层架构合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)；
 > 冲突处理顺序见 [../authority/README.md](../authority/README.md)。
-> M0 历史实现保持不变；`AIPT-MVP-B001` 只实现声明式 Test Plan、不可变 Manifest 与 PostgreSQL Queue/Lease/Attempt authority，不代表 Run Core 已实现。
+> M0 与 `AIPT-MVP-B001` 历史实现保持不变；`AIPT-MVP-B002` Candidate 只新增 game-neutral Deterministic Run Core，不改变 Launcher、Agent 或模型边界。
 
 ## 技术栈与进程边界
 
@@ -26,8 +26,10 @@
 
 ## 确定性状态提交
 
-- Agent 只提交**意图**；Core 依次执行 Schema 校验、授权、规则与不变量检查后，才提交权威事件（`R5-Q008`）。
+- B002 的 [`internal/runcore`](../../internal/runcore) 实现通用版本化动作事务：caller 只提交 intent/action proposal；Core 依次执行 Schema、Run/Actor 授权、Rule/Source、当前状态前置条件、不变量、确定性 RNG、next-state 不变量，随后才把完整事件原子追加到 PostgreSQL ledger，最后生成派生 projection 与 receipt（`R5-Q008`）。任何失败都不会推进 state、RNG cursor 或 projection。
 - 影响状态的裁定必须强制引用 Rule ID 或来源（`R5-Q011`）；GM 临时裁定必须形成事件并记录范围、理由、可逆性与期限（`R5-Q012`）。
+- Initial Run State 绑定 B001 Manifest identity、runtime-adapter input identity 与只读 source package commit/tree/content identity；binding 被复制进每个 authoritative event，handler 只能返回新的 domain JSON，不能改写 identity、sequence、RNG cursor 或 ledger。
+- PostgreSQL append-only hash chain 仍是唯一持久权威；RunState 和 projection 是可由 genesis + ordered events 重建的 derived values。B002 未新增 table、snapshot authority 或 migration。
 
 ## 席位与信息隔离
 
@@ -39,7 +41,8 @@
 ## 上下文与随机性
 
 - AIPT 事件账本是记忆权威；Harness Compaction 只做长度优化（`R4-Q012`）。
-- Core 维护版本化确定性随机流及分域子流；开局前记录种子承诺哈希，运行中保密，结束后按证据策略披露（`R5-Q013`、`R5-Q014`）。
+- Deterministic Run Core 使用 `AIPT_RNG_HMAC_SHA256_V1` 与稳定 domain/stream identity；root seed 由可注入 `SeedSource` 提供，commitment `AIPT_SEED_COMMITMENT_SHA256_V1` 在首次 draw 前固定。事件记录 stream、draw index、result 与算法版本，但普通 state/projection/receipt 不包含 root seed（`R5-Q013`、`R5-Q014`）。
+- replay 先验证 `AIPT_LEDGER_V1` 哈希链、不可变 binding、seed commitment、event/version/order，再重新执行每个 deterministic transition 与 RNG draw；任何缺失、重排、篡改、版本漂移或最终 hash 不符均 fail-closed。
 
 ## Launcher
 
@@ -48,7 +51,7 @@
 
 ## 设计状态声明
 
-冻结历史合同继续有效；B001 已交付的 Test Plan / Manifest / Queue-Lease-Attempt 只是权威调度骨架。Run Core 的动作事务、Agent orchestration、模型 gateway、真实 playtest 与 qualification 仍由后续批次建设，当前不得从“可入队/可租约”推断“可运行”。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
+冻结历史合同继续有效；B001 的 Test Plan / Manifest / Queue-Lease-Attempt 与 B002 Deterministic Run Core 保持分层。B002 Candidate 可作为 library 被确定性测试和 replay，但 Launcher 的 MODEL/HARNESS/IPC 前序 gate 仍未实现，因此不代表产品 runtime ready。Agent orchestration、模型 gateway、真实 playtest 与 qualification 仍由后续批次建设。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
 
 ## 相邻文档
 

@@ -45,6 +45,31 @@ func (e *MigrationChecksumDriftError) Is(target error) bool {
 // *LedgerCursorMismatchError.
 var ErrLedgerCursorMismatch = errors.New("AIPT_LEDGER_CURSOR_MISMATCH")
 
+// ErrLedgerExpectedSequence is the stable optimistic-concurrency rejection
+// returned when an append's expected authoritative sequence is stale.
+var ErrLedgerExpectedSequence = errors.New("AIPT_LEDGER_EXPECTED_SEQUENCE")
+
+// LedgerExpectedSequenceError reports the expected and actual locked cursor.
+// It contains identities and sequence numbers only; no payload, DSN, or
+// credential can enter this error surface.
+type LedgerExpectedSequenceError struct {
+	StreamID string
+	Expected int64
+	Actual   int64
+}
+
+func (e *LedgerExpectedSequenceError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%s: stream %q expected sequence %d, actual %d",
+		ErrLedgerExpectedSequence, e.StreamID, e.Expected, e.Actual)
+}
+
+func (e *LedgerExpectedSequenceError) Is(target error) bool {
+	return target == ErrLedgerExpectedSequence
+}
+
 // LedgerCursorMismatchError is the typed, errors.Is-compatible error reported
 // when the ledger_streams cursor and the actual ledger_events tail disagree.
 // StreamID is the affected stream, CursorSequence and CursorHash are the

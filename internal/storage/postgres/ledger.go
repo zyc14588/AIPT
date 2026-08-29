@@ -38,6 +38,12 @@ type AppendInput struct {
 	EventID     string
 	EventType   string
 	PayloadJSON []byte
+	// ExpectedSequence, when non-nil, is the exact locked stream cursor that
+	// must precede this append. The comparison happens after the cursor row is
+	// locked and reconciled with the event tail, in the same transaction as
+	// the insert and cursor advance. It is therefore an optimistic-concurrency
+	// precondition, not a best-effort read performed by the caller.
+	ExpectedSequence *int64
 }
 
 // LedgerEvent is the committed result of a successful append. StreamID,
@@ -132,6 +138,13 @@ func prepareAppendInput(in AppendInput) (canonical string, payloadHash [32]byte,
 			return "", [32]byte{}, err
 		}
 	}
+	if in.ExpectedSequence != nil && *in.ExpectedSequence < 0 {
+		return "", [32]byte{}, &LedgerExpectedSequenceError{
+			StreamID: in.StreamID,
+			Expected: *in.ExpectedSequence,
+			Actual:   0,
+		}
+	}
 	canonical, err = protocol.CanonicalJSON(in.PayloadJSON)
 	if err != nil {
 		return "", [32]byte{}, err
@@ -205,6 +218,18 @@ func appendLedgerEvent(ctx context.Context, tx ledgerTx, in AppendInput, canonic
 			TailSequence:   tailSeq,
 			TailHash:       ledgerHashPtr(tailHash),
 			TailPresent:    tailPresent,
+		})
+	}
+
+	// A caller that binds an action to an authoritative state sequence must
+	// compare it while holding the same row lock used by the append. This is
+	// deliberately after cursor/tail reconciliation: a corrupt cursor is an
+	// integrity failure, never misclassified as an ordinary stale action.
+	if in.ExpectedSequence != nil && cursorSeq != *in.ExpectedSequence {
+		return LedgerEvent{}, fmt.Errorf("Append: verify expected sequence: %w", &LedgerExpectedSequenceError{
+			StreamID: in.StreamID,
+			Expected: *in.ExpectedSequence,
+			Actual:   cursorSeq,
 		})
 	}
 

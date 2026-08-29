@@ -191,3 +191,18 @@ func hashLedgerBlock(in ledgerHashInput) ([32]byte, error) {
 	}
 	return sha256.Sum256(preimage), nil
 }
+
+// ComputeLedgerEventHash exposes the existing AIPT_LEDGER_V1 hash contract to
+// deterministic in-memory stores and replay verification. It does not create
+// a second encoding implementation: the production Append and Verify paths
+// and this helper all delegate to hashLedgerBlock.
+func ComputeLedgerEventHash(streamID string, sequence int64, eventID, eventType string, payloadHash [32]byte, prevHash *[32]byte) ([32]byte, error) {
+	return hashLedgerBlock(ledgerHashInput{
+		StreamID:    streamID,
+		Sequence:    sequence,
+		EventID:     eventID,
+		EventType:   eventType,
+		PayloadHash: payloadHash,
+		PrevHash:    prevHash,
+	})
+}

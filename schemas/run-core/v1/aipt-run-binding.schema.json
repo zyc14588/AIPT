@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/run-core/v1/aipt-run-binding.schema.json",
+  "title": "AIPT immutable Run Core binding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "manifest", "runtime_adapter_input", "source_package"],
+  "properties": {
+    "schema": { "const": "aipt.run-binding/v1" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "manifest": { "$ref": "#/$defs/artifact" },
+    "runtime_adapter_input": { "$ref": "#/$defs/artifact" },
+    "source_package": { "$ref": "#/$defs/sourcePackage" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "repository": { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema", "canonical_sha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identity" },
+        "schema": { "$ref": "#/$defs/identity" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourcePackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_id", "schema", "repository", "commit", "tree", "canonical_sha256"],
+      "properties": {
+        "package_id": { "$ref": "#/$defs/identity" },
+        "schema": { "$ref": "#/$defs/identity" },
+        "repository": { "$ref": "#/$defs/repository" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

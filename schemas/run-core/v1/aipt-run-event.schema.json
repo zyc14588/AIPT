@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/run-core/v1/aipt-run-event.schema.json",
+  "title": "AIPT authoritative Run event v1",
+  "description": "Canonical ledger payload. after_state is complete and replayable; root seed material is not representable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "kind", "run_id", "sequence", "binding", "rng_version", "commitment_version", "seed_commitment", "after_state", "after_state_hash"],
+  "properties": {
+    "schema": { "const": "aipt.run-event/v1" },
+    "version": { "const": 1 },
+    "kind": { "enum": ["AIPT_RUN_STARTED_V1", "AIPT_RUN_ACTION_COMMITTED_V1"] },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "binding": { "$ref": "#/$defs/binding" },
+    "rng_version": { "const": "AIPT_RNG_HMAC_SHA256_V1" },
+    "commitment_version": { "const": "AIPT_SEED_COMMITMENT_SHA256_V1" },
+    "seed_commitment": { "$ref": "#/$defs/sha256" },
+    "before_state_hash": { "$ref": "#/$defs/sha256" },
+    "after_state": { "$ref": "#/$defs/state" },
+    "after_state_hash": { "$ref": "#/$defs/sha256" },
+    "action": { "$ref": "#/$defs/committedAction" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "kind": { "const": "AIPT_RUN_STARTED_V1" },
+        "sequence": { "const": 1 },
+        "before_state_hash": false,
+        "action": false
+      },
+      "required": ["kind", "sequence"]
+    },
+    {
+      "properties": { "kind": { "const": "AIPT_RUN_ACTION_COMMITTED_V1" } },
+      "required": ["kind", "before_state_hash", "action"]
+    }
+  ],
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema", "canonical_sha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identity" },
+        "schema": { "$ref": "#/$defs/identity" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourcePackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_id", "schema", "repository", "commit", "tree", "canonical_sha256"],
+      "properties": {
+        "package_id": { "$ref": "#/$defs/identity" },
+        "schema": { "$ref": "#/$defs/identity" },
+        "repository": { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "run_id", "manifest", "runtime_adapter_input", "source_package"],
+      "properties": {
+        "schema": { "const": "aipt.run-binding/v1" },
+        "run_id": { "$ref": "#/$defs/identity" },
+        "manifest": { "$ref": "#/$defs/artifact" },
+        "runtime_adapter_input": { "$ref": "#/$defs/artifact" },
+        "source_package": { "$ref": "#/$defs/sourcePackage" }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "binding", "sequence", "rng_version", "commitment_version", "seed_commitment", "rng_cursors", "domain_state"],
+      "properties": {
+        "schema": { "const": "aipt.run-state/v1" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "rng_version": { "const": "AIPT_RNG_HMAC_SHA256_V1" },
+        "commitment_version": { "const": "AIPT_SEED_COMMITMENT_SHA256_V1" },
+        "seed_commitment": { "$ref": "#/$defs/sha256" },
+        "rng_cursors": {
+          "type": "object",
+          "maxProperties": 4096,
+          "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+        },
+        "domain_state": {}
+      }
+    },
+    "ruleSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": { "enum": ["RULE_ID", "EXPLICIT_SOURCE"] },
+        "reference": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "rngRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream_id", "count"],
+      "properties": {
+        "stream_id": { "$ref": "#/$defs/identity" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 4096 }
+      }
+    },
+    "temporaryRuling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruling_id", "scope", "reason", "reversible", "valid_through_sequence"],
+      "properties": {
+        "ruling_id": { "$ref": "#/$defs/identity" },
+        "scope": { "$ref": "#/$defs/identity" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "reversible": { "type": "boolean" },
+        "valid_through_sequence": { "type": "integer", "minimum": 2, "maximum": 9007199254740991 }
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "action_id", "run_id", "actor_id", "action_type", "expected_sequence", "source", "payload", "rng_requests"],
+      "properties": {
+        "schema": { "const": "aipt.action-proposal/v1" },
+        "action_id": { "$ref": "#/$defs/identity" },
+        "run_id": { "$ref": "#/$defs/identity" },
+        "actor_id": { "$ref": "#/$defs/identity" },
+        "action_type": { "$ref": "#/$defs/identity" },
+        "expected_sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+        "source": { "$ref": "#/$defs/ruleSource" },
+        "payload": {},
+        "rng_requests": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/rngRequest" } },
+        "temporary_ruling": { "$ref": "#/$defs/temporaryRuling" }
+      }
+    },
+    "draw": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "stream_id", "draw_index", "value_hex"],
+      "properties": {
+        "version": { "const": "AIPT_RNG_HMAC_SHA256_V1" },
+        "stream_id": { "$ref": "#/$defs/identity" },
+        "draw_index": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "value_hex": { "type": "string", "pattern": "^[0-9a-f]{16}$" }
+      }
+    },
+    "committedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposal", "proposal_sha256", "rng_draws"],
+      "properties": {
+        "proposal": { "$ref": "#/$defs/proposal" },
+        "proposal_sha256": { "$ref": "#/$defs/sha256" },
+        "rng_draws": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/draw" } }
+      }
+    }
+  }
+}

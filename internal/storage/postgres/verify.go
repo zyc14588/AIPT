@@ -24,7 +24,84 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/zyc14588/AIPT/internal/protocol"
 )
+
+// VerifyLedgerEvents is the database-free replay integrity gate for a copied
+// ordered stream. It verifies canonical payload bytes, exact 1..N ordering,
+// stream consistency, previous hashes, payload hashes, and AIPT_LEDGER_V1
+// event hashes. Database-backed verification additionally checks the stored
+// cursor in VerifyStream; this helper lets replay reject mutated, missing-
+// middle, duplicated, or reordered event material before applying it.
+func VerifyLedgerEvents(events []LedgerEvent) error {
+	if len(events) == 0 {
+		return errors.New("VerifyLedgerEvents: empty event stream")
+	}
+	streamID := events[0].StreamID
+	if err := validateTextField("stream_id", streamID); err != nil {
+		return err
+	}
+	seenIDs := make(map[string]struct{}, len(events))
+	var previous *[32]byte
+	for index, event := range events {
+		expectedSequence := int64(index + 1)
+		if event.StreamID != streamID {
+			return fmt.Errorf("VerifyLedgerEvents: stream changed at sequence %d", expectedSequence)
+		}
+		if event.Sequence != expectedSequence {
+			return &LedgerSequenceGapError{StreamID: streamID, Expected: expectedSequence, Actual: event.Sequence}
+		}
+		if _, exists := seenIDs[event.EventID]; exists {
+			return fmt.Errorf("VerifyLedgerEvents: duplicate event_id at sequence %d", event.Sequence)
+		}
+		seenIDs[event.EventID] = struct{}{}
+		if err := validateTextField("event_id", event.EventID); err != nil {
+			return err
+		}
+		if err := validateTextField("event_type", event.EventType); err != nil {
+			return err
+		}
+		canonical, err := protocol.CanonicalJSON([]byte(event.PayloadCanonical))
+		if err != nil || canonical != event.PayloadCanonical {
+			return fmt.Errorf("VerifyLedgerEvents: sequence %d payload is not canonical JSON", event.Sequence)
+		}
+		payloadHash := sha256.Sum256([]byte(event.PayloadCanonical))
+		if payloadHash != event.PayloadHash {
+			expected, actual := payloadHash, event.PayloadHash
+			return &LedgerPayloadHashMismatchError{StreamID: streamID, Sequence: event.Sequence, Expected: &expected, Actual: &actual}
+		}
+		if !sameLedgerHash(previous, event.PrevEventHash) {
+			return &LedgerPrevHashMismatchError{StreamID: streamID, Sequence: event.Sequence, Expected: cloneLedgerHash(previous), Actual: cloneLedgerHash(event.PrevEventHash)}
+		}
+		expectedHash, err := ComputeLedgerEventHash(streamID, event.Sequence, event.EventID, event.EventType, payloadHash, previous)
+		if err != nil {
+			return err
+		}
+		if expectedHash != event.EventHash {
+			expected, actual := expectedHash, event.EventHash
+			return &LedgerEventHashMismatchError{StreamID: streamID, Sequence: event.Sequence, Expected: &expected, Actual: &actual}
+		}
+		current := event.EventHash
+		previous = &current
+	}
+	return nil
+}
+
+func sameLedgerHash(left, right *[32]byte) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
+}
+
+func cloneLedgerHash(value *[32]byte) *[32]byte {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
 
 // VerifyInput is the input of a ledger verification run. StreamID is the
 // nonempty valid-UTF-8 identifier of the stream whose chain is verified; it is

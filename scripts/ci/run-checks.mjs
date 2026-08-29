@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// AIPT-MVP-B001 validator suite entry (`pnpm run check`).
+// AIPT-MVP-B002 validator suite entry (`pnpm run check`).
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
 // The report preserves every historical M0 gate and adds the exact MVP
-// bootstrap authority/lifecycle gate plus the exact B001 acceptance gate.
-// M0, B000 and B001 remain immutable; no batch is active and every later batch
-// remains unauthorized/not started.
+// bootstrap authority/lifecycle gate, the B001 exact-Base regression replay,
+// and the current deterministic Run Core gate. M0/B000/B001 remain immutable;
+// B002 is the sole active Candidate and B003 remains unauthorized/not started.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,14 +25,12 @@ import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
 import { run as runHarnessAdapter } from './validate/harness-adapter.mjs';
 import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
-import { run as runMvpB001 } from './validate/mvp-b001.mjs';
-import { run as runP1B000Authority } from './validate/p1-b000-authority.mjs';
-import { run as runP1B000AuthorityAmendment } from './validate/p1-b000-authority-amendment.mjs';
+import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
+import { run as runMvpB002 } from './validate/mvp-b002.mjs';
 import { run as runP1B000AuthorityAmendment003 } from './validate/p1-b000-authority-amendment-003.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
-import { ACTIVE_BATCH } from './lib/constants.mjs';
 
 const ctx = { repo: path.resolve(process.cwd()) };
 const amendment002Present = fs.existsSync(path.join(
@@ -168,8 +166,7 @@ const checks = await Promise.all([
   runEvidence(ctx),
   runHistoricalWeb(ctx),
   runMvpB001(ctx),
-  runP1B000Authority(ctx),
-  runP1B000AuthorityAmendment(ctx),
+  runMvpB002(ctx),
   runP1B000AuthorityAmendment003(ctx),
   repairCheck,
   closeoutCheck,
@@ -181,10 +178,10 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B001 MERGED_CLOSED / GLOBAL_WIP 0 under AIPT-MVP-B001-CLOSEOUT-001; exact Candidate, merge and post-merge CI identities are frozen; Run Core, Agent orchestration, product-model calls and real playtest remain unimplemented; UNREGISTERED-AIPT-P1-B000 remains NOT_STARTED / NOT_AUTHORIZED; M0 Development Pass remains effective, MVP qualification remains NOT_GRANTED, and platform integration remains FROZEN_WAITING_M1_ENGINE';
+const note = 'AIPT-MVP-B002 IN_PROGRESS / GLOBAL_WIP 1 on exact Base 411bf2997cd0f10ba1a022ac687d27a1bd19eb36; deterministic Run Core only, merge/closeout unauthorized; UNREGISTERED-AIPT-P1-B000 is canonically CLOSED; B001 is replayed on the immutable B002 Base; Agent orchestration, product-model calls, real playtest and qualification remain unimplemented; B003 is NOT_STARTED / NOT_AUTHORIZED';
 const report = {
-  schema: 'aipt.public.mvp-b001-validator-run/v1',
-  task_id: ACTIVE_BATCH,
+  schema: 'aipt.public.mvp-b002-validator-run/v1',
+  task_id: 'AIPT-MVP-B002',
   note,
   repo: ctx.repo,
   result,
