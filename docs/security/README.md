@@ -1,7 +1,7 @@
 # 安全（SECURITY）
 
 > 公开安全设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> 除下列明确标注的 B007 Web 控制与 B002 Run Core 完整性边界外，本节仍是冻结设计合同；不得把设计目标误报为已实现能力。
+> 除下列明确标注的 B007 Web 控制、B002 Run Core 完整性边界与 B003 provider-neutral Orchestrator 信息边界外，本节仍是冻结设计合同；不得把设计目标误报为已实现能力。
 
 ## 信任边界
 
@@ -19,9 +19,19 @@
 
 ## 信息隔离与 ACL
 
-- 每席位独立 Session 与显式信息投影（`R2-Q016`）；每次模型调用前由 Core 生成席位授权视图（`R5-Q006`）。
-- **ACL 先于检索**：先过滤语料，再精确/混合检索与引用验证（`R5-Q017`）。
-- 内容使用显式可见性标签，未标记 fail-closed（`R13-Q015`）。
+- B003 每个 `GM`/`PLAYER_n` 机器席位具有独立 Run-bound Session；Session identity 跨 Run、跨 seat、GM/Player alias、binding mutation 与旧 Session replay 都 fail-closed（`R2-Q016`）。
+- 每次 provider-neutral invocation 前由 Orchestrator 从 authoritative facts、classification、visibility ACL 与 seat identity 生成 `SEAT_AUTHORIZED_VIEW`；完整 authoritative state 不直接进入 context（`R5-Q006`）。
+- **ACL 先于检索**：classification → ACL/visibility → retrieval → citation/hash verification → context assembly。Retriever 只能收到已授权 source descriptors；额外、错分类、错 hash 或未标记结果全部拒绝（`R5-Q017`）。
+- 未标记内容 fail-closed；`LOCAL_ONLY_SECRET`、`HUMAN_PRIVATE_DATA`、`CREDENTIAL_SECRET` 与 `SYSTEM_INTERNAL` 不进入 ordinary Agent context。GM-only、Player-private 与 private-chat recipient set 均在 context/summary/repair 前重新验证（`R13-Q015`）。
+
+## B003 Agent protocol 与隐藏信息边界
+
+- trusted role/policy/Persona/capability contract 与 rulebook、module、retrieval、logs、previous model prose 等 untrusted content 使用不同结构字段；恶意文本不能修改 role、tool grant、visibility、seat authorization 或 state authority。
+- Persona baseline 使用 canonical SHA-256 identity 且不暴露任意 prompt blob；mutable misunderstanding/forgetting/stress/suboptimal-decision state 只能由同 Run/seat/Persona 的顺序事件在 0..100 范围更新。Character projection 是另一 machine identity；两者不能隐式互写或把 Character secret 自动变成 Player knowledge。
+- Memory summary 只保留 authorized fact/source identity 与 hash；使用前验证 Run/seat binding、required facts、visibility 和 source set。fabricated/stale/hidden fact、required omission 或 hidden source reference 均拒绝，不能通过 summary 或 repair reintroduce secret。
+- Agent response 使用 strict JSON、closed version/enums 与 unknown-field rejection；speech 永不直接写 state。speech/action machine claim 冲突进入有界 semantic repair，仍失败产生稳定 protocol failure。Transport retry、semantic retry、timeout 与 Session recovery 分开记录；未分类错误不能伪装成另一 retry class。
+- Orchestration event/error 只携带有界 identity、hash、class 与 outcome，不携带 private payload、retrieved secret、DSN、credential、root seed 或 raw cause。Private chat payload只进入 sender/explicit recipient 的 authorized event window。
+- `RunCoreSubmitter` 是唯一 mutation surface；B003 没有 ledger/RNG/state write API。成功 action 的 invocation/action identity 被标记后不得重交，transport/repair/recovery 不会导致 duplicate commit 或 duplicate RNG consumption。
 
 ## 数据/内容分类
 
@@ -63,7 +73,7 @@ Commit/Tree、哈希/签名、凭据、隐藏信息、权威状态、账本完�
 
 ## 设计状态声明
 
-“本地端点与界面”中的 B007 Web 控制与“B002 Run Core 完整性边界”已由对应历史/当前 Candidate 实现；Agent/session、模型调用、完整产品 runtime 与资格运行仍只是**冻结设计合同**，由后续获授权批次实现。
+“本地端点与界面”中的 B007 Web 控制、“B002 Run Core 完整性边界”与上述 B003 provider-neutral Agent/session/context/protocol 边界已实现。真实 Harness/model gateway、网络模型调用、完整产品 runtime、真实桌测与资格运行仍未实现；分别由 B004 及后续获授权批次建设。
 
 ## 相邻文档
 

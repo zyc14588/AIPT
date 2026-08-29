@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/orchestration/v1/aipt-orchestration-event.schema.json",
+  "title": "AIPT orchestration event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "sequence", "type", "run_id", "recipients"],
+  "properties": {
+    "schema": { "const": "aipt.orchestration-event/v1" },
+    "version": { "const": 1 },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "type": {
+      "enum": [
+        "SESSION_CREATED", "TURN_OPENED", "SEAT_INVOKED", "MESSAGE_EMITTED",
+        "PRIVATE_MESSAGE_ROUTED", "ACTION_PROPOSED", "ACTION_ACCEPTED", "ACTION_REJECTED",
+        "PROTOCOL_REPAIR_REQUESTED", "PROTOCOL_REPAIR_RESULT", "TRANSPORT_RETRY",
+        "INVOCATION_TIMEOUT", "SESSION_RECOVERY", "INTERRUPTION_REQUESTED",
+        "INTERRUPTION_RESOLVED", "GROUP_VOTE_RECORDED", "GROUP_DECISION_RESOLVED",
+        "GM_CLARIFICATION_REQUESTED", "GM_CLARIFICATION_RESPONDED", "TURN_RESOLVED",
+        "RUN_ORCHESTRATION_TERMINATED"
+      ]
+    },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "seat_id": { "$ref": "#/$defs/seat" },
+    "recipients": { "type": "array", "uniqueItems": true, "maxItems": 5, "items": { "$ref": "#/$defs/seat" } },
+    "reference_id": { "$ref": "#/$defs/identity" },
+    "outcome": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "attempt_class": { "enum": ["ORIGINAL", "TRANSPORT_RETRY", "SEMANTIC_RETRY", "SESSION_RECOVERY"] },
+    "ordinal": { "type": "integer", "minimum": 1, "maximum": 1024 },
+    "context_hash": { "$ref": "#/$defs/sha256" },
+    "action_id": { "$ref": "#/$defs/identity" },
+    "old_session_id": { "$ref": "#/$defs/identity" },
+    "new_session_id": { "$ref": "#/$defs/identity" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "seat": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] }
+  }
+}

@@ -8,6 +8,16 @@
 
 Replay 会重新验证 ledger hash chain、binding、commitment、RNG evidence 和每次 state transition，live/replayed final canonical state hash 必须相同。B002 没有把该 library 接到真实 Launcher：MODEL、HARNESS 与 IPC gate 仍失败关闭，也没有 Agent orchestration、persistent session、prompt/context assembly、real model call 或 real playtest。
 
+## AIPT-MVP-B003 Provider-neutral Agent Orchestrator
+
+`AIPT-MVP-B003` 在 [`internal/orchestrator`](../../internal/orchestrator) 提供独立 Go library，并保持 [`internal/runcore`](../../internal/runcore) byte-identical。`Engine` 接受显式 Run/policy、1 GM + 4 Player seat plan、Run-bound Sessions、fake/scripted `AgentInvoker`、可注入 Clock/Retriever 与唯一 `ActionSubmitter`。公共测试不会启动 Harness 子进程、HTTP model client 或真实 provider。
+
+调用流程固定为：验证 floor owner → 生成 seat-authorized projection → ACL-before-retrieval → citation 与 memory-summary invariant → canonical context hash → scripted Agent invocation → strict structured response → 有界 retry/recovery → B002 Action Proposal。Timeout 由可注入 clock 与显式 policy deadline 判定，测试不 sleep；任何 timeout 都形成事件，不能静默跳过或复用旧回答。
+
+`AgentInvoker` 只是 B004 将来实现的 provider-neutral boundary。B003 中唯一实现是测试 fake；`RunCoreSubmitter` 只把一个通过 B003 protocol gate 的 action 交给 B002 `Run.Execute`，没有独立 state writer、RNG 或 ledger path。Orchestration events 与 gameplay authoritative events 分层，speech/private chat/clarification prose 都不会自动成为 gameplay fact。
+
+当前仍不接 Launcher 的 MODEL/HARNESS gate：`real_model_gateway_implemented = false`、`real_model_calls = 0`、`network_model_calls = 0`、`real_playtest_executed = false`、`qualification_runs_executed = 0`。
+
 ## 固定启动计划
 
 门禁顺序由 `internal/launcher` 固定，调用者和配置都不能重排：
@@ -88,6 +98,9 @@ go test ./...
 go test -race ./internal/runcore ./internal/storage/postgres
 pnpm run check:mvp-b002
 pnpm run test:run-core
+pnpm run check:mvp-b003
+pnpm run test:orchestrator
+go test -race ./internal/orchestrator -count=1
 go test -race ./internal/config/... ./internal/core/... ./internal/launcher/... ./cmd/aipt/...
 pnpm run check:runtime-shell
 pnpm run check:web-ui
@@ -100,4 +113,4 @@ pnpm run smoke:web-ui
 
 ## B007 明确边界
 
-B007 的历史交付不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine 或 game adapter。当前状态由 B002 Candidate 单独推进为 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B002`、`GLOBAL_WIP = 1`；这不会追溯改写 B007 closeout，也不会启动 B003。
+B007 的历史交付不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine 或 game adapter。当前唯一活跃状态为 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B003`、`GLOBAL_WIP = 1`；这不会追溯改写 B007/B002 closeout，也不会启动 B004。

@@ -154,6 +154,12 @@ jobs:
         run: pnpm run check:mvp-b002
       - name: AIPT MVP B002 Run Core unit concurrency replay and determinism tests
         run: pnpm run test:run-core
+      - name: "AIPT MVP B003 deterministic Agent Orchestrator validator: seats sessions persona character visibility context floor protocol recovery replay"
+        run: pnpm run check:mvp-b003
+      - name: AIPT MVP B003 Agent Orchestrator unit hidden-information protocol recovery concurrency determinism tests
+        run: pnpm run test:orchestrator
+      - name: AIPT MVP B003 Agent Orchestrator race concurrency and double-commit tests
+        run: go test -race ./internal/orchestrator -count=1
       - name: "B004 runtime shell: fixed gate order + config + Core + Launcher + CLI mutation probes"
         run: pnpm run check:runtime-shell
       - name: "B005 Harness Adapter contract: thin stdio runtime + security mutation probes"

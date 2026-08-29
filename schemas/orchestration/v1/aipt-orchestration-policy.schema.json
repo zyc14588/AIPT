@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/orchestration/v1/aipt-orchestration-policy.schema.json",
+  "title": "AIPT deterministic orchestration policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "policy_id",
+    "seat_order",
+    "interruption_order",
+    "semantic_repair_budget",
+    "transport_retry_budget",
+    "session_recovery_budget",
+    "invocation_timeout_millis",
+    "max_context_sources",
+    "max_event_window"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.orchestration-policy/v1" },
+    "policy_id": { "$ref": "#/$defs/identity" },
+    "seat_order": { "$ref": "#/$defs/baselineSeatOrder" },
+    "interruption_order": { "$ref": "#/$defs/baselineSeatOrder" },
+    "semantic_repair_budget": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "transport_retry_budget": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "session_recovery_budget": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "invocation_timeout_millis": { "type": "integer", "minimum": 1, "maximum": 3600000 },
+    "max_context_sources": { "type": "integer", "minimum": 0, "maximum": 1024 },
+    "max_event_window": { "type": "integer", "minimum": 0, "maximum": 4096 }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "seat": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] },
+    "baselineSeatOrder": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/seat" }
+    }
+  }
+}

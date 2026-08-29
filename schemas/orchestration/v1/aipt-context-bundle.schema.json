@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/orchestration/v1/aipt-context-bundle.schema.json",
+  "title": "AIPT seat-authorized deterministic context bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "context_version", "run_id", "seat_id", "session_id",
+    "authorized_projection_hash", "persona_id", "event_window_id", "summary_id",
+    "tool_capability_id", "trusted", "untrusted", "context_hash"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.context-bundle/v1" },
+    "context_version": { "const": "v1" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "seat_id": { "$ref": "#/$defs/seat" },
+    "session_id": { "$ref": "#/$defs/identity" },
+    "authorized_projection_hash": { "$ref": "#/$defs/sha256" },
+    "persona_id": { "$ref": "#/$defs/identity" },
+    "character_id": { "$ref": "#/$defs/identity" },
+    "event_window_id": { "$ref": "#/$defs/identity" },
+    "summary_id": { "$ref": "#/$defs/identity" },
+    "tool_capability_id": { "$ref": "#/$defs/identity" },
+    "trusted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role_contract_id", "policy_id", "persona", "persona_state", "available_tools"],
+      "properties": {
+        "role_contract_id": { "$ref": "#/$defs/identity" },
+        "policy_id": { "$ref": "#/$defs/identity" },
+        "persona": { "$ref": "#/$defs/persona" },
+        "persona_state": { "$ref": "#/$defs/personaState" },
+        "character": { "$ref": "#/$defs/character" },
+        "gm_profile": { "enum": ["neutral", "skilled", "rules-faithful"] },
+        "available_tools": { "type": "array", "items": { "$ref": "#/$defs/tool" } }
+      }
+    },
+    "untrusted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorized_state", "event_window", "memory_summary", "retrieved"],
+      "properties": {
+        "authorized_state": { "$ref": "#/$defs/authorizedView" },
+        "event_window": { "type": "array", "items": { "$ref": "#/$defs/eventWindowItem" } },
+        "memory_summary": { "$ref": "#/$defs/summary" },
+        "retrieved": { "type": "array", "items": { "$ref": "#/$defs/retrieved" } }
+      }
+    },
+    "context_hash": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "seat": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] },
+    "classification": { "enum": ["PUBLIC", "UNRELEASED_REMOTE_ALLOWED", "TABLE_HIDDEN_REMOTE_ALLOWED", "LOCAL_ONLY_SECRET", "HUMAN_PRIVATE_DATA", "CREDENTIAL_SECRET", "SYSTEM_INTERNAL"] },
+    "scope": { "enum": ["PUBLIC", "GM_ONLY", "SEAT_PRIVATE", "SYSTEM_INTERNAL"] },
+    "personaTrait": {
+      "type": "object", "additionalProperties": false, "required": ["name", "value"],
+      "properties": { "name": { "$ref": "#/$defs/identity" }, "value": { "type": "integer", "minimum": 0, "maximum": 100 } }
+    },
+    "persona": {
+      "type": "object", "additionalProperties": false, "required": ["persona_id", "version", "traits", "sha256"],
+      "properties": {
+        "persona_id": { "$ref": "#/$defs/identity" }, "version": { "$ref": "#/$defs/identity" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/personaTrait" } }, "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "personaState": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "persona_id", "run_id", "seat_id", "misunderstanding", "forgetting", "stress", "suboptimal_decision_bias", "last_persona_event_sequence"],
+      "properties": {
+        "version": { "const": "v1" }, "persona_id": { "$ref": "#/$defs/identity" }, "run_id": { "$ref": "#/$defs/identity" }, "seat_id": { "$ref": "#/$defs/seat" },
+        "misunderstanding": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "forgetting": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "stress": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "suboptimal_decision_bias": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "last_persona_event_sequence": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "character": {
+      "type": "object", "additionalProperties": false, "required": ["character_id", "version", "projection", "projection_sha256"],
+      "properties": {
+        "character_id": { "$ref": "#/$defs/identity" }, "version": { "$ref": "#/$defs/identity" }, "projection": {}, "projection_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tool": {
+      "type": "object", "additionalProperties": false, "required": ["tool_id", "version"],
+      "properties": { "tool_id": { "$ref": "#/$defs/identity" }, "version": { "$ref": "#/$defs/identity" } }
+    },
+    "fact": {
+      "type": "object", "additionalProperties": false, "required": ["fact_id", "classification", "scope", "allowed_seats", "value", "value_sha256"],
+      "properties": {
+        "fact_id": { "$ref": "#/$defs/identity" }, "classification": { "$ref": "#/$defs/classification" }, "scope": { "$ref": "#/$defs/scope" },
+        "allowed_seats": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/seat" } }, "value": {}, "value_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "authorizedView": {
+      "type": "object", "additionalProperties": false, "required": ["run_id", "seat_id", "facts", "sha256"],
+      "properties": { "run_id": { "$ref": "#/$defs/identity" }, "seat_id": { "$ref": "#/$defs/seat" }, "facts": { "type": "array", "items": { "$ref": "#/$defs/fact" } }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "eventWindowItem": {
+      "type": "object", "additionalProperties": false, "required": ["event_id", "classification", "scope", "recipients", "content", "content_sha256"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/identity" }, "classification": { "$ref": "#/$defs/classification" }, "scope": { "$ref": "#/$defs/scope" },
+        "recipients": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/seat" } }, "content": { "type": "string", "maxLength": 20000 }, "content_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "summaryFact": {
+      "type": "object", "additionalProperties": false, "required": ["fact_id", "value_sha256"],
+      "properties": { "fact_id": { "$ref": "#/$defs/identity" }, "value_sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["summary_id", "version", "run_id", "seat_id", "facts", "required_fact_ids", "source_ids", "sha256"],
+      "properties": {
+        "summary_id": { "$ref": "#/$defs/identity" }, "version": { "$ref": "#/$defs/identity" }, "run_id": { "$ref": "#/$defs/identity" }, "seat_id": { "$ref": "#/$defs/seat" },
+        "facts": { "type": "array", "items": { "$ref": "#/$defs/summaryFact" } },
+        "required_fact_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } },
+        "source_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/identity" } }, "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "retrieved": {
+      "type": "object", "additionalProperties": false, "required": ["source_id", "classification", "content", "content_sha256"],
+      "properties": { "source_id": { "$ref": "#/$defs/identity" }, "classification": { "$ref": "#/$defs/classification" }, "content": { "type": "string" }, "content_sha256": { "$ref": "#/$defs/sha256" } }
+    }
+  }
+}

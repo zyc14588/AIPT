@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/orchestration/v1/aipt-agent-session.schema.json",
+  "title": "AIPT Run-bound Agent Session v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "session_id", "run_id", "seat_id", "generation"],
+  "properties": {
+    "schema": { "const": "aipt.agent-session/v1" },
+    "session_id": { "$ref": "#/$defs/identity" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "seat_id": { "$ref": "#/$defs/seat" },
+    "generation": { "type": "integer", "minimum": 1, "maximum": 1024 },
+    "parent_session_id": { "$ref": "#/$defs/identity" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "seat": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] }
+  }
+}
