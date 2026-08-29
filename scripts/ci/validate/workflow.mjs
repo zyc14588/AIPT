@@ -121,6 +121,8 @@ const CONCURRENCY_GROUP = 'aipt-m0-${{ github.workflow }}-${{ github.ref }}';
 const MATRIX_RUNNERS = ['ubuntu-24.04', 'ubuntu-26.04'];
 const REQUIRED_JOBS = ['b000-retro', 'toolchain', 'supply-chain', 'storage-postgres'];
 const CLOSED_AMENDMENT_ROUTE_COMMAND = 'node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority-amendment --route-closed-authority --github-output "${GITHUB_OUTPUT}"';
+const CLOSED_A3_COMMAND = 'pnpm run check:p1-b000-authority-amendment-003';
+const DIRECT_CURRENT_A3_VALIDATOR = 'node scripts/ci/validate/p1-b000-authority-amendment-003.mjs';
 
 // ---- AIPT-M0-B003 iteration 6b: the ephemeral storage-postgres contract ----
 // The independent storage-postgres job must run on exactly ubuntu-26.04, use
@@ -201,7 +203,7 @@ const FOCUSED_COMMANDS = [
   },
   {
     command: 'pnpm run check:mvp-b002',
-    nameTokens: ['aipt', 'mvp', 'b002', 'deterministic', 'run core', 'action pipeline', 'rng commitment', 'projection', 'replay'],
+    nameTokens: ['aipt', 'mvp', 'b002', 'lifecycle-aware', 'candidate', 'merge', 'closeout', 'deterministic', 'run core', 'action pipeline', 'rng commitment', 'projection', 'replay'],
   },
   {
     command: 'pnpm run test:run-core',
@@ -266,6 +268,10 @@ const FOCUSED_COMMANDS = [
   {
     command: 'pnpm run check:p1-b000-authority-closeout',
     nameTokens: ['p1', 'b000', 'base authority', 'formal evidence', 'governance-only', 'closeout', 'gate'],
+  },
+  {
+    command: CLOSED_A3_COMMAND,
+    nameTokens: ['replay', 'amendment-003', 'exact', 'immutable', 'closeout', 'current', 'canonical', 'lifecycle', 'integrity'],
   },
   { command: 'pnpm run check', nameTokens: ['b001+b002+b003+b004+b005+b006+b007+b008', 'aggregate'] },
 ];
@@ -1202,6 +1208,14 @@ function checkWorkflowText(text, lock) {
     if (clean) ok(`${required} job and every step are unconditional or exact Amendment-lifecycle routed, and failure-visible`);
   }
 
+  const directA3Executions = Object.entries(analyzedJobs).flatMap(([job, steps]) =>
+    inlineHits(steps, DIRECT_CURRENT_A3_VALIDATOR).map((hit) => ({ job, ...hit })));
+  if (directA3Executions.length === 0) {
+    ok('closed Amendment-003 is never executed as a direct current-successor self-closeout topology gate');
+  } else {
+    fail(`closed Amendment-003 direct current-successor validator invocation is forbidden: found ${directA3Executions.length}`);
+  }
+
   // ---- toolchain job: matrix, B002 focused commands, auditable step names ----
   const toolchainJob = jobs.toolchain;
   let matrixRunners = null;
@@ -1910,6 +1924,38 @@ export function run(ctx) {
       label: 'baseline job removed (toolchain)',
       reason: /required job missing: toolchain/,
       run: () => checkWorkflowText(removeJobBlock(text, 'toolchain'), lock),
+    },
+    {
+      label: 'closed Amendment-003 historical/current lifecycle route removed',
+      reason: /check:p1-b000-authority-amendment-003.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace(`        run: ${CLOSED_A3_COMMAND}`, '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'closed Amendment-003 routed command replaced by direct current validator',
+      reason: /direct current-successor validator invocation is forbidden|check:p1-b000-authority-amendment-003.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace(`        run: ${CLOSED_A3_COMMAND}`, `        run: ${DIRECT_CURRENT_A3_VALIDATOR}`)),
+          lock,
+        ),
+    },
+    {
+      label: 'B002 lifecycle-aware candidate merge closeout routing name drift',
+      reason: /check:mvp-b002.*lacks:.*lifecycle-aware|check:mvp-b002.*lacks:.*candidate|check:mvp-b002.*lacks:.*merge|check:mvp-b002.*lacks:.*closeout/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) => t.replace(
+            'AIPT MVP B002 lifecycle-aware candidate merge closeout deterministic Run Core validator',
+            'AIPT MVP B002 deterministic Run Core validator',
+          )),
+          lock,
+        ),
     },
     {
       label: 'baseline aggregate gate removed (pnpm run check from toolchain)',

@@ -27,7 +27,6 @@ import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
 import { run as runMvpB002 } from './validate/mvp-b002.mjs';
-import { run as runP1B000AuthorityAmendment003 } from './validate/p1-b000-authority-amendment-003.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
@@ -167,7 +166,6 @@ const checks = await Promise.all([
   runHistoricalWeb(ctx),
   runMvpB001(ctx),
   runMvpB002(ctx),
-  runP1B000AuthorityAmendment003(ctx),
   repairCheck,
   closeoutCheck,
 ]);
