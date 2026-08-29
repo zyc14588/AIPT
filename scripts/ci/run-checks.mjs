@@ -6,7 +6,7 @@
 // The report preserves every historical M0 gate and adds the exact MVP
 // bootstrap authority/lifecycle gate, the B001 exact-Base regression replay,
 // and the current deterministic Run Core gate. M0/B000/B001 remain immutable;
-// B002 is the sole active Candidate and B003 remains unauthorized/not started.
+// B002 is canonically MERGED_CLOSED and B003 remains unauthorized/not started.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -176,7 +176,7 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B002 IN_PROGRESS / GLOBAL_WIP 1 on exact Base 411bf2997cd0f10ba1a022ac687d27a1bd19eb36; deterministic Run Core only, merge/closeout unauthorized; UNREGISTERED-AIPT-P1-B000 is canonically CLOSED; B001 is replayed on the immutable B002 Base; Agent orchestration, product-model calls, real playtest and qualification remain unimplemented; B003 is NOT_STARTED / NOT_AUTHORIZED';
+const note = 'AIPT-MVP-B002 MERGED_CLOSED / GLOBAL_WIP 0 with no active batch; approved R1 deterministic Run Core Candidate is preserved by the accepted second merge and canonical append-only lifecycle chain; the first failed merge remains immutable failure-only history; UNREGISTERED-AIPT-P1-B000 is canonically CLOSED; B001 is replayed on the immutable B002 Base; Agent orchestration, product-model calls, real playtest and qualification remain unimplemented; B003 is NOT_STARTED / NOT_AUTHORIZED';
 const report = {
   schema: 'aipt.public.mvp-b002-validator-run/v1',
   task_id: 'AIPT-MVP-B002',

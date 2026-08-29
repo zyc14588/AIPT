@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B002 implements the game-neutral deterministic Run Core candidate over the existing PostgreSQL ledger; Agent/model/playtest work remains out of scope.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B002 is the closed game-neutral deterministic Run Core delivery over the existing PostgreSQL ledger; Agent/model/playtest work remains out of scope.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
