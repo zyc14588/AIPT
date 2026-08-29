@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-29",
-  "authority_snapshot_id": "AIPT-MVP-B002-CLOSEOUT-001",
+  "authority_snapshot_id": "AIPT-MVP-B003-CONSTRUCTION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "AIPT-MVP-B003",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B003",
+      "next_serial_batch": "AIPT-MVP-B004",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -25,7 +25,7 @@
         "AIPT-MVP-B001": "MERGED_CLOSED",
         "UNREGISTERED-AIPT-P1-B000": "MERGED_CLOSED",
         "AIPT-MVP-B002": "MERGED_CLOSED",
-        "AIPT-MVP-B003": "NOT_STARTED",
+        "AIPT-MVP-B003": "IN_PROGRESS",
         "AIPT-MVP-B004": "NOT_STARTED",
         "INT-AIPT-UNREGISTERED-MVP-001": "NOT_STARTED",
         "AIPT-MVP-B005": "NOT_STARTED",
@@ -77,7 +77,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -164,6 +164,48 @@
         "merged": true,
         "post_merge_verified": true,
         "closed": true,
+        "open_findings": []
+      },
+      "mvp_b003": {
+        "task_id": "AIPT-MVP-B003",
+        "state": "IN_PROGRESS",
+        "start_authority": "OWNER_DIRECTIVE_AIPT-MVP-B003",
+        "base": {
+          "commit": "862bd6f0e93f6676355db57388dd3280b006804d",
+          "tree": "bdee02d25a89f782ae970ab6ce792d877fa81953"
+        },
+        "predecessor": {
+          "task_id": "AIPT-MVP-B002",
+          "state": "MERGED_CLOSED",
+          "accepted_candidate": "dd634f575cdec5ec572696409ac574102442af3e",
+          "implementation_merge": "a5d9e9b0aeea5f2a9990d976258ddd34b9b8375e",
+          "canonical_closeout": "862bd6f0e93f6676355db57388dd3280b006804d"
+        },
+        "scope": "DETERMINISTIC_AGENT_ORCHESTRATOR_ONLY",
+        "risk": "hidden-information",
+        "baseline": {
+          "gm_seats": 1,
+          "player_seats": 4,
+          "session_scope": "ONE_INDEPENDENT_SESSION_PER_AGENT_PER_RUN",
+          "state_authority": "B002_RUN_CORE_POSTGRESQL_APPEND_ONLY_LEDGER"
+        },
+        "agent_orchestration_implemented": true,
+        "persistent_agent_sessions_implemented": true,
+        "seat_authorized_context_implemented": true,
+        "bounded_protocol_repair_implemented": true,
+        "bounded_session_recovery_implemented": true,
+        "b002_business_artifacts_changed": false,
+        "new_migration": "NONE",
+        "real_model_gateway_implemented": false,
+        "real_model_calls": 0,
+        "network_model_calls": 0,
+        "real_playtest_executed": false,
+        "qualification_runs_executed": 0,
+        "merged": false,
+        "post_merge_verified": false,
+        "closed": false,
+        "merge_authorized": false,
+        "closeout_authorized": false,
         "open_findings": []
       },
       "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/orchestration/v1/aipt-seat-plan.schema.json",
+  "title": "AIPT 1 GM plus 4 Player seat plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "seats"],
+  "properties": {
+    "schema": { "const": "aipt.seat-plan/v1" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "seats": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/seatContract" }
+    }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "seat": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] },
+    "trait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "$ref": "#/$defs/identity" },
+        "value": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "persona": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["persona_id", "version", "traits", "sha256"],
+      "properties": {
+        "persona_id": { "$ref": "#/$defs/identity" },
+        "version": { "$ref": "#/$defs/identity" },
+        "traits": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "$ref": "#/$defs/trait" } },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["character_id", "version", "projection", "projection_sha256"],
+      "properties": {
+        "character_id": { "$ref": "#/$defs/identity" },
+        "version": { "$ref": "#/$defs/identity" },
+        "projection": {},
+        "projection_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "session_id", "run_id", "seat_id", "generation"],
+      "properties": {
+        "schema": { "const": "aipt.agent-session/v1" },
+        "session_id": { "$ref": "#/$defs/identity" },
+        "run_id": { "$ref": "#/$defs/identity" },
+        "seat_id": { "$ref": "#/$defs/seat" },
+        "generation": { "type": "integer", "minimum": 1, "maximum": 1024 },
+        "parent_session_id": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "seatContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat_id", "run_id", "role", "role_contract_id", "visibility_id", "session", "persona"],
+      "properties": {
+        "seat_id": { "$ref": "#/$defs/seat" },
+        "run_id": { "$ref": "#/$defs/identity" },
+        "role": { "enum": ["GM", "PLAYER"] },
+        "role_contract_id": { "$ref": "#/$defs/identity" },
+        "visibility_id": { "$ref": "#/$defs/identity" },
+        "session": { "$ref": "#/$defs/session" },
+        "persona": { "$ref": "#/$defs/persona" },
+        "character": { "$ref": "#/$defs/character" },
+        "gm_profile": { "enum": ["neutral", "skilled", "rules-faithful"] }
+      }
+    }
+  }
+}

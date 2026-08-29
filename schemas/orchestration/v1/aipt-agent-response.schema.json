@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/orchestration/v1/aipt-agent-response.schema.json",
+  "title": "AIPT structured Agent response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "invocation_id", "run_id", "seat_id", "session_id", "speech", "metadata"],
+  "properties": {
+    "schema": { "const": "aipt.agent-response/v1" },
+    "invocation_id": { "$ref": "#/$defs/identity" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "seat_id": { "$ref": "#/$defs/seat" },
+    "session_id": { "$ref": "#/$defs/identity" },
+    "speech": { "type": "string", "maxLength": 20000 },
+    "action": { "$ref": "#/$defs/actionProposal" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol_version"],
+      "properties": {
+        "protocol_version": { "const": "v1" },
+        "speech_action_claim": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action_id", "action_type"],
+          "properties": {
+            "action_id": { "$ref": "#/$defs/identity" },
+            "action_type": { "$ref": "#/$defs/identity" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "seat": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] },
+    "rngRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream_id", "count"],
+      "properties": {
+        "stream_id": { "$ref": "#/$defs/identity" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 4096 }
+      }
+    },
+    "temporaryRuling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruling_id", "scope", "reason", "reversible", "valid_through_sequence"],
+      "properties": {
+        "ruling_id": { "$ref": "#/$defs/identity" },
+        "scope": { "$ref": "#/$defs/identity" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "reversible": { "type": "boolean" },
+        "valid_through_sequence": { "type": "integer", "minimum": 2, "maximum": 9007199254740991 }
+      }
+    },
+    "actionProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "action_id", "run_id", "actor_id", "action_type", "expected_sequence", "source", "payload", "rng_requests"],
+      "properties": {
+        "schema": { "const": "aipt.action-proposal/v1" },
+        "action_id": { "$ref": "#/$defs/identity" },
+        "run_id": { "$ref": "#/$defs/identity" },
+        "actor_id": { "$ref": "#/$defs/identity" },
+        "action_type": { "$ref": "#/$defs/identity" },
+        "expected_sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "reference"],
+          "properties": {
+            "kind": { "enum": ["RULE_ID", "EXPLICIT_SOURCE"] },
+            "reference": { "$ref": "#/$defs/identity" }
+          }
+        },
+        "payload": {},
+        "rng_requests": { "type": ["array", "null"], "maxItems": 4096, "items": { "$ref": "#/$defs/rngRequest" } },
+        "temporary_ruling": { "$ref": "#/$defs/temporaryRuling" }
+      }
+    }
+  }
+}

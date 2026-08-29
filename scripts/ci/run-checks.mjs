@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// AIPT-MVP-B002 validator suite entry (`pnpm run check`).
+// AIPT-MVP-B003 validator suite entry (`pnpm run check`).
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
 // The report preserves every historical M0 gate and adds the exact MVP
 // bootstrap authority/lifecycle gate, the B001 exact-Base regression replay,
-// and the current deterministic Run Core gate. M0/B000/B001 remain immutable;
-// B002 is canonically MERGED_CLOSED and B003 remains unauthorized/not started.
+// the closed deterministic Run Core gate, and the current deterministic Agent
+// Orchestrator gate. M0/B000/B001/B002 remain immutable; B003 is construction.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,6 +27,7 @@ import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
 import { run as runMvpB002 } from './validate/mvp-b002.mjs';
+import { run as runMvpB003 } from './validate/mvp-b003.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
@@ -166,6 +167,7 @@ const checks = await Promise.all([
   runHistoricalWeb(ctx),
   runMvpB001(ctx),
   runMvpB002(ctx),
+  runMvpB003(ctx),
   repairCheck,
   closeoutCheck,
 ]);
@@ -176,10 +178,10 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B002 MERGED_CLOSED / GLOBAL_WIP 0 with no active batch; approved R1 deterministic Run Core Candidate is preserved by the accepted second merge and canonical append-only lifecycle chain; the first failed merge remains immutable failure-only history; UNREGISTERED-AIPT-P1-B000 is canonically CLOSED; B001 is replayed on the immutable B002 Base; Agent orchestration, product-model calls, real playtest and qualification remain unimplemented; B003 is NOT_STARTED / NOT_AUTHORIZED';
+const note = 'AIPT-MVP-B003 IN_PROGRESS / GLOBAL_WIP 1; provider-neutral deterministic Agent Orchestrator construction is layered over the immutable B002 Run Core and submits mutations only through its accepted transaction boundary; the B002 accepted and failed-merge histories remain immutable; real model gateways, real model/network calls, real playtest and qualification remain unimplemented; B004 is NOT_STARTED / NOT_AUTHORIZED';
 const report = {
-  schema: 'aipt.public.mvp-b002-validator-run/v1',
-  task_id: 'AIPT-MVP-B002',
+  schema: 'aipt.public.mvp-b003-validator-run/v1',
+  task_id: 'AIPT-MVP-B003',
   note,
   repo: ctx.repo,
   result,

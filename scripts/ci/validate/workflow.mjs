@@ -1,9 +1,10 @@
-// B002 workflow validator: the public .github/workflows/ci.yml must be the
+// B003 workflow validator: the public .github/workflows/ci.yml must be the
 // durable `AIPT M0 CI` workflow — secret-free, full-SHA action pins agreed
 // with the frozen action lock, digest-pinned containers, Linux-only, the
 // four required jobs, and the toolchain matrix (ubuntu-24.04 +
-// ubuntu-26.04, fail-fast false) running the three explicit B002 contract
-// gates plus the aggregate `pnpm run check` alongside every retained
+// ubuntu-26.04, fail-fast false) running the retained B002 gates and the
+// explicit B003 validator/unit/race gates plus aggregate `pnpm run check`
+// alongside every retained
 // B000/B001 command and gate. Every required needle is fail-closed: a
 // recorded missing needle fails the validator, never an unconditional ok.
 //
@@ -208,6 +209,18 @@ const FOCUSED_COMMANDS = [
   {
     command: 'pnpm run test:run-core',
     nameTokens: ['aipt', 'mvp', 'b002', 'run core', 'unit', 'concurrency', 'replay', 'determinism'],
+  },
+  {
+    command: 'pnpm run check:mvp-b003',
+    nameTokens: ['aipt', 'mvp', 'b003', 'deterministic', 'agent orchestrator', 'validator', 'seats', 'sessions', 'persona', 'character', 'visibility', 'context', 'floor', 'protocol', 'recovery', 'replay'],
+  },
+  {
+    command: 'pnpm run test:orchestrator',
+    nameTokens: ['aipt', 'mvp', 'b003', 'agent orchestrator', 'unit', 'hidden-information', 'protocol', 'recovery', 'concurrency', 'determinism', 'tests'],
+  },
+  {
+    command: 'go test -race ./internal/orchestrator -count=1',
+    nameTokens: ['aipt', 'mvp', 'b003', 'agent orchestrator', 'race', 'concurrency', 'double-commit', 'tests'],
   },
   {
     command: 'pnpm run check:runtime-shell',
@@ -1671,7 +1684,8 @@ function checkWorkflowText(text, lock) {
 // ---- 6b focused mutation regressions (in-memory, same architecture) ----
 // Every probe mutates the real workflow text and re-runs the exact same
 // checkWorkflowText the live file is checked with, proving the
-// storage-postgres contract and every retained B000/B001/B002 invariant are
+// storage-postgres contract and every retained B000/B001/B002 invariant plus
+// every focused B003 gate are
 // enforced fail-closed: missing job, runner drift, digest/tag drift,
 // non-loopback publication, missing required-integration flag, DSN/
 // production-boundary drift, removed/altered full or race command, `|| true`
@@ -1954,6 +1968,36 @@ export function run(ctx) {
             'AIPT MVP B002 lifecycle-aware candidate merge closeout deterministic Run Core validator',
             'AIPT MVP B002 deterministic Run Core validator',
           )),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B003 lifecycle-aware orchestrator validator removed from toolchain',
+      reason: /check:mvp-b003.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:mvp-b003', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B003 orchestrator unit tests removed from toolchain',
+      reason: /test:orchestrator.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:orchestrator', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B003 orchestrator race gate removed from toolchain',
+      reason: /go test -race \.\/internal\/orchestrator -count=1.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: go test -race ./internal/orchestrator -count=1', '        run: go version')),
           lock,
         ),
     },

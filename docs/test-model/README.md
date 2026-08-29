@@ -1,9 +1,17 @@
 # 测试模型（TEST MODEL）
 
 > 公开测试模型设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> `AIPT-MVP-B001` 已实现本页所述 Test Plan、Manifest 与 Queue/Lease/Attempt 合同；`AIPT-MVP-B002` Candidate 只实现 Deterministic Run Core，Agent 编排与真实桌测仍只是后续目标。
+> `AIPT-MVP-B001` 已实现 Test Plan、Manifest 与 Queue/Lease/Attempt 合同，`AIPT-MVP-B002` 已关闭 Deterministic Run Core；当前 `AIPT-MVP-B003` 只施工 provider-neutral Deterministic Agent Orchestrator，仍不执行真实模型或真实桌测。
 
-## B002 验证矩阵
+## B003 验证矩阵
+
+`AIPT-MVP-B003` 以 synthetic、game-neutral、无网络 fixture 验证固定 `1 GM + 4 Player` 座席、Run/seat 绑定 Session、Persona/Character 分层、固定 GM profiles、Visibility/ACL-before-retrieval、canonical Context Bundle/hash、摘要事实保留、discussion/interruption/private chat/group decision/GM clarification floor，以及结构化 speech/action 协议。
+
+负向矩阵包含 `H01-H12` 隐藏信息/身份/上下文攻击与 `P01-P16` 协议/重试/恢复/重复提交攻击；所有非法输入必须得到稳定安全错误且不得泄漏 payload。相同 policy、state、event window、retrieval、Agent scripted response 与 B002 seed 重复 100 次，必须产生逐字节相同的 orchestration events、context hashes、B002 receipts 与 replay state。并发与 race 覆盖证明 invocation/action 去重、Session recovery 边界以及同一 action 不会 double commit。
+
+CI 运行 `pnpm run check:mvp-b003`、`pnpm run test:orchestrator` 和 `go test -race ./internal/orchestrator -count=1`。这些是合成合同测试，不是 Clean Run、Mutant Run、qualification Run 或真实桌测；`real_model_calls = 0`、`network_model_calls = 0`、`real_playtest_executed = false`。
+
+## B002 冻结回归矩阵
 
 `AIPT-MVP-B002` 使用 synthetic、game-neutral fixture 与固定 injected seed 覆盖 action happy path、schema/auth/Rule-source/precondition/invariant reject、ledger rollback、duplicate/stale/cross-Run conflict、RNG repeatability/domain separation/seed commitment、derived projection non-authority、strict replay tamper reject 与 malformed input no-panic。相同 initial state、actions、seed 和 versions 重复 20 次必须产生相同 ordered events、RNG evidence、state hash 与 projection hash。
 

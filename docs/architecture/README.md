@@ -2,7 +2,7 @@
 
 > 公开顶层架构合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)；
 > 冲突处理顺序见 [../authority/README.md](../authority/README.md)。
-> M0 与 `AIPT-MVP-B001` 历史实现保持不变；`AIPT-MVP-B002` Candidate 只新增 game-neutral Deterministic Run Core，不改变 Launcher、Agent 或模型边界。
+> M0、`AIPT-MVP-B001` 与已关闭的 `AIPT-MVP-B002` 历史实现保持不变；`AIPT-MVP-B003` 在其上新增 game-neutral、provider-neutral 的确定性 Agent Orchestrator，不实现真实模型 gateway。
 
 ## 技术栈与进程边界
 
@@ -33,10 +33,20 @@
 
 ## 席位与信息隔离
 
-- 每个席位每局一个独立持久 Session，不跨 Run 复用（`R5-Q004`、`R2-Q016`）。
-- 每次模型调用前由 Core 生成席位授权视图（`R5-Q006`）。
-- ACL 与内容标签在检索之前实施；未标记数据 fail-closed（`R5-Q017`、`R13-Q015`）。
+- B003 [`internal/orchestrator`](../../internal/orchestrator) 固定建立 1 个 `GM` 与 4 个 `PLAYER_n` 机器席位；Run、role contract、Session、Persona、Character（Player）与 visibility identity 均显式绑定，显示名或数组下标不是 authority。Oracle、Retriever、Rules/State Engine 与 Observer 不是伪玩家席位。
+- 每个席位每局一个独立持久 Session，不跨 Run/seat 复用；Session recovery 只能生成同 Run/seat、递增 generation、显式 parent 的新 identity。Session 是可从事件重建的 operational continuity，不是第二套记忆 Authority（`R5-Q004`、`R2-Q016`）。
+- 每次 provider-neutral invocation 前生成 canonical `SEAT_AUTHORIZED_VIEW`；完整 authoritative state 不进入 Agent context（`R5-Q006`）。
+- 固定管线为 classification → ACL/visibility → retrieval → citation/hash verification → context assembly。未标记数据 fail-closed；secret/human-private/system-internal 分类不能进入普通 Agent context（`R5-Q017`、`R13-Q015`）。
 - 数据/内容分类（`R4-F002`）：`PUBLIC`、`UNRELEASED_REMOTE_ALLOWED`、`TABLE_HIDDEN_REMOTE_ALLOWED`、`LOCAL_ONLY_SECRET`、`HUMAN_PRIVATE_DATA`、`CREDENTIAL_SECRET`。
+
+## B003 确定性 Agent Orchestrator
+
+- versioned `OrchestrationPolicy` 显式提供 seat/interruption order、timeout 与 transport/semantic/recovery 有界预算；缺失或负数界限拒绝。相同 Run binding、policy、scripted response/failure、event history 与 fake clock 输入产生相同 floor events、context hashes、Session transitions、repair decisions 与 accepted action order。
+- floor state machine 支持 discussion、显式 interruption、private chat、group decision 与 GM clarification。并发请求不靠 goroutine/模型延迟竞争；interruption 与 group tie 使用 policy/input 中的显式顺序，非法 transition fail-closed。
+- Persona 是 immutable baseline 加 event-driven、0..100 有界的 misunderstanding/forgetting/stress/suboptimal-decision state；Character 是独立 world projection。二者具有不同 identity/hash，Persona event 不写 Character，Character 状态也不反向改写 Persona baseline。
+- Context 将 trusted role/policy/Persona/tool contract 与 untrusted state window/rulebook/module/log/model prose 分区；所有列表 canonical 排序并绑定 authorized projection、Session、Persona、Character、summary、event window 与 capability identity。memory summary 只能引用当前授权事实/来源，不能创造、覆盖或重新引入隐藏事实。
+- Agent output 将 speech 与 structured B002 `ActionProposal` 分离。只有 structured action 可影响状态；speech/action machine claim 冲突进入有限 semantic repair，仍冲突则拒绝。Transport retry、semantic retry 与 Session recovery 分别审计，按顺序接受第一个合法结果，不做 best-of-N。
+- `RunCoreSubmitter` 是唯一 mutation adapter：B003 自身没有 gameplay state writer，只调用已关闭 B002 `Run.Execute`。成功后同 invocation/action 不得再次提交，因而不会重复消费 RNG 或追加 authoritative event。
 
 ## 上下文与随机性
 
@@ -51,7 +61,7 @@
 
 ## 设计状态声明
 
-冻结历史合同继续有效；B001 的 Test Plan / Manifest / Queue-Lease-Attempt 与 B002 Deterministic Run Core 保持分层。B002 Candidate 可作为 library 被确定性测试和 replay，但 Launcher 的 MODEL/HARNESS/IPC 前序 gate 仍未实现，因此不代表产品 runtime ready。Agent orchestration、模型 gateway、真实 playtest 与 qualification 仍由后续批次建设。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
+冻结历史合同继续有效；B001 Test Plan/Manifest/Queue 与 B002 Run Core、B003 Orchestrator 保持分层。B003 仅是 library/protocol Candidate，Launcher 的 MODEL/HARNESS/IPC 前序 gate 仍未实现，因此不代表产品 runtime ready。真实 Harness/model gateway 属于 B004；真实 playtest 与 qualification 属于更后批次。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
 
 ## 相邻文档
 
