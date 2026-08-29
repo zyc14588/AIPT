@@ -1,19 +1,19 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-08-29**；施工状态快照 ID：`AIPT-MVP-B003-CONSTRUCTION-001`。
+> 状态日期：**2026-08-29**；closeout 状态快照 ID：`AIPT-MVP-B003-CLOSEOUT-001`。
 
 ## 工作轨
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B003`，`GLOBAL_WIP = 1`；`AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B002` 与外部 `UNREGISTERED-AIPT-P1-B000` 均为不可变 `MERGED_CLOSED` 历史 |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`；`AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B003` 与外部 `UNREGISTERED-AIPT-P1-B000` 均为不可变 `MERGED_CLOSED` 历史 |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
 
-- 当前里程碑：**MVP / AIPT-MVP-B003 IN_PROGRESS**。Owner 从精确 B002 closeout Base `862bd6f0e93f6676355db57388dd3280b006804d`（tree `bdee02d25a89f782ae970ab6ce792d877fa81953`）授权唯一活跃批次；`next_serial_batch = AIPT-MVP-B004`，但 B004 仍为 `NOT_STARTED / NOT_AUTHORIZED`。B003 只建设 game-neutral、provider-neutral 的确定性 Go Agent Orchestrator：1 GM + 4 Player 稳定席位、per-Run Session、Persona/Character 分离、floor control、席位授权 context、有限 protocol repair/retry 与 Session recovery，并且只能把结构化 action 提交 B002 Run Core。
-- B003 不包含真实 Harness gateway、任何 OpenAI/DeepSeek/llama.cpp client、真实模型调用、真实桌测或 qualification Run；当前主动边界为 `real_model_gateway_implemented = false`、`real_model_calls = 0`、`network_model_calls = 0`、`real_playtest_executed = false`、`qualification_runs_executed = 0`。merge 与 closeout 均未获授权。
+- 当前里程碑：**MVP / AIPT-MVP-B003 MERGED_CLOSED**。唯一授权 Candidate `4f2979f4495e3d78393e9f9ec1978308a7fb10b9`（tree `bbdb35861bb6cf47a9e6ec4e943720c0126cbc50`，Candidate CI `33247140362` success）由合法 no-ff merge `beb7c70738b1f876845d68bec8e20166ab3eac10` 精确集成；post-merge CI `33264083089` 的 5 个 jobs 全部 success，并由 canonical append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。B003 关闭交付是 game-neutral、provider-neutral 的确定性 Go Agent Orchestrator：1 GM + 4 Player 稳定席位、per-Run Session、Persona/Character 分离、floor control、席位授权 context、有限 protocol repair/retry 与 Session recovery，并且只能把结构化 action 提交 B002 Run Core。
+- B003 未包含真实 Harness gateway、任何 OpenAI/DeepSeek/llama.cpp client、真实模型调用、真实桌测或 qualification Run；关闭边界为 `real_model_gateway_implemented = false`、`real_model_calls = 0`、`network_model_calls = 0`、`real_playtest_executed = false`、`qualification_runs_executed = 0`。当前无活跃批次；本次关闭不授权或启动 B004。
 - B002 原始 Candidate `d81f201d57e62c9983bac67509513367ef369b64` 的首次 merge `f4ceabe3e3a3e7bea31481bd91681a1b87f27d56` 与 CI `33237860359` 永久保留为失败历史且未创建生命周期记录。Owner 批准的 R1 Candidate `dd634f575cdec5ec572696409ac574102442af3e`（tree `2b7240f11b1bcf934d34d95a286bdd49dbf021b5`，Candidate CI `33241732672` success）由第二次合法 merge `a5d9e9b0aeea5f2a9990d976258ddd34b9b8375e` 精确集成；post-merge CI `33243508362` 的 5 个 jobs 全部 success，并由 canonical append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。
 - B002 关闭交付只包含 action transaction pipeline、authoritative Run state、versioned domain-separated RNG、seed commitment、invariants、derived projection、strict replay 与既有 PostgreSQL ledger 集成。Agent 编排、持久 Agent session、model gateway、真实模型调用、真实桌测与 qualification Run 明确不在范围；`real_model_calls = 0`、`real_playtest_executed = false`、`qualification_runs_executed = 0`。
 - `AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）。
@@ -62,9 +62,9 @@
 
 ## 下一步
 
-- `AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B002` 与 `UNREGISTERED-AIPT-P1-B000` 均保持 `MERGED_CLOSED`；B003 为唯一活跃施工，`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B003`，`GLOBAL_WIP = 1`。
+- `AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B003` 与 `UNREGISTERED-AIPT-P1-B000` 均保持 `MERGED_CLOSED`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`。
 - B008 verified implementation identity 固定为 merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`；`M0 Development Pass = GRANTED`。
-- `next_serial_batch = AIPT-MVP-B004`、`next_batch_state = NOT_AUTHORIZED`、`batch_history[AIPT-MVP-B003] = IN_PROGRESS`、`batch_history[AIPT-MVP-B004] = NOT_STARTED`、`next_batch_authorized = false`、`next_batch_started = false`；不得在 B003 中启动 B004。
+- `next_serial_batch = AIPT-MVP-B004`、`next_batch_state = NOT_AUTHORIZED`、`batch_history[AIPT-MVP-B003] = MERGED_CLOSED`、`batch_history[AIPT-MVP-B004] = NOT_STARTED`、`next_batch_authorized = false`、`next_batch_started = false`；不得由 B003 closeout 启动 B004。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。
 
 ## 相邻文档

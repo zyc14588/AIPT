@@ -1,12 +1,12 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-29",
-  "authority_snapshot_id": "AIPT-MVP-B003-CONSTRUCTION-001",
+  "authority_snapshot_id": "AIPT-MVP-B003-CLOSEOUT-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IN_PROGRESS",
-      "current_batch": "AIPT-MVP-B003",
+      "construction": "IDLE_WAITING_NEXT_BATCH",
+      "current_batch": "NO_ACTIVE_BATCH",
       "next_serial_batch": "AIPT-MVP-B004",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
@@ -25,7 +25,7 @@
         "AIPT-MVP-B001": "MERGED_CLOSED",
         "UNREGISTERED-AIPT-P1-B000": "MERGED_CLOSED",
         "AIPT-MVP-B002": "MERGED_CLOSED",
-        "AIPT-MVP-B003": "IN_PROGRESS",
+        "AIPT-MVP-B003": "MERGED_CLOSED",
         "AIPT-MVP-B004": "NOT_STARTED",
         "INT-AIPT-UNREGISTERED-MVP-001": "NOT_STARTED",
         "AIPT-MVP-B005": "NOT_STARTED",
@@ -77,7 +77,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 1
+      "global_wip": 0
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -168,8 +168,9 @@
       },
       "mvp_b003": {
         "task_id": "AIPT-MVP-B003",
-        "state": "IN_PROGRESS",
+        "state": "MERGED_CLOSED",
         "start_authority": "OWNER_DIRECTIVE_AIPT-MVP-B003",
+        "closeout_authority": "MERGE_AND_CLOSEOUT_AIPT_MVP_B003",
         "base": {
           "commit": "862bd6f0e93f6676355db57388dd3280b006804d",
           "tree": "bdee02d25a89f782ae970ab6ce792d877fa81953"
@@ -189,23 +190,68 @@
           "session_scope": "ONE_INDEPENDENT_SESSION_PER_AGENT_PER_RUN",
           "state_authority": "B002_RUN_CORE_POSTGRESQL_APPEND_ONLY_LEDGER"
         },
+        "candidate": {
+          "commit": "4f2979f4495e3d78393e9f9ec1978308a7fb10b9",
+          "tree": "bbdb35861bb6cf47a9e6ec4e943720c0126cbc50",
+          "ci_run": 33247140362,
+          "ci_conclusion": "success"
+        },
+        "implementation_merge": {
+          "commit": "beb7c70738b1f876845d68bec8e20166ab3eac10",
+          "tree": "bbdb35861bb6cf47a9e6ec4e943720c0126cbc50",
+          "parents": [
+            "862bd6f0e93f6676355db57388dd3280b006804d",
+            "4f2979f4495e3d78393e9f9ec1978308a7fb10b9"
+          ],
+          "subject": "merge: complete AIPT-MVP-B003 deterministic Agent Orchestrator",
+          "pull_request": null,
+          "mechanism": "LOCAL_NO_FF_MERGE_PUSH"
+        },
+        "post_merge_ci": {
+          "run": 33264083089,
+          "head_sha": "beb7c70738b1f876845d68bec8e20166ab3eac10",
+          "conclusion": "success",
+          "jobs_passed": 5,
+          "jobs_failed": 0,
+          "jobs_skipped": 0
+        },
+        "post_merge_validation": {
+          "orchestration": "PASS",
+          "visibility": "PASS",
+          "context_determinism": "PASS",
+          "repair_recovery": "PASS",
+          "b002_regression": "PASS",
+          "b001_regression": "PASS",
+          "unexpected_acceptances": 0,
+          "uncaught_validation_errors": 0,
+          "hidden_information_leaks": 0,
+          "nondeterministic_failures": 0
+        },
+        "lifecycle": {
+          "canonical_source": "ACCEPTED_APPEND_ONLY_LIFECYCLE_RECORD_CHAIN",
+          "record_ids": [
+            "AIPT-MVP-B003-LIFECYCLE-001-MERGED",
+            "AIPT-MVP-B003-LIFECYCLE-002-POST-MERGE-VERIFIED",
+            "AIPT-MVP-B003-LIFECYCLE-003-CLOSED"
+          ],
+          "closeout_commit_source": "CONTAINING_GIT_COMMIT"
+        },
         "agent_orchestration_implemented": true,
         "persistent_agent_sessions_implemented": true,
         "seat_authorized_context_implemented": true,
         "bounded_protocol_repair_implemented": true,
         "bounded_session_recovery_implemented": true,
         "b002_business_artifacts_changed": false,
+        "business_artifacts_changed": false,
         "new_migration": "NONE",
         "real_model_gateway_implemented": false,
         "real_model_calls": 0,
         "network_model_calls": 0,
         "real_playtest_executed": false,
         "qualification_runs_executed": 0,
-        "merged": false,
-        "post_merge_verified": false,
-        "closed": false,
-        "merge_authorized": false,
-        "closeout_authorized": false,
+        "merged": true,
+        "post_merge_verified": true,
+        "closed": true,
         "open_findings": []
       },
       "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",
@@ -387,7 +433,7 @@
     }
   },
   "runtime": {
-    "status": "AIPT-MVP-B002 deterministic Run Core merged and closed; no active batch; launcher remains model-gated; AIPT-MVP-B003 is not authorized or started",
+    "status": "AIPT-MVP-B003 deterministic Agent Orchestrator merged and closed; no active batch; AIPT-MVP-B004 is not authorized or started; real model gateways, model calls and real playtests remain unimplemented",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

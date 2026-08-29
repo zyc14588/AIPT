@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B003 implements the provider-neutral deterministic Agent Orchestrator over the closed B002 Run Core; real model calls and playtests remain out of scope.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B003 is the closed provider-neutral deterministic Agent Orchestrator delivery over the closed B002 Run Core; real model calls and playtests remain out of scope.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {

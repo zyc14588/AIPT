@@ -1,0 +1,53 @@
+{
+  "schema": "aipt.public.authority-lifecycle-record/v1",
+  "record_id": "AIPT-MVP-B003-LIFECYCLE-002-POST-MERGE-VERIFIED",
+  "task_id": "AIPT-MVP-B003",
+  "semantic_artifact_identity": {
+    "task_id": "AIPT-MVP-B003",
+    "artifact_id": "AIPT-MVP-B003",
+    "artifact_path": "internal/orchestrator/engine.go",
+    "artifact_sha256": "94334cd196e8cb5bfdedd15f39a93ebf98518ce01fbf0649b5665364d8712091",
+    "candidate_commit": "4f2979f4495e3d78393e9f9ec1978308a7fb10b9",
+    "candidate_tree": "bbdb35861bb6cf47a9e6ec4e943720c0126cbc50",
+    "semantic_snapshot_state": "CANDIDATE_FROZEN",
+    "semantic_snapshot_accepted": false
+  },
+  "event": "POST_MERGE_VERIFIED",
+  "event_sequence": 2,
+  "predecessor_lifecycle_record": {
+    "record_id": "AIPT-MVP-B003-LIFECYCLE-001-MERGED",
+    "record_sha256": "281cf413e80b53af4b5870f80a7e976737f1b4b95aa5ffbdfe19ed08cef58032"
+  },
+  "authority_basis": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "authorized_by_task": "AIPT-MVP-B003",
+    "authorization_kind": "ACCEPTED_LIFECYCLE_MODEL"
+  },
+  "event_evidence": {
+    "kind": "POST_MERGE_CI",
+    "post_merge_evidence": {
+      "run_id": 33264083089,
+      "head_sha": "beb7c70738b1f876845d68bec8e20166ab3eac10",
+      "conclusion": "success",
+      "jobs_passed": 5,
+      "jobs_failed": 0,
+      "jobs_skipped": 0
+    }
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/authority-lifecycle/records/aipt-mvp-b003/002-post-merge-verified.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "created_by_task": "AIPT-MVP-B003",
+  "provenance": {
+    "source_task": "AIPT-MVP-B003",
+    "source_commit": "beb7c70738b1f876845d68bec8e20166ab3eac10",
+    "source_tree": "bbdb35861bb6cf47a9e6ec4e943720c0126cbc50",
+    "record_creation_authority": "MERGE_AND_CLOSEOUT_AIPT_MVP_B003",
+    "record_creator_task": "AIPT-MVP-B003",
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "effective": false
+}

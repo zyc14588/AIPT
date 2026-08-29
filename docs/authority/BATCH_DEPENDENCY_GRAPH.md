@@ -85,7 +85,9 @@ AIPT-MVP-B000
 
 `UNREGISTERED-AIPT-P1-B000 = MERGED_CLOSED`：accepted merge `fe0965977447caf8cd7b6e58252bc1b991b7cc6f`、post-merge CI `33186880614` success；AIPT canonical lifecycle closeout 为 `411bf2997cd0f10ba1a022ac687d27a1bd19eb36`。
 
-`AIPT-MVP-B002 = MERGED_CLOSED`：R1 Candidate `dd634f575cdec5ec572696409ac574102442af3e`（tree `2b7240f11b1bcf934d34d95a286bdd49dbf021b5`）由第二次合法 merge `a5d9e9b0aeea5f2a9990d976258ddd34b9b8375e` 集成，post-merge CI `33243508362` success，并由 canonical append-only lifecycle chain 关闭；首次失败 merge `f4ceabe3e3a3e7bea31481bd91681a1b87f27d56` 保持失败历史且没有生命周期记录。当前 `construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。`next_serial_batch = AIPT-MVP-B003` 保持 `NOT_STARTED` / `NOT_AUTHORIZED`，`next_batch_authorized = false`、`next_batch_started = false`。`M0 Development Pass = GRANTED` 继续有效，`MVP Development Pass = NOT_GRANTED`；production/release 仍为 `NOT_GRANTED`，human equivalence 仍为 `NOT_CLAIMED`，Platform Integration 仍为 `FROZEN_WAITING_M1_ENGINE`。不存在独立的 `AIPT-M1-*` 别名。
+`AIPT-MVP-B002 = MERGED_CLOSED`：R1 Candidate `dd634f575cdec5ec572696409ac574102442af3e`（tree `2b7240f11b1bcf934d34d95a286bdd49dbf021b5`）由第二次合法 merge `a5d9e9b0aeea5f2a9990d976258ddd34b9b8375e` 集成，post-merge CI `33243508362` success，并由 canonical append-only lifecycle chain 关闭；首次失败 merge `f4ceabe3e3a3e7bea31481bd91681a1b87f27d56` 保持失败历史且没有生命周期记录。
+
+`AIPT-MVP-B003 = MERGED_CLOSED`：唯一授权 Candidate `4f2979f4495e3d78393e9f9ec1978308a7fb10b9`（tree `bbdb35861bb6cf47a9e6ec4e943720c0126cbc50`，CI `33247140362` success）由合法 no-ff merge `beb7c70738b1f876845d68bec8e20166ab3eac10` 集成，post-merge CI `33264083089` success，并由 canonical append-only lifecycle chain 关闭。当前 `construction = IDLE_WAITING_NEXT_BATCH`、`current_batch = NO_ACTIVE_BATCH`、`GLOBAL_WIP = 0`。`next_serial_batch = AIPT-MVP-B004` 保持 `NOT_STARTED` / `NOT_AUTHORIZED`，`next_batch_authorized = false`、`next_batch_started = false`。`M0 Development Pass = GRANTED` 继续有效，`MVP Development Pass = NOT_GRANTED`；production/release 仍为 `NOT_GRANTED`，human equivalence 仍为 `NOT_CLAIMED`，Platform Integration 仍为 `FROZEN_WAITING_M1_ENGINE`。不存在独立的 `AIPT-M1-*` 别名。
 
 ## Mermaid 视图（可选渲染）
 

@@ -6,7 +6,7 @@
 // The report preserves every historical M0 gate and adds the exact MVP
 // bootstrap authority/lifecycle gate, the B001 exact-Base regression replay,
 // the closed deterministic Run Core gate, and the current deterministic Agent
-// Orchestrator gate. M0/B000/B001/B002 remain immutable; B003 is construction.
+// Orchestrator gate. M0/B000/B001/B002 remain immutable; B003 is closed.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -178,7 +178,7 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B003 IN_PROGRESS / GLOBAL_WIP 1; provider-neutral deterministic Agent Orchestrator construction is layered over the immutable B002 Run Core and submits mutations only through its accepted transaction boundary; the B002 accepted and failed-merge histories remain immutable; real model gateways, real model/network calls, real playtest and qualification remain unimplemented; B004 is NOT_STARTED / NOT_AUTHORIZED';
+const note = 'AIPT-MVP-B003 MERGED_CLOSED / GLOBAL_WIP 0; the provider-neutral deterministic Agent Orchestrator is closed over the immutable B002 Run Core and submits mutations only through its accepted transaction boundary; the B002 accepted and failed-merge histories remain immutable; real model gateways, real model/network calls, real playtest and qualification remain unimplemented; B004 is NOT_STARTED / NOT_AUTHORIZED';
 const report = {
   schema: 'aipt.public.mvp-b003-validator-run/v1',
   task_id: 'AIPT-MVP-B003',
