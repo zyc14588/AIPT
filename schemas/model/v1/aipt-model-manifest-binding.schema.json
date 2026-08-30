@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/model/v1/aipt-model-manifest-binding.schema.json",
+  "title": "AIPT immutable per-role model manifest binding v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "manifest_id", "run_id", "manifest_sha256", "run_classification", "qualification_eligible", "assignments", "clean_baseline_eligible", "sha256"],
+  "properties": {
+    "schema": { "const": "aipt.model-manifest-binding/v1" },
+    "manifest_id": { "$ref": "#/$defs/identity" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "run_classification": { "enum": ["QUALIFICATION", "DIAGNOSTIC"] },
+    "qualification_eligible": { "type": "boolean" },
+    "assignments": {
+      "type": "array", "minItems": 5, "maxItems": 5,
+      "items": { "$ref": "#/$defs/assignment" }
+    },
+    "clean_baseline_eligible": { "type": "boolean" },
+    "sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "assignment": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "assignment_id", "seat_id", "role_id", "profile_binding", "sampling_binding",
+        "backend_kind", "certification_identity"
+      ],
+      "properties": {
+        "assignment_id": { "$ref": "#/$defs/identity" },
+        "seat_id": { "enum": ["GM", "PLAYER_1", "PLAYER_2", "PLAYER_3", "PLAYER_4"] },
+        "role_id": { "enum": ["GM", "PLAYER"] },
+        "profile_binding": { "$ref": "#/$defs/identity" },
+        "sampling_binding": { "$ref": "#/$defs/identity" },
+        "backend_kind": { "enum": ["REMOTE_DEEPSEEK", "LOCAL_LLAMACPP"] },
+        "certification_identity": { "$ref": "#/$defs/identity" }
+      }
+    }
+  }
+}

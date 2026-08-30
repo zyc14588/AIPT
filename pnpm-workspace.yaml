@@ -2,7 +2,9 @@
 #
 # B002 registered dependency-free packages/adapter-sdk (@aipt/adapter-sdk). B005 registers
 # @aipt/harness-adapter with exactly one first-party workspace dependency on
-# that SDK. The root and SDK importers remain dependency-free and the lockfile
-# still records zero third-party packages.
+# that SDK. AIPT-MVP-B004 registers @aipt/model-harness-gateway with exactly one
+# first-party workspace dependency on @aipt/harness-adapter. The root, SDK, and
+# Web UI importers remain dependency-free and the lockfile still records zero
+# third-party packages.
 packages:
   - "packages/*"

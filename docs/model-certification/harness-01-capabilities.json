@@ -1,0 +1,29 @@
+{
+  "schema": "aipt.public.harness-capability-registration/v1",
+  "registration_id": "HARNESS-01",
+  "implementation": "deepseek-harness",
+  "version": "0.1.0-rc.8",
+  "commit": "141eb6fef83422698aef7a981029e843e8161534",
+  "source_archive_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
+  "acp_entrypoint_sha256": "8a52ef76681fe87dd82e3536c1df34abd3e20423d32c26d3196a42f9cf994e7f",
+  "protocol": {
+    "identity": "agent-client-protocol",
+    "version": "1",
+    "initialize_request_protocol_version": 1,
+    "required_prompt_capabilities": {
+      "audio": false,
+      "embedded_context": false
+    }
+  },
+  "aipt_route": {
+    "direct_provider_bypass_available": false,
+    "structured_output_mode": "PROMPTED",
+    "tool_call_mode": "DISABLED",
+    "minimum_capabilities": [
+      "basic_completion",
+      "structured_output_prompted",
+      "role_invocation"
+    ]
+  },
+  "fingerprint_algorithm": "SHA-256 over the exact UTF-8 bytes of this file"
+}

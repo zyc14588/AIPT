@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/model/v1/aipt-sampling-profile.schema.json",
+  "title": "AIPT governed sampling profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "sampling_id", "sampling_version", "temperature", "top_p",
+    "max_output_tokens", "max_context_tokens", "applied_parameters", "sha256"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.sampling-profile/v1" },
+    "sampling_id": { "$ref": "#/$defs/identity" },
+    "sampling_version": { "$ref": "#/$defs/version" },
+    "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+    "top_p": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+    "max_output_tokens": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+    "max_context_tokens": { "type": "integer", "minimum": 1, "maximum": 10000000 },
+    "seed": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+    "applied_parameters": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["temperature", "top_p", "max_output_tokens", "max_context_tokens", "seed"]
+      }
+    },
+    "sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+){0,2}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

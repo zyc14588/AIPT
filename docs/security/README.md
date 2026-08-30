@@ -54,6 +54,16 @@
 - 可替换凭据提供器；首版加密本地文件与环境变量引用（`R7-Q006`）。
 - Codex 的 GitHub 只读凭据通过受控 Credential Helper/代理注入，Codex 不读取令牌（`R11-F002`）。
 
+## B004 模型与 Harness 边界
+
+- Gateway 只允许 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP`，远端 model ID 精确为 `deepseek-v4-pro`。所有调用统一经过固定 DeepSeek Harness ACP 子进程；生产 Node worker 不含 provider URL、`fetch`、model download 或 direct inference route。
+- Credential broker 对调用方只返回 reference、validation state 与 metadata；secret 只在受限 child environment 中绑定，不进入 argv、日志、错误、Manifest 或 evidence。公共 CI 不要求 `DEEPSEEK_API_KEY` 等任何 secret。
+- Remote egress 在 B003 authorized Context 与 B004 Gateway 两层 fail-closed；`LOCAL_ONLY_SECRET` 默认拒绝，`HUMAN_PRIVATE_DATA`/`CREDENTIAL_SECRET` 不得远端发送。diagnostic break-glass grant 由受信 Ed25519 authority 签名并绑定 Run、Manifest、seat、invocation、profile、context 与最终 request digest；消费必须在 transport 前通过既有 append-only ledger 的独立 B004 Run-audit stream 原子提交。grant ID 全局一次性，重启、并发、跨 diagnostic 与失败 transport 都不能恢复；消费事件同时形成不可逆 Run-level disqualification。所有 Gateway（包括无 grant 的正式实例）都必须使用同一 package-trusted authoritative sink；正式 invocation evidence 通过 stream sequence precondition 与消费事件线性化，因此并发消费只能排在 clean evidence 之后，或使正式结果 fail-closed，不能在失格后追加 clean evidence。正式模式拒绝 break-glass。
+- 受管 llama.cpp 只用 argv-style 启动登记资产，动态绑定 IPv4 `127.0.0.1`，关闭 Web UI/tool/slot surface，并验证实际 process/binary/GGUF/template identity。Linux pidfd 将 ownership 固定到不可复用的 launched process generation；managed process group 内共享或不可检查的 descriptor 均 fail-closed。正式 Harness 只获得由 AIPT 持有且不释放的稳定 loopback proxy，readiness probes 也走该 guarded path；proxy handler 与每个新 upstream connection 在发送 HTTP 字节前验证当前 generation、目标 listener 与已 accept server socket。启动竞争、崩溃后 public/private 端口重绑、non-loopback、共享或歧义 ownership 均 fail-closed；不存在自动下载、目录猜选或 silent model switch。
+- ACP child 的 output budget 是私有 route 中必填的 `aipt.acp-output-budget/v1` runtime policy，不把测试数值提升为顶层政策。它在 JSON/UTF-8 解析前按原始字节（含 delimiter、BOM 与 partial frame）累计 total stdout，并分别累计 notification、response+notification 与 stderr；每个 probe/invocation 都在独立 child lifetime 中执行，outer success 必须等到 child process group 已终止且 stdout/stderr 都排空至 EOF 后才可提交。任一 overflow 都清空 partial output、拒绝 pending operation、终止 child process group，并只返回稳定的 redacted error；即使超限字节在 terminal ACP response 之后到达，也不能先释放成功结果。单帧上限继续独立存在，截断或部分 JSON 永不作为成功语义。
+- `HARNESS-01` 与 Owner 批准的 credential reference 已冻结；受控 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP` minimum certification 均已 PASS，公开 evidence 只保留绑定摘要和稳定结果。受控流程累计 3 次真实模型调用：既有 remote/network 2 次、local 1 次，formal remote 与 local certification 各绑定 1 次成功调用；credential 值、child output、GGUF locator、executable path 与其他私有路径均未进入公开记录。`GGUF-04` 完成批准 root containment、canonical target、完整摘要与 metadata 验证，`LLAMACPP-01` 完成 compatibility/startup/Harness invocation/shutdown probes，且没有下载、猜测或替代资产。
+- M01–M30 覆盖 backend/profile/Harness drift、fallback、credential/evidence leak、egress、local identity/loopback/process、context/capability、timeout/stale frame、recovery clean flag 与 direct state mutation。测试 fixture 的 synthetic certification 永不获得 formal production eligibility。
+
 ## 本地端点与界面
 
 - B007 AIPT Web Host 已实现且绑定策略不可配置：只使用 `tcp4` `127.0.0.1:0`，OS 选择动态端口，并验证实际 listener 仍是 IPv4 loopback；没有非 loopback fallback。
@@ -73,7 +83,7 @@ Commit/Tree、哈希/签名、凭据、隐藏信息、权威状态、账本完�
 
 ## 设计状态声明
 
-“本地端点与界面”中的 B007 Web 控制、“B002 Run Core 完整性边界”与上述 B003 provider-neutral Agent/session/context/protocol 边界已实现。真实 Harness/model gateway、网络模型调用、完整产品 runtime、真实桌测与资格运行仍未实现；分别由 B004 及后续获授权批次建设。
+“本地端点与界面”中的 B007 Web 控制、“B002 Run Core 完整性边界”、B003 provider-neutral Agent/session/context/protocol 与 B004 governed Harness/model gateway 代码边界已实现。B004 controlled-real remote 与 local minimum certification 均已 PASS；IPC、完整产品 runtime、真实桌测与资格运行仍未实现。minimum PASS 或 synthetic CI 都不得解释为 production certification。
 
 ## 相邻文档
 

@@ -16,4 +16,10 @@ importers:
         specifier: workspace:*
         version: link:../adapter-sdk
 
+  packages/model-harness-gateway:
+    dependencies:
+      '@aipt/harness-adapter':
+        specifier: workspace:*
+        version: link:../harness-adapter
+
   packages/web-ui: {}

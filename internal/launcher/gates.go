@@ -62,17 +62,17 @@ const planSchema = "aipt.launch.plan/v1"
 
 func productionImplementation(gate Gate) Implementation {
 	switch gate {
-	case GateConfig, GatePostgreSQL, GateMigrations, GateCore, GateWeb:
+	case GateConfig, GatePostgreSQL, GateMigrations, GateModel, GateHarness, GateCore, GateWeb:
 		return Implemented
-	case GateModel, GateHarness, GateIPC:
+	case GateIPC:
 		return NotImplemented
 	default:
 		return NotImplemented
 	}
 }
 
-// Plan returns the fixed B007 production plan. RuntimeReady is deliberately
-// false because MODEL is the first mandatory gate without an implementation.
+// Plan returns the fixed B004 production plan. RuntimeReady is deliberately
+// false because IPC is the first mandatory gate without an implementation.
 func Plan() LaunchPlan {
 	gates := make([]PlanGate, 0, len(fixedGateOrder))
 	var firstBlocking Gate

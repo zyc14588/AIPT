@@ -65,7 +65,7 @@ func TestPlanIsDeterministicAndDoesNotStartRuntime(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
 			t.Fatalf("plan JSON: %v", err)
 		}
-		if plan.RuntimeReady || plan.FirstBlockingGate != launcher.GateModel {
+		if plan.RuntimeReady || plan.FirstBlockingGate != launcher.GateIPC {
 			t.Fatalf("plan claims readiness: %+v", plan)
 		}
 		return stdout.String()

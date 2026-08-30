@@ -811,6 +811,28 @@ function actualTopology(repo, paths) {
   const dirty = worktreeDirty(repo);
   const baseExact = commitFacts(repo, BASE_COMMIT)?.tree === BASE_TREE;
   const lifecyclePresent = lifecycleInventory(repo).length > 0;
+  // A dirty worktree on top of the accepted B003 closeout belongs to a later
+  // batch. Resolve the immutable B003 lifecycle first so this closed validator
+  // cannot reinterpret a B004 construction checkout as a new B003 Candidate.
+  // The current-batch validator owns successor scope; this gate continues to
+  // enforce B003 record and accepted-business-artifact immutability.
+  if (dirty && lifecyclePresent) {
+    const lifecycle = validateB003LifecycleRecords(repo, head);
+    if (lifecycle.state === 'CLOSED') {
+      const scopePaths = lifecycle.candidatePaths ?? [];
+      const facts = {
+        kind: 'CLOSED_HISTORICAL', baseExact,
+        scopeValid: scopePaths.every(allowedPath), requiredPresent: requiredPresent(scopePaths),
+        lifecycleValid: lifecycle.result === 'PASS', lifecycleState: lifecycle.state,
+        closedOnAncestry: firstParentContains(repo, lifecycle.closeoutCommit, head),
+        lifecycleFork: lifecycle.lifecycleFork, duplicateClosed: lifecycle.duplicateClosed,
+        acceptedArtifactsImmutable: lifecycle.acceptedArtifactsImmutable,
+      };
+      return {
+        phase: classifyTopology(facts), head, headFacts, branch, scopePaths, lifecycle,
+      };
+    }
+  }
   if (dirty) {
     const facts = {
       kind: 'CONSTRUCTION', baseExact, scopeValid: paths.every(allowedPath),

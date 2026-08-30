@@ -1,0 +1,33 @@
+{
+  "schema": "aipt.public.gguf-registration/v1",
+  "registration_id": "GGUF-04",
+  "sha256": "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6",
+  "authority": "OWNER_APPROVED_AIPT-MVP-B004",
+  "identity_state": "FROZEN",
+  "asset_locator_registered": true,
+  "asset_locator_exported": false,
+  "asset_verification_state": "PASS",
+  "approved_root_containment": "PASS",
+  "canonical_target_match": "PASS",
+  "full_file_sha256_recomputed": true,
+  "model_identity_state": "VERIFIED_METADATA_MATCH",
+  "quantization_identity_state": "VERIFIED_Q8_0",
+  "template_identity_state": "VERIFIED_SHA256_MATCH",
+  "metadata": {
+    "gguf_version": 3,
+    "tensor_count": 866,
+    "architecture": "qwen35",
+    "model_identity": "Qwen3.8-27B-Abliterated",
+    "basename": "Qwen3.8",
+    "size_label": "27B",
+    "parameter_count": 27320697856,
+    "quantization_identity": "Q8_0",
+    "chat_template_identity": "GGUF-04-qwen35-jinja",
+    "chat_template_bytes": 8952,
+    "chat_template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+  },
+  "download_allowed": false,
+  "substitution_allowed": false,
+  "controlled_local_certification": "PASS",
+  "private_paths_recorded": false
+}

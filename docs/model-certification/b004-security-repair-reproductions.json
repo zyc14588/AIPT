@@ -1,0 +1,64 @@
+{
+  "schema": "aipt.public.b004-security-repair-reproductions/v1",
+  "task_id": "AIPT-MVP-B004",
+  "authorization": "IN_BATCH_SECURITY_REPAIR",
+  "base_commit": "98591311c4872cdc5f091e23fba1acb500ad4599",
+  "real_model_calls": 0,
+  "provider_network_calls": 0,
+  "reproductions": [
+    {
+      "finding_id": "F1_LLAMA_CPP_LOOPBACK_LISTENER_OWNERSHIP_RACE",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "go test ./internal/modelgateway -run 'TestOriginalListenerOwnershipRaceReproduction' -count=1 -v",
+        "observation": "The original startup accepted a listener delegated to a competing process because loopback readiness was treated as ownership."
+      },
+      "post_fix": {
+        "status": "REJECTED_SAFE_FAILURE",
+        "commands": [
+          "go test ./internal/modelgateway -run 'TestListenerOwnershipRaceIsRejected|TestManagedLocalStartupLoopbackShutdownAndM26RecoveryDisqualification' -count=1 -v",
+          "go test -race ./internal/modelgateway -count=1"
+        ],
+        "observation": "A delegated listener is rejected; a crashed child cannot surrender the stable public proxy or redirect guarded bytes through a rebound private target. The pidfd-backed process generation is invalid after exit and the attacker receives zero requests."
+      }
+    },
+    {
+      "finding_id": "F2_ACP_AGGREGATE_OUTPUT_BYTE_LIMIT",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "pnpm --filter @aipt/model-harness-gateway test -- --test-name-pattern='original aggregate-output reproduction'",
+        "observation": "The original gateway accepted 2048 individually valid notification frames totaling more than 2 MiB and returned success."
+      },
+      "post_fix": {
+        "status": "REJECTED",
+        "commands": [
+          "pnpm --filter @aipt/model-harness-gateway test"
+        ],
+        "observation": "All 28 aggregate-budget regressions pass, including many-small-frame overflow, single-frame overflow, exact and plus-one stdout/notification/stderr boundaries, raw BOM and unterminated bytes, id-bearing session/update category-bypass rejection, and a complete child-lifetime commit barrier that rejects trailing stdout, notification, response-plus-notification, or stderr overflow without releasing an outer result."
+      }
+    },
+    {
+      "finding_id": "F3_ONE_TIME_BREAK_GLASS_GRANT_REPLAY",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "go test ./internal/modelgateway -run 'TestBreakGlassIsDiagnosticOneTimeAndDisqualifiesCleanBaseline' -count=1 -v",
+        "observation": "The original process-local one-time grant accepted a second use and could not preserve consumption across restart."
+      },
+      "post_fix": {
+        "status": "REJECTED",
+        "commands": [
+          "go test ./internal/modelgateway -run 'TestBreakGlass|TestEveryGatewayRequiresAuthoritativeRunAuditSink|TestFormalInvocationAuditRejectsConcurrentRunDisqualificationAfterFinalRead' -count=1 -v",
+          "go test -race ./internal/modelgateway -count=1"
+        ],
+        "observation": "Replay, cross-Run, cross-seat/profile, modified request, restart and failed-transport reuse all reject; concurrent consumption has exactly one winner; formal evidence cannot linearize after Run disqualification; all gateway modes require the same unforgeable authoritative sink."
+      }
+    }
+  ],
+  "postgresql_atomicity": {
+    "local_status": "NOT_RUN_NO_LOOPBACK_DSN",
+    "public_ci_required": true,
+    "normal_command": "AIPT_REQUIRE_POSTGRES_INTEGRATION=1 go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v",
+    "race_command": "AIPT_REQUIRE_POSTGRES_INTEGRATION=1 go test -race ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v",
+    "claim": "No local PostgreSQL PASS is claimed. The pinned public-CI PostgreSQL job must execute both commands against the exact frozen candidate SHA."
+  }
+}

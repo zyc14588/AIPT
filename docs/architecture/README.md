@@ -2,7 +2,7 @@
 
 > 公开顶层架构合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)；
 > 冲突处理顺序见 [../authority/README.md](../authority/README.md)。
-> M0、`AIPT-MVP-B001` 与已关闭的 `AIPT-MVP-B002` 历史实现保持不变；`AIPT-MVP-B003` 在其上新增 game-neutral、provider-neutral 的确定性 Agent Orchestrator，不实现真实模型 gateway。
+> M0、`AIPT-MVP-B001`、`AIPT-MVP-B002` 与 `AIPT-MVP-B003` 已关闭历史保持不变；`AIPT-MVP-B004` 在独立层实现版本化 Model Profile 与受治理 Harness gateway。
 
 ## 技术栈与进程边界
 
@@ -48,6 +48,14 @@
 - Agent output 将 speech 与 structured B002 `ActionProposal` 分离。只有 structured action 可影响状态；speech/action machine claim 冲突进入有限 semantic repair，仍冲突则拒绝。Transport retry、semantic retry 与 Session recovery 分别审计，按顺序接受第一个合法结果，不做 best-of-N。
 - `RunCoreSubmitter` 是唯一 mutation adapter：B003 自身没有 gameplay state writer，只调用已关闭 B002 `Run.Execute`。成功后同 invocation/action 不得再次提交，因而不会重复消费 RNG 或追加 authoritative event。
 
+## B004 模型执行层
+
+- [`internal/modelgateway`](../../internal/modelgateway) 实现 B003 `AgentInvoker`，但不重新拼装 full state；输入只能是 B003 已授权 Context Bundle。分类/egress 在 Core 与 gateway 两层验证，unsafe reduction 结构化失败。
+- Model Profile、Sampling Profile、Harness identity、certification 与 complete execution tuple 分别版本化、哈希绑定。Run Manifest 为 GM 和四个 Player 固定独立 assignment identity；同 underlying model 也不退化为 global model。静默 fallback 被拒绝，显式 replacement 形成事件并取消 clean eligibility。
+- 唯一 backend 是 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP`。前者精确请求 `deepseek-v4-pro`；后者以已登记 binary/GGUF/template/hardware identity 启动动态 IPv4 loopback `llama.cpp`。AIPT 不实现模型下载或 hot-switch。
+- 所有 model invocation 都经固定 DeepSeek Harness ACP 进程路由；Gateway 验证 process/package/protocol/model identity、frame、timeout/cancellation 与结构化响应。AIPT Core/Orchestrator 没有 provider HTTP 或 llama inference bypass。
+- 当前冻结登记为 `HARNESS-01`、`GGUF-04` 与 `LLAMACPP-01`。受控 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP` minimum certification 均已 PASS；local 路径完成批准 root containment、canonical target、完整 SHA-256、GGUF metadata、executable compatibility、受管启动、Harness role invocation 与有界关闭/失败验证，且不允许下载、猜测或替代资产。公开 registration/certification 只保留稳定身份、摘要与结果，不保留 credential 值或本机路径。
+
 ## 上下文与随机性
 
 - AIPT 事件账本是记忆权威；Harness Compaction 只做长度优化（`R4-Q012`）。
@@ -61,7 +69,7 @@
 
 ## 设计状态声明
 
-冻结历史合同继续有效；B001 Test Plan/Manifest/Queue 与 B002 Run Core、B003 Orchestrator 保持分层。B003 仅是 library/protocol Candidate，Launcher 的 MODEL/HARNESS/IPC 前序 gate 仍未实现，因此不代表产品 runtime ready。真实 Harness/model gateway 属于 B004；真实 playtest 与 qualification 属于更后批次。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
+冻结历史合同继续有效；B001 Test Plan/Manifest/Queue、B002 Run Core、B003 Orchestrator 与 B004 model gateway 保持分层。MODEL/HARNESS 及双 backend controlled minimum certification 已实现，IPC 仍未实现，因此产品 runtime 不 ready。真实 playtest 与 qualification 属于后续批次。详见 [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md)。
 
 ## 相邻文档
 

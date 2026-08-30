@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/model/v1/aipt-model-certification.schema.json",
+  "title": "AIPT independent capability certification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "certification_id", "certification_version", "profile_binding",
+    "sampling_binding", "result", "kind", "minimum_certification", "real_model_calls",
+    "evidence_identity", "production_role_eligibility", "claims", "execution_tuple",
+    "observed_at", "sha256"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.model-certification/v1" },
+    "certification_id": { "$ref": "#/$defs/identity" },
+    "certification_version": { "$ref": "#/$defs/version" },
+    "profile_binding": { "$ref": "#/$defs/identity" },
+    "sampling_binding": { "$ref": "#/$defs/identity" },
+    "result": { "const": "PASS" },
+    "kind": { "enum": ["CONTROLLED_REAL", "SYNTHETIC_PUBLIC_CI"] },
+    "minimum_certification": { "const": true },
+    "real_model_calls": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+    "evidence_identity": { "$ref": "#/$defs/identity" },
+    "production_role_eligibility": { "enum": ["NOT_CLAIMED", "NOT_GRANTED_DEFER_003"] },
+    "claims": {
+      "type": "array", "minItems": 1, "maxItems": 11,
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "execution_tuple": { "$ref": "#/$defs/executionTuple" },
+    "observed_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[^\\s]+Z$" },
+    "sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "kind": { "const": "CONTROLLED_REAL" },
+        "real_model_calls": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "SYNTHETIC_PUBLIC_CI" },
+        "real_model_calls": { "const": 0 }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+){0,2}(?:-[0-9A-Za-z]+(?:\\.[0-9A-Za-z]+)*)?$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "capability": {
+      "enum": [
+        "basic_completion", "structured_output_native", "structured_output_prompted",
+        "structured_output_repair", "tool_call_native", "tool_call_emulated",
+        "context_budget", "role_invocation", "transport_stability",
+        "visibility_policy_compatible", "prompt_injection_boundary_compatible"
+      ]
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "status"],
+      "properties": {
+        "name": { "$ref": "#/$defs/capability" },
+        "status": { "enum": ["CERTIFIED", "NOT_CERTIFIED", "UNTESTED"] }
+      }
+    },
+    "executionTuple": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema", "backend_kind", "provider_identity", "model_id", "model_profile_binding",
+        "sampling_profile_binding", "harness_identity", "harness_protocol_identity",
+        "harness_protocol_version", "structured_output_mode", "tool_call_mode",
+        "request_contract_version", "capability_fingerprint", "environment_identity", "sha256"
+      ],
+      "properties": {
+        "schema": { "const": "aipt.model-execution-tuple/v1" },
+        "backend_kind": { "enum": ["REMOTE_DEEPSEEK", "LOCAL_LLAMACPP"] },
+        "provider_identity": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "model_id": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "model_profile_binding": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "sampling_profile_binding": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "harness_identity": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "harness_protocol_identity": { "const": "agent-client-protocol" },
+        "harness_protocol_version": { "const": "1" },
+        "structured_output_mode": { "enum": ["NATIVE_SCHEMA", "PROMPTED", "BOUNDED_REPAIR"] },
+        "tool_call_mode": { "enum": ["DISABLED", "NATIVE", "EMULATED"] },
+        "request_contract_version": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "capability_fingerprint": { "$ref": "#/$defs/sha256" },
+        "environment_identity": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "local_runtime_identity": {
+          "type": "object", "additionalProperties": false,
+          "required": [
+            "executable_reference", "binary_sha256", "version", "commit", "gguf_reference",
+            "gguf_sha256", "gguf_model_identity", "quantization_identity", "template_identity",
+            "template_sha256", "launch_parameters", "hardware"
+          ],
+          "properties": {
+            "executable_reference": { "$ref": "#/$defs/identity" },
+            "binary_sha256": { "$ref": "#/$defs/sha256" },
+            "version": { "$ref": "#/$defs/version" },
+            "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40})?$" },
+            "gguf_reference": { "$ref": "#/$defs/identity" },
+            "gguf_sha256": { "$ref": "#/$defs/sha256" },
+            "gguf_model_identity": { "$ref": "#/$defs/identity" },
+            "quantization_identity": { "$ref": "#/$defs/identity" },
+            "template_identity": { "$ref": "#/$defs/identity" },
+            "template_sha256": { "$ref": "#/$defs/sha256" },
+            "launch_parameters": {
+              "type": "array", "minItems": 1, "maxItems": 64,
+              "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+            },
+            "hardware": {
+              "type": "object", "additionalProperties": false,
+              "required": ["architecture", "cpu_class", "gpu_backend", "memory_class"],
+              "properties": {
+                "architecture": { "$ref": "#/$defs/identity" },
+                "cpu_class": { "$ref": "#/$defs/identity" },
+                "gpu_backend": { "$ref": "#/$defs/identity" },
+                "memory_class": { "$ref": "#/$defs/identity" }
+              }
+            }
+          }
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

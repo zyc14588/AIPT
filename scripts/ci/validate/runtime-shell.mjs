@@ -2,7 +2,7 @@
 //
 // This is a dependency-free, fail-closed source/contract gate. It binds the
 // immutable launch order, real CONFIG/PostgreSQL/B003 migration wiring, first
-// mandatory unimplemented MODEL failure, reverse cleanup, redacted errors,
+// mandatory unimplemented IPC failure after governed MODEL/HARNESS, reverse cleanup, redacted errors,
 // Core lifecycle shell, final state-aware Web gate, signal-aware CLI, strict shared config schema, and
 // required unit/integration test inventory. Focused in-memory mutations prove
 // each critical check rejects drift without editing the working tree.
@@ -73,7 +73,7 @@ const REQUIRED_TESTS = [
   'TestFixedGateOrderAndPlanAreImmutable',
   'TestRunExactOrderAndReverseShutdown',
   'TestRunFailFastAtEveryImplementedBoundary',
-  'TestProductionModelGateFailsClosed',
+  'TestProductionModelGateFailsClosedWithoutPrivateRuntimeConfiguration',
   'TestLiveLoopbackSmoke',
   'TestStartupRootErrorPrecedesAndSurvivesCleanupError',
   'TestCoreGateUsesRealCoreShellThroughDependencyInjection',
@@ -147,10 +147,10 @@ export function checkRuntimeSources(files, schema) {
   } else {
     fail('fixed gate order drifted: ' + JSON.stringify(parsedOrder));
   }
-  expectText(gates, /case GateConfig, GatePostgreSQL, GateMigrations, GateCore, GateWeb:\s*return Implemented/,
-    'production implementation map marks exactly CONFIG/PostgreSQL/MIGRATIONS/Core/WEB implemented');
-  expectText(gates, /case GateModel, GateHarness, GateIPC:\s*return NotImplemented/,
-    'production implementation map keeps MODEL/HARNESS/IPC unimplemented');
+  expectText(gates, /case GateConfig, GatePostgreSQL, GateMigrations, GateModel, GateHarness, GateCore, GateWeb:\s*return Implemented/,
+    'production implementation map marks CONFIG/PostgreSQL/MIGRATIONS/MODEL/HARNESS/Core/WEB implemented');
+  expectText(gates, /case GateIPC:\s*return NotImplemented/,
+    'production implementation map keeps exactly IPC unimplemented');
   expectText(gates, /RuntimeReady:\s+false/, 'runtime plan is explicitly not ready');
   expectText(gates, /FirstBlockingGate:\s+firstBlocking/, 'runtime plan exposes its first blocking gate');
   expectText(gates, /firstBlocking == "" && implementation == NotImplemented/,
@@ -160,8 +160,14 @@ export function checkRuntimeSources(files, schema) {
   expectText(dependencies, /LoadConfig:\s+config\.LoadFile/, 'CONFIG gate uses the shared config.LoadFile service');
   expectText(dependencies, /return pgxpool\.New\(ctx, dsn\)/, 'PostgreSQL gate opens the configured pgx pool');
   expectText(dependencies, /return postgres\.MigrateUp\(ctx, pgxPool\)/, 'MIGRATIONS gate reuses B003 postgres.MigrateUp');
-  expectText(dependencies, /StartModel:\s+unimplementedComponent\(GateModel\)/,
-    'MODEL production gate fails closed as unimplemented');
+  expectText(dependencies, /modelgateway\.NewRuntimeCoordinator\(/,
+    'MODEL/HARNESS production gates share the governed B004 runtime coordinator');
+  expectText(dependencies, /StartModel:\s+func\(ctx context\.Context\)[\s\S]*runtime\.StartModel\(ctx\)/,
+    'MODEL production gate starts the governed model runtime');
+  expectText(dependencies, /StartHarness:\s+func\(ctx context\.Context\)[\s\S]*runtime\.StartHarness\(ctx\)/,
+    'HARNESS production gate starts the exact governed adapter routes');
+  expectText(dependencies, /StartIPC:\s+unimplementedComponent\(GateIPC\)/,
+    'IPC production gate remains fail-closed as unimplemented');
   expectText(dependencies, /StartCore:\s+coreComponent\(shutdownTimeout\)/,
     'Core production dependency uses the B004 lifecycle shell');
   expectText(dependencies, /StartWeb:\s+webComponent\(\)/,
@@ -354,13 +360,13 @@ export function run(ctx) {
       },
     },
     {
-      label: 'MODEL falsely marked implemented',
-      reason: /implementation map keeps MODEL/,
+      label: 'IPC falsely marked implemented',
+      reason: /keeps exactly IPC unimplemented/,
       mutate(files) {
         files['internal/launcher/gates.go'] = replaceOnce(
           files['internal/launcher/gates.go'],
-          'case GateModel, GateHarness, GateIPC:',
-          'case GateHarness, GateIPC:',
+          'case GateIPC:',
+          'case GateModel:',
         );
       },
     },

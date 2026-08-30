@@ -1,10 +1,10 @@
-// SBOM validator (AIPT-M0-B001-REPAIR-R6 foundation, evolved by B002
-// iteration 4 and AIPT-M0-B003 iteration 6a): the gate enforces deterministic
-// output AND SPDX 2.3 / component semantics — including the three-layer
-// PostgreSQL license model, all three first-party workspace package models
-// (@aipt/adapter-sdk, @aipt/harness-adapter, and dependency-free
-// @aipt/web-ui; each has its own MIT SPDX 2.3 package and is PACKAGE_OF AIPT,
-// never DEV_TOOL_OF), and (AIPT-M0-B003 iteration 6a) the six approved
+// SBOM validator (AIPT-M0-B001-REPAIR-R6 foundation, evolved through
+// AIPT-MVP-B004): the gate enforces deterministic output AND SPDX 2.3 /
+// component semantics — including the three-layer PostgreSQL license model
+// and all four represented first-party workspace package models
+// (@aipt/adapter-sdk, @aipt/harness-adapter, @aipt/model-harness-gateway, and
+// dependency-free @aipt/web-ui; each has its own MIT SPDX 2.3 package and is
+// PACKAGE_OF AIPT, never DEV_TOOL_OF), and (AIPT-M0-B003 iteration 6a) the six approved
 // third-party Go runtime modules of the pgx v5.10.0 closure with exact known
 // licenses (MIT/BSD-3-Clause, never NOASSERTION), golang purls, SHA-256
 // checksumValues decoded from the go.sum zip h1 base64 payloads, and the
@@ -44,18 +44,20 @@
 //      content-addressed documentNamespace — SHA-256 of the canonical
 //      version-defining payload — with the legacy static B001 namespace
 //      explicitly rejected, unique package SPDXIDs, and the exact B007
-//      22-package set: AIPT root; adapter-sdk, harness-adapter, and web-ui;
+//      23-package set: AIPT root; adapter-sdk, harness-adapter, model gateway,
+//      and web-ui;
 //      three toolchains; PostgreSQL main software, packaging source, and
 //      image; govulncheck; three GitHub actions; six approved Go runtime
 //      modules; and two selected graph-tooling modules,
 //      SPDX license values for every current package (the three-layer
 //      PostgreSQL model: main software = PostgreSQL, packaging source = MIT,
-//      composite image = NOASSERTION; all three first-party workspace
+//      composite image = NOASSERTION; all four first-party workspace
 //      packages = MIT; pgx closure = exact known MIT/BSD-3-Clause values),
 //      the exact composition relationships (image CONTAINS main software,
 //      image GENERATED_FROM packaging source — never CONTAINS the packaging
-//      source; adapter-sdk, harness-adapter, and web-ui PACKAGE_OF AIPT —
-//      never DEV_TOOL_OF; harness-adapter DEPENDS_ON adapter-sdk; AIPT
+//      source; adapter-sdk, harness-adapter, model gateway, and web-ui
+//      PACKAGE_OF AIPT — never DEV_TOOL_OF; harness-adapter DEPENDS_ON
+//      adapter-sdk; model gateway DEPENDS_ON harness-adapter; AIPT
 //      DEPENDS_ON pgx; pgx DEPENDS_ON the five indirect modules — runtime
 //      modules never DEV_TOOL_OF),
 //      toolchain/action versions matching the lock files, resolvable
@@ -89,16 +91,17 @@ const DOCUMENT_SPDXID = 'SPDXRef-DOCUMENT';
 const AIPT_SPDXID = 'SPDXRef-AIPT';
 const SDK_SPDXID = 'SPDXRef-adapter-sdk';
 const HARNESS_ADAPTER_SPDXID = 'SPDXRef-harness-adapter';
+const MODEL_GATEWAY_SPDXID = 'SPDXRef-model-harness-gateway';
 const WEB_UI_SPDXID = 'SPDXRef-web-ui';
-const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b007';
+const NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-mvp-b004';
 // The static pre-R5 B001 namespace reused by distinct R3/R4 documents; still
-// forbidden — a B007 document must never fall back to it.
+// forbidden — an MVP-B004 document must never fall back to it.
 const LEGACY_NAMESPACE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b001';
-const PREVIOUS_NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b005';
-const EXPECTED_DOCUMENT_NAME = 'AIPT-M0-B007-supply-chain-sbom';
-const EXPECTED_AIPT_VERSION = 'M0-B007';
-const EXPECTED_CREATED = '2026-08-23T00:00:00Z';
-const EXPECTED_CREATOR = 'Tool: AIPT-M0-B007 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)';
+const PREVIOUS_NAMESPACE_BASE = 'https://github.com/zyc14588/AIPT/spdx/aipt-m0-b007';
+const EXPECTED_DOCUMENT_NAME = 'AIPT-MVP-B004-supply-chain-sbom';
+const EXPECTED_AIPT_VERSION = 'MVP-B004';
+const EXPECTED_CREATED = '2026-08-30T00:00:00Z';
+const EXPECTED_CREATOR = 'Tool: AIPT-MVP-B004 scripts/ci/sbom/generate-sbom.mjs (Node.js standard library only)';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
 // 6a). h1hex is the frozen SHA-256 (64 lowercase hex) that the go.sum zip
@@ -140,8 +143,8 @@ const SPDX23_RELATIONSHIP_TYPES = new Set([
   'TEST_TOOL_OF', 'VARIANT_OF',
 ]);
 
-// The exact required package set contains 22 identities: AIPT root;
-// adapter-sdk, harness-adapter, and web-ui; three toolchains; PostgreSQL main
+// The exact required package set contains 23 identities: AIPT root;
+// adapter-sdk, harness-adapter, model gateway, and web-ui; three toolchains; PostgreSQL main
 // software, packaging source, and image; govulncheck; three GitHub actions;
 // six approved Go runtime modules from the pgx v5.10.0 closure; and two
 // selected graph-tooling modules. There is no PnpmDep package and no Go
@@ -150,6 +153,7 @@ const REQUIRED_PACKAGES = [
   { name: 'AIPT', spdxId: AIPT_SPDXID },
   { name: '@aipt/adapter-sdk', spdxId: SDK_SPDXID },
   { name: '@aipt/harness-adapter', spdxId: HARNESS_ADAPTER_SPDXID },
+  { name: '@aipt/model-harness-gateway', spdxId: MODEL_GATEWAY_SPDXID },
   { name: '@aipt/web-ui', spdxId: WEB_UI_SPDXID },
   { name: 'Go toolchain', spdxId: 'SPDXRef-Toolchain-Go' },
   { name: 'Node.js', spdxId: 'SPDXRef-Toolchain-Node' },
@@ -176,7 +180,8 @@ const CHECKSUM_HEX_LENGTHS = { SHA1: 40, SHA256: 64, SHA512: 128 };
 //     sources/components) carries `NOASSERTION` for BOTH fields — asserting
 //     `PostgreSQL` or `MIT` for the whole image is rejected.
 // B002 iteration 4 adds the first-party @aipt/adapter-sdk package (MIT), B005
-// adds @aipt/harness-adapter (MIT), and B007 adds @aipt/web-ui (MIT).
+// adds @aipt/harness-adapter (MIT), B007 adds @aipt/web-ui (MIT), and
+// AIPT-MVP-B004 adds @aipt/model-harness-gateway (MIT).
 // AIPT-M0-B003 iteration 6a adds the six approved Go runtime modules with
 // their exact known SPDX licenses (MIT for the jackc modules, BSD-3-Clause
 // for the golang.org/x modules) — never NOASSERTION.
@@ -184,6 +189,7 @@ const EXPECTED_PACKAGE_LICENSES = {
   AIPT: 'MIT',
   '@aipt/adapter-sdk': 'MIT',
   '@aipt/harness-adapter': 'MIT',
+  '@aipt/model-harness-gateway': 'MIT',
   '@aipt/web-ui': 'MIT',
   'Go toolchain': 'BSD-3-Clause',
   'Node.js': 'MIT',
@@ -208,6 +214,7 @@ const EXPECTED_PACKAGE_LICENSES = {
 // The exact npm purl of the first-party SDK package (percent-encoded scope).
 const SDK_NPM_PURL = 'pkg:npm/%40aipt/adapter-sdk@1.0.0';
 const HARNESS_ADAPTER_NPM_PURL = 'pkg:npm/%40aipt/harness-adapter@0.1.0';
+const MODEL_GATEWAY_NPM_PURL = 'pkg:npm/%40aipt/model-harness-gateway@0.1.0';
 const WEB_UI_NPM_PURL = 'pkg:npm/%40aipt/web-ui@0.1.0';
 
 // Canonical JSON: arrays in order, object keys sorted recursively. Mirrors
@@ -450,7 +457,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`documentNamespace is the legacy static pre-R5 namespace ${JSON.stringify(LEGACY_NAMESPACE)} (already reused by distinct R3/R4 documents); a version-unique hash suffix is required`);
   }
   if (typeof doc.documentNamespace === 'string' && doc.documentNamespace.startsWith(PREVIOUS_NAMESPACE_BASE + '/')) {
-    fail('documentNamespace reuses the prior B005 namespace family; B007 requires its own content-addressed namespace family');
+    fail('documentNamespace reuses the prior B007 namespace family; AIPT-MVP-B004 requires its own content-addressed namespace family');
   }
   const expectedNamespace = computeExpectedNamespace(doc);
   if (doc.documentNamespace !== expectedNamespace) {
@@ -464,11 +471,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`document name must be ${EXPECTED_DOCUMENT_NAME}, got ${JSON.stringify(doc.name)}`);
   } else ok(`document name = ${EXPECTED_DOCUMENT_NAME}`);
   if (doc.creationInfo?.created !== EXPECTED_CREATED) {
-    fail(`creationInfo.created must be deterministic B007 time ${EXPECTED_CREATED}, got ${JSON.stringify(doc.creationInfo?.created)}`);
+    fail(`creationInfo.created must be deterministic AIPT-MVP-B004 time ${EXPECTED_CREATED}, got ${JSON.stringify(doc.creationInfo?.created)}`);
   } else ok(`creationInfo.created = ${EXPECTED_CREATED}`);
   if (!Array.isArray(doc.creationInfo?.creators) || !doc.creationInfo.creators.includes(EXPECTED_CREATOR)) {
-    fail('creationInfo.creators must carry the exact B007 generator identity');
-  } else ok('creationInfo.creators carries the exact B007 generator identity');
+    fail('creationInfo.creators must carry the exact AIPT-MVP-B004 generator identity');
+  } else ok('creationInfo.creators carries the exact AIPT-MVP-B004 generator identity');
 
   // ---- packages: unique, well-formed SPDXIDs ----
   if (!Array.isArray(doc.packages) || doc.packages.length === 0) {
@@ -488,10 +495,10 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`AIPT versionInfo must be ${EXPECTED_AIPT_VERSION}, got ${JSON.stringify(aiptPackage?.versionInfo)}`);
   } else ok(`AIPT versionInfo = ${EXPECTED_AIPT_VERSION}`);
   if (!aiptPackage || typeof aiptPackage.comment !== 'string' ||
-      !aiptPackage.comment.includes('AIPT-M0-B007 secure loopback Web Host and dependency-free TypeScript Dashboard') ||
+      !aiptPackage.comment.includes('AIPT-MVP-B004 governed model profiles and Harness gateway') ||
       !aiptPackage.comment.includes('no new third-party dependency')) {
-    fail('AIPT package comment must describe B007 Web scope and zero new third-party dependencies');
-  } else ok('AIPT package comment records B007 Web scope and zero new third-party dependencies');
+    fail('AIPT package comment must describe AIPT-MVP-B004 model gateway scope and zero new third-party dependencies');
+  } else ok('AIPT package comment records AIPT-MVP-B004 model gateway scope and zero new third-party dependencies');
 
   // ---- exact required package set (zero third-party deps) ----
   const byName = new Map(doc.packages.map((p) => [p.name, p]));
@@ -506,11 +513,11 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       requiredOk = false;
     }
   }
-  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (retained identities + three first-party workspace packages + Go closure)`);
+  if (requiredOk) ok(`all ${REQUIRED_PACKAGES.length} required package identities present with expected SPDXIDs (retained identities + four first-party workspace packages + Go closure)`);
   const unknown = doc.packages.filter((p) => !byName.has(p.name) || !REQUIRED_PACKAGES.some((r) => r.name === p.name));
   if (doc.packages.length !== REQUIRED_PACKAGES.length || unknown.length > 0) {
     fail(`SBOM package set must be exactly the ${REQUIRED_PACKAGES.length} required packages (no package outside the approved identities), got ${doc.packages.length}`);
-  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities, including B007 Web UI and zero registry package`);
+  } else ok(`SBOM package set is exactly the ${REQUIRED_PACKAGES.length} required identities, including the MVP-B004 Model Harness Gateway, B007 Web UI, and zero registry package`);
   const depIds = ids.filter((id) => id.startsWith('SPDXRef-GoDep-') || id.startsWith('SPDXRef-PnpmDep-'));
   if (depIds.length > 0) fail(`SBOM carries legacy GoDep/PnpmDep dependency packages: ${depIds.join(', ')}`);
   else ok('no legacy GoDep/PnpmDep dependency packages in the SBOM');
@@ -576,6 +583,39 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
   )) fail(`${HARNESS_ADAPTER_SPDXID} must never be DEV_TOOL_OF AIPT`);
   else ok('@aipt/harness-adapter is never classified as DEV_TOOL_OF');
 
+  // ---- first-party @aipt/model-harness-gateway package model (AIPT-MVP-B004) ----
+  const modelGatewayPkg = byName.get('@aipt/model-harness-gateway');
+  if (modelGatewayPkg) {
+    if (modelGatewayPkg.versionInfo !== '0.1.0') {
+      fail(`@aipt/model-harness-gateway versionInfo must be 0.1.0, got ${JSON.stringify(modelGatewayPkg.versionInfo)}`);
+    } else ok('@aipt/model-harness-gateway versionInfo = 0.1.0');
+    const modelGatewayPurl = (modelGatewayPkg.externalRefs ?? []).find((r) => r?.referenceType === 'purl');
+    if (!modelGatewayPurl || modelGatewayPurl.referenceLocator !== MODEL_GATEWAY_NPM_PURL) {
+      fail(`@aipt/model-harness-gateway npm purl must be exactly ${MODEL_GATEWAY_NPM_PURL}`);
+    } else ok('@aipt/model-harness-gateway carries the exact npm purl');
+    const comment = modelGatewayPkg.comment ?? '';
+    if (!comment.includes('PACKAGE_OF') || !comment.includes('DEPENDS_ON') ||
+        !comment.includes('workspace:*') || !comment.includes('link:../harness-adapter') ||
+        !comment.includes('never classified as DEV_TOOL_OF')) {
+      fail('@aipt/model-harness-gateway comment must document first-party PACKAGE_OF, exact workspace DEPENDS_ON Harness Adapter, and never DEV_TOOL_OF');
+    } else ok('@aipt/model-harness-gateway comment records the exact first-party workspace dependency model');
+  }
+  const modelGatewayPackageOf = doc.relationships.some(
+    (r) => r.spdxElementId === MODEL_GATEWAY_SPDXID && r.relationshipType === 'PACKAGE_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+  );
+  if (!modelGatewayPackageOf) fail(`missing first-party relationship: ${MODEL_GATEWAY_SPDXID} PACKAGE_OF ${AIPT_SPDXID}`);
+  else ok('first-party relationship present: SPDXRef-model-harness-gateway PACKAGE_OF SPDXRef-AIPT');
+  const modelGatewayDependsOnHarness = doc.relationships.some(
+    (r) => r.spdxElementId === MODEL_GATEWAY_SPDXID && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === HARNESS_ADAPTER_SPDXID,
+  );
+  if (!modelGatewayDependsOnHarness) {
+    fail(`missing dependency relationship: ${MODEL_GATEWAY_SPDXID} DEPENDS_ON ${HARNESS_ADAPTER_SPDXID}`);
+  } else ok('first-party dependency present: Model Harness Gateway DEPENDS_ON Harness Adapter');
+  if (doc.relationships.some(
+    (r) => r.spdxElementId === MODEL_GATEWAY_SPDXID && r.relationshipType === 'DEV_TOOL_OF' && r.relatedSpdxElement === AIPT_SPDXID,
+  )) fail(`${MODEL_GATEWAY_SPDXID} must never be DEV_TOOL_OF AIPT`);
+  else ok('@aipt/model-harness-gateway is never classified as DEV_TOOL_OF');
+
   // ---- first-party dependency-free @aipt/web-ui package model (B007) ----
   const webPkg = byName.get('@aipt/web-ui');
   if (webPkg) {
@@ -622,7 +662,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
       }
     }
   }
-  if (licenseOk) ok('every package license matches its exact SPDX value, including all three MIT first-party workspace packages');
+  if (licenseOk) ok('every package license matches its exact SPDX value, including all four MIT first-party workspace packages');
 
   // ---- app-level dependency invariants (go.mod closure / pnpm-lock) ----
   // go.mod must carry EXACTLY the six approved Go runtime modules (1 direct +
@@ -960,6 +1000,7 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     AIPT_SPDXID,
     SDK_SPDXID,
     HARNESS_ADAPTER_SPDXID,
+    MODEL_GATEWAY_SPDXID,
     WEB_UI_SPDXID,
     ...GO_RUNTIME_MODULES.map((m) => goModuleSpdxId(m.module)),
     ...GO_MODULE_GRAPH_TOOLING.map((m) => goModuleSpdxId(m.module)),
@@ -999,11 +1040,13 @@ export function validateSbomSemantics(doc, { repo, toolchainLock, actionsLock })
     fail(`documentDescribes must include the first-party ${SDK_SPDXID}`);
   } else if (!doc.documentDescribes.includes(HARNESS_ADAPTER_SPDXID)) {
     fail(`documentDescribes must include the first-party ${HARNESS_ADAPTER_SPDXID}`);
+  } else if (!doc.documentDescribes.includes(MODEL_GATEWAY_SPDXID)) {
+    fail(`documentDescribes must include the first-party ${MODEL_GATEWAY_SPDXID}`);
   } else if (!doc.documentDescribes.includes(WEB_UI_SPDXID)) {
     fail(`documentDescribes must include the first-party ${WEB_UI_SPDXID}`);
   } else if (doc.documentDescribes.some((id) => !knownIds.has(id))) {
     fail('documentDescribes references an unresolved SPDXID');
-  } else ok('documentDescribes resolves and includes AIPT plus all three first-party workspace packages');
+  } else ok('documentDescribes resolves and includes AIPT plus all four first-party workspace packages');
 
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
@@ -1127,22 +1170,22 @@ export function run(ctx) {
     else ok('negative-probe PASS: version-defining mutation invalidates the retained namespace (content-addressed namespace binding enforced)');
   }
 
-  // B007 identity must be enforced independently of the namespace binding.
+  // MVP-B004 identity must be enforced independently of the namespace binding.
   const batchIdentityProbe = JSON.parse(JSON.stringify(doc));
   const batchIdentityAipt = batchIdentityProbe.packages.find((p) => p.SPDXID === AIPT_SPDXID);
   if (!batchIdentityAipt) {
-    fail('negative B007 identity probe could not run: AIPT package missing from SBOM');
+    fail('negative MVP-B004 identity probe could not run: AIPT package missing from SBOM');
     return { name: 'sbom', result: 'FAIL', details };
   }
-  batchIdentityAipt.versionInfo = 'M0-B005';
+  batchIdentityAipt.versionInfo = 'M0-B007';
   batchIdentityProbe.documentNamespace = computeExpectedNamespace(batchIdentityProbe);
   const batchIdentityResult = validateSbomSemantics(batchIdentityProbe, { repo: ctx.repo, toolchainLock, actionsLock });
   if (batchIdentityResult.result !== 'FAIL') {
-    fail('negative B007 identity probe was NOT rejected (M0-B005 root version accepted)');
-  } else if (!batchIdentityResult.details.some((d) => d.includes('AIPT versionInfo must be M0-B007'))) {
-    fail('B007 identity probe failed for an unexpected reason');
+    fail('negative MVP-B004 identity probe was NOT rejected (M0-B007 root version accepted)');
+  } else if (!batchIdentityResult.details.some((d) => d.includes('AIPT versionInfo must be MVP-B004'))) {
+    fail('MVP-B004 identity probe failed for an unexpected reason');
   } else {
-    ok('negative-probe PASS: AIPT M0-B005 root version rejected even with a recomputed content-addressed namespace');
+    ok('negative-probe PASS: AIPT M0-B007 root version rejected even with a recomputed content-addressed namespace');
   }
 
   // 6. Negative probe: the legacy static pre-R5 namespace must be rejected
@@ -1163,11 +1206,11 @@ export function run(ctx) {
   previousNamespaceProbe.documentNamespace = PREVIOUS_NAMESPACE_BASE + '/' + suffix;
   const previousNamespaceResult = validateSbomSemantics(previousNamespaceProbe, { repo: ctx.repo, toolchainLock, actionsLock });
   if (previousNamespaceResult.result !== 'FAIL') {
-    fail('negative prior-B005 namespace probe was NOT rejected');
-  } else if (!previousNamespaceResult.details.some((d) => d.includes('prior B005 namespace family'))) {
-    fail('prior-B005 namespace probe failed for an unexpected reason');
+    fail('negative prior-B007 namespace probe was NOT rejected');
+  } else if (!previousNamespaceResult.details.some((d) => d.includes('prior B007 namespace family'))) {
+    fail('prior-B007 namespace probe failed for an unexpected reason');
   } else {
-    ok('negative-probe PASS: prior B005 namespace family explicitly rejected for the B007 document');
+    ok('negative-probe PASS: prior B007 namespace family explicitly rejected for the MVP-B004 document');
   }
 
   // 5-10. Negative probes (B001-GPT-003 regressions): the three-layer
@@ -1452,6 +1495,75 @@ export function run(ctx) {
     else if (!probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d))) {
       fail(`negative ${def.label} probe failed for an unexpected reason`);
     } else ok(`negative-probe PASS: ${def.label} rejected by the B005 first-party dependency model`);
+  }
+
+  const modelGatewayPackageProbes = [
+    {
+      label: 'Model Harness Gateway package deleted from the SBOM',
+      reason: /required package missing: @aipt\/model-harness-gateway/,
+      mutate: (probeDoc) => {
+        probeDoc.packages = probeDoc.packages.filter((p) => p.SPDXID !== MODEL_GATEWAY_SPDXID);
+      },
+    },
+    {
+      label: 'Model Harness Gateway package wrongly licensed',
+      reason: /MIT/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === MODEL_GATEWAY_SPDXID);
+        p.licenseConcluded = 'Apache-2.0';
+        p.licenseDeclared = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'Model Harness Gateway npm purl drifted',
+      reason: /model-harness-gateway npm purl/,
+      mutate: (probeDoc) => {
+        const p = probeDoc.packages.find((x) => x.SPDXID === MODEL_GATEWAY_SPDXID);
+        p.externalRefs[0].referenceLocator = 'pkg:npm/%40aipt/model-harness-gateway@9.9.9';
+      },
+    },
+    {
+      label: 'Model Harness Gateway PACKAGE_OF relationship deleted',
+      reason: /missing first-party relationship: SPDXRef-model-harness-gateway PACKAGE_OF SPDXRef-AIPT/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(r.spdxElementId === MODEL_GATEWAY_SPDXID && r.relationshipType === 'PACKAGE_OF'),
+        );
+      },
+    },
+    {
+      label: 'Model Harness Gateway DEPENDS_ON Harness Adapter relationship deleted',
+      reason: /missing dependency relationship: SPDXRef-model-harness-gateway DEPENDS_ON SPDXRef-harness-adapter/,
+      mutate: (probeDoc) => {
+        probeDoc.relationships = probeDoc.relationships.filter(
+          (r) => !(r.spdxElementId === MODEL_GATEWAY_SPDXID && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === HARNESS_ADAPTER_SPDXID),
+        );
+      },
+    },
+    {
+      label: 'Model Harness Gateway dependency retyped to DEV_TOOL_OF',
+      reason: /missing dependency relationship: SPDXRef-model-harness-gateway DEPENDS_ON SPDXRef-harness-adapter|must never be DEV_TOOL_OF/,
+      mutate: (probeDoc) => {
+        const rel = probeDoc.relationships.find(
+          (r) => r.spdxElementId === MODEL_GATEWAY_SPDXID && r.relationshipType === 'DEPENDS_ON' && r.relatedSpdxElement === HARNESS_ADAPTER_SPDXID,
+        );
+        rel.relationshipType = 'DEV_TOOL_OF';
+        rel.relatedSpdxElement = AIPT_SPDXID;
+      },
+    },
+  ];
+  for (const def of modelGatewayPackageProbes) {
+    const probeDoc = JSON.parse(JSON.stringify(doc));
+    if (!probeDoc.packages.some((x) => x.SPDXID === MODEL_GATEWAY_SPDXID)) {
+      fail(`negative ${def.label} probe could not run: Model Harness Gateway package missing`);
+      continue;
+    }
+    def.mutate(probeDoc);
+    const probeResult = validateSbomSemantics(probeDoc, { repo: ctx.repo, toolchainLock, actionsLock });
+    if (probeResult.result !== 'FAIL') fail(`negative ${def.label} probe was NOT rejected`);
+    else if (!probeResult.details.filter((d) => d.startsWith('FAIL')).some((d) => def.reason.test(d))) {
+      fail(`negative ${def.label} probe failed for an unexpected reason`);
+    } else ok(`negative-probe PASS: ${def.label} rejected by the AIPT-MVP-B004 first-party dependency model`);
   }
 
   const webPackageProbes = [
