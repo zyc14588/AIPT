@@ -29,6 +29,8 @@ const (
 	controlledGGUFReference             = "GGUF-04"
 	controlledGGUFSHA256                = "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6"
 	ACPOutputBudgetSchema               = "aipt.acp-output-budget/v1"
+	HarnessRuntimeClosureSchema         = "aipt.harness-runtime-closure/v1"
+	HarnessRuntimeClosureKind           = "VERIFIED_SINGLE_FILE_DATA_URL_V1"
 )
 
 type ACPOutputBudget struct {
@@ -47,6 +49,13 @@ type HarnessChildArgumentDigest struct {
 	SHA256 string `json:"sha256"`
 }
 
+type HarnessRuntimeClosure struct {
+	Schema                  string `json:"schema"`
+	Kind                    string `json:"kind"`
+	EntrypointArgumentIndex int    `json:"entrypoint_argument_index"`
+	SHA256                  string `json:"sha256"`
+}
+
 // HarnessChildProcessSpec is the private, exact ACP child process selected by
 // an operator for one controlled certification attempt.
 type HarnessChildProcessSpec struct {
@@ -54,6 +63,7 @@ type HarnessChildProcessSpec struct {
 	ExecutableSHA256     string                       `json:"executable_sha256"`
 	Arguments            []string                     `json:"arguments"`
 	ArgumentFileDigests  []HarnessChildArgumentDigest `json:"argument_file_digests"`
+	RuntimeClosure       HarnessRuntimeClosure        `json:"runtime_closure"`
 	WorkingDirectory     string                       `json:"working_directory"`
 	EnvironmentAllowlist []string                     `json:"environment_allowlist"`
 	StartupTimeoutMS     int64                        `json:"startup_timeout_ms"`
@@ -118,6 +128,7 @@ type privateHarnessRoute struct {
 	StructuredOutputMode    StructuredOutputMode    `json:"structured_output_mode"`
 	ToolCallMode            ToolCallMode            `json:"tool_call_mode"`
 	SessionWorkingDirectory string                  `json:"session_working_directory"`
+	SamplingProfile         SamplingProfile         `json:"sampling_profile"`
 	Child                   HarnessChildProcessSpec `json:"child"`
 }
 
@@ -227,6 +238,18 @@ func validateHarnessChild(profile ModelProfile, child HarnessChildProcessSpec) e
 	if err := verifyRegularFileDigest(child.ExecutablePath, child.ExecutableSHA256, true); err != nil {
 		return newError(CodeHarnessTransport, "verify_harness_executable", profile.BindingID(), err)
 	}
+	if child.RuntimeClosure.Schema != HarnessRuntimeClosureSchema ||
+		child.RuntimeClosure.Kind != HarnessRuntimeClosureKind ||
+		child.RuntimeClosure.EntrypointArgumentIndex < 0 ||
+		child.RuntimeClosure.EntrypointArgumentIndex >= len(child.Arguments) ||
+		validSHA("runtime_closure_sha256", child.RuntimeClosure.SHA256) != nil ||
+		len(child.ArgumentFileDigests) != 1 {
+		return newError(CodeHarnessTransport, "validate_harness_runtime_closure", profile.BindingID(), errors.New("exact single-file Harness runtime closure required"))
+	}
+	if profile.Harness.RuntimeClosureKind != child.RuntimeClosure.Kind ||
+		profile.Harness.RuntimeClosureSHA256 != child.RuntimeClosure.SHA256 {
+		return newError(CodeHarnessIdentityMismatch, "validate_harness_runtime_closure", profile.BindingID(), errors.New("Harness runtime closure differs from the governed profile identity"))
+	}
 	seenIndexes := map[int]bool{}
 	for _, item := range child.ArgumentFileDigests {
 		if item.Index < 0 || item.Index >= len(child.Arguments) || seenIndexes[item.Index] {
@@ -236,6 +259,10 @@ func validateHarnessChild(profile ModelProfile, child HarnessChildProcessSpec) e
 		if err := verifyRegularFileDigest(child.Arguments[item.Index], item.SHA256, false); err != nil {
 			return newError(CodeHarnessTransport, "verify_harness_argument_file", profile.BindingID(), err)
 		}
+	}
+	if !seenIndexes[child.RuntimeClosure.EntrypointArgumentIndex] ||
+		child.ArgumentFileDigests[0].SHA256 != child.RuntimeClosure.SHA256 {
+		return newError(CodeHarnessTransport, "validate_harness_runtime_closure", profile.BindingID(), errors.New("runtime closure and inherited entrypoint digest differ"))
 	}
 	for index, argument := range child.Arguments {
 		if argument == "" || len(argument) > 4096 || strings.IndexByte(argument, 0) >= 0 || secretRE.MatchString(argument) {
@@ -295,7 +322,8 @@ func writePrivateHarnessRoute(spec ControlledCertificationSpec) (string, string,
 		HarnessProtocolVersion:  spec.Profile.Harness.ProtocolVersion,
 		CapabilityFingerprint:   spec.Profile.Harness.CapabilityFingerprint,
 		StructuredOutputMode:    spec.Profile.StructuredOutputMode, ToolCallMode: spec.Profile.ToolCallMode,
-		SessionWorkingDirectory: spec.HarnessChild.WorkingDirectory, Child: spec.HarnessChild,
+		SessionWorkingDirectory: spec.HarnessChild.WorkingDirectory,
+		SamplingProfile:         spec.Sampling, Child: spec.HarnessChild,
 	}
 	raw, err := json.Marshal(route)
 	if err != nil {
@@ -422,6 +450,10 @@ func observeControlledCertification(
 		StructuredOutputMode:   spec.Profile.StructuredOutputMode, ToolCallMode: spec.Profile.ToolCallMode,
 		RequestContractVersion: "1", CapabilityFingerprint: spec.Profile.Harness.CapabilityFingerprint,
 		EnvironmentIdentity: spec.EnvironmentIdentity, LocalRuntimeIdentity: spec.Profile.LocalRuntimeIdentity,
+		RequestedSamplingSHA256:        result.RequestedSamplingSHA256,
+		EffectiveSampling:              result.EffectiveSampling,
+		UnsupportedSamplingParameters:  append([]string(nil), result.UnsupportedSamplingParameters...),
+		BackendSerializedRequestSHA256: result.BackendSerializedRequestSHA256,
 	})
 	if err != nil {
 		return ControlledCertificationResult{}, err
@@ -497,36 +529,8 @@ func RunControlledCertification(
 		}
 	}
 
-	var manager *ManagedLlama
-	adapterEnvironment := map[string]string{}
-	if spec.Profile.BackendKind == BackendLocalLlamaCPP {
-		local := spec.LocalRuntime
-		manager, err = NewManagedLlama(spec.Profile, ManagedLlamaSpec{
-			ExecutablePath: local.ExecutablePath, GGUFPath: local.GGUFPath,
-			AdditionalArguments: append([]string(nil), local.AdditionalArguments...),
-			Environment:         cloneStringMap(local.Environment), WorkingDirectory: local.WorkingDirectory,
-			StartupTimeout:  time.Duration(local.StartupTimeoutMS) * time.Millisecond,
-			ShutdownTimeout: time.Duration(local.ShutdownTimeoutMS) * time.Millisecond,
-		})
-		if err != nil {
-			return ControlledCertificationResult{}, err
-		}
-		if err = manager.Start(ctx); err != nil {
-			return ControlledCertificationResult{}, err
-		}
-		endpoint, endpointErr := manager.Endpoint()
-		if endpointErr != nil {
-			_ = manager.Stop(context.Background())
-			return ControlledCertificationResult{}, endpointErr
-		}
-		adapterEnvironment[controlledLocalEndpointEnvironment] = endpoint.String()
-	}
-
 	routePath, routeDigest, cleanupRoute, err := writePrivateHarnessRoute(spec)
 	if err != nil {
-		if manager != nil {
-			_ = manager.Stop(context.Background())
-		}
 		return ControlledCertificationResult{}, err
 	}
 	defer cleanupRoute()
@@ -534,20 +538,15 @@ func RunControlledCertification(
 	harnessHome := filepath.Join(privateRoot, "harness-home")
 	persistenceRoot := filepath.Join(privateRoot, "sessions")
 	if err := os.Mkdir(harnessHome, 0o700); err != nil {
-		if manager != nil {
-			_ = manager.Stop(context.Background())
-		}
 		return ControlledCertificationResult{}, newError(CodeHarnessTransport, "create_private_harness_home", spec.CertificationID, err)
 	}
 	if err := os.Mkdir(persistenceRoot, 0o700); err != nil {
-		if manager != nil {
-			_ = manager.Stop(context.Background())
-		}
 		return ControlledCertificationResult{}, newError(CodeHarnessTransport, "create_private_persistence", spec.CertificationID, err)
 	}
+	adapterEnvironment := map[string]string{}
 	adapterEnvironment[controlledHarnessHomeEnvironment] = harnessHome
 	adapterEnvironment[controlledPersistenceEnvironment] = persistenceRoot
-	transport, err := NewAdapterProcessTransport([]ModelProfile{spec.Profile}, []AdapterRouteSpec{{
+	routeSpec := AdapterRouteSpec{
 		ProfileBinding: spec.Profile.BindingID(), ExecutablePath: spec.AdapterExecutablePath,
 		ExecutableSHA256: spec.AdapterExecutableSHA256, AdapterEntrypointPath: spec.AdapterEntrypointPath,
 		AdapterEntrypointSHA256: spec.AdapterEntrypointSHA256,
@@ -555,11 +554,40 @@ func RunControlledCertification(
 		Environment: adapterEnvironment, WorkingDirectory: spec.AdapterWorkingDirectory,
 		StartupTimeout:  time.Duration(spec.AdapterStartupTimeoutMS) * time.Millisecond,
 		ShutdownTimeout: time.Duration(spec.AdapterShutdownTimeoutMS) * time.Millisecond,
-	}}, broker)
-	if err != nil {
-		if manager != nil {
-			_ = manager.Stop(context.Background())
+	}
+	var manager *ManagedLlama
+	if spec.Profile.BackendKind == BackendLocalLlamaCPP {
+		local := spec.LocalRuntime
+		manager, err = NewManagedLlama(spec.Profile, ManagedLlamaSpec{
+			ExecutablePath: local.ExecutablePath, GGUFPath: local.GGUFPath,
+			AdditionalArguments: append([]string(nil), local.AdditionalArguments...),
+			Environment:         cloneStringMap(local.Environment), WorkingDirectory: local.WorkingDirectory,
+			StartupTimeout:            time.Duration(local.StartupTimeoutMS) * time.Millisecond,
+			ShutdownTimeout:           time.Duration(local.ShutdownTimeoutMS) * time.Millisecond,
+			IsolationExecutablePath:   local.IsolationExecutablePath,
+			IsolationExecutableSHA256: local.IsolationExecutableSHA256,
+			IsolationArguments:        append([]string(nil), local.IsolationArguments...),
+		})
+		if err != nil {
+			return ControlledCertificationResult{}, err
 		}
+		defer func() { _ = manager.Retire(context.Background()) }()
+		if err = manager.PrepareIsolatedAdapter(routeSpec, controlledLocalEndpointEnvironment); err != nil {
+			return ControlledCertificationResult{}, err
+		}
+		if err = manager.Start(ctx); err != nil {
+			return ControlledCertificationResult{}, err
+		}
+		if endpoint, endpointErr := manager.Endpoint(); endpointErr != nil || !IsIPv4LoopbackURL(endpoint) {
+			if endpointErr == nil {
+				endpointErr = errors.New("isolated runtime returned a non-loopback endpoint")
+			}
+			return ControlledCertificationResult{}, newError(CodeLocalEndpointNotLoopback, "controlled_isolated_endpoint", spec.CertificationID, endpointErr)
+		}
+		routeSpec.IsolatedLauncher = manager
+	}
+	transport, err := NewAdapterProcessTransport([]ModelProfile{spec.Profile}, []AdapterRouteSpec{routeSpec}, broker)
+	if err != nil {
 		return ControlledCertificationResult{}, err
 	}
 	result, runErr := observeControlledCertification(ctx, spec, transport, credential, clock)
@@ -569,7 +597,7 @@ func RunControlledCertification(
 		if eligibilityErr := manager.FormalEligibilityError(); eligibilityErr != nil && runErr == nil {
 			runErr = eligibilityErr
 		}
-		stopErr = manager.Stop(context.Background())
+		stopErr = manager.Retire(context.Background())
 	}
 	if runErr != nil {
 		return ControlledCertificationResult{}, runErr

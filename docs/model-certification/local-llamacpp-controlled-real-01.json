@@ -1,6 +1,8 @@
 {
   "schema": "aipt.public.controlled-model-certification-result/v1",
   "result": "PASS",
+  "evidence_status": "SUPERSEDED_NON_FINAL",
+  "superseded_reason": "LOCAL_RUNTIME_SECURITY_BOUNDARY_REPLACED",
   "backend_kind": "LOCAL_LLAMACPP",
   "model_profile": {
     "schema": "aipt.model-profile/v1",

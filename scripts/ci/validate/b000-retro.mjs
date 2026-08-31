@@ -132,7 +132,7 @@ export function run(ctx, args = {}) {
     // Hygiene: no credentials, private paths, model endpoints or prompt bodies.
     const hazards = scanTreeForHazards(tmp);
     if (hazards.length > 0) {
-      for (const h of hazards.slice(0, 20)) fail(`B000 hazard ${h.hazard} in ${h.file}: ${JSON.stringify(h.sample)}`);
+      for (const h of hazards.slice(0, 20)) fail(`B000 hazard ${h.hazard} in ${h.file}`);
     } else ok('B000 tree: no credentials, no private absolute paths, no model endpoints, no public prompt body');
 
     // B000 bootstrap scope: no runtime/code/CI paths may exist in the tree.

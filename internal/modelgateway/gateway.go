@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,7 +44,9 @@ type Gateway struct {
 	breakGlassVerifier breakGlassGrantAuthority
 	mode               GatewayMode
 	mu                 sync.Mutex
+	closeMu            sync.Mutex
 	closed             bool
+	closeComplete      bool
 }
 
 func NewGateway(registry *Registry, binding ManifestBinding, transport HarnessTransport, audit AuditSink, options GatewayOptions) (*Gateway, error) {
@@ -318,6 +321,9 @@ func buildHarnessRequest(
 	if err != nil {
 		return EgressDecision{}, HarnessRequest{}, err
 	}
+	if len(prepared) > sampling.MaxContextTokens {
+		return EgressDecision{}, HarnessRequest{}, newError(CodeContextBudgetExceeded, "apply_sampling_context_budget", invocation.InvocationID, errors.New("prepared context exceeds the conservative governed token-equivalent byte ceiling"))
+	}
 	request := HarnessRequest{
 		Schema: HarnessRequestSchema, ProtocolVersion: "1", RequestID: invocation.InvocationID,
 		ProfileBinding: profile.BindingID(), SamplingBinding: sampling.BindingID(),
@@ -353,8 +359,18 @@ func validateHarnessResult(profile ModelProfile, request HarnessRequest, result 
 	if result.ObservedModelID != profile.ModelID {
 		return nil, newError(CodeModelIdentityMismatch, "validate_result", request.RequestID, errors.New("model identity drift"))
 	}
+	if result.RequestedSamplingSHA256 != request.SamplingProfile.SHA256 ||
+		strings.Join(result.UnsupportedSamplingParameters, "\x00") != strings.Join(request.SamplingProfile.UnsupportedParameters, "\x00") ||
+		validSHA("backend_serialized_request_sha256", result.BackendSerializedRequestSHA256) != nil ||
+		validateEffectiveSampling(request.SamplingProfile, result.EffectiveSampling) != nil {
+		return nil, newError(CodeSamplingDrift, "validate_effective_sampling", request.RequestID, errors.New("Harness sampling application evidence drift"))
+	}
 	if len(result.RawResponse) > 1<<20 || len(result.StructuredResponse) > 1<<20 {
 		return nil, newError(CodeHarnessFrameTooLarge, "validate_result", request.RequestID, errors.New("response exceeds bound"))
+	}
+	if len(result.RawResponse) > request.SamplingProfile.MaxOutputTokens ||
+		len(result.StructuredResponse) > request.SamplingProfile.MaxOutputTokens {
+		return nil, newError(CodeContextBudgetExceeded, "apply_sampling_output_budget", request.RequestID, errors.New("Harness response exceeds the conservative governed token-equivalent byte ceiling"))
 	}
 	computed := sha256.Sum256(result.RawResponse)
 	if result.ResponseSHA256 != hex.EncodeToString(computed[:]) {
@@ -388,6 +404,15 @@ func transportFailure(err error) error {
 }
 
 func (g *Gateway) Recover(ctx context.Context, session orchestrator.Session, request orchestrator.RecoveryRequest) (orchestrator.Session, error) {
+	if ctx == nil || ctx.Err() != nil {
+		return orchestrator.Session{}, errors.New("AIPT_MODEL_SESSION_RECOVERY_REJECTED")
+	}
+	g.mu.Lock()
+	closed := g.closed
+	g.mu.Unlock()
+	if closed {
+		return orchestrator.Session{}, errors.New("AIPT_MODEL_SESSION_RECOVERY_REJECTED")
+	}
 	_, profile, _, err := g.assignment(session.SeatID)
 	if err != nil || request.RunID != g.runID || request.SeatID != session.SeatID ||
 		request.OldSessionID != session.SessionID || request.RecoveryOrdinal != 1 {
@@ -406,12 +431,23 @@ func (g *Gateway) Recover(ctx context.Context, session orchestrator.Session, req
 }
 
 func (g *Gateway) Close(ctx context.Context) error {
+	g.closeMu.Lock()
+	defer g.closeMu.Unlock()
 	g.mu.Lock()
-	if g.closed {
+	if g.closeComplete {
 		g.mu.Unlock()
 		return nil
 	}
+	// Once shutdown starts, no new probe/invoke operation may enter even if
+	// transport cleanup needs another attempt. closeComplete, not closed,
+	// decides whether the owned transport still needs to be called.
 	g.closed = true
 	g.mu.Unlock()
-	return g.transport.Close(ctx)
+	if err := g.transport.Close(ctx); err != nil {
+		return err
+	}
+	g.mu.Lock()
+	g.closeComplete = true
+	g.mu.Unlock()
+	return nil
 }

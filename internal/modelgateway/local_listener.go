@@ -93,6 +93,44 @@ func (identity *managedProcessIdentity) close() {
 	identity.closed = true
 }
 
+func terminateOwnedProcessGroup(identity *managedProcessIdentity, signal syscall.Signal) error {
+	if identity == nil || identity.pid <= 1 {
+		return ownershipMismatch("invalid process identity cannot be signalled")
+	}
+	if err := identity.requireAlive(); err != nil {
+		return err
+	}
+	return syscall.Kill(-identity.pid, signal)
+}
+
+// waitProcessExit is deliberately independent of the caller's context. Once
+// an owned process has received SIGKILL we still allow one small, fixed reap
+// window, but never perform an unbounded channel receive. A false result
+// means the owner must retain the process identity and report failure.
+func waitProcessExit(exit <-chan error, timeout time.Duration) bool {
+	if exit == nil {
+		return false
+	}
+	timer := time.NewTimer(boundedCleanupTimeout(timeout))
+	defer timer.Stop()
+	select {
+	case <-exit:
+		return true
+	case <-timer.C:
+		return false
+	}
+}
+
+func boundedCleanupTimeout(configured time.Duration) time.Duration {
+	if configured <= 0 {
+		return time.Second
+	}
+	if configured > 2*time.Second {
+		return 2 * time.Second
+	}
+	return configured
+}
+
 type procTCPListener struct {
 	table   string
 	address string

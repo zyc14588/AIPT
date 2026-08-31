@@ -1,6 +1,8 @@
 {
   "schema": "aipt.public.controlled-model-certification-result/v1",
   "result": "PASS",
+  "evidence_status": "SUPERSEDED_NON_FINAL",
+  "superseded_reason": "SAMPLING_CONTROLS_NOT_PROPAGATED",
   "backend_kind": "REMOTE_DEEPSEEK",
   "model_profile": {
     "schema": "aipt.model-profile/v1",

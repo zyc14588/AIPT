@@ -43,6 +43,7 @@
     "test:orchestrator": "go test ./internal/orchestrator -count=1",
     "test:model-gateway": "go test ./internal/modelgateway -count=1",
     "test:model-harness-gateway": "pnpm --filter @aipt/model-harness-gateway test",
+    "test:publication-hygiene": "node --test scripts/ci/test/publication-hygiene.test.mjs",
     "smoke:web-ui": "go test ./internal/web -run '^TestLiveLoopbackSmoke$' -count=1 -v",
     "check:retro": "node scripts/ci/validate/b000-retro.mjs",
     "check:supply-chain": "node scripts/ci/validate/supply-chain.mjs",

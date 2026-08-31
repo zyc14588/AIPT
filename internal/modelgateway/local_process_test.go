@@ -1,6 +1,7 @@
 package modelgateway
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,6 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -41,6 +43,53 @@ func fileSHA256(t *testing.T, path string) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
+func TestVerifiedAssetUsesWriteSealedSnapshotAfterInPlaceMutation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "registered-asset")
+	original := []byte("verified immutable bytes")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	asset, err := openVerifiedAsset(path, fileSHA256(t, path), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer asset.close()
+	if err := os.WriteFile(path, []byte("attacker rewrote the registered inode"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	observed, err := asset.readAll(1 << 20)
+	if err != nil || !bytes.Equal(observed, original) {
+		t.Fatalf("sealed snapshot changed after in-place source mutation: %q, %v", observed, err)
+	}
+	descriptor, err := asset.descriptor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := descriptor.WriteAt([]byte("x"), 0); err == nil {
+		t.Fatal("verified asset snapshot remained writable after sealing")
+	}
+}
+
+func copyFixtureFile(t *testing.T, source, destination string, mode os.FileMode) {
+	t.Helper()
+	input, err := os.Open(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer input.Close()
+	output, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.Copy(output, input); err != nil {
+		_ = output.Close()
+		t.Fatal(err)
+	}
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func managedProfile(t *testing.T, executable, gguf string, additional []string, template string) ModelProfile {
 	t.Helper()
 	sampling := fixtureSampling(t, "sampling-managed-local")
@@ -52,6 +101,7 @@ func managedProfile(t *testing.T, executable, gguf string, additional []string, 
 	profile.SHA256 = ""
 	profile.LocalRuntimeIdentity.BinarySHA256 = fileSHA256(t, executable)
 	profile.LocalRuntimeIdentity.GGUFSHA256 = fileSHA256(t, gguf)
+	profile.LocalRuntimeIdentity.IsolationHelperSHA256 = fileSHA256(t, executable)
 	profile.LocalRuntimeIdentity.TemplateSHA256 = fixtureSHA(template)
 	profile.LocalRuntimeIdentity.LaunchParameters = parameters
 	bound, err := BindModelProfile(profile)
@@ -63,11 +113,14 @@ func managedProfile(t *testing.T, executable, gguf string, additional []string, 
 
 func managedFixture(t *testing.T, mode string) (ModelProfile, ManagedLlamaSpec) {
 	t.Helper()
-	executable, err := os.Executable()
+	sourceExecutable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	gguf := filepath.Join(t.TempDir(), "synthetic-contract.gguf")
+	assetRoot := t.TempDir()
+	executable := filepath.Join(assetRoot, "synthetic-runtime")
+	copyFixtureFile(t, sourceExecutable, executable, 0o700)
+	gguf := filepath.Join(assetRoot, "synthetic-contract.gguf")
 	if err := os.WriteFile(gguf, []byte("synthetic GGUF contract fixture; never formal certification"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -75,9 +128,24 @@ func managedFixture(t *testing.T, mode string) (ModelProfile, ManagedLlamaSpec) 
 	profile := managedProfile(t, executable, gguf, additional, managedFixtureTemplate)
 	return profile, ManagedLlamaSpec{
 		ExecutablePath: executable, GGUFPath: gguf, AdditionalArguments: additional,
-		Environment:      map[string]string{"AIPT_LLAMA_HELPER": "1", "AIPT_LLAMA_HELPER_MODE": mode},
+		Environment: map[string]string{
+			"AIPT_LLAMA_HELPER": "1", "AIPT_LLAMA_HELPER_MODE": mode,
+			"AIPT_LLAMA_HELPER_GGUF_SHA256": fileSHA256(t, gguf),
+		},
 		WorkingDirectory: t.TempDir(), StartupTimeout: 3 * time.Second, ShutdownTimeout: 2 * time.Second,
+		IsolationExecutablePath: executable, IsolationExecutableSHA256: fileSHA256(t, executable),
+		IsolationArguments: []string{"-test.run=^TestRuntimeIsolationHelperProcess$"},
 	}
+}
+
+func TestRuntimeIsolationHelperProcess(t *testing.T) {
+	if os.Getenv("AIPT_RUNTIME_ISOLATOR") != "1" {
+		return
+	}
+	if err := RunRuntimeIsolator(); err != nil {
+		os.Exit(30)
+	}
+	os.Exit(0)
 }
 
 // TestManagedLlamaHelperProcess is a secret-free public-CI process fixture,
@@ -100,8 +168,14 @@ func TestManagedLlamaHelperProcess(t *testing.T) {
 	host := valueAfter("--host")
 	port := valueAfter("--port")
 	alias := valueAfter("--alias")
-	if host == "" || port == "" || alias == "" || valueAfter("--model") == "" {
+	modelPath := valueAfter("--model")
+	if host == "" || port == "" || alias == "" || modelPath == "" {
 		os.Exit(31)
+	}
+	modelBytes, modelErr := os.ReadFile(modelPath)
+	modelDigest := sha256.Sum256(modelBytes)
+	if modelErr != nil || hex.EncodeToString(modelDigest[:]) != os.Getenv("AIPT_LLAMA_HELPER_GGUF_SHA256") {
+		os.Exit(34)
 	}
 	if os.Getenv("AIPT_LLAMA_HELPER_MODE") == "noisy" {
 		_, _ = os.Stdout.Write(bytesOf('x', 256<<10))
@@ -288,11 +362,11 @@ func TestManagedLocalStartupLoopbackShutdownAndM26RecoveryDisqualification(t *te
 	if err != nil || !IsIPv4LoopbackURL(endpoint) || endpoint.Port() == "" {
 		t.Fatalf("managed endpoint = %v, %v", endpoint, err)
 	}
-	response, err := http.Get(endpoint.String() + "/health")
-	if err != nil || response.StatusCode != http.StatusOK {
-		t.Fatalf("guarded endpoint health: status=%v err=%v", responseStatus(response), err)
+	probeContext, cancelProbe := context.WithTimeout(context.Background(), time.Second)
+	defer cancelProbe()
+	if !endpointUnreachableFromHost(probeContext, endpoint) {
+		t.Fatal("private namespace loopback endpoint was reachable from the host namespace")
 	}
-	_ = response.Body.Close()
 	if !manager.CleanBaselineEligible() || manager.FormalEligibilityError() != nil {
 		t.Fatal("fresh managed runtime is not clean-baseline eligible")
 	}
@@ -300,7 +374,6 @@ func TestManagedLocalStartupLoopbackShutdownAndM26RecoveryDisqualification(t *te
 	manager.mu.Lock()
 	pid := manager.cmd.Process.Pid
 	process := manager.process
-	target := *manager.target
 	manager.mu.Unlock()
 	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
 		t.Fatalf("crash fixture process: %v", err)
@@ -321,33 +394,9 @@ func TestManagedLocalStartupLoopbackShutdownAndM26RecoveryDisqualification(t *te
 	if err := process.requireAlive(); err == nil {
 		t.Fatal("pidfd process-generation identity remained valid after child exit")
 	}
-	if stolen, listenErr := net.Listen("tcp4", endpoint.Host); listenErr == nil {
-		_ = stolen.Close()
-		t.Fatal("stable AIPT-owned endpoint became bindable after managed child crash")
+	if _, endpointErr := manager.Endpoint(); endpointErr == nil {
+		t.Fatal("crashed isolation generation still exposed an endpoint capability")
 	}
-	attacker, err := net.Listen("tcp4", target.Host)
-	if err != nil {
-		t.Fatalf("bind deterministic post-crash target competitor: %v", err)
-	}
-	var attackerRequests atomic.Int64
-	attackerServer := &http.Server{Handler: http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		attackerRequests.Add(1)
-		writer.WriteHeader(http.StatusOK)
-	})}
-	attackerDone := make(chan error, 1)
-	go func() { attackerDone <- attackerServer.Serve(attacker) }()
-	guardedClient := &http.Client{Timeout: time.Second, Transport: &http.Transport{DisableKeepAlives: true}}
-	response, err = guardedClient.Get(endpoint.String() + "/health")
-	if err != nil {
-		t.Fatalf("guarded post-crash request: %v", err)
-	}
-	_, _ = io.Copy(io.Discard, response.Body)
-	_ = response.Body.Close()
-	if response.StatusCode != http.StatusBadGateway || attackerRequests.Load() != 0 {
-		t.Fatalf("post-crash rebind was not fail-closed: status=%d attacker_requests=%d", response.StatusCode, attackerRequests.Load())
-	}
-	_ = attackerServer.Close()
-	<-attackerDone
 
 	if err := manager.Recover(context.Background()); err != nil {
 		t.Fatalf("bounded recovery: %v", err)
@@ -371,6 +420,250 @@ func TestManagedLlamaRejectsConflictingLLAMACPP01ModelEnvelope(t *testing.T) {
 	requireCode(t, err, CodeLocalReadinessFailed)
 	if !errors.Is(err, Sentinel(CodeModelIdentityMismatch)) {
 		t.Fatalf("model identity mismatch cause missing: %v", err)
+	}
+}
+
+func TestVerifiedAssetPathReplacementCannotChangeExecutableOrGGUF(t *testing.T) {
+	profile, spec := managedFixture(t, "ready")
+	manager, err := NewManagedLlama(profile, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalExecutable := spec.ExecutablePath + ".verified"
+	if err := os.Rename(spec.ExecutablePath, originalExecutable); err != nil {
+		t.Fatal(err)
+	}
+	copyFixtureFile(t, "/bin/false", spec.ExecutablePath, 0o700)
+	originalGGUF := spec.GGUFPath + ".verified"
+	if err := os.Rename(spec.GGUFPath, originalGGUF); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(spec.GGUFPath, []byte("attacker replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(context.Background()); err != nil {
+		t.Fatalf("held verified executable/GGUF were not used after pathname replacement: %v", err)
+	}
+	if err := manager.Retire(context.Background()); err != nil {
+		t.Fatalf("retire held verified assets: %v", err)
+	}
+}
+
+func TestFailedSpawnCleanupIsBoundedAndNeverSignalsInvalidOrUnrelatedPID(t *testing.T) {
+	profile, spec := managedFixture(t, "ready")
+	invalidIsolator := filepath.Join(t.TempDir(), "invalid-runtime-isolator")
+	if err := os.WriteFile(invalidIsolator, []byte("synthetic invalid executable format"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	invalidDigest := fileSHA256(t, invalidIsolator)
+	profile.SHA256 = ""
+	profile.LocalRuntimeIdentity.IsolationHelperSHA256 = invalidDigest
+	var bindErr error
+	profile, bindErr = BindModelProfile(profile)
+	if bindErr != nil {
+		t.Fatal(bindErr)
+	}
+	spec.IsolationExecutablePath = invalidIsolator
+	spec.IsolationExecutableSHA256 = invalidDigest
+	manager, err := NewManagedLlama(profile, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	err = manager.Start(context.Background())
+	requireCode(t, err, CodeLocalStartupFailed)
+	if time.Since(started) > 3*time.Second {
+		t.Fatal("failed spawn cleanup exceeded its fixed bound")
+	}
+	manager.mu.Lock()
+	state, command, process := manager.state, manager.cmd, manager.process
+	manager.mu.Unlock()
+	if state != managedStopped || command != nil || process != nil {
+		t.Fatalf("failed spawn published partial ownership: state=%s command=%v process=%v", state, command != nil, process != nil)
+	}
+	if _, err := bindManagedProcessIdentity(nil, -1); err == nil {
+		t.Fatal("nil process identity accepted")
+	}
+	if err := terminateProcessGroup(1, syscall.SIGKILL); err == nil {
+		t.Fatal("PID 1 entered numeric signal path")
+	}
+	unrelated := exec.Command("/bin/sleep", "30")
+	unrelated.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := unrelated.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = unrelated.Process.Kill()
+		_ = unrelated.Wait()
+	}()
+	if err := terminateOwnedProcessGroup(nil, syscall.SIGKILL); err == nil {
+		t.Fatal("nil ownership entered signal path")
+	}
+	if err := unrelated.Process.Signal(syscall.Signal(0)); err != nil {
+		t.Fatalf("invalid cleanup signalled an unrelated process: %v", err)
+	}
+	if err := manager.Retire(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestManagedLifecycleConcurrentStartStopIsLinearizableAndLeakFree(t *testing.T) {
+	for iteration := 0; iteration < 12; iteration++ {
+		profile, spec := managedFixture(t, "ready")
+		manager, err := NewManagedLlama(profile, spec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var successes atomic.Int32
+		var group sync.WaitGroup
+		start := make(chan struct{})
+		for worker := 0; worker < 6; worker++ {
+			group.Add(1)
+			go func() {
+				defer group.Done()
+				<-start
+				if manager.Start(context.Background()) == nil {
+					successes.Add(1)
+				}
+			}()
+		}
+		close(start)
+		group.Wait()
+		if successes.Load() != 1 {
+			t.Fatalf("iteration %d launched %d generations", iteration, successes.Load())
+		}
+		manager.mu.Lock()
+		pid := manager.process.pid
+		if manager.state != managedRunning || manager.cmd == nil || manager.isolationControl == nil {
+			manager.mu.Unlock()
+			t.Fatalf("iteration %d has an inconsistent running generation", iteration)
+		}
+		manager.mu.Unlock()
+
+		tracing := make(chan struct{})
+		var startErr, stopErr error
+		group.Add(2)
+		go func() { defer group.Done(); <-tracing; startErr = manager.Start(context.Background()) }()
+		go func() { defer group.Done(); <-tracing; stopErr = manager.Stop(context.Background()) }()
+		close(tracing)
+		group.Wait()
+		if stopErr != nil {
+			t.Fatalf("iteration %d stop failed: %v", iteration, stopErr)
+		}
+		manager.mu.Lock()
+		state, command := manager.state, manager.cmd
+		newPID := 0
+		if manager.process != nil {
+			newPID = manager.process.pid
+		}
+		manager.mu.Unlock()
+		if startErr == nil {
+			if state != managedRunning || command == nil || newPID <= 1 || newPID == pid {
+				t.Fatalf("iteration %d did not publish exactly one post-stop generation: state=%s pid=%d", iteration, state, newPID)
+			}
+		} else if state != managedStopped || command != nil {
+			t.Fatalf("iteration %d has a partial generation after stop won the race: %s", iteration, state)
+		}
+		if _, statErr := os.Stat(fmt.Sprintf("/proc/%d", pid)); !os.IsNotExist(statErr) {
+			t.Fatalf("iteration %d leaked supervisor pid %d", iteration, pid)
+		}
+		if state == managedRunning {
+			if err := manager.Stop(context.Background()); err != nil {
+				t.Fatalf("iteration %d cleanup of post-stop generation: %v", iteration, err)
+			}
+		}
+		if err := manager.Retire(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestOnlyIsolatedAdapterCanReachManagedLlamaLoopback(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node runtime unavailable")
+	}
+	nodeOutput, err := exec.Command(node, "-p", "process.execPath").Output()
+	if err != nil {
+		t.Skip("exact Node executable unavailable")
+	}
+	node = strings.TrimSpace(string(nodeOutput))
+	profile, llamaSpec := managedFixture(t, "ready")
+	root := t.TempDir()
+	descendantLeakMarker := filepath.Join(root, "detached-adapter-descendant-leaked")
+	descendantSource := fmt.Sprintf(
+		"setTimeout(()=>import('node:fs').then((fs)=>fs.writeFileSync(%s,'leaked')),500)",
+		strconv.Quote(descendantLeakMarker),
+	)
+	entry := filepath.Join(root, "isolated-adapter.mjs")
+	source := fmt.Sprintf(`import{spawn}from'node:child_process';import{createInterface}from'node:readline';
+const lines=createInterface({input:process.stdin});
+let spawned=false;lines.on('line',async(line)=>{if(!spawned){spawned=true;spawn('/proc/self/exe',['--input-type=module','--eval',%s],{detached:true,stdio:'ignore'}).unref()}const request=JSON.parse(line);const response=await fetch(process.env.AIPT_LOCAL_TEST_ENDPOINT+'/health');if(!response.ok)process.exit(41);const p=request.params;process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,protocol_version:'1',result:{harness_identity:p.harness_identity,protocol_identity:p.protocol_identity,protocol_version:p.protocol_version,observed_model_id:p.expected_model_id,capability_fingerprint:p.capability_fingerprint,route_available:true,direct_provider_bypass_available:false}})+'\n')});`, strconv.Quote(descendantSource))
+	if err := os.WriteFile(entry, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	routeConfig := filepath.Join(root, "route.json")
+	entryDigest := fileSHA256(t, entry)
+	routeDocument := map[string]any{"child": map[string]any{
+		"executable_path": node, "executable_sha256": fileSHA256(t, node),
+		"arguments":             []string{entry},
+		"argument_file_digests": []map[string]any{{"index": 0, "sha256": entryDigest}},
+		"runtime_closure": map[string]any{
+			"schema": HarnessRuntimeClosureSchema, "kind": HarnessRuntimeClosureKind,
+			"entrypoint_argument_index": 0, "sha256": entryDigest,
+		},
+	}}
+	routeBytes, err := json.Marshal(routeDocument)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(routeConfig, routeBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	route := AdapterRouteSpec{
+		ProfileBinding: profile.BindingID(), ExecutablePath: node, ExecutableSHA256: fileSHA256(t, node),
+		AdapterEntrypointPath: entry, AdapterEntrypointSHA256: entryDigest,
+		RouteConfigPath: routeConfig, RouteConfigSHA256: fileSHA256(t, routeConfig),
+		WorkingDirectory: root, StartupTimeout: 3 * time.Second, ShutdownTimeout: 2 * time.Second,
+	}
+	manager, err := NewManagedLlama(profile, llamaSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = manager.Retire(context.Background()) }()
+	if err := manager.PrepareIsolatedAdapter(route, "AIPT_LOCAL_TEST_ENDPOINT"); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	endpoint, err := manager.Endpoint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hostProbe, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if !endpointUnreachableFromHost(hostProbe, endpoint) {
+		t.Fatal("host-local process reached the unauthenticated private llama endpoint")
+	}
+	route.IsolatedLauncher = manager
+	transport, err := NewAdapterProcessTransport([]ModelProfile{profile}, []AdapterRouteSpec{route}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe, err := transport.Probe(context.Background(), profile, fixtureSampling(t, "isolation-probe-sampling"))
+	if err != nil {
+		t.Fatalf("governed in-namespace adapter could not reach llama: %v", err)
+	}
+	if err := validateProbe(profile, probe); err != nil {
+		t.Fatalf("isolated adapter probe identity: %v", err)
+	}
+	if err := transport.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(750 * time.Millisecond)
+	if _, err := os.Stat(descendantLeakMarker); !os.IsNotExist(err) {
+		t.Fatal("detached adapter descendant survived governed Harness cleanup")
 	}
 }
 

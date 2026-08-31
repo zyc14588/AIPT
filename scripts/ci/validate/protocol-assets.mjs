@@ -136,9 +136,7 @@ const WIRE_ERROR_MISMATCH = 'AIPT_PROTOCOL_ERROR_MISMATCHED_ERROR_CODE';
 function canonicalJson(value) {
   if (Array.isArray(value)) return value.map(canonicalJson);
   if (value !== null && typeof value === 'object') {
-    const out = {};
-    for (const key of Object.keys(value).sort()) out[key] = canonicalJson(value[key]);
-    return out;
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalJson(value[key])]));
   }
   return value;
 }

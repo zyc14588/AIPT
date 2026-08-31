@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+const (
+	harnessHomeEnvironment        = "DSH_HOME"
+	harnessPersistenceEnvironment = "AIPT_HARNESS_PERSISTENCE_ROOT"
+	harnessRouteFDEnvironment     = "AIPT_HARNESS_ROUTE_FD"
+	remoteCredentialEnvironment   = "DEEPSEEK_API_KEY"
+)
+
 // CredentialBroker exposes write-only process binding. Validation returns
 // only reference metadata; BindChildEnvironment is the sole secret-bearing
 // path and its result must be passed directly to exec.Cmd.Env.
@@ -54,13 +61,26 @@ func (b EnvironmentCredentialBroker) BindChildEnvironment(ctx context.Context, r
 	value, _ := b.lookup(reference.Locator)
 	result := make(map[string]string, len(base)+1)
 	for key, item := range base {
-		if secretRE.MatchString(key) || strings.HasPrefix(key, "DSH_") || key == "DEEPSEEK_API_KEY" {
-			continue
+		// A caller-supplied base map must not turn the credential broker into
+		// a process-loader injection channel. DSH_HOME remains intentionally
+		// broker-owned/omitted for the remote route, preserving the existing
+		// controlled-runtime contract; the persistence root is the only
+		// configured Harness value copied through this boundary.
+		if isBaseProcessEnvironment(key) || key == harnessPersistenceEnvironment || key == harnessRouteFDEnvironment {
+			result[key] = item
 		}
-		result[key] = item
 	}
-	result["DEEPSEEK_API_KEY"] = value
+	result[remoteCredentialEnvironment] = value
 	return result, nil
+}
+
+func isBaseProcessEnvironment(name string) bool {
+	switch name {
+	case "LANG", "LC_ALL", "TZ", "PATH":
+		return true
+	default:
+		return false
+	}
 }
 
 func allowlistedBaseEnvironment(source map[string]string) map[string]string {

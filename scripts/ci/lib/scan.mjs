@@ -43,24 +43,36 @@ const TEXT_SUFFIXES = new Set([
 ]);
 
 const SKIPPED_DIRS = new Set(['.git', 'node_modules', '.b001-toolcache']);
+const SCAN_LIMITS = Object.freeze({
+  max_entries: 50_000,
+  max_files: 10_000,
+  max_file_bytes: 8 * 1024 * 1024,
+  max_total_bytes: 64 * 1024 * 1024,
+  max_findings: 4096,
+});
 
 export function walkFiles(root, filter) {
   const out = [];
   const stack = [root];
+  let entriesVisited = 0;
   while (stack.length > 0) {
     const dir = stack.pop();
-    let entries;
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
+      entriesVisited += 1;
+      if (entriesVisited > SCAN_LIMITS.max_entries) throw new Error('scan traversal exceeds bounded entry policy');
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
+      if (entry.isSymbolicLink()) {
+        throw new Error(`scan traversal rejects symbolic link: ${relOf(root, full)}`);
+      } else if (entry.isDirectory()) {
         if (!SKIPPED_DIRS.has(entry.name)) stack.push(full);
       } else if (entry.isFile()) {
-        if (!filter || filter(full)) out.push(full);
+        if (!filter || filter(full)) {
+          out.push(full);
+          if (out.length > SCAN_LIMITS.max_files) throw new Error('scan traversal exceeds bounded file policy');
+        }
+      } else {
+        throw new Error(`scan traversal rejects unsupported node: ${relOf(root, full)}`);
       }
     }
   }
@@ -135,6 +147,7 @@ export function collectMarkdownLinkIssues(root, { skipPrefixes = [] } = {}) {
 // regression in tree-integrity.mjs).
 export function scanTreeForHazards(root, { skipPrefixes = [], extraPatterns = [] } = {}) {
   const findings = [];
+  let bytesScanned = 0;
   const patterns = [
     ...SECRET_PATTERNS,
     ...MODEL_ENDPOINT_PATTERNS,
@@ -144,16 +157,32 @@ export function scanTreeForHazards(root, { skipPrefixes = [], extraPatterns = []
   for (const file of walkFiles(root, (f) => TEXT_SUFFIXES.has(path.extname(f).toLowerCase()))) {
     const rel = relOf(root, file);
     if (skipPrefixes.some((p) => rel.startsWith(p))) continue;
+    let descriptor;
     let text;
     try {
-      text = fs.readFileSync(file, 'utf8');
-    } catch {
-      continue;
+      descriptor = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_CLOEXEC | fs.constants.O_NOFOLLOW);
+      const before = fs.fstatSync(descriptor);
+      if (!before.isFile() || before.size < 0 || before.size > SCAN_LIMITS.max_file_bytes ||
+          before.size > SCAN_LIMITS.max_total_bytes - bytesScanned) {
+        throw new Error('hazard scan payload exceeds bounded byte policy');
+      }
+      const raw = fs.readFileSync(descriptor);
+      const after = fs.fstatSync(descriptor);
+      if (raw.byteLength !== before.size || after.size !== before.size ||
+          after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs) {
+        throw new Error('hazard scan payload changed while open');
+      }
+      text = new TextDecoder('utf-8', { fatal: true }).decode(raw);
+      bytesScanned += raw.byteLength;
+    } finally {
+      if (descriptor !== undefined) fs.closeSync(descriptor);
     }
     for (const [pattern, label] of patterns) {
+      pattern.lastIndex = 0;
       const match = pattern.exec(text);
       if (match) {
-        findings.push({ file: rel, hazard: label, sample: match[0].slice(0, 120) });
+        findings.push({ file: rel, hazard: label });
+        if (findings.length > SCAN_LIMITS.max_findings) throw new Error('hazard scan exceeds bounded finding policy');
         break;
       }
     }

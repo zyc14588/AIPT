@@ -103,6 +103,9 @@ func unboundCertification(t *testing.T, profile ModelProfile, sampling SamplingP
 		StructuredOutputMode:   profile.StructuredOutputMode, ToolCallMode: profile.ToolCallMode,
 		RequestContractVersion: "1", CapabilityFingerprint: profile.Harness.CapabilityFingerprint,
 		EnvironmentIdentity: "synthetic-public-ci-v1", LocalRuntimeIdentity: profile.LocalRuntimeIdentity,
+		RequestedSamplingSHA256: sampling.SHA256, EffectiveSampling: effectiveSamplingProjection(sampling),
+		UnsupportedSamplingParameters:  append([]string(nil), sampling.UnsupportedParameters...),
+		BackendSerializedRequestSHA256: fixtureSHA("synthetic-backend-request-" + id),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -137,5 +140,19 @@ func TestDeterministicContextReductionRemovesOnlyRetrievedThenOldestEvents(t *te
 	}
 	if string(first) != string(second) || firstReduction.PreparedContextSHA256 != secondReduction.PreparedContextSHA256 {
 		t.Fatal("context reduction is nondeterministic")
+	}
+}
+
+func TestPrepareContextRejectsOversizedElementInventoryBeforeHashing(t *testing.T) {
+	bundle := fixtureContext(t, "run-context-preflight-v1", orchestrator.SeatPlayer1)
+	bundle.Untrusted.EventWindow = make([]orchestrator.EventWindowItem, maxPreparedContextElementsV1+1)
+	_, reduction, err := PrepareContext(bundle, ContextPolicy{
+		PolicyID: "context-preflight-v1", PolicyVersion: "1.0.0",
+		MaxRequestBytes: 16 << 20, MaxContextBytes: 64 << 10,
+		ReductionPolicyID: "AIPT_CONTEXT_BUDGET_REDUCE_V1",
+	})
+	requireCode(t, err, CodeContextBudgetExceeded)
+	if reduction.PreparedBytes != 0 || reduction.PreparedContextSHA256 != "" {
+		t.Fatalf("oversized preflight produced partial context evidence: %+v", reduction)
 	}
 }

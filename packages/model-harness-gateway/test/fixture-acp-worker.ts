@@ -18,7 +18,15 @@ if (Number.isSafeInteger(stderrBytes) && stderrBytes > 0) {
 }
 
 function write(value: unknown): void {
-  process.stdout.write(`${JSON.stringify(value)}\n`);
+  const frame = Buffer.from(`${JSON.stringify(value)}\n`, 'utf8');
+  const fragmentBytes = Number(process.env.AIPT_FIXTURE_FRAGMENT_BYTES ?? '0');
+  if (Number.isSafeInteger(fragmentBytes) && fragmentBytes > 0) {
+    for (let offset = 0; offset < frame.length; offset += fragmentBytes) {
+      process.stdout.write(frame.subarray(offset, Math.min(offset + fragmentBytes, frame.length)));
+    }
+    return;
+  }
+  process.stdout.write(frame);
 }
 
 function emitTrailingOutput(): void {
@@ -82,7 +90,7 @@ lines.on('line', (line) => {
     const initialized = {
       jsonrpc: '2.0', id: frame.id,
       result: {
-        protocolVersion: 1,
+        protocolVersion: process.env.AIPT_FIXTURE_INVALID_INITIALIZE === '1' ? 2 : 1,
         agentCapabilities: { promptCapabilities: { image: false, audio: false, embeddedContext: false } },
       },
     };
@@ -101,32 +109,61 @@ lines.on('line', (line) => {
     const sessionId = String(params.sessionId ?? '');
     prompts.set(sessionId, frame.id as string | number);
     if (process.env.AIPT_FIXTURE_HANG === '1') return;
-	if (process.env.AIPT_FIXTURE_OVERSIZED_FRAME === '1') {
-	  process.stdout.write(`${'x'.repeat((1024 * 1024) + 1)}\n`);
-	  return;
-	}
+    if (process.env.AIPT_FIXTURE_PROMPT_ERROR === '1') {
+      write({ jsonrpc: '2.0', id: frame.id, error: { code: -32000, message: 'synthetic prompt failure' } });
+      return;
+    }
+    if (process.env.AIPT_FIXTURE_OVERSIZED_FRAME === '1') {
+      process.stdout.write(`${'x'.repeat((1024 * 1024) + 1)}\n`);
+      return;
+    }
     const prompt = Array.isArray(params.prompt) ? object(params.prompt[0]) : {};
     const text = String(prompt.text ?? '');
     const taskLine = text.split('\n').at(-1) ?? '{}';
     const task = object(JSON.parse(taskLine) as unknown);
     const invocation = object(task.invocation);
-	const noiseCount = Number(process.env.AIPT_FIXTURE_NOISE_COUNT ?? '0');
-	const noiseBytes = Number(process.env.AIPT_FIXTURE_NOISE_BYTES ?? '0');
-	if (Number.isSafeInteger(noiseCount) && noiseCount > 0 &&
-	    Number.isSafeInteger(noiseBytes) && noiseBytes > 0) {
-	  for (let index = 0; index < noiseCount; index += 1) {
-	    write({
-	      jsonrpc: '2.0', method: 'session/update',
-	      params: {
-	        sessionId: `unrelated-${index}`,
-	        update: {
-	          sessionUpdate: 'agent_message_chunk',
-	          content: { type: 'text', text: 'x'.repeat(noiseBytes) },
-	        },
-	      },
-	    });
-	  }
-	}
+    const sampling = object(task.sampling);
+    const effective = object(sampling.effective_sampling_projection);
+    if (typeof sampling.requested_sampling_sha256 !== 'string' ||
+        !Array.isArray(sampling.unsupported_parameters) ||
+        JSON.stringify(sampling.unsupported_parameters) !== JSON.stringify(['temperature', 'top_p']) ||
+        effective.schema !== 'aipt.effective-sampling-projection/v1' ||
+        effective.enforcement_identity !== 'AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1' ||
+        effective.max_context_tokens !== 8192 || effective.max_output_tokens !== 1024 ||
+        effective.context_utf8_byte_ceiling !== 8192 || effective.output_utf8_byte_ceiling !== 1024) {
+      process.exit(3);
+      return;
+    }
+    const noiseCount = Number(process.env.AIPT_FIXTURE_NOISE_COUNT ?? '0');
+    const noiseBytes = Number(process.env.AIPT_FIXTURE_NOISE_BYTES ?? '0');
+    if (Number.isSafeInteger(noiseCount) && noiseCount > 0 &&
+        Number.isSafeInteger(noiseBytes) && noiseBytes > 0) {
+      for (let index = 0; index < noiseCount; index += 1) {
+        write({
+          jsonrpc: '2.0', method: 'session/update',
+          params: {
+            sessionId: `unrelated-${index}`,
+            update: {
+              sessionUpdate: 'agent_message_chunk',
+              content: { type: 'text', text: 'x'.repeat(noiseBytes) },
+            },
+          },
+        });
+      }
+    }
+    const activeOutputBytes = Number(process.env.AIPT_FIXTURE_ACTIVE_OUTPUT_BYTES ?? '0');
+    if (Number.isSafeInteger(activeOutputBytes) && activeOutputBytes > 0) {
+      write({
+        jsonrpc: '2.0', method: 'session/update',
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'o'.repeat(activeOutputBytes) },
+          },
+        },
+      });
+    }
     const responsePaddingBytes = Number(process.env.AIPT_FIXTURE_RESPONSE_PADDING_BYTES ?? '0');
     const response = JSON.stringify({
       schema: 'aipt.agent-response/v1',

@@ -285,3 +285,150 @@ test('bundle wrapper and documents collection inspect descriptors only (no acces
   assert.ok(result.issues.some((issue) => issue.code === 'AIPT_FIXTURE_INVALID_MANIFEST'));
   assert.equal(documentsCalls, 0, 'documents-collection accessors must never be invoked');
 });
+
+test('bundle wrapper rejects an own __proto__ member instead of inheriting trusted fields', () => {
+  const wrapper: Record<string, unknown> = {};
+  Object.defineProperty(wrapper, '__proto__', {
+    value: { manifest, documents: loadAllDocuments(), schema },
+    enumerable: true,
+  });
+  const result = sdk.validateFixtureBundle(wrapper, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((entry) => entry.code === 'AIPT_FIXTURE_INVALID_MANIFEST'));
+  assert.equal(Object.hasOwn(wrapper, 'manifest'), false);
+  assert.equal((Object.prototype as Record<string, unknown>).manifest, undefined);
+});
+
+test('bundle wrapper rejects foreign prototypes without enumerating their keys and accepts null-prototype data wrappers', () => {
+  let inheritedEnumerationCalls = 0;
+  const hostilePrototype = new Proxy({}, {
+    ownKeys: () => {
+      inheritedEnumerationCalls += 1;
+      return ['manifest'];
+    },
+  });
+  const foreign = Object.create(hostilePrototype) as Record<string, unknown>;
+  Object.defineProperties(foreign, {
+    manifest: { value: manifest, enumerable: true },
+    documents: { value: loadAllDocuments(), enumerable: true },
+    schema: { value: schema, enumerable: true },
+  });
+  let result = sdk.validateFixtureBundle(foreign, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((entry) => entry.code === 'AIPT_FIXTURE_INVALID_MANIFEST'));
+  assert.equal(inheritedEnumerationCalls, 0, 'wrapper validation must never enumerate a foreign prototype');
+
+  let accessorCalls = 0;
+  const accessorWrapper = { manifest, documents: loadAllDocuments(), schema } as Record<string, unknown>;
+  Object.defineProperty(accessorWrapper, 'hidden', {
+    get: () => { accessorCalls += 1; return true; },
+    enumerable: false,
+  });
+  result = sdk.validateFixtureBundle(accessorWrapper, schema);
+  assert.equal(result.valid, false);
+  assert.equal(accessorCalls, 0, 'even non-enumerable wrapper accessors must be rejected without invocation');
+
+  const nullPrototype = Object.create(null) as Record<string, unknown>;
+  Object.defineProperties(nullPrototype, {
+    manifest: { value: manifest, enumerable: true },
+    documents: { value: loadAllDocuments(), enumerable: true },
+    schema: { value: schema, enumerable: true },
+  });
+  result = sdk.validateFixtureBundle(nullPrototype, schema);
+  assert.equal(result.valid, true, JSON.stringify(result.issues));
+});
+
+test('fixture document count and aggregate key bytes fail closed before unbounded copying', () => {
+  const countOverflow = loadAllDocuments();
+  for (let index = 0; index <= sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_fixture_documents; index += 1) {
+    countOverflow.set(`surplus-${index}.json`, null);
+  }
+  let result = sdk.validateFixtureBundle({ manifest, documents: countOverflow }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((entry) => entry.code === 'AIPT_JSON_RESOURCE_LIMIT'));
+  assert.ok(result.issues.length <= sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_issues);
+
+  const keyOverflow = loadAllDocuments();
+  keyOverflow.set('x'.repeat(sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_fixture_document_key_bytes + 1), null);
+  result = sdk.validateFixtureBundle({ manifest, documents: keyOverflow }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((entry) => entry.code === 'AIPT_JSON_RESOURCE_LIMIT'));
+});
+
+test('fixture validation shares one aggregate byte budget across repeated document passes', () => {
+  const mutated = JSON.parse(JSON.stringify(manifest)) as { assets: Array<{
+    path: string;
+    kind: 'state';
+    schema_ref: string;
+    sha256: string;
+  }> };
+  const documents = loadAllDocuments();
+  const source = loadFixtureJson('state.json');
+  const padding = 'x'.repeat(3 * 1024 * 1024);
+  for (let index = 0; index < 6; index += 1) {
+    const document = JSON.parse(JSON.stringify(source)) as Record<string, unknown>;
+    document.padding = padding;
+    const assetPath = `aggregate-budget-state-${index}.json`;
+    mutated.assets.push({
+      path: assetPath,
+      kind: 'state',
+      schema_ref: '#/$defs/state',
+      sha256: sdk.sha256Hex(document),
+    });
+    documents.set(assetPath, document);
+  }
+  const result = sdk.validateFixtureBundle({ manifest: mutated, documents }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((entry) => entry.code === 'AIPT_JSON_RESOURCE_LIMIT'));
+  assert.ok(result.issues.length <= sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_issues);
+});
+
+test('fixture schema issues consume the bundle issue budget and fail closed immediately', () => {
+  const documents = loadAllDocuments();
+  const hostile = JSON.parse(JSON.stringify(documents.get('state.json'))) as Record<string, unknown>;
+  for (let index = 0; index <= sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_issues; index += 1) {
+    hostile[`unexpected_${index}`] = index;
+  }
+  documents.set('state.json', hostile);
+  const mutated = JSON.parse(JSON.stringify(manifest)) as { assets: Array<{ path: string; sha256: string }> };
+  mutated.assets.find((entry) => entry.path === 'state.json')!.sha256 = sdk.sha256Hex(hostile);
+
+  const result = sdk.validateFixtureBundle({ manifest: mutated, documents }, schema);
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.issues.map((entry) => entry.code), ['AIPT_JSON_RESOURCE_LIMIT']);
+});
+
+test('fixture projection compatibility uses a bundle-wide semantic comparison budget', () => {
+  const mutated = JSON.parse(JSON.stringify(manifest)) as {
+    assets: Array<{ path: string; kind: string; schema_ref: string; sha256: string }>;
+  };
+  const documents = loadAllDocuments();
+  for (const entry of mutated.assets) {
+    if (entry.kind === 'state' || entry.kind === 'projection') documents.delete(entry.path);
+  }
+  mutated.assets = mutated.assets.filter((entry) => entry.kind !== 'state' && entry.kind !== 'projection');
+
+  const stateSource = loadFixtureJson('state.json');
+  const projectionSource = loadFixtureJson('projection-seat-b.json');
+  const side = Math.ceil(Math.sqrt(sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_fixture_semantic_comparisons + 1));
+  for (let index = 0; index < side; index += 1) {
+    const state = JSON.parse(JSON.stringify(stateSource)) as { state_id: string; fields: Array<{ value: unknown }> };
+    state.state_id = `budget-state-${index}`;
+    state.fields[0].value = index;
+    const statePath = `budget-state-${index}.json`;
+    mutated.assets.push({ path: statePath, kind: 'state', schema_ref: '#/$defs/state', sha256: sdk.sha256Hex(state) });
+    documents.set(statePath, state);
+
+    const projection = JSON.parse(JSON.stringify(projectionSource)) as { projection_id: string; fields: Array<{ value: unknown }> };
+    projection.projection_id = `budget-projection-${index}`;
+    projection.fields[0].value = 10_000 + index;
+    const projectionPath = `budget-projection-${index}.json`;
+    mutated.assets.push({ path: projectionPath, kind: 'projection', schema_ref: '#/$defs/projection', sha256: sdk.sha256Hex(projection) });
+    documents.set(projectionPath, projection);
+  }
+
+  const result = sdk.validateFixtureBundle({ manifest: mutated, documents }, schema);
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((entry) => entry.code === 'AIPT_JSON_RESOURCE_LIMIT' && entry.message.includes('semantic comparisons')));
+  assert.ok(result.issues.length <= sdk.SDK_JSON_RESOURCE_LIMITS_V1.max_issues);
+});

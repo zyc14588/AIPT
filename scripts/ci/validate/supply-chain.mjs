@@ -227,9 +227,7 @@ function exactScalarObject(actual, expected) {
 function canonicalValue(value) {
   if (Array.isArray(value)) return value.map(canonicalValue);
   if (value && typeof value === 'object') {
-    const result = {};
-    for (const key of Object.keys(value).sort()) result[key] = canonicalValue(value[key]);
-    return result;
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
   }
   return value;
 }
@@ -2183,7 +2181,7 @@ export function run(ctx) {
   // because every hazard literal is assembled from fragments) ----
   const hazards = scanTreeForHazards(ctx.repo);
   if (hazards.length > 0) {
-    for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}: ${JSON.stringify(h.sample)}`);
+    for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}`);
   } else ok('no secrets, private paths, model endpoints or prompt bodies in tracked config or executable scripts');
   if (workflow.includes('secrets.')) fail('workflow references secrets.*');
   else ok('workflow secret-free');

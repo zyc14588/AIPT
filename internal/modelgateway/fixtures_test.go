@@ -28,6 +28,7 @@ func fixtureHarness() HarnessIdentity {
 		PackageSHA256:    fixtureSHA("deepseek-harness-rc8-package"),
 		ProtocolIdentity: HarnessProtocolACP, ProtocolVersion: HarnessProtocolVersionACP,
 		CapabilityFingerprint: fixtureSHA("deepseek-harness-rc8-acp-capabilities"),
+		RuntimeClosureKind:    HarnessRuntimeClosureKind, RuntimeClosureSHA256: fixtureSHA("deepseek-harness-runtime-closure"),
 	}
 }
 
@@ -38,7 +39,8 @@ func fixtureSampling(t *testing.T, id string) SamplingProfile {
 		Temperature: 0.2, TopP: 0.9, MaxOutputTokens: 1024, MaxContextTokens: 8192,
 		// ACP v1 does not expose temperature/top_p/seed application. They remain
 		// desired governed values without a false backend-application claim.
-		AppliedParameters: []string{"max_context_tokens", "max_output_tokens"},
+		AppliedParameters:     []string{"max_context_tokens", "max_output_tokens"},
+		UnsupportedParameters: []string{"temperature", "top_p"},
 	})
 	if err != nil {
 		t.Fatalf("BindSamplingProfile: %v", err)
@@ -58,7 +60,9 @@ func fixtureLocalIdentity(t *testing.T, binaryDigest, ggufDigest, templateDigest
 		GGUFReference: "operator-selected-gguf-v1", GGUFSHA256: ggufDigest,
 		GGUFModelIdentity: "fixture-local-model-v1", QuantizationIdentity: "Q4_K_M",
 		TemplateIdentity: "registered-chat-template-v1", TemplateSHA256: templateDigest,
-		LaunchParameters: parameters,
+		IsolationIdentity: LocalIsolationIdentity, IsolationHelperReference: "aipt-runtime-isolator-test",
+		IsolationHelperSHA256: binaryDigest,
+		LaunchParameters:      parameters,
 		Hardware: HardwareIdentity{
 			Architecture: "amd64", CPUClass: "synthetic-ci", GPUBackend: "none", MemoryClass: "ci-bounded",
 		},
@@ -154,6 +158,9 @@ func fixtureCertification(t *testing.T, profile ModelProfile, sampling SamplingP
 		StructuredOutputMode:   profile.StructuredOutputMode, ToolCallMode: profile.ToolCallMode,
 		RequestContractVersion: "1", CapabilityFingerprint: profile.Harness.CapabilityFingerprint,
 		EnvironmentIdentity: "synthetic-public-ci-v1", LocalRuntimeIdentity: profile.LocalRuntimeIdentity,
+		RequestedSamplingSHA256: sampling.SHA256, EffectiveSampling: effectiveSamplingProjection(sampling),
+		UnsupportedSamplingParameters:  append([]string(nil), sampling.UnsupportedParameters...),
+		BackendSerializedRequestSHA256: fixtureSHA("synthetic-backend-request-" + id),
 	})
 	if err != nil {
 		t.Fatalf("BindExecutionTuple: %v", err)

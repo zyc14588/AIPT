@@ -2,16 +2,10 @@ package modelgateway
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
-	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -31,13 +25,16 @@ const (
 // ManagedLlamaSpec contains private, operator-selected paths. These values are
 // runtime inputs only and are never copied into public evidence.
 type ManagedLlamaSpec struct {
-	ExecutablePath      string
-	GGUFPath            string
-	AdditionalArguments []string
-	Environment         map[string]string
-	WorkingDirectory    string
-	StartupTimeout      time.Duration
-	ShutdownTimeout     time.Duration
+	ExecutablePath            string
+	GGUFPath                  string
+	AdditionalArguments       []string
+	Environment               map[string]string
+	WorkingDirectory          string
+	StartupTimeout            time.Duration
+	ShutdownTimeout           time.Duration
+	IsolationExecutablePath   string
+	IsolationExecutableSHA256 string
+	IsolationArguments        []string
 }
 
 // GovernedLaunchParameters is the path-free identity recorded in a Model
@@ -95,20 +92,39 @@ const (
 // ManagedLlama owns exactly one registered llama.cpp process. A model switch
 // requires constructing and starting another manager after stopping this one.
 type ManagedLlama struct {
-	profile ModelProfile
-	spec    ManagedLlamaSpec
+	profile  ModelProfile
+	spec     ManagedLlamaSpec
+	binary   *verifiedAsset
+	gguf     *verifiedAsset
+	isolator *verifiedAsset
+	adapter  *preparedIsolatedAdapter
 
-	mu        sync.Mutex
-	cmd       *exec.Cmd
-	process   *managedProcessIdentity
-	target    *url.URL
-	endpoint  *url.URL
-	proxy     *http.Server
-	proxyNet  net.Listener
-	proxyHTTP *http.Transport
-	state     managedProcessState
-	recovered bool
-	exit      chan error
+	lifecycle               sync.Mutex
+	mu                      sync.Mutex
+	cmd                     *exec.Cmd
+	process                 *managedProcessIdentity
+	target                  *url.URL
+	endpoint                *url.URL
+	state                   managedProcessState
+	recovered               bool
+	retired                 bool
+	exit                    chan error
+	isolationControl        *net.UnixConn
+	isolationInput          *os.File
+	isolationOutput         *os.File
+	isolationNetNS          os.FileInfo
+	isolationControlMu      sync.Mutex
+	isolationAdapterRunning bool
+}
+
+type preparedIsolatedAdapter struct {
+	spec          AdapterRouteSpec
+	endpointEnv   string
+	binary        *verifiedAsset
+	entry         *verifiedAsset
+	config        *verifiedAsset
+	harnessBinary *verifiedAsset
+	harnessEntry  *verifiedAsset
 }
 
 func NewManagedLlama(profile ModelProfile, spec ManagedLlamaSpec) (*ManagedLlama, error) {
@@ -119,8 +135,15 @@ func NewManagedLlama(profile ModelProfile, spec ManagedLlamaSpec) (*ManagedLlama
 		return nil, newError(CodeLocalProcessMismatch, "new_managed_llama", profile.BindingID(), errors.New("local profile required"))
 	}
 	if spec.ExecutablePath == "" || spec.GGUFPath == "" || spec.WorkingDirectory == "" ||
+		spec.IsolationExecutablePath == "" ||
 		spec.StartupTimeout <= 0 || spec.ShutdownTimeout <= 0 {
 		return nil, newError(CodeLocalProcessMismatch, "new_managed_llama", profile.BindingID(), errors.New("complete bounded process spec required"))
+	}
+	if err := sanitizeIsolationArguments(spec.IsolationArguments); err != nil {
+		return nil, newError(CodeLocalProcessMismatch, "new_managed_llama", profile.BindingID(), err)
+	}
+	if err := validateManagedLlamaEnvironment(spec.Environment); err != nil {
+		return nil, newError(CodeLocalProcessMismatch, "new_managed_llama", profile.BindingID(), err)
 	}
 	wantArgs, err := GovernedLaunchParameters(spec.AdditionalArguments)
 	if err != nil {
@@ -129,49 +152,52 @@ func NewManagedLlama(profile ModelProfile, spec ManagedLlamaSpec) (*ManagedLlama
 	if strings.Join(wantArgs, "\x00") != strings.Join(profile.LocalRuntimeIdentity.LaunchParameters, "\x00") {
 		return nil, newError(CodeLocalProcessMismatch, "new_managed_llama", profile.BindingID(), errors.New("launch-parameter identity mismatch"))
 	}
-	if err := verifyRegularFileDigest(spec.ExecutablePath, profile.LocalRuntimeIdentity.BinarySHA256, true); err != nil {
+	binary, err := openVerifiedAsset(spec.ExecutablePath, profile.LocalRuntimeIdentity.BinarySHA256, true)
+	if err != nil {
 		return nil, newError(CodeLocalBinaryMismatch, "verify_llama_binary", profile.BindingID(), err)
 	}
-	if err := verifyRegularFileDigest(spec.GGUFPath, profile.LocalRuntimeIdentity.GGUFSHA256, false); err != nil {
+	gguf, err := openVerifiedAsset(spec.GGUFPath, profile.LocalRuntimeIdentity.GGUFSHA256, false)
+	if err != nil {
+		_ = binary.close()
 		return nil, newError(CodeLocalGGUFMismatch, "verify_llama_gguf", profile.BindingID(), err)
+	}
+	isolator, err := openVerifiedAsset(spec.IsolationExecutablePath, profile.LocalRuntimeIdentity.IsolationHelperSHA256, true)
+	if err != nil {
+		_ = binary.close()
+		_ = gguf.close()
+		return nil, newError(CodeLocalBinaryMismatch, "verify_runtime_isolator", profile.BindingID(), err)
+	}
+	if spec.IsolationExecutableSHA256 != profile.LocalRuntimeIdentity.IsolationHelperSHA256 {
+		_ = binary.close()
+		_ = gguf.close()
+		_ = isolator.close()
+		return nil, newError(CodeLocalBinaryMismatch, "bind_runtime_isolator", profile.BindingID(), errors.New("isolation helper digest differs from the governed identity"))
 	}
 	working, err := filepath.Abs(spec.WorkingDirectory)
 	if err != nil {
+		_ = binary.close()
+		_ = gguf.close()
+		_ = isolator.close()
 		return nil, newError(CodeLocalProcessMismatch, "resolve_llama_workdir", profile.BindingID(), err)
 	}
 	info, err := os.Stat(working)
 	if err != nil || !info.IsDir() {
+		_ = binary.close()
+		_ = gguf.close()
+		_ = isolator.close()
 		return nil, newError(CodeLocalProcessMismatch, "verify_llama_workdir", profile.BindingID(), errors.New("working directory unavailable"))
 	}
 	spec.WorkingDirectory = working
-	return &ManagedLlama{profile: profile, spec: spec, state: managedStopped}, nil
+	spec.Environment = cloneStringMap(spec.Environment)
+	return &ManagedLlama{profile: profile, spec: spec, binary: binary, gguf: gguf, isolator: isolator, state: managedStopped}, nil
 }
 
 func verifyRegularFileDigest(path, expected string, executable bool) error {
-	abs, err := filepath.Abs(path)
+	asset, err := openVerifiedAsset(path, expected, executable)
 	if err != nil {
 		return err
 	}
-	info, err := os.Stat(abs)
-	if err != nil || !info.Mode().IsRegular() {
-		return errors.New("registered asset is not a regular file")
-	}
-	if executable && info.Mode().Perm()&0o111 == 0 {
-		return errors.New("registered executable is not executable")
-	}
-	file, err := os.Open(abs)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return err
-	}
-	if hex.EncodeToString(hash.Sum(nil)) != expected {
-		return errors.New("registered asset digest mismatch")
-	}
-	return nil
+	return asset.close()
 }
 
 func reserveIPv4LoopbackPort() (int, error) {
@@ -187,210 +213,15 @@ func reserveIPv4LoopbackPort() (int, error) {
 }
 
 func (m *ManagedLlama) Start(ctx context.Context) error {
-	if ctx == nil {
-		return newError(CodeLocalStartupFailed, "start_llama", m.profile.BindingID(), errors.New("nil context"))
-	}
-	m.mu.Lock()
-	if m.state != managedStopped {
-		m.mu.Unlock()
-		return newError(CodeLocalStartupFailed, "start_llama", m.profile.BindingID(), errors.New("managed runtime is not stopped"))
-	}
-	port, err := reserveIPv4LoopbackPort()
-	if err != nil {
-		m.mu.Unlock()
-		return newError(CodeLocalStartupFailed, "allocate_loopback", m.profile.BindingID(), err)
-	}
-	executable, _ := filepath.Abs(m.spec.ExecutablePath)
-	gguf, _ := filepath.Abs(m.spec.GGUFPath)
-	arguments := append([]string(nil), m.spec.AdditionalArguments...)
-	arguments = append(arguments,
-		"--model", gguf,
-		"--host", "127.0.0.1",
-		"--port", strconv.Itoa(port),
-		"--alias", m.profile.ModelID,
-		"--no-webui", "--no-slots", "--jinja",
-	)
-	command := exec.Command(executable, arguments...)
-	command.Dir = m.spec.WorkingDirectory
-	command.Env = environmentList(m.spec.Environment)
-	pidfd := -1
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, PidFD: &pidfd}
-	stdout, err := command.StdoutPipe()
-	if err != nil {
-		m.mu.Unlock()
-		return newError(CodeLocalStartupFailed, "pipe_llama_stdout", m.profile.BindingID(), err)
-	}
-	stderr, err := command.StderrPipe()
-	if err != nil {
-		m.mu.Unlock()
-		return newError(CodeLocalStartupFailed, "pipe_llama_stderr", m.profile.BindingID(), err)
-	}
-	if err := command.Start(); err != nil {
-		m.mu.Unlock()
-		return newError(CodeLocalStartupFailed, "exec_llama", m.profile.BindingID(), err)
-	}
-	process, err := bindManagedProcessIdentity(command.Process, pidfd)
-	if err != nil {
-		_ = terminateProcessGroup(command.Process.Pid, syscall.SIGKILL)
-		_, _ = io.Copy(io.Discard, stdout)
-		_, _ = io.Copy(io.Discard, stderr)
-		_ = command.Wait()
-		m.mu.Unlock()
-		return newError(CodeLocalProcessMismatch, "bind_llama_process_generation", m.profile.BindingID(), err)
-	}
-	if err := verifyProcessExecutable(command.Process.Pid, executable); err != nil {
-		_ = terminateProcessGroup(command.Process.Pid, syscall.SIGKILL)
-		_, _ = io.Copy(io.Discard, stdout)
-		_, _ = io.Copy(io.Discard, stderr)
-		_ = command.Wait()
-		process.close()
-		m.mu.Unlock()
-		return newError(CodeLocalProcessMismatch, "verify_llama_process", m.profile.BindingID(), err)
-	}
-	go drainBounded(stdout)
-	go drainBounded(stderr)
-	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port))
-	m.cmd = command
-	m.process = process
-	m.target = target
-	m.endpoint = nil
-	m.state = managedStarting
-	m.exit = make(chan error, 1)
-	exit := m.exit
-	m.mu.Unlock()
-	go func() {
-		err := command.Wait()
-		m.mu.Lock()
-		var proxyHTTP *http.Transport
-		if m.cmd == command && (m.state == managedStarting || m.state == managedRunning) {
-			m.state = managedCrashed
-			proxyHTTP = m.proxyHTTP
-		}
-		m.mu.Unlock()
-		if proxyHTTP != nil {
-			proxyHTTP.CloseIdleConnections()
-		}
-		exit <- err
-		close(exit)
-	}()
-
-	startupContext, cancel := context.WithTimeout(ctx, m.spec.StartupTimeout)
-	defer cancel()
-	if err := m.startGuardedProxy(command, process); err != nil {
-		_ = m.Stop(context.Background())
-		return newError(CodeLocalReadinessFailed, "guard_llama_endpoint", m.profile.BindingID(), err)
-	}
-	if err := m.waitReady(startupContext); err != nil {
-		_ = m.Stop(context.Background())
-		return newError(CodeLocalReadinessFailed, "probe_llama", m.profile.BindingID(), err)
-	}
-	m.mu.Lock()
-	if m.cmd != command || m.process != process || m.state != managedStarting || m.endpoint == nil || m.proxy == nil || m.proxyNet == nil {
-		m.mu.Unlock()
-		_ = m.Stop(context.Background())
-		return newError(CodeLocalReadinessFailed, "finalize_llama_startup", m.profile.BindingID(), errors.New("managed process changed during startup"))
-	}
-	m.state = managedRunning
-	m.mu.Unlock()
-	return nil
-}
-
-func (m *ManagedLlama) startGuardedProxy(command *exec.Cmd, process *managedProcessIdentity) error {
-	m.mu.Lock()
-	if m.cmd != command || m.process != process || m.target == nil || m.state != managedStarting {
-		m.mu.Unlock()
-		return ownershipMismatch("managed target changed before proxy startup")
-	}
-	target := *m.target
-	m.mu.Unlock()
-	port, err := strconv.Atoi(target.Port())
-	if err != nil {
-		return ownershipMismatch("managed target port is invalid")
-	}
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		return err
-	}
-	front, _ := url.Parse("http://" + listener.Addr().String())
-	transport := &http.Transport{
-		Proxy: nil, ForceAttemptHTTP2: false, DisableCompression: true,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			if (network != "tcp" && network != "tcp4") || address != target.Host {
-				return nil, ownershipMismatch("guarded proxy attempted an unexpected upstream")
-			}
-			if err := m.requireManagedGenerationActive(command, process); err != nil {
-				return nil, err
-			}
-			return dialManagedListener(ctx, process, port)
-		},
-	}
-	reverse := httputil.NewSingleHostReverseProxy(&target)
-	reverse.Transport = transport
-	reverse.ErrorLog = log.New(io.Discard, "", 0)
-	reverse.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, _ error) {
-		writeGuardedProxyFailure(writer)
-	}
-	guardedHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if err := m.requireManagedGenerationActive(command, process); err != nil {
-			writeGuardedProxyFailure(writer)
-			return
-		}
-		reverse.ServeHTTP(writer, request)
-	})
-	server := &http.Server{
-		Handler: guardedHandler, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 30 * time.Second,
-		ErrorLog: log.New(io.Discard, "", 0),
-	}
-	m.mu.Lock()
-	if m.cmd != command || m.process != process || m.target == nil || m.target.String() != target.String() || m.state != managedStarting {
-		m.mu.Unlock()
-		_ = listener.Close()
-		transport.CloseIdleConnections()
-		return ownershipMismatch("managed target changed during proxy startup")
-	}
-	m.endpoint = front
-	m.proxy = server
-	m.proxyNet = listener
-	m.proxyHTTP = transport
-	m.mu.Unlock()
-	go func() {
-		err := server.Serve(listener)
-		if err == nil || errors.Is(err, http.ErrServerClosed) {
-			return
-		}
-		m.mu.Lock()
-		active := m.proxy == server && (m.state == managedStarting || m.state == managedRunning)
-		if active {
-			m.state = managedCrashed
-		}
-		m.mu.Unlock()
-		if active {
-			_ = terminateProcessGroup(command.Process.Pid, syscall.SIGKILL)
-		}
-	}()
-	return nil
-}
-
-func writeGuardedProxyFailure(writer http.ResponseWriter) {
-	writer.Header().Set("Cache-Control", "no-store")
-	writer.WriteHeader(http.StatusBadGateway)
-}
-
-func (m *ManagedLlama) requireManagedGenerationActive(command *exec.Cmd, process *managedProcessIdentity) error {
-	m.mu.Lock()
-	active := m.cmd == command && m.process == process &&
-		(m.state == managedStarting || m.state == managedRunning)
-	m.mu.Unlock()
-	if !active {
-		return ownershipMismatch("managed process generation is not active")
-	}
-	return process.requireAlive()
+	m.lifecycle.Lock()
+	defer m.lifecycle.Unlock()
+	return m.startIsolatedLifecycle(ctx)
 }
 
 func environmentList(values map[string]string) []string {
 	base := allowlistedBaseEnvironment(mapFromEnvironment(os.Environ()))
 	for key, value := range values {
-		if envNameRE.MatchString(key) && value != "" && !strings.ContainsAny(value, "\r\n\x00") && !secretRE.MatchString(key) {
+		if isManagedLlamaEnvironment(key) && value != "" && len(value) <= 4096 && !strings.ContainsAny(value, "\r\n\x00") {
 			base[key] = value
 		}
 	}
@@ -400,6 +231,27 @@ func environmentList(values map[string]string) []string {
 	}
 	sortStrings(result)
 	return result
+}
+
+func isManagedLlamaEnvironment(name string) bool {
+	switch name {
+	case "CUDA_VISIBLE_DEVICES", "HIP_VISIBLE_DEVICES", "ROCR_VISIBLE_DEVICES", "ZE_AFFINITY_MASK",
+		"GGML_CUDA_ENABLE_UNIFIED_MEMORY", "GGML_CUDA_FORCE_MMQ", "OMP_NUM_THREADS",
+		"AIPT_LLAMA_HELPER", "AIPT_LLAMA_HELPER_MODE", "AIPT_LLAMA_HELPER_GGUF_SHA256":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateManagedLlamaEnvironment(values map[string]string) error {
+	for key, value := range values {
+		if !isManagedLlamaEnvironment(key) || !envNameRE.MatchString(key) || value == "" || len(value) > 4096 ||
+			strings.ContainsAny(value, "\r\n\x00") {
+			return errors.New("llama process environment is outside the closed allowlist")
+		}
+	}
+	return nil
 }
 
 func mapFromEnvironment(entries []string) map[string]string {
@@ -447,162 +299,6 @@ func drainBounded(reader io.Reader) {
 	_, _ = io.Copy(io.Discard, reader)
 }
 
-func (m *ManagedLlama) waitReady(ctx context.Context) error {
-	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		m.mu.Lock()
-		command := m.cmd
-		process := m.process
-		endpoint := m.target
-		m.mu.Unlock()
-		if command == nil || process == nil || endpoint == nil {
-			return errors.New("managed process identity unavailable during startup")
-		}
-		port, portErr := strconv.Atoi(endpoint.Port())
-		if portErr != nil {
-			return newError(CodeLocalProcessMismatch, "verify_llama_listener", m.profile.BindingID(), errors.New("selected listener port is invalid"))
-		}
-		before, ownershipErr := verifyManagedListenerOwnership(process, port)
-		if ownershipErr == nil {
-			probeErr := m.probe(ctx, command, process)
-			if probeErr == nil {
-				after, afterErr := verifyManagedListenerOwnership(process, port)
-				if afterErr != nil {
-					if errors.Is(afterErr, errManagedListenerNotReady) {
-						return newError(CodeLocalProcessMismatch, "verify_llama_listener", m.profile.BindingID(), errors.New("listener ownership changed during readiness"))
-					}
-					return newError(CodeLocalProcessMismatch, "verify_llama_listener", m.profile.BindingID(), afterErr)
-				}
-				if before.inode != after.inode {
-					return newError(CodeLocalProcessMismatch, "verify_llama_listener", m.profile.BindingID(), errors.New("listener identity changed during readiness"))
-				}
-				return nil
-			}
-			ownershipErr = probeErr
-		}
-		if !errors.Is(ownershipErr, errManagedListenerNotReady) &&
-			(errors.As(ownershipErr, new(*listenerOwnershipError)) ||
-				errors.Is(ownershipErr, Sentinel(CodeLocalTemplateMismatch)) ||
-				errors.Is(ownershipErr, Sentinel(CodeModelIdentityMismatch))) {
-			// These are stable identity failures, not transient readiness. Waiting
-			// cannot make a different registered asset become the authorized one.
-			if errors.As(ownershipErr, new(*listenerOwnershipError)) {
-				return newError(CodeLocalProcessMismatch, "verify_llama_listener", m.profile.BindingID(), ownershipErr)
-			}
-			return ownershipErr
-		}
-		m.mu.Lock()
-		state := m.state
-		m.mu.Unlock()
-		if state != managedStarting {
-			return errors.New("managed process exited before readiness")
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-		}
-	}
-}
-
-func (m *ManagedLlama) probe(ctx context.Context, command *exec.Cmd, process *managedProcessIdentity) error {
-	m.mu.Lock()
-	endpoint := m.endpoint
-	m.mu.Unlock()
-	if endpoint == nil || !IsIPv4LoopbackURL(endpoint) {
-		return errors.New("endpoint is not IPv4 Loopback")
-	}
-	probeTransport := &http.Transport{
-		Proxy: nil, ForceAttemptHTTP2: false, DisableCompression: true,
-		DialContext: func(dialContext context.Context, network, address string) (net.Conn, error) {
-			if (network != "tcp" && network != "tcp4") || address != endpoint.Host {
-				return nil, ownershipMismatch("readiness probe attempted an unexpected endpoint")
-			}
-			if err := m.requireManagedGenerationActive(command, process); err != nil {
-				return nil, err
-			}
-			return (&net.Dialer{}).DialContext(dialContext, "tcp4", endpoint.Host)
-		},
-	}
-	defer probeTransport.CloseIdleConnections()
-	client := &http.Client{Timeout: 2 * time.Second, Transport: probeTransport}
-	healthURL := *endpoint
-	healthURL.Path = "/health"
-	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, healthURL.String(), nil)
-	response, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4<<10))
-	_ = response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return errors.New("health endpoint is not ready")
-	}
-	modelsURL := *endpoint
-	modelsURL.Path = "/v1/models"
-	request, _ = http.NewRequestWithContext(ctx, http.MethodGet, modelsURL.String(), nil)
-	response, err = client.Do(request)
-	if err != nil {
-		return err
-	}
-	raw, err := io.ReadAll(io.LimitReader(response.Body, 64<<10))
-	_ = response.Body.Close()
-	if err != nil || response.StatusCode != http.StatusOK {
-		return errors.New("models endpoint unavailable")
-	}
-	// LLAMACPP-01 build 10582 returns the OpenAI-compatible `data` inventory
-	// together with its native `models` inventory. Keep the top-level envelope
-	// exact and require both views to identify the one frozen alias. Element
-	// metadata is intentionally ignored: it is informational and build-specific,
-	// while conflicting or missing identity views still fail closed.
-	var models struct {
-		Models []json.RawMessage `json:"models"`
-		Object string            `json:"object"`
-		Data   []json.RawMessage `json:"data"`
-	}
-	if err := decodeExact(raw, &models, 64<<10); err != nil ||
-		models.Object != "list" || len(models.Data) != 1 || len(models.Models) != 1 {
-		return newError(CodeModelIdentityMismatch, "probe_llama_model", m.profile.BindingID(), errors.New("served model identity mismatch"))
-	}
-	var openAIModel struct {
-		ID string `json:"id"`
-	}
-	var nativeModel struct {
-		Name  string `json:"name"`
-		Model string `json:"model"`
-	}
-	if err := json.Unmarshal(models.Data[0], &openAIModel); err != nil ||
-		openAIModel.ID != m.profile.ModelID ||
-		json.Unmarshal(models.Models[0], &nativeModel) != nil ||
-		nativeModel.Name != m.profile.ModelID || nativeModel.Model != m.profile.ModelID {
-		return newError(CodeModelIdentityMismatch, "probe_llama_model", m.profile.BindingID(), errors.New("served model identity mismatch"))
-	}
-	propsURL := *endpoint
-	propsURL.Path = "/props"
-	request, _ = http.NewRequestWithContext(ctx, http.MethodGet, propsURL.String(), nil)
-	response, err = client.Do(request)
-	if err != nil {
-		return err
-	}
-	raw, err = io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	_ = response.Body.Close()
-	if err != nil || response.StatusCode != http.StatusOK {
-		return errors.New("props endpoint unavailable")
-	}
-	var props struct {
-		ChatTemplate string `json:"chat_template"`
-	}
-	if err := json.Unmarshal(raw, &props); err != nil || props.ChatTemplate == "" {
-		return errors.New("chat template unavailable")
-	}
-	digest := sha256.Sum256([]byte(props.ChatTemplate))
-	if hex.EncodeToString(digest[:]) != m.profile.LocalRuntimeIdentity.TemplateSHA256 {
-		return newError(CodeLocalTemplateMismatch, "probe_llama_template", m.profile.BindingID(), errors.New("template identity mismatch"))
-	}
-	return nil
-}
-
 func IsIPv4LoopbackURL(endpoint *url.URL) bool {
 	if endpoint == nil || endpoint.Scheme != "http" || endpoint.User != nil || endpoint.Path != "" || endpoint.RawQuery != "" || endpoint.Fragment != "" {
 		return false
@@ -617,34 +313,7 @@ func IsIPv4LoopbackURL(endpoint *url.URL) bool {
 }
 
 func (m *ManagedLlama) Endpoint() (*url.URL, error) {
-	m.mu.Lock()
-	if m.state != managedRunning || m.endpoint == nil || m.target == nil || m.proxyNet == nil || !IsIPv4LoopbackURL(m.endpoint) {
-		m.mu.Unlock()
-		return nil, newError(CodeLocalEndpointNotLoopback, "llama_endpoint", m.profile.BindingID(), errors.New("managed endpoint unavailable"))
-	}
-	command := m.cmd
-	process := m.process
-	endpoint := *m.endpoint
-	target := *m.target
-	m.mu.Unlock()
-	if command == nil || process == nil {
-		return nil, newError(CodeLocalProcessMismatch, "llama_endpoint", m.profile.BindingID(), errors.New("managed process unavailable"))
-	}
-	port, err := strconv.Atoi(target.Port())
-	if err != nil {
-		return nil, newError(CodeLocalProcessMismatch, "llama_endpoint", m.profile.BindingID(), errors.New("managed listener port invalid"))
-	}
-	if _, err := verifyManagedListenerOwnership(process, port); err != nil {
-		return nil, newError(CodeLocalProcessMismatch, "llama_endpoint", m.profile.BindingID(), err)
-	}
-	m.mu.Lock()
-	unchanged := m.state == managedRunning && m.cmd == command && m.process == process && m.endpoint != nil && m.target != nil &&
-		m.endpoint.String() == endpoint.String() && m.target.String() == target.String() && m.proxyNet != nil
-	m.mu.Unlock()
-	if !unchanged {
-		return nil, newError(CodeLocalProcessMismatch, "llama_endpoint", m.profile.BindingID(), errors.New("managed listener changed during endpoint attestation"))
-	}
-	return &endpoint, nil
+	return m.isolatedEndpoint()
 }
 
 func (m *ManagedLlama) CleanBaselineEligible() bool {
@@ -654,13 +323,15 @@ func (m *ManagedLlama) CleanBaselineEligible() bool {
 }
 
 func (m *ManagedLlama) Recover(ctx context.Context) error {
-	if err := m.Stop(ctx); err != nil {
+	m.lifecycle.Lock()
+	defer m.lifecycle.Unlock()
+	if err := m.stopIsolatedLifecycle(ctx); err != nil {
 		return err
 	}
 	m.mu.Lock()
 	m.recovered = true
 	m.mu.Unlock()
-	if err := m.Start(ctx); err != nil {
+	if err := m.startIsolatedLifecycle(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -682,83 +353,43 @@ func (m *ManagedLlama) FormalEligibilityError() error {
 }
 
 func (m *ManagedLlama) Stop(ctx context.Context) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	m.mu.Lock()
-	command := m.cmd
-	process := m.process
-	exit := m.exit
-	state := m.state
-	proxy := m.proxy
-	proxyNet := m.proxyNet
-	proxyHTTP := m.proxyHTTP
-	if command == nil || state == managedStopped {
-		m.cmd = nil
-		m.process = nil
-		m.target = nil
-		m.endpoint = nil
-		m.proxy = nil
-		m.proxyNet = nil
-		m.proxyHTTP = nil
-		m.state = managedStopped
-		m.mu.Unlock()
-		if proxy != nil {
-			_ = proxy.Close()
-		} else if proxyNet != nil {
-			_ = proxyNet.Close()
-		}
-		if proxyHTTP != nil {
-			proxyHTTP.CloseIdleConnections()
-		}
-		process.close()
+	m.lifecycle.Lock()
+	defer m.lifecycle.Unlock()
+	return m.stopIsolatedLifecycle(ctx)
+}
+
+// Retire is the final lifecycle transition. Unlike Stop (which intentionally
+// permits governed recovery), Retire closes every held verified file object
+// and makes future starts fail closed. RuntimeCoordinator uses it whenever a
+// loaded generation is discarded, including partial-start rollback.
+func (m *ManagedLlama) Retire(ctx context.Context) error {
+	if m == nil {
 		return nil
 	}
-	m.state = managedStopping
-	pid := command.Process.Pid
-	m.mu.Unlock()
-	if proxy != nil {
-		_ = proxy.Close()
-	} else if proxyNet != nil {
-		_ = proxyNet.Close()
-	}
-	if proxyHTTP != nil {
-		proxyHTTP.CloseIdleConnections()
-	}
-	_ = terminateProcessGroup(pid, syscall.SIGTERM)
-	timer := time.NewTimer(m.spec.ShutdownTimeout)
-	defer timer.Stop()
-	var stopErr error
-	select {
-	case <-exit:
-	case <-ctx.Done():
-		_ = terminateProcessGroup(pid, syscall.SIGKILL)
-		<-exit
-		stopErr = newError(CodeLocalShutdownFailed, "stop_llama", m.profile.BindingID(), ctx.Err())
-	case <-timer.C:
-		_ = terminateProcessGroup(pid, syscall.SIGKILL)
-		<-exit
-		stopErr = newError(CodeLocalShutdownFailed, "stop_llama", m.profile.BindingID(), errors.New("bounded shutdown timed out"))
-	}
+	m.lifecycle.Lock()
+	defer m.lifecycle.Unlock()
+	stopErr := m.stopIsolatedLifecycle(ctx)
 	m.mu.Lock()
-	if m.cmd == command {
-		m.cmd = nil
-		m.process = nil
-		m.target = nil
-		m.endpoint = nil
-		m.proxy = nil
-		m.proxyNet = nil
-		m.proxyHTTP = nil
-		m.state = managedStopped
+	if stopErr == nil {
+		m.retired = true
 	}
 	m.mu.Unlock()
-	process.close()
-	return stopErr
+	if stopErr != nil {
+		return stopErr
+	}
+	var adapterErr error
+	if m.adapter != nil {
+		adapterErr = errors.Join(
+			m.adapter.binary.close(), m.adapter.entry.close(), m.adapter.config.close(),
+			m.adapter.harnessBinary.close(), m.adapter.harnessEntry.close(),
+		)
+	}
+	return errors.Join(m.binary.close(), m.gguf.close(), m.isolator.close(), adapterErr)
 }
 
 func terminateProcessGroup(pid int, signal syscall.Signal) error {
-	if pid <= 0 {
-		return nil
+	if pid <= 1 {
+		return ownershipMismatch("invalid numeric PID cannot be signalled")
 	}
 	return syscall.Kill(-pid, signal)
 }

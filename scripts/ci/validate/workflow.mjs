@@ -231,6 +231,10 @@ const FOCUSED_COMMANDS = [
     nameTokens: ['aipt', 'mvp', 'b004', 'lifecycle-aware', 'candidate', 'merge', 'closeout', 'governed', 'model', 'harness', 'gateway', 'validator'],
   },
   {
+    command: 'pnpm run test:publication-hygiene',
+    nameTokens: ['aipt', 'mvp', 'b004', 'publication hygiene', 'detector', 'sentinel', 'suite'],
+  },
+  {
     command: 'pnpm run test:model-gateway',
     nameTokens: ['aipt', 'mvp', 'b004', 'model gateway', 'profile', 'egress', 'credential', 'local-process', 'context', 'capability', 'negative', 'tests'],
   },
@@ -2060,6 +2064,16 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run test:model-gateway', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B004 publication hygiene sentinel suite removed from toolchain',
+      reason: /test:publication-hygiene.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:publication-hygiene', '        run: node --version')),
           lock,
         ),
     },

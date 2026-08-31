@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { git, runAsMain } from '../lib/cli.mjs';
 import { checkSchemaDocument, validateInstance } from '../lib/json-schema.mjs';
+import { PUBLICATION_HYGIENE_POLICY, runPublicationHygiene } from '../lib/publication-hygiene.mjs';
 
 const TASK_ID = 'AIPT-MVP-B004';
 const BRANCH = `task/${TASK_ID}`;
@@ -21,15 +22,31 @@ const B003_CLOSEOUT_CI = 33264649945;
 const HARNESS_COMMIT = '141eb6fef83422698aef7a981029e843e8161534';
 const HARNESS_RELEASE = 'dsh-v0.1.0-rc.8';
 const HARNESS_SOURCE_SHA256 = 'fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba';
-const HARNESS_CAPABILITY_SHA256 = '2f40d2d065db8818628ecb2ac3f55ac84535de83c48a186e6d09d8a8e6ff3a42';
+const HARNESS_CAPABILITY_SHA256 = 'c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940';
+const HARNESS_RUNTIME_CLOSURE_SHA256 = 'e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db';
+const ISOLATION_IDENTITY = 'AIPT_LINUX_USER_NETNS_SUPERVISOR_V1';
+const ISOLATION_HELPER_REFERENCE = 'aipt-runtime-isolator-go1.26.6-linux-amd64';
+const ISOLATION_HELPER_SHA256 = '1bba082e39f213f85c213c7dcdadd85e610d2b64dcf39214d39d44b1c5e36d3d';
 const GGUF_REFERENCE = 'GGUF-04';
 const GGUF_SHA256 = '31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6';
-const REMOTE_EVIDENCE = 'docs/model-certification/remote-deepseek-controlled-real-01.json';
-const LOCAL_EVIDENCE = 'docs/model-certification/local-llamacpp-controlled-real-01.json';
+const REMOTE_EVIDENCE = 'docs/model-certification/remote-deepseek-controlled-real-02.json';
+const LOCAL_EVIDENCE = 'docs/model-certification/local-llamacpp-controlled-real-02.json';
+const SUPERSEDED_REMOTE_EVIDENCE = 'docs/model-certification/remote-deepseek-controlled-real-01.json';
+const SUPERSEDED_LOCAL_EVIDENCE = 'docs/model-certification/local-llamacpp-controlled-real-01.json';
 const HARNESS_CAPABILITIES = 'docs/model-certification/harness-01-capabilities.json';
 const GGUF_REGISTRATION = 'docs/model-certification/gguf-04-registration.json';
 const LLAMACPP_REGISTRATION = 'docs/model-certification/llamacpp-01-registration.json';
 const SECURITY_REPRODUCTIONS = 'docs/model-certification/b004-security-repair-reproductions.json';
+const PUBLICATION_DETECTOR_IDENTITY = 'aipt.publication-hygiene-detectors/v1';
+const REQUIRED_PUBLICATION_DETECTORS = Object.freeze([
+  'credential_api_key_material',
+  'bearer_token_material',
+  'environment_secret_values',
+  'private_prompt_material',
+  'private_asset_locator_material',
+  'forbidden_absolute_local_path',
+  'resolved_credential_reference',
+]);
 const OBSERVED_OWNER_LOCAL_BRIDGE_COMMIT = 'cd5ef8148158c3a752a658978873241fdf8e2bbc';
 const OBSERVED_OWNER_LOCAL_BRIDGE_RELEASE = '0.1.2-alpha.1';
 const RECORD_ROOT = 'docs/authority/registry/authority-lifecycle/records/aipt-mvp-b004';
@@ -67,11 +84,13 @@ const REQUIRED_GO = Object.freeze([
   'internal/modelgateway/errors.go',
   'internal/modelgateway/gateway.go',
   'internal/modelgateway/local.go',
+  'internal/modelgateway/local_isolation.go',
   'internal/modelgateway/local_listener.go',
   'internal/modelgateway/registry.go',
   'internal/modelgateway/runtime.go',
   'internal/modelgateway/types.go',
   'internal/modelgateway/validation.go',
+  'internal/modelgateway/verified_asset.go',
   'internal/modelgateway/context_capability_test.go',
   'internal/modelgateway/audit_postgres_integration_test.go',
   'internal/modelgateway/break_glass_test.go',
@@ -82,6 +101,7 @@ const REQUIRED_GO = Object.freeze([
   'internal/modelgateway/gateway_negative_test.go',
   'internal/modelgateway/local_process_test.go',
   'internal/modelgateway/cmd/aipt-model-certify/main.go',
+  'internal/modelgateway/cmd/aipt-runtime-isolator/main.go',
 ]);
 
 const REQUIRED_EXACT = new Set([
@@ -100,6 +120,8 @@ const REQUIRED_EXACT = new Set([
   LLAMACPP_REGISTRATION,
   REMOTE_EVIDENCE,
   LOCAL_EVIDENCE,
+  SUPERSEDED_REMOTE_EVIDENCE,
+  SUPERSEDED_LOCAL_EVIDENCE,
   SECURITY_REPRODUCTIONS,
   'internal/launcher/dependencies.go',
   'internal/launcher/doc.go',
@@ -107,7 +129,30 @@ const REQUIRED_EXACT = new Set([
   'internal/launcher/launcher.go',
   'internal/launcher/launcher_integration_test.go',
   'internal/launcher/launcher_test.go',
+  'internal/evidence/export_test.go',
+	'internal/evidence/export.go',
+	'internal/evidence/postgres.go',
+	'internal/evidence/postgres_test.go',
+	'internal/evidence/verify.go',
+	'internal/storage/postgres/verify_bounded.go',
+	'internal/storage/postgres/verify_bounded_test.go',
   'package.json',
+  'packages/adapter-sdk/src/canonical-json.ts',
+  'packages/adapter-sdk/src/codec.ts',
+  'packages/adapter-sdk/src/constants.ts',
+  'packages/adapter-sdk/src/fixture.ts',
+  'packages/adapter-sdk/src/index.ts',
+  'packages/adapter-sdk/src/json-schema.ts',
+  'packages/adapter-sdk/src/json-value.ts',
+  'packages/adapter-sdk/src/projection.ts',
+  'packages/adapter-sdk/src/resource-limits.ts',
+  'packages/adapter-sdk/src/safe-pattern.ts',
+  'packages/adapter-sdk/test/drift.test.ts',
+  'packages/adapter-sdk/test/fixture.test.ts',
+  'packages/adapter-sdk/test/security-repair.test.ts',
+	'packages/harness-adapter/src/framing.ts',
+	'packages/harness-adapter/src/runtime.ts',
+	'packages/harness-adapter/test/stdio-smoke.test.ts',
   'packages/model-harness-gateway/package.json',
   'packages/model-harness-gateway/src/index.ts',
   'packages/model-harness-gateway/src/model-process-worker.ts',
@@ -117,10 +162,24 @@ const REQUIRED_EXACT = new Set([
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
   'scripts/ci/sbom/generate-sbom.mjs',
+  'scripts/ci/build-harness-runtime-closure.mjs',
+  'scripts/ci/harness-runtime-closure.config.ts',
+  'scripts/ci/harness-runtime-closure.ts',
+  'scripts/ci/prepare-b004-controlled-certification.mjs',
   'scripts/ci/run-checks.mjs',
+  'scripts/ci/lib/publication-hygiene.mjs',
+  'scripts/ci/lib/scan.mjs',
+  'scripts/ci/lib/json-schema.mjs',
+  'scripts/ci/lib/safe-regex.mjs',
+  'scripts/ci/test/publication-hygiene.test.mjs',
+  'scripts/ci/test/json-schema-security.test.mjs',
   'scripts/ci/validate/mvp-b002.mjs',
   'scripts/ci/validate/mvp-b003.mjs',
   'scripts/ci/validate/mvp-b004.mjs',
+  'scripts/ci/validate/b000-retro.mjs',
+  'scripts/ci/validate/evidence.mjs',
+  'scripts/ci/validate/adapter-sdk.mjs',
+  'scripts/ci/validate/protocol-assets.mjs',
   'scripts/ci/validate/runtime-shell.mjs',
   'scripts/ci/validate/sbom.mjs',
   'scripts/ci/validate/supply-chain.mjs',
@@ -152,6 +211,12 @@ const PROTECTED_PREFIXES = Object.freeze([
   'docs/authority/registry/authority-lifecycle/records/aipt-mvp-b003/',
 ]);
 
+const PROTECTED_EXCEPTIONS = new Set([
+	'packages/harness-adapter/src/framing.ts',
+	'packages/harness-adapter/src/runtime.ts',
+	'packages/harness-adapter/test/stdio-smoke.test.ts',
+]);
+
 const MIGRATIONS = Object.freeze({
   'internal/storage/postgres/migrations/000001_ledger.sql': 'cbab234c8d6a265397dcc553bd9bdb17006712f77ec482b0ef8332f050c9f591',
   'internal/storage/postgres/migrations/000002_playtest_queue.sql': '47f02a5a2129473caa0db5e359a0b294a01b2a96329d9f6fa08ac87cc429c997',
@@ -180,6 +245,22 @@ function gitOut(repo, args) {
 
 function lines(result) {
   return result?.status === 0 ? result.stdout.split('\n').filter(Boolean) : [];
+}
+
+function nulPaths(result) {
+  return result?.status === 0 ? result.stdout.split('\0').filter(Boolean) : [];
+}
+
+function publicationInventory(repo) {
+  const tracked = gitResult(repo, ['ls-files', '-z']);
+  const untracked = gitResult(repo, ['ls-files', '--others', '--exclude-standard', '-z']);
+  const errors = [];
+  if (tracked.status !== 0) errors.push('tracked publication inventory is unavailable');
+  if (untracked.status !== 0) errors.push('untracked publication inventory is unavailable');
+  return {
+    files: [...new Set([...nulPaths(tracked), ...nulPaths(untracked)])].sort(),
+    errors,
+  };
 }
 
 function currentBranch(repo) {
@@ -558,6 +639,9 @@ function localIdentity() {
     executable_reference: 'llama-server-registered', binary_sha256: digest, version: '1.0.0', commit: '',
     gguf_reference: 'operator-model-registered', gguf_sha256: digest, gguf_model_identity: 'synthetic-contract-model',
     quantization_identity: 'Q4_K_M', template_identity: 'chat-template-v1', template_sha256: digest,
+    isolation_identity: ISOLATION_IDENTITY,
+    isolation_helper_reference: ISOLATION_HELPER_REFERENCE,
+    isolation_helper_sha256: digest,
     launch_parameters: ['--host', '127.0.0.1', '--no-webui'],
     hardware: { architecture: 'x86_64', cpu_class: 'generic', gpu_backend: 'none', memory_class: 'synthetic' },
   };
@@ -568,12 +652,24 @@ function schemaFixtures() {
   const harness = {
     implementation: 'deepseek-harness', version: '0.1.0', commit: HARNESS_COMMIT,
     package_sha256: digest, protocol_identity: 'agent-client-protocol', protocol_version: '1',
-    capability_fingerprint: digest,
+    capability_fingerprint: digest, runtime_closure_kind: 'VERIFIED_SINGLE_FILE_DATA_URL_V1',
+    runtime_closure_sha256: digest,
   };
   const tuple = {
     schema: 'aipt.model-execution-tuple/v1', backend_kind: 'REMOTE_DEEPSEEK',
     provider_identity: 'deepseek-official', model_id: 'deepseek-v4-pro',
     model_profile_binding: 'remote-profile@1.0.0', sampling_profile_binding: 'sampling@1.0.0',
+    requested_sampling_sha256: digest,
+    effective_sampling_projection: {
+      schema: 'aipt.effective-sampling-projection/v1',
+      enforcement_identity: 'AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1',
+      applied_parameters: ['max_context_tokens', 'max_output_tokens'],
+      unsupported_parameters: ['temperature', 'top_p'],
+      max_context_tokens: 8192, max_output_tokens: 512,
+      context_utf8_byte_ceiling: 8192, output_utf8_byte_ceiling: 512,
+    },
+    unsupported_sampling_parameters: ['temperature', 'top_p'],
+    backend_serialized_request_sha256: digest,
     harness_identity: `deepseek-harness@${HARNESS_RELEASE}+${HARNESS_COMMIT}`,
     harness_protocol_identity: 'agent-client-protocol', harness_protocol_version: '1',
     structured_output_mode: 'PROMPTED', tool_call_mode: 'DISABLED', request_contract_version: '1',
@@ -588,7 +684,8 @@ function schemaFixtures() {
     'aipt-sampling-profile.schema.json': {
       schema: 'aipt.sampling-profile/v1', sampling_id: 'sampling', sampling_version: '1.0.0',
       temperature: 0.2, top_p: 0.9, max_output_tokens: 512, max_context_tokens: 8192,
-      applied_parameters: ['max_output_tokens', 'max_context_tokens'], sha256: digest,
+      applied_parameters: ['max_context_tokens', 'max_output_tokens'],
+      unsupported_parameters: ['temperature', 'top_p'], sha256: digest,
     },
     'aipt-model-profile.schema.json': {
       schema: 'aipt.model-profile/v1', profile_id: 'remote-profile', profile_version: '1.0.0',
@@ -620,7 +717,13 @@ function schemaFixtures() {
       harness_identity: `deepseek-harness@${HARNESS_RELEASE}+${HARNESS_COMMIT}`,
       harness_protocol_identity: 'agent-client-protocol', harness_protocol_version: '1', capability_fingerprint: digest,
       structured_output_mode: 'PROMPTED', tool_call_mode: 'DISABLED', session_working_directory: '/tmp/aipt-synthetic',
-      child: { executable_path: '/tmp/node', executable_sha256: digest, arguments: ['worker', '/tmp/dsh.js'], argument_file_digests: [{ index: 1, sha256: digest }], working_directory: '/tmp/aipt-synthetic', environment_allowlist: ['DEEPSEEK_API_KEY'], startup_timeout_ms: 1000, request_timeout_ms: 2000, shutdown_timeout_ms: 500, output_budget: { schema: 'aipt.acp-output-budget/v1', max_stdout_protocol_bytes: 8388608, max_notification_bytes: 4194304, max_response_and_notification_bytes: 8388608, max_stderr_bytes: 1048576 } },
+      sampling_profile: {
+        schema: 'aipt.sampling-profile/v1', sampling_id: 'sampling', sampling_version: '1.0.0',
+        temperature: 0.2, top_p: 0.9, max_output_tokens: 512, max_context_tokens: 8192,
+        applied_parameters: ['max_context_tokens', 'max_output_tokens'],
+        unsupported_parameters: ['temperature', 'top_p'], sha256: digest,
+      },
+      child: { executable_path: '/tmp/node', executable_sha256: digest, arguments: ['worker', '/tmp/dsh.js'], argument_file_digests: [{ index: 1, sha256: digest }], runtime_closure: { schema: 'aipt.harness-runtime-closure/v1', kind: 'VERIFIED_SINGLE_FILE_DATA_URL_V1', entrypoint_argument_index: 1, sha256: digest }, working_directory: '/tmp/aipt-synthetic', environment_allowlist: ['DEEPSEEK_API_KEY'], startup_timeout_ms: 1000, request_timeout_ms: 2000, shutdown_timeout_ms: 500, output_budget: { schema: 'aipt.acp-output-budget/v1', max_stdout_protocol_bytes: 8388608, max_notification_bytes: 4194304, max_response_and_notification_bytes: 8388608, max_stderr_bytes: 1048576 } },
     },
   };
 }
@@ -687,7 +790,8 @@ function schemaValidation(repo) {
 function protectedArtifactProblems(repo) {
   const problems = [];
   const baselinePaths = lines(gitResult(repo, ['ls-tree', '-r', '--name-only', BASE_COMMIT]))
-    .filter((relative) => PROTECTED_PREFIXES.some((prefix) => relative.startsWith(prefix)));
+		.filter((relative) => PROTECTED_PREFIXES.some((prefix) => relative.startsWith(prefix)) &&
+			!PROTECTED_EXCEPTIONS.has(relative));
   for (const relative of baselinePaths) {
     const baseline = blobText(repo, BASE_COMMIT, relative);
     let current = null;
@@ -718,11 +822,53 @@ function privatePathPresent(value) {
   return false;
 }
 
+function samplingEvidenceProblems(label, evidence) {
+  const problems = [];
+  const sampling = evidence?.sampling_profile;
+  const tuple = evidence?.certification?.execution_tuple;
+  const projection = tuple?.effective_sampling_projection;
+  const harness = evidence?.model_profile?.harness_identity;
+  const expectedApplied = ['max_context_tokens', 'max_output_tokens'];
+  const expectedUnsupported = ['temperature', 'top_p'];
+  if (sampling?.temperature !== 0 || sampling?.top_p !== 1 ||
+      sampling?.max_output_tokens !== 1024 || sampling?.max_context_tokens !== 8192 ||
+      !exactSet(sampling?.applied_parameters, expectedApplied) ||
+      !exactSet(sampling?.unsupported_parameters, expectedUnsupported) ||
+      tuple?.requested_sampling_sha256 !== sampling?.sha256 ||
+      !exactSet(tuple?.unsupported_sampling_parameters, expectedUnsupported) ||
+      projection?.schema !== 'aipt.effective-sampling-projection/v1' ||
+      projection?.enforcement_identity !== 'AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1' ||
+      !exactSet(projection?.applied_parameters, expectedApplied) ||
+      !exactSet(projection?.unsupported_parameters, expectedUnsupported) ||
+      projection?.max_context_tokens !== 8192 || projection?.max_output_tokens !== 1024 ||
+      projection?.context_utf8_byte_ceiling !== 8192 || projection?.output_utf8_byte_ceiling !== 1024 ||
+      !/^[0-9a-f]{64}$/u.test(tuple?.backend_serialized_request_sha256 ?? '') ||
+      harness?.runtime_closure_kind !== 'VERIFIED_SINGLE_FILE_DATA_URL_V1' ||
+      harness?.runtime_closure_sha256 !== HARNESS_RUNTIME_CLOSURE_SHA256) {
+    problems.push(`${label} sampling propagation/runtime-closure evidence is incomplete or drifted`);
+  }
+  return problems;
+}
+
+function supersededEvidenceProblems(label, evidence, reason) {
+  const problems = [];
+  if (evidence?.schema !== 'aipt.public.controlled-model-certification-result/v1' ||
+      evidence?.result !== 'PASS' || evidence?.evidence_status !== 'SUPERSEDED_NON_FINAL' ||
+      evidence?.superseded_reason !== reason || evidence?.certification?.kind !== 'CONTROLLED_REAL' ||
+      evidence?.certification?.real_model_calls !== 1 || evidence?.private_paths_recorded !== false ||
+      evidence?.credential_values_recorded !== false || privatePathPresent(evidence)) {
+    problems.push(`${label} historical evidence is not preserved as an exact superseded non-final record`);
+  }
+  return problems;
+}
+
 function controlledEvidenceProblems(repo) {
   const problems = [];
   let capability;
   let evidence;
   let localEvidence;
+  let supersededRemote;
+  let supersededLocal;
   let gguf;
   let llama;
   try {
@@ -733,6 +879,8 @@ function controlledEvidenceProblems(repo) {
     capability = JSON.parse(capabilityRaw.toString('utf8'));
     evidence = readJSON(repo, REMOTE_EVIDENCE);
     localEvidence = readJSON(repo, LOCAL_EVIDENCE);
+    supersededRemote = readJSON(repo, SUPERSEDED_REMOTE_EVIDENCE);
+    supersededLocal = readJSON(repo, SUPERSEDED_LOCAL_EVIDENCE);
     gguf = readJSON(repo, GGUF_REGISTRATION);
     llama = readJSON(repo, LLAMACPP_REGISTRATION);
   } catch (error) {
@@ -742,6 +890,11 @@ function controlledEvidenceProblems(repo) {
       capability?.registration_id !== 'HARNESS-01' || capability?.implementation !== 'deepseek-harness' ||
       capability?.version !== '0.1.0-rc.8' || capability?.commit !== HARNESS_COMMIT ||
       capability?.source_archive_sha256 !== HARNESS_SOURCE_SHA256 ||
+      capability?.runtime_closure?.schema !== 'aipt.harness-runtime-closure/v1' ||
+      capability?.runtime_closure?.kind !== 'VERIFIED_SINGLE_FILE_DATA_URL_V1' ||
+      capability?.runtime_closure?.sha256 !== HARNESS_RUNTIME_CLOSURE_SHA256 ||
+      capability?.runtime_closure?.dependency_resolution !== 'STATIC_BUNDLED' ||
+      capability?.runtime_closure?.execution_source !== 'INHERITED_VERIFIED_FILE_DESCRIPTOR' ||
       capability?.protocol?.identity !== 'agent-client-protocol' || capability?.protocol?.version !== '1' ||
       capability?.protocol?.initialize_request_protocol_version !== 1 ||
       capability?.protocol?.required_prompt_capabilities?.audio !== false ||
@@ -753,6 +906,12 @@ function controlledEvidenceProblems(repo) {
         ['basic_completion', 'structured_output_prompted', 'role_invocation'])) {
     problems.push('HARNESS-01 capability registration is not the exact frozen route');
   }
+  problems.push(...supersededEvidenceProblems(
+    'REMOTE_DEEPSEEK', supersededRemote, 'SAMPLING_CONTROLS_NOT_PROPAGATED',
+  ));
+  problems.push(...supersededEvidenceProblems(
+    'LOCAL_LLAMACPP', supersededLocal, 'LOCAL_RUNTIME_SECURITY_BOUNDARY_REPLACED',
+  ));
 
   const topLevel = [
     'schema', 'result', 'backend_kind', 'model_profile', 'sampling_profile', 'certification',
@@ -777,6 +936,7 @@ function controlledEvidenceProblems(repo) {
     .map((error) => `${REMOTE_EVIDENCE} sampling_profile: ${error.message}`));
   problems.push(...validateInstance(certificationSchema, evidence?.certification).errors
     .map((error) => `${REMOTE_EVIDENCE} certification: ${error.message}`));
+  problems.push(...samplingEvidenceProblems('REMOTE_DEEPSEEK', evidence));
   if (boundObjectDigest(evidence?.model_profile) !== evidence?.model_profile?.sha256 ||
       boundObjectDigest(evidence?.sampling_profile) !== evidence?.sampling_profile?.sha256 ||
       boundObjectDigest(evidence?.certification?.execution_tuple) !== evidence?.certification?.execution_tuple?.sha256 ||
@@ -799,6 +959,7 @@ function controlledEvidenceProblems(repo) {
       probe?.direct_provider_bypass_available !== false || probe?.capability_fingerprint !== HARNESS_CAPABILITY_SHA256 ||
       certification?.kind !== 'CONTROLLED_REAL' || certification?.minimum_certification !== true ||
       certification?.real_model_calls !== 1 || certification?.result !== 'PASS' ||
+      certification?.evidence_identity !== 'AIPT-MVP-B004-REMOTE-DEEPSEEK-CONTROLLED-REAL-02' ||
       certification?.execution_tuple?.backend_kind !== 'REMOTE_DEEPSEEK' ||
       certification?.execution_tuple?.local_runtime_identity !== undefined ||
       !/^[0-9a-f]{64}$/u.test(evidence?.request_sha256 ?? '') ||
@@ -825,6 +986,7 @@ function controlledEvidenceProblems(repo) {
     .map((error) => `${LOCAL_EVIDENCE} sampling_profile: ${error.message}`));
   problems.push(...validateInstance(certificationSchema, localEvidence?.certification).errors
     .map((error) => `${LOCAL_EVIDENCE} certification: ${error.message}`));
+  problems.push(...samplingEvidenceProblems('LOCAL_LLAMACPP', localEvidence));
   if (boundObjectDigest(localEvidence?.model_profile) !== localEvidence?.model_profile?.sha256 ||
       boundObjectDigest(localEvidence?.sampling_profile) !== localEvidence?.sampling_profile?.sha256 ||
       boundObjectDigest(localEvidence?.certification?.execution_tuple) !== localEvidence?.certification?.execution_tuple?.sha256 ||
@@ -856,10 +1018,14 @@ function controlledEvidenceProblems(repo) {
       localRuntime?.quantization_identity !== 'Q8_0' ||
       localRuntime?.template_identity !== 'GGUF-04-qwen35-jinja' ||
       localRuntime?.template_sha256 !== 'c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041' ||
+      localRuntime?.isolation_identity !== ISOLATION_IDENTITY ||
+      localRuntime?.isolation_helper_reference !== ISOLATION_HELPER_REFERENCE ||
+      localRuntime?.isolation_helper_sha256 !== ISOLATION_HELPER_SHA256 ||
       JSON.stringify(localRuntime?.launch_parameters) !== JSON.stringify(expectedLaunch) ||
       localRuntime?.hardware?.architecture !== 'x86_64' || localRuntime?.hardware?.gpu_backend !== 'ROCm-gfx1151' ||
       localCertification?.kind !== 'CONTROLLED_REAL' || localCertification?.minimum_certification !== true ||
       localCertification?.real_model_calls !== 1 || localCertification?.result !== 'PASS' ||
+      localCertification?.evidence_identity !== 'AIPT-MVP-B004-LOCAL-LLAMACPP-CONTROLLED-REAL-02' ||
       localCertification?.production_role_eligibility !== 'NOT_GRANTED_DEFER_003' ||
       localTuple?.backend_kind !== 'LOCAL_LLAMACPP' ||
       JSON.stringify(localTuple?.local_runtime_identity) !== JSON.stringify(localRuntime) ||
@@ -903,9 +1069,16 @@ function controlledEvidenceProblems(repo) {
       llama?.gguf_sha256 !== GGUF_SHA256 || llama?.asset_locator_registered !== true ||
       llama?.asset_locator_exported !== false || llama?.rocm_device_compatibility !== 'PASS' ||
       llama?.managed_startup_identity_probe !== 'PASS' ||
+      llama?.verified_asset_execution !== 'HELD_FILE_OBJECT' ||
+      llama?.isolation_identity !== ISOLATION_IDENTITY ||
+      llama?.isolation_helper_reference !== ISOLATION_HELPER_REFERENCE ||
+      llama?.isolation_helper_sha256 !== ISOLATION_HELPER_SHA256 ||
+      llama?.endpoint_access_control !== 'PRIVATE_USER_NETWORK_NAMESPACE' ||
+      llama?.host_direct_access !== 'REJECTED' || llama?.llama_api_key_added !== false ||
       llama?.harness_routed_minimum_role_invocation !== 'PASS' ||
-      llama?.bounded_shutdown_and_failure_probes !== 'PASS' || llama?.local_real_model_calls !== 1 ||
+      llama?.bounded_shutdown_and_failure_probes !== 'PASS' || llama?.local_real_model_calls !== 2 ||
       llama?.controlled_local_certification !== 'PASS' ||
+      llama?.controlled_local_certification_evidence !== LOCAL_EVIDENCE ||
       llama?.private_paths_recorded !== false || privatePathPresent(llama)) {
     problems.push('LLAMACPP-01 public runtime registration is invalid');
   }
@@ -918,6 +1091,11 @@ function sourceContractProblems(repo) {
   const tests = REQUIRED_GO.filter((relative) => relative.endsWith('_test.go')).map((relative) => read(repo, relative)).join('\n');
   const worker = read(repo, 'packages/model-harness-gateway/src/model-process-worker.ts');
   const workerTests = read(repo, 'packages/model-harness-gateway/test/model-process-worker.test.ts');
+  const sdkSecurityTests = read(repo, 'packages/adapter-sdk/test/security-repair.test.ts');
+  const publicationTests = read(repo, 'scripts/ci/test/publication-hygiene.test.mjs');
+  const schemaSecurityTests = read(repo, 'scripts/ci/test/json-schema-security.test.mjs');
+  const closureSource = read(repo, 'scripts/ci/harness-runtime-closure.ts');
+  const closureBuilder = read(repo, 'scripts/ci/build-harness-runtime-closure.mjs');
   const nodeProduction = ['index.ts', 'protocol.ts', 'model-process-worker.ts']
     .map((name) => read(repo, `packages/model-harness-gateway/src/${name}`)).join('\n');
   const required = [
@@ -927,8 +1105,11 @@ function sourceContractProblems(repo) {
     'func BindManifestModels', 'func ApplyExplicitReplacement', 'func PrepareContext', 'func ValidateEgress',
     'type RuntimeCoordinator struct', 'func (c *RuntimeCoordinator) StartModel', 'func (c *RuntimeCoordinator) StartHarness',
     'type ControlledCertificationSpec struct', 'func RunControlledCertification',
-    'func dialManagedListener', 'func verifyManagedAcceptedConnection', 'PidFD: &pidfd', 'process.WithHandle',
-    'func (m *ManagedLlama) requireManagedGenerationActive', 'func managedProcessGroupSocketOwners',
+    'func openVerifiedAsset', 'func verifyProcessExecutableAsset', 'func bindManagedProcessIdentity',
+    'PidFD: &pidfd', 'process.WithHandle', 'func (m *ManagedLlama) Retire',
+    'func (m *ManagedLlama) startIsolatedLifecycle', 'func RunRuntimeIsolator',
+    'func (m *ManagedLlama) abortIsolatedStart', 'func mountPrivateProc',
+    'endpointUnreachableFromHost', 'CLONE_NEWUSER', 'CLONE_NEWNET', 'CLONE_NEWPID', 'CLONE_NEWNS',
     'aipt-model-run-audit-v1-',
     'RequestSHA256', 'trustedBreakGlassVerifier', 'authoritativeBreakGlassConsumption',
     'readRunAuditState', 'ExpectedSequence: expectedSequence', 'RunClassification',
@@ -948,12 +1129,14 @@ function sourceContractProblems(repo) {
     'max_stdout_protocol_bytes', 'max_notification_bytes',
     'max_response_and_notification_bytes', 'max_stderr_bytes', 'budgetedNotification',
     'sealChildLifetime', 'retireChild(true)', 'stderrTask',
+    'openVerifiedChildAssets', 'runtime_closure', 'VERIFIED_SINGLE_FILE_DATA_URL_V1',
+    'childExecutableIdentity',
+    'requested_sampling_sha256', 'effective_sampling_projection', 'backend_serialized_request_sha256',
   ]) {
     if (!worker.includes(token)) problems.push(`Harness process boundary missing ${token}`);
   }
   for (const token of [
     'TestListenerOwnershipRaceIsRejected',
-    'post-crash rebind was not fail-closed',
     'pidfd process-generation identity remained valid after child exit',
     'TestBreakGlassConcurrentDoubleConsumptionHasExactlyOneWinner',
     'TestEveryGatewayRequiresAuthoritativeRunAuditSink',
@@ -962,11 +1145,23 @@ function sourceContractProblems(repo) {
     'different diagnostic identity remains run-disqualified',
     'TestPostgresIntegrationBreakGlassAtomicReplayAndRestart',
     'clean invocation committed after disqualification',
+    'TestVerifiedAssetUsesWriteSealedSnapshotAfterInPlaceMutation',
+    'TestVerifiedAssetPathReplacementCannotChangeExecutableOrGGUF',
+    'TestRuntimeEnvironmentInjectionCannotBypassVerifiedExecutables',
+    'TestPrepareContextRejectsOversizedElementInventoryBeforeHashing',
+    'TestFailedSpawnCleanupIsBoundedAndNeverSignalsInvalidOrUnrelatedPID',
+    'TestManagedLifecycleConcurrentStartStopIsLinearizableAndLeakFree',
+    'TestOnlyIsolatedAdapterCanReachManagedLlamaLoopback',
   ]) {
     if (!tests.includes(token)) problems.push(`B004 security repair regression missing ${token}`);
   }
   for (const token of [
+    'verified Harness runtime pathname replacement cannot change the launched closure',
+    'probe and invocation traverse the additive adapter and ACP child',
+    'partial Harness initialization failure is rejected and the spawned child is retired',
+    'sampling profile drift and silently claimed ACP parameters fail closed',
     'many small valid ACP frames fail closed',
+    'active session output is charged incrementally before accumulation',
     'id-bearing session/update cannot bypass notification category budgets',
     'notification byte boundary passes exactly and boundary plus one rejects',
     'total stdout protocol byte boundary passes exactly and boundary plus one rejects',
@@ -980,6 +1175,33 @@ function sourceContractProblems(repo) {
     'oversized encoded outer response rejects without partial semantics',
   ]) {
     if (!workerTests.includes(token)) problems.push(`ACP aggregate output regression missing ${token}`);
+  }
+  for (const token of [
+    'canonical JSON preserves own __proto__ without prototype mutation or digest collision',
+    'versioned JSON depth, node, width, and byte limits fail closed without stack exhaustion',
+    'schema enum and uniqueItems deep-comparison work is charged and bounded',
+    'caller-controlled catastrophic schema patterns are rejected before execution',
+    'a shallow document cannot hide an over-limit recursive $ref chain',
+  ]) {
+    if (!sdkSecurityTests.includes(token)) problems.push(`SDK security repair regression missing ${token}`);
+  }
+  for (const token of [
+    'every synthetic leak class is detected and clean removal passes',
+    'missing and unsupported coverage fail closed instead of reporting zero',
+    'detector and finding budgets fail closed with bounded redacted output',
+    'legacy hazard reports never retain or echo matched sensitive material',
+  ]) {
+    if (!publicationTests.includes(token)) problems.push(`publication hygiene sentinel regression missing ${token}`);
+  }
+  if (!schemaSecurityTests.includes('REJECT_SCHEMA_UNSAFE_PATTERN') ||
+      !schemaSecurityTests.includes('bounds JSON resources')) {
+    problems.push('shared CI JSON Schema security regression is incomplete');
+  }
+  for (const token of ['@deepseek-ai/cordis', '@deepseek-ai/dsh-acp', '@deepseek-ai/dsh-agent-spine-demo', '@deepseek-ai/dsh-llm-deepseek']) {
+    if (!closureSource.includes(token)) problems.push(`verified Harness runtime closure source missing ${token}`);
+  }
+  for (const token of [HARNESS_COMMIT, 'writeFileSync', 'MAX_CLOSURE_BYTES']) {
+    if (!closureBuilder.includes(token)) problems.push(`verified Harness runtime closure builder missing ${token}`);
   }
   for (const forbidden of ['fetch(', 'axios', 'curl ', 'huggingface.co']) {
     if (nodeProduction.toLowerCase().includes(forbidden.toLowerCase()) || productionGo.toLowerCase().includes(forbidden.toLowerCase())) {
@@ -1003,20 +1225,33 @@ function securityReproductionProblems(repo) {
   const evidence = readJSON(repo, SECURITY_REPRODUCTIONS);
   const problems = [];
   const findings = new Map((evidence?.reproductions ?? []).map((item) => [item.finding_id, item]));
-  const expected = new Map([
-    ['F1_LLAMA_CPP_LOOPBACK_LISTENER_OWNERSHIP_RACE', 'REJECTED_SAFE_FAILURE'],
-    ['F2_ACP_AGGREGATE_OUTPUT_BYTE_LIMIT', 'REJECTED'],
-    ['F3_ONE_TIME_BREAK_GLASS_GRANT_REPLAY', 'REJECTED'],
-  ]);
+  const expected = [
+    'F01_PROTO_CANONICAL_COLLISION',
+    'F02_VERIFIED_PATH_REOPEN_TOCTOU',
+    'F03_PUBLICATION_DETECTOR_FALSE_ZERO',
+    'F04_SAMPLING_CONTROL_DROP',
+    'F05_PROCESS_LIFECYCLE_RACE',
+    'F06_FAILED_SPAWN_CLEANUP',
+    'F07_RECURSION_STACK_DOS',
+    'F08_LOCAL_LLAMA_UNAUTH_ACCESS',
+    'F09_SCHEMA_REGEX_DOS',
+  ];
   if (evidence?.schema !== 'aipt.public.b004-security-repair-reproductions/v1' ||
       evidence?.task_id !== TASK_ID || evidence?.authorization !== 'IN_BATCH_SECURITY_REPAIR' ||
       evidence?.base_commit !== BASE_COMMIT || evidence?.real_model_calls !== 0 ||
-      evidence?.provider_network_calls !== 0 || findings.size !== expected.size) {
+      evidence?.provider_network_calls !== 0 || evidence?.findings_tested !== 9 ||
+      evidence?.remaining_reproducible !== 0 || evidence?.rejected_candidate?.commit !== 'abd684a4d858376866766d67653f212c26ca4215' ||
+      evidence?.rejected_candidate?.tree !== '0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93' ||
+      evidence?.rejected_candidate?.status !== 'REJECTED_PRE_PUSH_SECURITY_RESCAN' ||
+      !Array.isArray(evidence?.reproductions) || evidence.reproductions.length !== expected.length ||
+      findings.size !== expected.length) {
     problems.push('B004 security-repair reproduction envelope is invalid');
   }
-  for (const [findingID, postStatus] of expected) {
+  for (const findingID of expected) {
     const finding = findings.get(findingID);
-    if (finding?.original?.status !== 'CONFIRMED' || finding?.post_fix?.status !== postStatus ||
+    if (finding?.status !== 'FIXED' || finding?.original_issue_confirmed !== true ||
+        finding?.post_fix_test !== 'PASS' || finding?.original?.status !== 'CONFIRMED' ||
+        finding?.post_fix?.status !== 'REJECTED_AFTER_FIX' ||
         typeof finding?.original?.command !== 'string' || finding.original.command.length === 0 ||
         !Array.isArray(finding?.post_fix?.commands) || finding.post_fix.commands.length === 0) {
       problems.push(`B004 security-repair reproduction is incomplete: ${findingID}`);
@@ -1050,6 +1285,8 @@ function statusProblems(repo, topology) {
       b004?.harness_identity?.registration_id !== 'HARNESS-01' ||
       b004?.harness_identity?.source_archive_sha256 !== HARNESS_SOURCE_SHA256 ||
       b004?.harness_identity?.capability_fingerprint !== HARNESS_CAPABILITY_SHA256 ||
+      b004?.harness_identity?.runtime_closure_kind !== 'VERIFIED_SINGLE_FILE_DATA_URL_V1' ||
+      b004?.harness_identity?.runtime_closure_sha256 !== HARNESS_RUNTIME_CLOSURE_SHA256 ||
       b004?.real_model_gateway_implemented !== true || b004?.model_launcher_gate_implemented !== true ||
       b004?.harness_launcher_gate_implemented !== true || b004?.launcher_plan_first_unimplemented_gate !== 'IPC' ||
       b004?.real_playtest_executed !== false || b004?.qualification_runs_executed !== 0 || b004?.new_migration !== 'NONE' ||
@@ -1074,6 +1311,8 @@ function statusProblems(repo, topology) {
     if (certification?.real_harness !== 'PASS' || certification?.remote_deepseek !== 'PASS' ||
         certification?.local_llamacpp !== 'PASS' ||
         certification?.remote_evidence !== REMOTE_EVIDENCE || certification?.local_evidence !== LOCAL_EVIDENCE ||
+        !exactSet(certification?.superseded_non_final_evidence,
+          [SUPERSEDED_REMOTE_EVIDENCE, SUPERSEDED_LOCAL_EVIDENCE]) ||
         certification?.public_ci_real_model_calls !== 0 ||
         preflight?.product_runtime_config_registered !== false ||
         preflight?.product_credential_reference_registered !== true ||
@@ -1089,18 +1328,31 @@ function statusProblems(repo, topology) {
         preflight?.llamacpp_registration_id !== 'LLAMACPP-01' || preflight?.llamacpp_runtime_registered !== true ||
         preflight?.llamacpp_managed_startup_verified !== true ||
         preflight?.llamacpp_bounded_shutdown_verified !== true ||
+        preflight?.verified_asset_execution !== 'HELD_FILE_OBJECT' ||
+        preflight?.harness_runtime_closure_verified !== true ||
+        preflight?.local_isolation_identity !== ISOLATION_IDENTITY ||
+        preflight?.local_isolation_helper_sha256 !== ISOLATION_HELPER_SHA256 ||
+        preflight?.host_direct_llama_access !== 'REJECTED' || preflight?.llama_api_key_added !== false ||
         observedBridge?.use_scope !== 'owner-local-development' ||
         observedBridge?.release !== OBSERVED_OWNER_LOCAL_BRIDGE_RELEASE ||
         observedBridge?.commit !== OBSERVED_OWNER_LOCAL_BRIDGE_COMMIT ||
         observedBridge?.frozen_identity_match !== false ||
         observedBridge?.accepted_as_product_certification !== false ||
-        preflight?.real_calls_attempted !== 3 || preflight?.successful_certification_real_model_calls !== 2 ||
-        preflight?.local_certification_attempts !== 2 || preflight?.local_pre_call_failures !== 1 ||
-        preflight?.local_real_model_calls !== 1 ||
-        preflight?.local_successful_certification_real_model_calls !== 1 ||
+        preflight?.real_calls_attempted !== 5 || preflight?.successful_certification_real_model_calls !== 4 ||
+        preflight?.local_certification_attempts !== 3 || preflight?.local_pre_call_failures !== 1 ||
+        preflight?.local_real_model_calls !== 2 ||
+        preflight?.local_successful_certification_real_model_calls !== 2 ||
         preflight?.credential_values_recorded !== 0 || preflight?.private_paths_recorded !== 0 ||
+        b004?.rejected_pre_push_candidate?.commit !== 'abd684a4d858376866766d67653f212c26ca4215' ||
+        b004?.rejected_pre_push_candidate?.tree !== '0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93' ||
+        b004?.rejected_pre_push_candidate?.status !== 'REJECTED_PRE_PUSH_SECURITY_RESCAN' ||
+        b004?.rejected_pre_push_candidate?.publicly_pushed !== false ||
+        b004?.rejected_pre_push_candidate?.public_ci_started !== false ||
+        b004?.security_repair?.authorization !== 'IN_BATCH_SECURITY_REPAIR' ||
+        b004?.security_repair?.findings_tested !== 9 || b004?.security_repair?.findings_closed !== 9 ||
+        b004?.security_repair?.remaining_reproducible !== 0 ||
         b004?.deferred_parameters?.['DEFER-002'] !== 'RESOLVED_BY_OWNER_GGUF-04_IDENTITY' ||
-        b004?.real_model_calls !== 3 || b004?.network_model_calls !== 2) {
+        b004?.real_model_calls !== 5 || b004?.network_model_calls !== 3) {
       problems.push('B004 controlled-real construction registration/certification projection is invalid');
     }
   }
@@ -1125,6 +1377,7 @@ function wiringProblems(repo) {
     'check:mvp-b004': 'node scripts/ci/validate/mvp-b004.mjs',
     'test:model-gateway': 'go test ./internal/modelgateway -count=1',
     'test:model-harness-gateway': 'pnpm --filter @aipt/model-harness-gateway test',
+    'test:publication-hygiene': 'node --test scripts/ci/test/publication-hygiene.test.mjs',
   };
   for (const [name, value] of Object.entries(expected)) if (manifest.scripts?.[name] !== value) problems.push(`package script ${name} missing`);
   const aggregate = read(repo, 'scripts/ci/run-checks.mjs');
@@ -1132,14 +1385,14 @@ function wiringProblems(repo) {
     problems.push('aggregate B004 validator wiring missing');
   }
   const workflow = read(repo, '.github/workflows/ci.yml');
-  for (const token of ['pnpm run check:mvp-b004', 'pnpm run test:model-gateway', 'pnpm run test:model-harness-gateway', 'go test -race ./internal/modelgateway']) {
+  for (const token of ['pnpm run check:mvp-b004', 'pnpm run test:publication-hygiene', 'pnpm run test:model-gateway', 'pnpm run test:model-harness-gateway', 'go test -race ./internal/modelgateway']) {
     if (!workflow.includes(token)) problems.push(`public CI B004 wiring missing ${token}`);
   }
   for (const forbidden of ['DEEPSEEK_API_KEY:', 'OPENAI_API_KEY:', 'AIPT_MODEL_RUNTIME_CONFIG:']) {
     if (workflow.includes(forbidden)) problems.push(`public CI requires forbidden private input ${forbidden}`);
   }
   const workflowValidator = read(repo, 'scripts/ci/validate/workflow.mjs');
-  if (!workflowValidator.includes('check:mvp-b004') || !workflowValidator.includes('test:model-gateway') ||
+  if (!workflowValidator.includes('check:mvp-b004') || !workflowValidator.includes('test:publication-hygiene') || !workflowValidator.includes('test:model-gateway') ||
       !workflowValidator.includes('test:model-harness-gateway')) problems.push('workflow validator does not pin B004 gates');
   const launcher = read(repo, 'internal/launcher/gates.go');
   if (!/case GateConfig, GatePostgreSQL, GateMigrations, GateModel, GateHarness, GateCore, GateWeb:\s*return Implemented/u.test(launcher) ||
@@ -1173,6 +1426,19 @@ export function run(ctx) {
   problems.push(...controlledEvidenceProblems(repo));
   problems.push(...statusProblems(repo, topology));
   problems.push(...wiringProblems(repo));
+  if (PUBLICATION_HYGIENE_POLICY.detector_identity !== PUBLICATION_DETECTOR_IDENTITY ||
+      JSON.stringify(PUBLICATION_HYGIENE_POLICY.required_detector_ids) !== JSON.stringify(REQUIRED_PUBLICATION_DETECTORS)) {
+    problems.push('publication detector implementation does not match the independently required manifest');
+  }
+  const inventory = publicationInventory(repo);
+  problems.push(...inventory.errors);
+  const publication = runPublicationHygiene({
+    repo,
+    files: inventory.files,
+  });
+  if (publication.result !== 'PASS') {
+    problems.push(`publication hygiene failed: detector_set=${publication.required_detectors_executed} coverage=${publication.coverage} findings=${publication.findings.length} errors=${publication.errors.length}`);
+  }
 
   const details = problems.length === 0 ? [
     `ok: ${topology.phase} derives from exact B003 closeout Base ${BASE_COMMIT}/${BASE_TREE}`,
@@ -1181,8 +1447,9 @@ export function run(ctx) {
     'ok: versioned profiles/sampling, complete tuple, independent certification and immutable per-role binding are fail-closed',
     'ok: B003 AgentInvoker routes only through the exact governed Harness process boundary; silent fallback is absent',
     'ok: credential write-only semantics, dual egress policy, deterministic context reduction and safe evidence are present',
-    'ok: managed llama startup is argv-only, dynamic IPv4 loopback, identity-bound, readiness-probed and bounded',
+    'ok: managed llama startup consumes held verified assets inside a private user/network namespace with pidfd-bound, linearized and bounded lifecycle control',
     'ok: M01-M30 are present; public CI uses only synthetic files/processes and zero real model/provider calls',
+    `ok: publication hygiene ${publication.detector_identity} executed ${publication.detector_count} required detectors across ${publication.files_scanned} files/${publication.bytes_scanned} bytes with complete coverage`,
     'ok: B001/B002/B003 business artifacts and historical migrations are byte-identical to the authorized Base',
   ] : problems.map((problem) => `FAIL: ${problem}`);
   const unexpectedAcceptances = lifecycleProbes.filter((probe) => probe.expected === 'REJECTED' && probe.actual !== 'REJECTED').length +
@@ -1195,7 +1462,10 @@ export function run(ctx) {
     changed_paths: scopePaths, lifecycle_regression_probes: lifecycleProbes, schema_negative_probes: schemas.probes,
     negative_probe_count: lifecycleProbes.length + schemas.probes.length + 30,
     unexpected_acceptances: unexpectedAcceptances, uncaught_validation_errors: uncaught,
-    credential_leaks: 0, hidden_information_leaks: 0, public_ci_real_model_calls: 0,
+    publication_hygiene: publication,
+    credential_leaks: (publication.counts.credential_leaks ?? 0) + (publication.counts.environment_secret_leaks ?? 0) + (publication.counts.credential_reference_leaks ?? 0),
+    hidden_information_leaks: (publication.counts.private_prompt_leaks ?? 0) + (publication.counts.private_asset_locator_leaks ?? 0) + (publication.counts.private_path_leaks ?? 0),
+    public_ci_real_model_calls: 0,
     public_ci_provider_network_calls: 0, public_ci_secret_requirements: 0,
     real_playtest_executed: false, qualification_runs_executed: 0,
     historical_migrations_unchanged: !problems.some((problem) => problem.startsWith('historical migration changed')),

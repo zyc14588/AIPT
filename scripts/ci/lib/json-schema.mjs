@@ -20,6 +20,8 @@
 // The canonical schema (schemas/protocol/v1/aipt-protocol.schema.json) is
 // written against exactly this subset; checkSchemaDocument proves it uses no
 // unsupported keyword, and validateInstance proves fixture conformance.
+import { compileSafeRegex } from './safe-regex.mjs';
+
 export const META_SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema';
 
 export const SUPPORTED_VALIDATION_KEYWORDS = new Set([
@@ -66,6 +68,64 @@ const JSON_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'int
 
 const MAX_ERRORS = 50;
 const MAX_REF_DEPTH = 64;
+export const JSON_SCHEMA_RESOURCE_LIMITS_V1 = Object.freeze({
+  identity: 'aipt.ci.json-schema-resource-limits/v1',
+  maxDepth: 64,
+  maxNodes: 20_000,
+  maxAggregateBytes: 8 * 1024 * 1024,
+  maxEvaluationSteps: 100_000,
+  maxStringWorkCodeUnits: 2 * 8 * 1024 * 1024,
+});
+
+function jsonResourceProblem(value, label) {
+  const stack = [{ kind: 'value', value, depth: 0 },];
+  const ancestors = new Set();
+  let nodes = 0;
+  let bytes = 0;
+  while (stack.length > 0) {
+    const frame = stack.pop();
+    if (frame.kind === 'exit') {
+      ancestors.delete(frame.value);
+      continue;
+    }
+    nodes += 1;
+    if (nodes > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes) return `${label} node count exceeds ${JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes}`;
+    if (frame.depth > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxDepth) return `${label} depth exceeds ${JSON_SCHEMA_RESOURCE_LIMITS_V1.maxDepth}`;
+    const current = frame.value;
+    if (current === null) {
+      bytes += 4;
+    } else if (typeof current === 'string') {
+      bytes += Buffer.byteLength(current, 'utf8');
+    } else if (typeof current === 'number' || typeof current === 'boolean') {
+      bytes += String(current).length;
+    } else if (typeof current === 'object') {
+      if (ancestors.has(current)) return `${label} contains a cyclic object`;
+      ancestors.add(current);
+      stack.push({ kind: 'exit', value: current });
+		if (Array.isArray(current) && (current.length > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes ||
+			nodes + current.length > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes)) {
+			return `${label} width exceeds the remaining node budget`;
+		}
+		const keys = Array.isArray(current) ? null : Object.keys(current);
+		if (keys !== null && (keys.length > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes ||
+			nodes + keys.length > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes)) {
+			return `${label} width exceeds the remaining node budget`;
+		}
+		const entries = Array.isArray(current)
+			? current.map((entry, index) => [String(index), entry])
+			: keys.map((key) => [key, current[key]]);
+      if (nodes + entries.length > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxNodes) return `${label} width exceeds the remaining node budget`;
+      for (const [key, child] of entries) {
+        if (!Array.isArray(current)) bytes += Buffer.byteLength(key, 'utf8');
+        stack.push({ kind: 'value', value: child, depth: frame.depth + 1 });
+      }
+    } else {
+      return `${label} contains a non-JSON ${typeof current} value`;
+    }
+    if (bytes > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxAggregateBytes) return `${label} aggregate bytes exceed ${JSON_SCHEMA_RESOURCE_LIMITS_V1.maxAggregateBytes}`;
+  }
+  return null;
+}
 
 export function isSchemaNode(node) {
   return typeof node === 'boolean' || (node !== null && typeof node === 'object' && !Array.isArray(node));
@@ -73,21 +133,26 @@ export function isSchemaNode(node) {
 
 // Deep value equality (JSON Schema value semantics: object key order does
 // not matter).
-export function deepEqual(a, b) {
-  if (a === b) return true;
-  if (typeof a !== typeof b) return false;
-  if (a === null || b === null) return a === b;
-  if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b)) return false;
-    return a.length === b.length && a.every((x, i) => deepEqual(x, b[i]));
+export function deepEqual(a, b, charge) {
+  const pending = [[a, b]];
+  while (pending.length > 0) {
+	if (charge !== undefined && !charge()) return false;
+    const [left, right] = pending.pop();
+    if (left === right) continue;
+    if (typeof left !== typeof right || left === null || right === null || typeof left !== 'object') return false;
+    if (Array.isArray(left) || Array.isArray(right)) {
+      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+      for (let index = 0; index < left.length; index += 1) pending.push([left[index], right[index]]);
+      continue;
+    }
+    const keys = Object.keys(left);
+    if (keys.length !== Object.keys(right).length) return false;
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+      pending.push([left[key], right[key]]);
+    }
   }
-  if (typeof a === 'object') {
-    const ka = Object.keys(a);
-    const kb = Object.keys(b);
-    if (ka.length !== kb.length) return false;
-    return ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
-  }
-  return false;
+  return true;
 }
 
 // Resolve a LOCAL $ref ("#", "#/...") inside the schema document. Returns
@@ -116,7 +181,11 @@ function schemaError(errors, path, keyword, message) {
   }
 }
 
-function checkShape(errors, node, isRoot) {
+function checkShape(errors, node, isRoot, depth = 0) {
+  if (depth > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxDepth) {
+    errors.push(`schema traversal exceeds ${JSON_SCHEMA_RESOURCE_LIMITS_V1.maxDepth} (${JSON_SCHEMA_RESOURCE_LIMITS_V1.identity})`);
+    return;
+  }
   if (typeof node === 'boolean') return;
   if (!isSchemaNode(node)) {
     errors.push('schema nodes must be objects or booleans');
@@ -124,7 +193,7 @@ function checkShape(errors, node, isRoot) {
   }
   for (const key of Object.keys(node)) {
     if (SUPPORTED_VALIDATION_KEYWORDS.has(key)) {
-      checkKeywordShape(errors, key, node[key]);
+      checkKeywordShape(errors, key, node[key], depth);
       continue;
     }
     if (ANNOTATION_KEYWORDS.has(key)) continue;
@@ -143,7 +212,7 @@ function checkShape(errors, node, isRoot) {
         errors.push('$defs must be an object');
       } else {
         for (const [name, def] of Object.entries(node[key])) {
-          checkShape(errors, def, false);
+          checkShape(errors, def, false, depth + 1);
         }
       }
       continue;
@@ -153,7 +222,7 @@ function checkShape(errors, node, isRoot) {
   }
 }
 
-function checkKeywordShape(errors, keyword, value) {
+function checkKeywordShape(errors, keyword, value, depth) {
   switch (keyword) {
     case '$ref':
       if (typeof value !== 'string' || !value.startsWith('#/')) {
@@ -178,7 +247,7 @@ function checkKeywordShape(errors, keyword, value) {
       else {
         for (const sub of Object.values(value)) {
           if (!isSchemaNode(sub)) errors.push('every properties entry must be a schema');
-          else checkShape(errors, sub, false);
+          else checkShape(errors, sub, false, depth + 1);
         }
       }
       break;
@@ -189,13 +258,13 @@ function checkKeywordShape(errors, keyword, value) {
       break;
     case 'additionalProperties':
       if (typeof value === 'boolean') break;
-      if (isSchemaNode(value)) checkShape(errors, value, false);
+      if (isSchemaNode(value)) checkShape(errors, value, false, depth + 1);
       else errors.push('additionalProperties must be a boolean or a schema');
       break;
     case 'items':
       if (typeof value === 'boolean') break;
       if (Array.isArray(value)) errors.push('items must be a single schema in this subset (tuple form unsupported)');
-      else if (isSchemaNode(value)) checkShape(errors, value, false);
+      else if (isSchemaNode(value)) checkShape(errors, value, false, depth + 1);
       else errors.push('items must be a schema or boolean');
       break;
     case 'minItems':
@@ -213,7 +282,7 @@ function checkKeywordShape(errors, keyword, value) {
       if (typeof value !== 'string') errors.push('pattern must be a string');
       else {
         try {
-          new RegExp(value, 'u');
+          compileSafeRegex(value);
         } catch (err) {
           errors.push(`pattern does not compile: ${err.message}`);
         }
@@ -234,12 +303,12 @@ function checkKeywordShape(errors, keyword, value) {
       if (!Array.isArray(value) || value.length === 0 || !value.every(isSchemaNode)) {
         errors.push(`${keyword} must be a non-empty array of schemas`);
       } else {
-        for (const sub of value) checkShape(errors, sub, false);
+        for (const sub of value) checkShape(errors, sub, false, depth + 1);
       }
       break;
     case 'not':
       if (!isSchemaNode(value)) errors.push('not must be a schema');
-      else checkShape(errors, value, false);
+      else checkShape(errors, value, false, depth + 1);
       break;
     default:
       errors.push(`keyword ${keyword} has no shape check (subset bookkeeping defect)`);
@@ -288,6 +357,11 @@ function detectRefCycles(schemaDoc, errors) {
 // local-ref resolvability, and ref-cycle defense. Returns { valid, errors }.
 export function checkSchemaDocument(doc) {
   const errors = [];
+  const resourceProblem = jsonResourceProblem(doc, 'schema document');
+  if (resourceProblem !== null) {
+    errors.push(`${resourceProblem} (${JSON_SCHEMA_RESOURCE_LIMITS_V1.identity})`);
+    return { valid: false, errors };
+  }
   if (!isSchemaNode(doc) || typeof doc === 'boolean') {
     errors.push('the schema document root must be an object');
     return { valid: false, errors };
@@ -322,7 +396,56 @@ function typeMatches(instance, types) {
   return false;
 }
 
-function evaluate(schemaDoc, schema, instance, path, stack, errors) {
+function chargeEvaluation(budget, errors, path) {
+  if (budget.exceeded) return false;
+  budget.steps += 1;
+  if (budget.steps <= JSON_SCHEMA_RESOURCE_LIMITS_V1.maxEvaluationSteps) return true;
+  budget.exceeded = true;
+  schemaError(errors, path, 'resourceLimit', `schema evaluation steps exceed ${JSON_SCHEMA_RESOURCE_LIMITS_V1.maxEvaluationSteps} (${JSON_SCHEMA_RESOURCE_LIMITS_V1.identity})`);
+  return false;
+}
+
+function chargeStringEvaluation(budget, path, codeUnits) {
+  if (budget.exceeded) return false;
+  const work = Math.max(1, codeUnits);
+  if (budget.stringWorkCodeUnits > JSON_SCHEMA_RESOURCE_LIMITS_V1.maxStringWorkCodeUnits - work) {
+    budget.exceeded = true;
+    schemaError(
+      budget.rootErrors,
+      path,
+      'resourceLimit',
+      `schema string evaluation work exceeds ${JSON_SCHEMA_RESOURCE_LIMITS_V1.maxStringWorkCodeUnits} UTF-16 code units (${JSON_SCHEMA_RESOURCE_LIMITS_V1.identity})`,
+    );
+    return false;
+  }
+  budget.stringWorkCodeUnits += work;
+  return true;
+}
+
+function codePointLength(instance, path, budget) {
+  if (budget.stringLengths.has(instance)) return budget.stringLengths.get(instance);
+  if (!chargeStringEvaluation(budget, path, instance.length)) return null;
+  let length = 0;
+  for (const _codePoint of instance) length += 1;
+  budget.stringLengths.set(instance, length);
+  return length;
+}
+
+function matchesPattern(re, instance, path, budget) {
+  let results = budget.patternResults.get(re);
+  if (results === undefined) {
+    results = new Map();
+    budget.patternResults.set(re, results);
+  }
+  if (results.has(instance)) return results.get(instance);
+  if (!chargeStringEvaluation(budget, path, instance.length)) return null;
+  const matched = re.test(instance);
+  results.set(instance, matched);
+  return matched;
+}
+
+function evaluate(schemaDoc, schema, instance, path, stack, errors, budget) {
+  if (!chargeEvaluation(budget, budget.rootErrors, path)) return;
   if (typeof schema === 'boolean') {
     if (!schema) schemaError(errors, path, 'false-schema', 'value rejected by a false schema');
     return;
@@ -352,7 +475,7 @@ function evaluate(schemaDoc, schema, instance, path, stack, errors) {
       schemaError(errors, path, '$ref', `$ref cycle detected at ${schema.$ref}`);
       return;
     }
-    evaluate(schemaDoc, target, instance, path, [...stack, target], errors);
+    evaluate(schemaDoc, target, instance, path, [...stack, target], errors, budget);
   }
 
   if (schema.type !== undefined) {
@@ -362,53 +485,55 @@ function evaluate(schemaDoc, schema, instance, path, stack, errors) {
     }
   }
 
-  if (schema.const !== undefined && !deepEqual(instance, schema.const)) {
+	if (schema.const !== undefined && !deepEqual(instance, schema.const, () => chargeEvaluation(budget, budget.rootErrors, path))) {
     schemaError(errors, path, 'const', `value ${JSON.stringify(instance)} does not equal the required constant ${JSON.stringify(schema.const)}`);
   }
 
-  if (schema.enum !== undefined && !schema.enum.some((v) => deepEqual(instance, v))) {
+	if (schema.enum !== undefined && !schema.enum.some((v) =>
+		chargeEvaluation(budget, budget.rootErrors, path) &&
+		deepEqual(instance, v, () => chargeEvaluation(budget, budget.rootErrors, path)))) {
     schemaError(errors, path, 'enum', `value ${JSON.stringify(instance)} is not one of the allowed enum values`);
   }
 
   if (Array.isArray(schema.allOf)) {
-    for (const sub of schema.allOf) evaluate(schemaDoc, sub, instance, path, stack, errors);
+    for (const sub of schema.allOf) evaluate(schemaDoc, sub, instance, path, stack, errors, budget);
   }
   if (Array.isArray(schema.anyOf)) {
-    if (!schema.anyOf.some((sub) => branchPasses(schemaDoc, sub, instance, path, stack))) {
+    if (!schema.anyOf.some((sub) => branchPasses(schemaDoc, sub, instance, path, stack, budget))) {
       schemaError(errors, path, 'anyOf', `value must satisfy at least one of ${schema.anyOf.length} anyOf alternatives`);
     }
   }
   if (Array.isArray(schema.oneOf)) {
-    const passed = schema.oneOf.filter((sub) => branchPasses(schemaDoc, sub, instance, path, stack)).length;
+    const passed = schema.oneOf.filter((sub) => branchPasses(schemaDoc, sub, instance, path, stack, budget)).length;
     if (passed !== 1) {
       schemaError(errors, path, 'oneOf', `value must satisfy exactly one of ${schema.oneOf.length} oneOf alternatives (satisfied ${passed})`);
     }
   }
-  if (isSchemaNode(schema.not) && branchPasses(schemaDoc, schema.not, instance, path, stack)) {
+  if (isSchemaNode(schema.not) && branchPasses(schemaDoc, schema.not, instance, path, stack, budget)) {
     schemaError(errors, path, 'not', 'value must NOT satisfy the "not" schema');
   }
 
   if (typeof instance === 'object' && instance !== null && !Array.isArray(instance)) {
-    evaluateObject(schemaDoc, schema, instance, path, stack, errors);
+    evaluateObject(schemaDoc, schema, instance, path, stack, errors, budget);
   }
   if (Array.isArray(instance)) {
-    evaluateArray(schemaDoc, schema, instance, path, stack, errors);
+    evaluateArray(schemaDoc, schema, instance, path, stack, errors, budget);
   }
   if (typeof instance === 'string') {
-    evaluateString(schema, instance, path, errors);
+    evaluateString(schema, instance, path, errors, budget);
   }
   if (typeof instance === 'number') {
     evaluateNumber(schema, instance, path, errors);
   }
 }
 
-function branchPasses(schemaDoc, sub, instance, path, stack) {
+function branchPasses(schemaDoc, sub, instance, path, stack, budget) {
   const subErrors = [];
-  evaluate(schemaDoc, sub, instance, path, stack, subErrors);
+  evaluate(schemaDoc, sub, instance, path, stack, subErrors, budget);
   return subErrors.length === 0;
 }
 
-function evaluateObject(schemaDoc, schema, instance, path, stack, errors) {
+function evaluateObject(schemaDoc, schema, instance, path, stack, errors, budget) {
   if (schema.minProperties !== undefined && Object.keys(instance).length < schema.minProperties) {
     schemaError(errors, path, 'minProperties', `object must have at least ${schema.minProperties} properties`);
   }
@@ -423,7 +548,7 @@ function evaluateObject(schemaDoc, schema, instance, path, stack, errors) {
   if (schema.properties !== undefined) {
     for (const [key, sub] of Object.entries(schema.properties)) {
       if (Object.prototype.hasOwnProperty.call(instance, key)) {
-        evaluate(schemaDoc, sub, instance[key], `${path}/${key}`, stack, errors);
+        evaluate(schemaDoc, sub, instance[key], `${path}/${key}`, stack, errors, budget);
       }
     }
   }
@@ -434,13 +559,13 @@ function evaluateObject(schemaDoc, schema, instance, path, stack, errors) {
       if (schema.additionalProperties === false) {
         schemaError(errors, `${path}/${key}`, 'additionalProperties', `property ${JSON.stringify(key)} is not allowed (additionalProperties = false)`);
       } else if (isSchemaNode(schema.additionalProperties)) {
-        evaluate(schemaDoc, schema.additionalProperties, instance[key], `${path}/${key}`, stack, errors);
+        evaluate(schemaDoc, schema.additionalProperties, instance[key], `${path}/${key}`, stack, errors, budget);
       }
     }
   }
 }
 
-function evaluateArray(schemaDoc, schema, instance, path, stack, errors) {
+function evaluateArray(schemaDoc, schema, instance, path, stack, errors, budget) {
   if (schema.minItems !== undefined && instance.length < schema.minItems) {
     schemaError(errors, path, 'minItems', `array must have at least ${schema.minItems} items (got ${instance.length})`);
   }
@@ -448,9 +573,11 @@ function evaluateArray(schemaDoc, schema, instance, path, stack, errors) {
     schemaError(errors, path, 'maxItems', `array must have at most ${schema.maxItems} items (got ${instance.length})`);
   }
   if (schema.uniqueItems === true) {
+	outer:
     for (let i = 0; i < instance.length; i += 1) {
       for (let j = i + 1; j < instance.length; j += 1) {
-        if (deepEqual(instance[i], instance[j])) {
+		if (!chargeEvaluation(budget, budget.rootErrors, path)) break outer;
+		if (deepEqual(instance[i], instance[j], () => chargeEvaluation(budget, budget.rootErrors, path))) {
           schemaError(errors, path, 'uniqueItems', 'array items must be unique');
           break;
         }
@@ -459,13 +586,14 @@ function evaluateArray(schemaDoc, schema, instance, path, stack, errors) {
   }
   if (isSchemaNode(schema.items)) {
     instance.forEach((item, i) => {
-      evaluate(schemaDoc, schema.items, item, `${path}/${i}`, stack, errors);
+      evaluate(schemaDoc, schema.items, item, `${path}/${i}`, stack, errors, budget);
     });
   }
 }
 
-function evaluateString(schema, instance, path, errors) {
-  const len = [...instance].length;
+function evaluateString(schema, instance, path, errors, budget) {
+  const len = codePointLength(instance, path, budget);
+  if (len === null) return;
   if (schema.minLength !== undefined && len < schema.minLength) {
     schemaError(errors, path, 'minLength', `string must be at least ${schema.minLength} characters long`);
   }
@@ -473,8 +601,16 @@ function evaluateString(schema, instance, path, errors) {
     schemaError(errors, path, 'maxLength', `string must be at most ${schema.maxLength} characters long`);
   }
   if (schema.pattern !== undefined) {
-    const re = new RegExp(schema.pattern, 'u');
-    if (!re.test(instance)) {
+    let re;
+    try {
+      re = compileSafeRegex(schema.pattern);
+    } catch (error) {
+      schemaError(errors, path, 'pattern', error instanceof Error ? error.message : String(error));
+      return;
+    }
+    const matched = matchesPattern(re, instance, path, budget);
+    if (matched === null) return;
+    if (!matched) {
       schemaError(errors, path, 'pattern', `string does not match the required pattern ${JSON.stringify(schema.pattern)}`);
     }
   }
@@ -505,6 +641,15 @@ function evaluateNumber(schema, instance, path, errors) {
 // LOCAL ref (default "#": the root). Returns { valid, errors } where each
 // error carries { path, keyword, message }.
 export function validateInstance(schemaDoc, instance, { ref = '#', maxErrors = MAX_ERRORS } = {}) {
+  const schemaResourceProblem = jsonResourceProblem(schemaDoc, 'schema document');
+  const instanceResourceProblem = jsonResourceProblem(instance, 'instance document');
+  if (schemaResourceProblem !== null || instanceResourceProblem !== null) {
+    const message = schemaResourceProblem ?? instanceResourceProblem;
+    return {
+      valid: false,
+      errors: [{ path: '#', keyword: 'resourceLimit', message: `#: ${message} (${JSON_SCHEMA_RESOURCE_LIMITS_V1.identity})` }],
+    };
+  }
   const start = resolveRef(schemaDoc, ref);
   if (start === null) {
     return {
@@ -513,7 +658,15 @@ export function validateInstance(schemaDoc, instance, { ref = '#', maxErrors = M
     };
   }
   const errors = [];
-  evaluate(schemaDoc, start, instance, '', [], errors);
+  const budget = {
+    steps: 0,
+    stringWorkCodeUnits: 0,
+    exceeded: false,
+    rootErrors: errors,
+    stringLengths: new Map(),
+    patternResults: new Map(),
+  };
+  evaluate(schemaDoc, start, instance, '', [], errors, budget);
   const report = errors.slice(0, maxErrors);
   return { valid: report.length === 0, errors: report };
 }

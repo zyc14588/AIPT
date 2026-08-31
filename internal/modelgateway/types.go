@@ -19,6 +19,9 @@ const (
 	ManifestBindingSchema       = "aipt.model-manifest-binding/v1"
 	ReplacementEventSchema      = "aipt.model-replacement-event/v1"
 	ContextReductionSchema      = "aipt.context-reduction/v1"
+	EffectiveSamplingSchema     = "aipt.effective-sampling-projection/v1"
+	SamplingEnforcementIdentity = "AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1"
+	LocalIsolationIdentity      = "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1"
 
 	HarnessProtocolACP        = "agent-client-protocol"
 	HarnessProtocolVersionACP = "1"
@@ -93,19 +96,35 @@ type CapabilityClaim struct {
 }
 
 type SamplingProfile struct {
-	Schema            string   `json:"schema"`
-	SamplingID        string   `json:"sampling_id"`
-	SamplingVersion   string   `json:"sampling_version"`
-	Temperature       float64  `json:"temperature"`
-	TopP              float64  `json:"top_p"`
-	MaxOutputTokens   int      `json:"max_output_tokens"`
-	MaxContextTokens  int      `json:"max_context_tokens"`
-	Seed              *int64   `json:"seed,omitempty"`
-	AppliedParameters []string `json:"applied_parameters"`
-	SHA256            string   `json:"sha256"`
+	Schema                string   `json:"schema"`
+	SamplingID            string   `json:"sampling_id"`
+	SamplingVersion       string   `json:"sampling_version"`
+	Temperature           float64  `json:"temperature"`
+	TopP                  float64  `json:"top_p"`
+	MaxOutputTokens       int      `json:"max_output_tokens"`
+	MaxContextTokens      int      `json:"max_context_tokens"`
+	Seed                  *int64   `json:"seed,omitempty"`
+	AppliedParameters     []string `json:"applied_parameters"`
+	UnsupportedParameters []string `json:"unsupported_parameters"`
+	SHA256                string   `json:"sha256"`
 }
 
 func (p SamplingProfile) BindingID() string { return p.SamplingID + "@" + p.SamplingVersion }
+
+// EffectiveSamplingProjection records the exact controls the ACP v1 route
+// can enforce. UTF-8 bytes are a conservative upper bound on tokenizer units:
+// every token consumes at least one input byte, so these ceilings can reject
+// early but cannot admit more than the governed token count.
+type EffectiveSamplingProjection struct {
+	Schema                 string   `json:"schema"`
+	EnforcementIdentity    string   `json:"enforcement_identity"`
+	AppliedParameters      []string `json:"applied_parameters"`
+	UnsupportedParameters  []string `json:"unsupported_parameters"`
+	MaxContextTokens       int      `json:"max_context_tokens"`
+	MaxOutputTokens        int      `json:"max_output_tokens"`
+	ContextUTF8ByteCeiling int      `json:"context_utf8_byte_ceiling"`
+	OutputUTF8ByteCeiling  int      `json:"output_utf8_byte_ceiling"`
+}
 
 type HarnessIdentity struct {
 	Implementation        string `json:"implementation"`
@@ -115,6 +134,8 @@ type HarnessIdentity struct {
 	ProtocolIdentity      string `json:"protocol_identity"`
 	ProtocolVersion       string `json:"protocol_version"`
 	CapabilityFingerprint string `json:"capability_fingerprint"`
+	RuntimeClosureKind    string `json:"runtime_closure_kind"`
+	RuntimeClosureSHA256  string `json:"runtime_closure_sha256"`
 }
 
 func (h HarnessIdentity) BindingID() string {
@@ -150,18 +171,21 @@ type HardwareIdentity struct {
 }
 
 type LocalRuntimeIdentity struct {
-	ExecutableReference  string           `json:"executable_reference"`
-	BinarySHA256         string           `json:"binary_sha256"`
-	Version              string           `json:"version"`
-	Commit               string           `json:"commit"`
-	GGUFReference        string           `json:"gguf_reference"`
-	GGUFSHA256           string           `json:"gguf_sha256"`
-	GGUFModelIdentity    string           `json:"gguf_model_identity"`
-	QuantizationIdentity string           `json:"quantization_identity"`
-	TemplateIdentity     string           `json:"template_identity"`
-	TemplateSHA256       string           `json:"template_sha256"`
-	LaunchParameters     []string         `json:"launch_parameters"`
-	Hardware             HardwareIdentity `json:"hardware"`
+	ExecutableReference      string           `json:"executable_reference"`
+	BinarySHA256             string           `json:"binary_sha256"`
+	Version                  string           `json:"version"`
+	Commit                   string           `json:"commit"`
+	GGUFReference            string           `json:"gguf_reference"`
+	GGUFSHA256               string           `json:"gguf_sha256"`
+	GGUFModelIdentity        string           `json:"gguf_model_identity"`
+	QuantizationIdentity     string           `json:"quantization_identity"`
+	TemplateIdentity         string           `json:"template_identity"`
+	TemplateSHA256           string           `json:"template_sha256"`
+	IsolationIdentity        string           `json:"isolation_identity"`
+	IsolationHelperReference string           `json:"isolation_helper_reference"`
+	IsolationHelperSHA256    string           `json:"isolation_helper_sha256"`
+	LaunchParameters         []string         `json:"launch_parameters"`
+	Hardware                 HardwareIdentity `json:"hardware"`
 }
 
 type ModelProfile struct {
@@ -187,22 +211,26 @@ type ModelProfile struct {
 func (p ModelProfile) BindingID() string { return p.ProfileID + "@" + p.ProfileVersion }
 
 type ExecutionTuple struct {
-	Schema                  string                `json:"schema"`
-	BackendKind             BackendKind           `json:"backend_kind"`
-	ProviderIdentity        string                `json:"provider_identity"`
-	ModelID                 string                `json:"model_id"`
-	ModelProfileBinding     string                `json:"model_profile_binding"`
-	SamplingProfileBinding  string                `json:"sampling_profile_binding"`
-	HarnessIdentity         string                `json:"harness_identity"`
-	HarnessProtocolIdentity string                `json:"harness_protocol_identity"`
-	HarnessProtocolVersion  string                `json:"harness_protocol_version"`
-	StructuredOutputMode    StructuredOutputMode  `json:"structured_output_mode"`
-	ToolCallMode            ToolCallMode          `json:"tool_call_mode"`
-	RequestContractVersion  string                `json:"request_contract_version"`
-	CapabilityFingerprint   string                `json:"capability_fingerprint"`
-	EnvironmentIdentity     string                `json:"environment_identity"`
-	LocalRuntimeIdentity    *LocalRuntimeIdentity `json:"local_runtime_identity,omitempty"`
-	SHA256                  string                `json:"sha256"`
+	Schema                         string                      `json:"schema"`
+	BackendKind                    BackendKind                 `json:"backend_kind"`
+	ProviderIdentity               string                      `json:"provider_identity"`
+	ModelID                        string                      `json:"model_id"`
+	ModelProfileBinding            string                      `json:"model_profile_binding"`
+	SamplingProfileBinding         string                      `json:"sampling_profile_binding"`
+	RequestedSamplingSHA256        string                      `json:"requested_sampling_sha256"`
+	EffectiveSampling              EffectiveSamplingProjection `json:"effective_sampling_projection"`
+	UnsupportedSamplingParameters  []string                    `json:"unsupported_sampling_parameters"`
+	BackendSerializedRequestSHA256 string                      `json:"backend_serialized_request_sha256"`
+	HarnessIdentity                string                      `json:"harness_identity"`
+	HarnessProtocolIdentity        string                      `json:"harness_protocol_identity"`
+	HarnessProtocolVersion         string                      `json:"harness_protocol_version"`
+	StructuredOutputMode           StructuredOutputMode        `json:"structured_output_mode"`
+	ToolCallMode                   ToolCallMode                `json:"tool_call_mode"`
+	RequestContractVersion         string                      `json:"request_contract_version"`
+	CapabilityFingerprint          string                      `json:"capability_fingerprint"`
+	EnvironmentIdentity            string                      `json:"environment_identity"`
+	LocalRuntimeIdentity           *LocalRuntimeIdentity       `json:"local_runtime_identity,omitempty"`
+	SHA256                         string                      `json:"sha256"`
 }
 
 type Certification struct {
@@ -355,17 +383,21 @@ type HarnessRequest struct {
 }
 
 type HarnessResult struct {
-	Schema                string    `json:"schema"`
-	ProtocolVersion       string    `json:"protocol_version"`
-	RequestID             string    `json:"request_id"`
-	HarnessIdentity       string    `json:"harness_identity"`
-	ObservedModelID       string    `json:"observed_model_id"`
-	CapabilityFingerprint string    `json:"capability_fingerprint"`
-	RawResponse           []byte    `json:"raw_response"`
-	StructuredResponse    []byte    `json:"structured_response"`
-	ResponseSHA256        string    `json:"response_sha256"`
-	CompletedAt           time.Time `json:"completed_at"`
-	RouteRecoveryOccurred bool      `json:"route_recovery_occurred"`
+	Schema                         string                      `json:"schema"`
+	ProtocolVersion                string                      `json:"protocol_version"`
+	RequestID                      string                      `json:"request_id"`
+	HarnessIdentity                string                      `json:"harness_identity"`
+	ObservedModelID                string                      `json:"observed_model_id"`
+	CapabilityFingerprint          string                      `json:"capability_fingerprint"`
+	RawResponse                    []byte                      `json:"raw_response"`
+	StructuredResponse             []byte                      `json:"structured_response"`
+	ResponseSHA256                 string                      `json:"response_sha256"`
+	CompletedAt                    time.Time                   `json:"completed_at"`
+	RouteRecoveryOccurred          bool                        `json:"route_recovery_occurred"`
+	RequestedSamplingSHA256        string                      `json:"requested_sampling_sha256"`
+	EffectiveSampling              EffectiveSamplingProjection `json:"effective_sampling_projection"`
+	UnsupportedSamplingParameters  []string                    `json:"unsupported_sampling_parameters"`
+	BackendSerializedRequestSHA256 string                      `json:"backend_serialized_request_sha256"`
 }
 
 type HarnessProbe struct {

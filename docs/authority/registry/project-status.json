@@ -284,7 +284,9 @@
           "source_archive_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
           "protocol_identity": "agent-client-protocol",
           "protocol_version": "1",
-          "capability_fingerprint": "2f40d2d065db8818628ecb2ac3f55ac84535de83c48a186e6d09d8a8e6ff3a42"
+          "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+          "runtime_closure_kind": "VERIFIED_SINGLE_FILE_DATA_URL_V1",
+          "runtime_closure_sha256": "e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db"
         },
         "versioned_model_profile_implemented": true,
         "versioned_sampling_profile_implemented": true,
@@ -297,8 +299,12 @@
           "real_harness": "PASS",
           "remote_deepseek": "PASS",
           "local_llamacpp": "PASS",
-          "remote_evidence": "docs/model-certification/remote-deepseek-controlled-real-01.json",
-          "local_evidence": "docs/model-certification/local-llamacpp-controlled-real-01.json",
+          "remote_evidence": "docs/model-certification/remote-deepseek-controlled-real-02.json",
+          "local_evidence": "docs/model-certification/local-llamacpp-controlled-real-02.json",
+          "superseded_non_final_evidence": [
+            "docs/model-certification/remote-deepseek-controlled-real-01.json",
+            "docs/model-certification/local-llamacpp-controlled-real-01.json"
+          ],
           "public_ci_real_model_calls": 0,
           "preflight": {
             "product_runtime_config_registered": false,
@@ -321,6 +327,12 @@
             "llamacpp_runtime_registered": true,
             "llamacpp_managed_startup_verified": true,
             "llamacpp_bounded_shutdown_verified": true,
+            "verified_asset_execution": "HELD_FILE_OBJECT",
+            "harness_runtime_closure_verified": true,
+            "local_isolation_identity": "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1",
+            "local_isolation_helper_sha256": "1bba082e39f213f85c213c7dcdadd85e610d2b64dcf39214d39d44b1c5e36d3d",
+            "host_direct_llama_access": "REJECTED",
+            "llama_api_key_added": false,
             "observed_owner_local_development_bridge": {
               "use_scope": "owner-local-development",
               "release": "0.1.2-alpha.1",
@@ -328,12 +340,12 @@
               "frozen_identity_match": false,
               "accepted_as_product_certification": false
             },
-            "real_calls_attempted": 3,
-            "successful_certification_real_model_calls": 2,
-            "local_certification_attempts": 2,
+            "real_calls_attempted": 5,
+            "successful_certification_real_model_calls": 4,
+            "local_certification_attempts": 3,
             "local_pre_call_failures": 1,
-            "local_real_model_calls": 1,
-            "local_successful_certification_real_model_calls": 1,
+            "local_real_model_calls": 2,
+            "local_successful_certification_real_model_calls": 2,
             "credential_values_recorded": 0,
             "private_paths_recorded": 0
           }
@@ -343,8 +355,21 @@
           "DEFER-003": "DEFERRED_TO_BENCHMARK",
           "production_local_role_eligibility": "NOT_GRANTED_DEFER_003"
         },
-        "real_model_calls": 3,
-        "network_model_calls": 2,
+        "rejected_pre_push_candidate": {
+          "commit": "abd684a4d858376866766d67653f212c26ca4215",
+          "tree": "0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93",
+          "status": "REJECTED_PRE_PUSH_SECURITY_RESCAN",
+          "publicly_pushed": false,
+          "public_ci_started": false
+        },
+        "security_repair": {
+          "authorization": "IN_BATCH_SECURITY_REPAIR",
+          "findings_tested": 9,
+          "findings_closed": 9,
+          "remaining_reproducible": 0
+        },
+        "real_model_calls": 5,
+        "network_model_calls": 3,
         "real_playtest_executed": false,
         "qualification_runs_executed": 0,
         "new_migration": "NONE",

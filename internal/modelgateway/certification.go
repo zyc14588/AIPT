@@ -2,6 +2,7 @@ package modelgateway
 
 import (
 	"errors"
+	"strings"
 )
 
 func BindExecutionTuple(tuple ExecutionTuple) (ExecutionTuple, error) {
@@ -53,6 +54,21 @@ func validateExecutionTuple(tuple ExecutionTuple, profile *ModelProfile, samplin
 	if err := validSHA("capability_fingerprint", tuple.CapabilityFingerprint); err != nil {
 		return err
 	}
+	if err := validSHA("requested_sampling_sha256", tuple.RequestedSamplingSHA256); err != nil {
+		return err
+	}
+	if err := validSHA("backend_serialized_request_sha256", tuple.BackendSerializedRequestSHA256); err != nil {
+		return err
+	}
+	projection := tuple.EffectiveSampling
+	if projection.Schema != EffectiveSamplingSchema || projection.EnforcementIdentity != SamplingEnforcementIdentity ||
+		projection.MaxContextTokens < 1 || projection.MaxOutputTokens < 1 ||
+		projection.ContextUTF8ByteCeiling != projection.MaxContextTokens ||
+		projection.OutputUTF8ByteCeiling != projection.MaxOutputTokens ||
+		strings.Join(projection.AppliedParameters, "\x00") != "max_context_tokens\x00max_output_tokens" ||
+		strings.Join(projection.UnsupportedParameters, "\x00") != strings.Join(tuple.UnsupportedSamplingParameters, "\x00") {
+		return errors.New("execution tuple effective sampling projection is invalid")
+	}
 	switch tuple.BackendKind {
 	case BackendRemoteDeepSeek:
 		if tuple.ProviderIdentity != "deepseek-official" || tuple.ModelID != RemoteDeepSeekModelID || tuple.LocalRuntimeIdentity != nil {
@@ -84,8 +100,14 @@ func validateExecutionTuple(tuple ExecutionTuple, profile *ModelProfile, samplin
 			return errors.New("execution tuple local runtime identity drift")
 		}
 	}
-	if sampling != nil && tuple.SamplingProfileBinding != sampling.BindingID() {
-		return errors.New("execution tuple sampling profile drift")
+	if sampling != nil {
+		if tuple.SamplingProfileBinding != sampling.BindingID() || tuple.RequestedSamplingSHA256 != sampling.SHA256 ||
+			strings.Join(tuple.UnsupportedSamplingParameters, "\x00") != strings.Join(sampling.UnsupportedParameters, "\x00") {
+			return errors.New("execution tuple sampling profile drift")
+		}
+		if err := validateEffectiveSampling(*sampling, tuple.EffectiveSampling); err != nil {
+			return err
+		}
 	}
 	if requireDigest {
 		want := tuple.SHA256

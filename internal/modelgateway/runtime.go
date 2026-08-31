@@ -23,14 +23,17 @@ type RuntimeConfig struct {
 }
 
 type LocalRuntimeConfig struct {
-	ProfileBinding      string            `json:"profile_binding"`
-	ExecutablePath      string            `json:"executable_path"`
-	GGUFPath            string            `json:"gguf_path"`
-	AdditionalArguments []string          `json:"additional_arguments"`
-	Environment         map[string]string `json:"environment"`
-	WorkingDirectory    string            `json:"working_directory"`
-	StartupTimeoutMS    int64             `json:"startup_timeout_ms"`
-	ShutdownTimeoutMS   int64             `json:"shutdown_timeout_ms"`
+	ProfileBinding            string            `json:"profile_binding"`
+	ExecutablePath            string            `json:"executable_path"`
+	GGUFPath                  string            `json:"gguf_path"`
+	AdditionalArguments       []string          `json:"additional_arguments"`
+	Environment               map[string]string `json:"environment"`
+	WorkingDirectory          string            `json:"working_directory"`
+	StartupTimeoutMS          int64             `json:"startup_timeout_ms"`
+	ShutdownTimeoutMS         int64             `json:"shutdown_timeout_ms"`
+	IsolationExecutablePath   string            `json:"isolation_executable_path"`
+	IsolationExecutableSHA256 string            `json:"isolation_executable_sha256"`
+	IsolationArguments        []string          `json:"isolation_arguments,omitempty"`
 }
 
 type AdapterRuntimeRoute struct {
@@ -56,6 +59,19 @@ type loadedRuntime struct {
 	routes   map[string]AdapterRuntimeRoute
 }
 
+func adapterProcessSpec(route AdapterRuntimeRoute) AdapterRouteSpec {
+	return AdapterRouteSpec{
+		ProfileBinding: route.ProfileBinding, ExecutablePath: route.ExecutablePath,
+		ExecutableSHA256: route.ExecutableSHA256, AdapterEntrypointPath: route.AdapterEntrypointPath,
+		AdapterEntrypointSHA256: route.AdapterEntrypointSHA256,
+		RouteConfigPath:         route.RouteConfigPath, RouteConfigSHA256: route.RouteConfigSHA256,
+		Arguments: append([]string(nil), route.Arguments...), Environment: cloneStringMap(route.Environment),
+		WorkingDirectory: route.WorkingDirectory,
+		StartupTimeout:   time.Duration(route.StartupTimeoutMS) * time.Millisecond,
+		ShutdownTimeout:  time.Duration(route.ShutdownTimeoutMS) * time.Millisecond,
+	}
+}
+
 // RuntimeCoordinator implements the production MODEL and HARNESS launcher
 // gates. MODEL validates formal certifications/credentials/assets and starts
 // managed local backends. HARNESS then launches only the exact governed ACP
@@ -64,6 +80,7 @@ type RuntimeCoordinator struct {
 	configPath string
 	broker     CredentialBroker
 
+	opMu         sync.Mutex
 	mu           sync.Mutex
 	loaded       *loadedRuntime
 	transport    *AdapterProcessTransport
@@ -111,6 +128,15 @@ func loadRuntimeConfig(ctx context.Context, path string, broker CredentialBroker
 		routes[route.ProfileBinding] = route
 	}
 	localManagers := make(map[string]*ManagedLlama, len(localConfig))
+	loadedComplete := false
+	defer func() {
+		if loadedComplete {
+			return
+		}
+		for _, manager := range localManagers {
+			_ = manager.Retire(context.Background())
+		}
+	}()
 	for _, profile := range config.Profiles {
 		backendSeen[profile.BackendKind] = true
 		if _, exists := routes[profile.BindingID()]; !exists {
@@ -126,6 +152,9 @@ func loadRuntimeConfig(ctx context.Context, path string, broker CredentialBroker
 			if _, exists := localConfig[profile.BindingID()]; exists {
 				return nil, newError(CodeLocalProcessMismatch, "validate_runtime_config", profile.BindingID(), errors.New("remote profile has a local process"))
 			}
+			if routes[profile.BindingID()].LocalEndpointEnv != "" {
+				return nil, newError(CodeHarnessTransport, "validate_runtime_config", profile.BindingID(), errors.New("remote route contains a local endpoint binding"))
+			}
 			continue
 		}
 		item, exists := localConfig[profile.BindingID()]
@@ -136,10 +165,22 @@ func loadRuntimeConfig(ctx context.Context, path string, broker CredentialBroker
 			ExecutablePath: item.ExecutablePath, GGUFPath: item.GGUFPath,
 			AdditionalArguments: append([]string(nil), item.AdditionalArguments...),
 			Environment:         cloneStringMap(item.Environment), WorkingDirectory: item.WorkingDirectory,
-			StartupTimeout:  time.Duration(item.StartupTimeoutMS) * time.Millisecond,
-			ShutdownTimeout: time.Duration(item.ShutdownTimeoutMS) * time.Millisecond,
+			StartupTimeout:            time.Duration(item.StartupTimeoutMS) * time.Millisecond,
+			ShutdownTimeout:           time.Duration(item.ShutdownTimeoutMS) * time.Millisecond,
+			IsolationExecutablePath:   item.IsolationExecutablePath,
+			IsolationExecutableSHA256: item.IsolationExecutableSHA256,
+			IsolationArguments:        append([]string(nil), item.IsolationArguments...),
 		})
 		if err != nil {
+			return nil, err
+		}
+		route := routes[profile.BindingID()]
+		if !envNameRE.MatchString(route.LocalEndpointEnv) {
+			_ = manager.Retire(context.Background())
+			return nil, newError(CodeLocalEndpointNotLoopback, "bind_local_harness_route", profile.BindingID(), errors.New("local endpoint environment binding missing"))
+		}
+		if err := manager.PrepareIsolatedAdapter(adapterProcessSpec(route), route.LocalEndpointEnv); err != nil {
+			_ = manager.Retire(context.Background())
 			return nil, err
 		}
 		localManagers[profile.BindingID()] = manager
@@ -148,6 +189,7 @@ func loadRuntimeConfig(ctx context.Context, path string, broker CredentialBroker
 		!backendSeen[BackendRemoteDeepSeek] || !backendSeen[BackendLocalLlamaCPP] {
 		return nil, newError(CodeInvalidProfile, "validate_runtime_config", "", errors.New("closed B004 backend inventory must contain exactly routed REMOTE_DEEPSEEK and LOCAL_LLAMACPP profiles"))
 	}
+	loadedComplete = true
 	return &loadedRuntime{config: config, registry: registry, local: localManagers, routes: routes}, nil
 }
 
@@ -166,6 +208,8 @@ func (c *RuntimeCoordinator) StartModel(ctx context.Context) (func(context.Conte
 	if c == nil || ctx == nil {
 		return nil, newError(CodeInvalidProfile, "start_model_gate", "", errors.New("coordinator and context required"))
 	}
+	c.opMu.Lock()
+	defer c.opMu.Unlock()
 	c.mu.Lock()
 	if c.modelStarted || c.loaded != nil {
 		c.mu.Unlock()
@@ -176,19 +220,31 @@ func (c *RuntimeCoordinator) StartModel(ctx context.Context) (func(context.Conte
 	if err != nil {
 		return nil, err
 	}
-	started := make([]*ManagedLlama, 0, len(loaded.local))
 	for _, profile := range loaded.config.Profiles {
 		manager := loaded.local[profile.BindingID()]
 		if manager == nil {
 			continue
 		}
 		if err := manager.Start(ctx); err != nil {
-			for index := len(started) - 1; index >= 0; index-- {
-				_ = started[index].Stop(context.Background())
+			var cleanupFailures []error
+			for index := len(loaded.config.Profiles) - 1; index >= 0; index-- {
+				candidate := loaded.local[loaded.config.Profiles[index].BindingID()]
+				if candidate != nil {
+					if cleanupErr := candidate.Retire(context.Background()); cleanupErr != nil {
+						cleanupFailures = append(cleanupFailures, cleanupErr)
+					}
+				}
 			}
-			return nil, err
+			if len(cleanupFailures) > 0 {
+				// Preserve the loaded generation so StopModel can retry cleanup;
+				// it is deliberately not marked ready for Harness startup.
+				c.mu.Lock()
+				c.loaded = loaded
+				c.modelStarted = false
+				c.mu.Unlock()
+			}
+			return nil, errors.Join(err, errors.Join(cleanupFailures...))
 		}
-		started = append(started, manager)
 	}
 	c.mu.Lock()
 	c.loaded = loaded
@@ -201,6 +257,8 @@ func (c *RuntimeCoordinator) StartHarness(ctx context.Context) (func(context.Con
 	if c == nil || ctx == nil {
 		return nil, newError(CodeHarnessTransport, "start_harness_gate", "", errors.New("coordinator and context required"))
 	}
+	c.opMu.Lock()
+	defer c.opMu.Unlock()
 	c.mu.Lock()
 	if !c.modelStarted || c.loaded == nil || c.harnessReady || c.transport != nil {
 		c.mu.Unlock()
@@ -220,24 +278,23 @@ func (c *RuntimeCoordinator) StartHarness(ctx context.Context) (func(context.Con
 			if !envNameRE.MatchString(route.LocalEndpointEnv) {
 				return nil, newError(CodeLocalEndpointNotLoopback, "bind_local_harness_route", profile.BindingID(), errors.New("local endpoint environment binding missing"))
 			}
-			endpoint, err := loaded.local[profile.BindingID()].Endpoint()
+			manager := loaded.local[profile.BindingID()]
+			endpoint, err := manager.Endpoint()
 			if err != nil || !IsIPv4LoopbackURL(endpoint) {
 				return nil, newError(CodeLocalEndpointNotLoopback, "bind_local_harness_route", profile.BindingID(), err)
 			}
-			environment[route.LocalEndpointEnv] = endpoint.String()
+			// The URL is meaningful only inside the manager's private network
+			// namespace. It is injected there by the isolation supervisor and is
+			// deliberately never exposed in the host adapter environment.
 		} else if route.LocalEndpointEnv != "" {
 			return nil, newError(CodeHarnessTransport, "bind_remote_harness_route", profile.BindingID(), errors.New("remote route contains a local endpoint binding"))
 		}
-		specs = append(specs, AdapterRouteSpec{
-			ProfileBinding: route.ProfileBinding, ExecutablePath: route.ExecutablePath,
-			ExecutableSHA256: route.ExecutableSHA256, AdapterEntrypointPath: route.AdapterEntrypointPath,
-			AdapterEntrypointSHA256: route.AdapterEntrypointSHA256,
-			RouteConfigPath:         route.RouteConfigPath, RouteConfigSHA256: route.RouteConfigSHA256,
-			Arguments: append([]string(nil), route.Arguments...), Environment: environment,
-			WorkingDirectory: route.WorkingDirectory,
-			StartupTimeout:   time.Duration(route.StartupTimeoutMS) * time.Millisecond,
-			ShutdownTimeout:  time.Duration(route.ShutdownTimeoutMS) * time.Millisecond,
-		})
+		spec := adapterProcessSpec(route)
+		spec.Environment = environment
+		if profile.BackendKind == BackendLocalLlamaCPP {
+			spec.IsolatedLauncher = loaded.local[profile.BindingID()]
+		}
+		specs = append(specs, spec)
 	}
 	transport, err := NewAdapterProcessTransport(loaded.config.Profiles, specs, c.broker)
 	if err != nil {
@@ -246,17 +303,35 @@ func (c *RuntimeCoordinator) StartHarness(ctx context.Context) (func(context.Con
 	for _, profile := range loaded.config.Profiles {
 		sampling, err := loaded.registry.Sampling(profile.SamplingProfileID)
 		if err != nil {
-			_ = transport.Close(context.Background())
-			return nil, err
+			cleanupErr := transport.Close(context.Background())
+			if cleanupErr != nil {
+				c.mu.Lock()
+				c.transport = transport
+				c.harnessReady = false
+				c.mu.Unlock()
+			}
+			return nil, errors.Join(err, cleanupErr)
 		}
 		probe, err := transport.Probe(ctx, profile, sampling)
 		if err != nil {
-			_ = transport.Close(context.Background())
-			return nil, err
+			cleanupErr := transport.Close(context.Background())
+			if cleanupErr != nil {
+				c.mu.Lock()
+				c.transport = transport
+				c.harnessReady = false
+				c.mu.Unlock()
+			}
+			return nil, errors.Join(err, cleanupErr)
 		}
 		if err := validateProbe(profile, probe); err != nil {
-			_ = transport.Close(context.Background())
-			return nil, err
+			cleanupErr := transport.Close(context.Background())
+			if cleanupErr != nil {
+				c.mu.Lock()
+				c.transport = transport
+				c.harnessReady = false
+				c.mu.Unlock()
+			}
+			return nil, errors.Join(err, cleanupErr)
 		}
 	}
 	c.mu.Lock()
@@ -273,15 +348,28 @@ func (c *RuntimeCoordinator) StopHarness(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	c.opMu.Lock()
+	defer c.opMu.Unlock()
+	return c.stopHarnessLifecycle(ctx)
+}
+
+func (c *RuntimeCoordinator) stopHarnessLifecycle(ctx context.Context) error {
 	c.mu.Lock()
 	transport := c.transport
-	c.transport = nil
 	c.harnessReady = false
 	c.mu.Unlock()
 	if transport == nil {
 		return nil
 	}
-	return transport.Close(ctx)
+	if err := transport.Close(ctx); err != nil {
+		return err
+	}
+	c.mu.Lock()
+	if c.transport == transport {
+		c.transport = nil
+	}
+	c.mu.Unlock()
+	return nil
 }
 
 func (c *RuntimeCoordinator) StopModel(ctx context.Context) error {
@@ -291,12 +379,13 @@ func (c *RuntimeCoordinator) StopModel(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if err := c.StopHarness(ctx); err != nil {
+	c.opMu.Lock()
+	defer c.opMu.Unlock()
+	if err := c.stopHarnessLifecycle(ctx); err != nil {
 		return err
 	}
 	c.mu.Lock()
 	loaded := c.loaded
-	c.loaded = nil
 	c.modelStarted = false
 	c.mu.Unlock()
 	if loaded == nil {
@@ -310,11 +399,21 @@ func (c *RuntimeCoordinator) StopModel(ctx context.Context) error {
 		if manager == nil {
 			continue
 		}
-		if err := manager.Stop(ctx); err != nil {
+		if err := manager.Retire(ctx); err != nil {
 			failures = append(failures, err)
 		}
 	}
-	return errors.Join(failures...)
+	if len(failures) > 0 {
+		// Keep the generation reachable so the caller can retry bounded
+		// retirement of any process whose ownership could not yet settle.
+		return errors.Join(failures...)
+	}
+	c.mu.Lock()
+	if c.loaded == loaded {
+		c.loaded = nil
+	}
+	c.mu.Unlock()
+	return nil
 }
 
 func (c *RuntimeCoordinator) Registry() (*Registry, error) {

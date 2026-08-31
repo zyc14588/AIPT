@@ -50,13 +50,102 @@
 import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { sha256Hex } from './canonical-json.ts';
 import { failResult, issue, okResult, type ValidationIssue, type ValidationResult } from './errors.ts';
-import { validateJsonValue } from './json-value.ts';
-import { validateSchemaInstance } from './json-schema.ts';
+import {
+  chargeJsonAggregateBudget,
+  createJsonAggregateBudget,
+  validateJsonValue,
+  validateJsonValueWithBudget,
+  type JsonAggregateBudget,
+  type JsonResourceUsage,
+} from './json-value.ts';
+import { validateSchemaInstanceWithBudget } from './json-schema.ts';
 import { validateProjectionSemantics } from './projection.ts';
+import { SDK_JSON_RESOURCE_LIMITS_V1 as LIMITS } from './resource-limits.ts';
 import type { FixtureManifest } from './types.ts';
 
 const SHA256_RE = /^[0-9a-f]{64}$/u;
 const IDENTIFIER_RE = new RegExp(D.identifier_pattern, 'u');
+
+interface FixtureResourceBudget {
+  readonly json: JsonAggregateBudget;
+  semanticComparisons: number;
+}
+
+function createFixtureResourceBudget(): FixtureResourceBudget {
+  return {
+    json: createJsonAggregateBudget(
+      LIMITS.max_fixture_aggregate_nodes,
+      LIMITS.max_fixture_aggregate_bytes,
+    ),
+    semanticComparisons: 0,
+  };
+}
+
+function fixtureResourceIssue(path: string, message: string): ValidationIssue {
+  return issue(path, 'AIPT_JSON_RESOURCE_LIMIT', `${message} (${LIMITS.identity})`);
+}
+
+function remainingFixtureIssueCapacity(issues: readonly ValidationIssue[]): number {
+  return Math.max(1, LIMITS.max_issues - issues.length);
+}
+
+// Preserve one slot for a deterministic terminal issue.  Returning false is
+// an instruction to the caller to stop immediately; no later document,
+// schema branch, or semantic comparison may run after exhaustion.
+function appendFixtureIssues(issues: ValidationIssue[], next: readonly ValidationIssue[], path: string): boolean {
+  for (const nextIssue of next) {
+    if (issues.length >= LIMITS.max_issues - 1) {
+      issues.push(fixtureResourceIssue(path, `fixture validation issue count exceeds ${LIMITS.max_issues}`));
+      return false;
+    }
+    issues.push(nextIssue);
+    if (nextIssue.code === 'AIPT_JSON_RESOURCE_LIMIT') return false;
+  }
+  return true;
+}
+
+function addFixtureIssue(
+  issues: ValidationIssue[],
+  path: string,
+  code: ValidationIssue['code'],
+  message: () => string,
+): boolean {
+  if (issues.length >= LIMITS.max_issues - 1) {
+    issues.push(fixtureResourceIssue(path, `fixture validation issue count exceeds ${LIMITS.max_issues}`));
+    return false;
+  }
+  issues.push(issue(path, code, message()));
+  return true;
+}
+
+function chargeFixtureTraversal(
+  budget: FixtureResourceBudget,
+  path: string,
+  usages: readonly JsonResourceUsage[],
+  multiplier = 1,
+): ValidationIssue | null {
+  for (const usage of usages) {
+    if (!chargeJsonAggregateBudget(budget.json, usage, multiplier)) {
+      return fixtureResourceIssue(path, `fixture aggregate JSON work exceeds ${LIMITS.max_fixture_aggregate_nodes} nodes or ${LIMITS.max_fixture_aggregate_bytes} bytes`);
+    }
+  }
+  return null;
+}
+
+function chargeSemanticComparison(
+  budget: FixtureResourceBudget,
+  path: string,
+  usages: readonly JsonResourceUsage[],
+): ValidationIssue | null {
+  budget.semanticComparisons += 1;
+  if (budget.semanticComparisons > LIMITS.max_fixture_semantic_comparisons) {
+    return fixtureResourceIssue(path, `fixture semantic comparisons exceed ${LIMITS.max_fixture_semantic_comparisons}`);
+  }
+  // Projection validation re-walks its state/projection/seat inputs through
+  // lossless and shape gates. Charge a conservative three traversals before
+  // invoking it so exhaustion happens before the expensive sibling call.
+  return chargeFixtureTraversal(budget, path, usages, 3);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -210,6 +299,8 @@ export function validateFixtureManifest(input: unknown): ValidationResult {
   const assets = input.assets;
   if (!Array.isArray(assets) || assets.length < 1) {
     issues.push(issue('$/assets', 'AIPT_INVALID_VALUE', 'assets must be a non-empty array'));
+  } else if (assets.length + (Array.isArray(input.mutants) ? input.mutants.length : 0) > LIMITS.max_fixture_documents) {
+    issues.push(issue('$/assets', 'AIPT_JSON_RESOURCE_LIMIT', `fixture document count exceeds ${LIMITS.max_fixture_documents} (${LIMITS.identity})`));
   } else {
     assets.forEach((entry, index) => checkAssetEntry(entry, `$/assets/${index}`, issues));
   }
@@ -233,84 +324,151 @@ export function validateFixtureManifest(input: unknown): ValidationResult {
   };
   if (Array.isArray(assets)) assets.forEach((entry, index) => recordPath((entry as { path?: unknown } | null)?.path, `$/assets/${index}/path`));
   if (Array.isArray(mutants)) mutants.forEach((entry, index) => recordPath((entry as { path?: unknown } | null)?.path, `$/mutants/${index}/path`));
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(limitFixtureIssues(issues, '$'));
 }
 
 // ---------------------------------------------------------------------------
 // Bundle wrapper / documents collection (descriptor-only, no accessors).
 // ---------------------------------------------------------------------------
 
+function defineFixtureMember(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value, enumerable: true, writable: true, configurable: true,
+  });
+}
+
+function limitFixtureIssues(issues: ValidationIssue[], path: string): ValidationIssue[] {
+  if (issues.length <= LIMITS.max_issues) return issues;
+  issues.length = LIMITS.max_issues - 1;
+  issues.push(issue(path, 'AIPT_JSON_RESOURCE_LIMIT', `fixture validation issue count exceeds ${LIMITS.max_issues} (${LIMITS.identity})`));
+  return issues;
+}
+
 // Read the caller-supplied bundle wrapper through its OWN PROPERTY
-// DESCRIPTORS only: symbol-keyed members, accessors, and non-enumerable
-// members fail closed deterministically (AIPT_FIXTURE_INVALID_MANIFEST)
-// without ever invoking a getter/setter. Accepted enumerable data members
-// are read from their data descriptor (a descriptor read never invokes an
-// accessor).
+// DESCRIPTORS only. The three semantic string members are bounded and copied
+// into a null-prototype record with explicit data-property semantics, so an
+// own __proto__ key cannot become inherited manifest/documents/schema state.
+// Required non-enumerable members and accessors fail closed without invocation;
+// inert symbol/non-enumerable extension members are never read.
 function readBundleWrapper(input: unknown, issues: ValidationIssue[]): Record<string, unknown> | null {
   if (!isRecord(input)) {
     issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle must be an object with manifest and documents'));
     return null;
   }
-  const members: Record<string, unknown> = {};
-  if (Object.getOwnPropertySymbols(input).length > 0) {
-    issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper must not carry symbol-keyed members'));
+  const members = Object.create(null) as Record<string, unknown>;
+  const allowed = new Set(['manifest', 'documents', 'schema']);
+  let ownEnumerableMembers = 0;
+  let ownNames: string[];
+  try {
+    const prototype = Object.getPrototypeOf(input);
+    if (prototype !== Object.prototype && prototype !== null) {
+      issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper must have Object.prototype or a null prototype'));
+      return null;
+    }
+    // Object.getOwnPropertyNames is the exact own-key boundary.  In
+    // particular, it never walks a hostile inherited enumerable chain.
+    ownNames = Object.getOwnPropertyNames(input);
+  } catch {
+    issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper reflection failed'));
+    return null;
   }
-  for (const key of Object.getOwnPropertyNames(input)) {
-    const descriptor = Object.getOwnPropertyDescriptor(input, key);
+  for (const key of ownNames) {
+    let descriptor: PropertyDescriptor | undefined;
+    try { descriptor = Object.getOwnPropertyDescriptor(input, key); }
+    catch {
+      issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper descriptor inspection failed'));
+      return null;
+    }
     if (descriptor === undefined) continue;
     if (descriptor.get !== undefined || descriptor.set !== undefined) {
-      issues.push(issue(`$/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `bundle wrapper member ${JSON.stringify(key)} must be an ordinary data member, not an accessor`));
+      issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper must not contain accessor properties'));
       continue;
     }
+    // Non-enumerable extension data is inert and remains ignored, preserving
+    // the wrapper's existing extension behavior. Required/optional semantic
+    // members, however, must be ordinary enumerable data properties.
     if (!descriptor.enumerable) {
-      issues.push(issue(`$/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `bundle wrapper member ${JSON.stringify(key)} must be an enumerable data member`));
+      if (allowed.has(key)) {
+        issues.push(issue(`$/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', 'bundle wrapper semantic members must be enumerable data properties'));
+      }
       continue;
     }
-    members[key] = descriptor.value;
+    ownEnumerableMembers += 1;
+    if (ownEnumerableMembers > allowed.size) {
+      issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper carries too many enumerable members'));
+      return null;
+    }
+    if (!allowed.has(key)) {
+      issues.push(issue('$', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture bundle wrapper carries an unknown enumerable member'));
+      continue;
+    }
+    defineFixtureMember(members, key, descriptor.value);
+  }
+  for (const key of ['manifest', 'documents']) {
+    if (!hasOwn(members, key)) {
+      issues.push(issue(`$/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `fixture bundle wrapper is missing own member ${JSON.stringify(key)}`));
+    }
   }
   return issues.length === 0 ? members : null;
 }
 
-// Build the trusted documents map from the caller-supplied bundle. Map keys
-// must be strings; for the object form, every own member is inspected via
-// its descriptor (symbol keys, accessors, and non-enumerable members fail
-// closed without invocation) and read from its data descriptor. The document
-// VALUES are collected by reference only — nothing is traversed here; the
-// per-entry gates (after manifest preflight and the canonical schema binding)
-// own all document interpretation.
-function collectDocuments(input: unknown, issues: ValidationIssue[]): Map<string, unknown> | null {
+// Build the trusted documents map from the caller-supplied bundle. The public
+// FixtureBundle contract requires a ReadonlyMap: its intrinsic size/iterator
+// are used so subclass overrides cannot create unbounded work. Count and key
+// bytes are rejected before values are traversed or copied beyond the versioned
+// fixture budget.
+function collectDocuments(input: unknown, expectedDocuments: number, issues: ValidationIssue[]): Map<string, unknown> | null {
   const documents = new Map<string, unknown>();
-  if (input instanceof Map) {
-    for (const [key, value] of input) {
+  if (!(input instanceof Map)) {
+    issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture documents must be a Map keyed by manifest path'));
+    return null;
+  }
+  let size: number;
+  try {
+    const sizeGetter = Object.getOwnPropertyDescriptor(Map.prototype, 'size')?.get;
+    if (sizeGetter === undefined) throw new TypeError('Map size getter unavailable');
+    size = Number(sizeGetter.call(input));
+  } catch {
+    issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture documents must be an intrinsic Map'));
+    return null;
+  }
+  if (!Number.isSafeInteger(size) || size < 0 || size > LIMITS.max_fixture_documents || size > expectedDocuments + 1) {
+    issues.push(issue('$/documents', 'AIPT_JSON_RESOURCE_LIMIT', `fixture document count exceeds the bounded inventory (${LIMITS.identity})`));
+    return null;
+  }
+  let iterator: MapIterator<[unknown, unknown]>;
+  try { iterator = Map.prototype.entries.call(input) as MapIterator<[unknown, unknown]>; }
+  catch {
+    issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture documents must be an intrinsic Map'));
+    return null;
+  }
+  let aggregateKeyBytes = 0;
+  try {
+    for (let index = 0; index < size; index += 1) {
+      const next = iterator.next();
+      if (next.done) throw new TypeError('Map changed during validation');
+      const [key, value] = next.value;
       if (typeof key !== 'string') {
         issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'document map keys must be manifest path strings'));
         continue;
       }
+      if (key.length > LIMITS.max_fixture_document_key_bytes) {
+        issues.push(issue('$/documents', 'AIPT_JSON_RESOURCE_LIMIT', `fixture document key bytes exceed ${LIMITS.max_fixture_document_key_bytes} (${LIMITS.identity})`));
+        return null;
+      }
+      aggregateKeyBytes += Buffer.byteLength(key, 'utf8');
+      if (aggregateKeyBytes > LIMITS.max_fixture_document_key_bytes) {
+        issues.push(issue('$/documents', 'AIPT_JSON_RESOURCE_LIMIT', `fixture document key bytes exceed ${LIMITS.max_fixture_document_key_bytes} (${LIMITS.identity})`));
+        return null;
+      }
       documents.set(key, value);
     }
-    return documents;
+    if (!iterator.next().done) throw new TypeError('Map changed during validation');
+  } catch {
+    issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture documents changed during validation'));
+    return null;
   }
-  if (isRecord(input)) {
-    if (Object.getOwnPropertySymbols(input).length > 0) {
-      issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'documents object must not carry symbol-keyed members'));
-    }
-    for (const key of Object.getOwnPropertyNames(input)) {
-      const descriptor = Object.getOwnPropertyDescriptor(input, key);
-      if (descriptor === undefined) continue;
-      if (descriptor.get !== undefined || descriptor.set !== undefined) {
-        issues.push(issue(`$/documents/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `documents member ${JSON.stringify(key)} must be an ordinary data member, not an accessor`));
-        continue;
-      }
-      if (!descriptor.enumerable) {
-        issues.push(issue(`$/documents/${key}`, 'AIPT_FIXTURE_INVALID_MANIFEST', `documents member ${JSON.stringify(key)} must be an enumerable data member`));
-        continue;
-      }
-      documents.set(key, descriptor.value);
-    }
-    return documents;
-  }
-  issues.push(issue('$/documents', 'AIPT_FIXTURE_INVALID_MANIFEST', 'fixture documents must be a Map or an object keyed by manifest path'));
-  return null;
+  return issues.length === 0 ? documents : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -342,10 +500,22 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
   const wrapperIssues: ValidationIssue[] = [];
   const wrapper = readBundleWrapper(input, wrapperIssues);
   if (wrapper === null) return failResult(wrapperIssues);
+  const budget = createFixtureResourceBudget();
 
   // 1. Manifest preflight first: on any failure, stop BEFORE hashing or
   //    interpreting supplied asset documents (and before traversing the
   //    documents collection).
+  const manifestMeasured = validateJsonValueWithBudget(
+    wrapper.manifest,
+    '$',
+    budget.json,
+    LIMITS.max_issues,
+  );
+  if (!manifestMeasured.result.valid) return manifestMeasured.result;
+  // validateFixtureManifest performs its own public lossless gate; account
+  // for that second traversal before entering it.
+  const manifestCharge = chargeFixtureTraversal(budget, '$', [manifestMeasured.usage]);
+  if (manifestCharge !== null) return failResult([manifestCharge]);
   const manifestCheck = validateFixtureManifest(wrapper.manifest);
   if (!manifestCheck.valid) return manifestCheck;
   const manifest = wrapper.manifest as unknown as FixtureManifest;
@@ -358,14 +528,24 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
   if (schemaDoc === undefined) {
     return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', 'bundle validation requires the caller-supplied canonical schema document (explicit argument or bundle.schema member); the SDK never reads the repository filesystem')]);
   }
-  const schemaLossy = validateJsonValue(schemaDoc, '$/schema');
-  if (!schemaLossy.valid) {
-    const first = schemaLossy.issues[0];
+  const schemaMeasured = validateJsonValueWithBudget(
+    schemaDoc,
+    '$/schema',
+    budget.json,
+    LIMITS.max_issues,
+  );
+  if (!schemaMeasured.result.valid) {
+    const first = schemaMeasured.result.issues[0];
+    if (first.code === 'AIPT_JSON_RESOURCE_LIMIT') return failResult([first]);
     return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', `the supplied canonical schema must be a lossless JSON document (rejected at ${first.path}: ${first.message})`)]);
   }
   if (!isRecord(schemaDoc)) {
     return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', 'the supplied canonical schema document must be a JSON object')]);
   }
+  // sha256Hex validates, canonical-clones, and serializes. Charge those
+  // traversals against the bundle budget before invoking it.
+  const schemaHashCharge = chargeFixtureTraversal(budget, '$/schema', [schemaMeasured.usage], 3);
+  if (schemaHashCharge !== null) return failResult([schemaHashCharge]);
   const schemaDigest = sha256Hex(schemaDoc);
   if (schemaDigest !== D.canonical_schema_sha256) {
     return failResult([issue('$/schema', 'AIPT_FIXTURE_INVALID_SCHEMA', `canonical schema fingerprint drifted: got ${schemaDigest}, the contract descriptor carries ${D.canonical_schema_sha256} (only the exact canonical schema document may validate a fixture bundle)`)]);
@@ -373,59 +553,97 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
 
   // 3. Trusted documents map (collected by reference; nothing traversed).
   const issues: ValidationIssue[] = [];
-  const documents = collectDocuments(wrapper.documents, issues);
+  const entries = [...manifest.assets, ...manifest.mutants];
+  const documents = collectDocuments(wrapper.documents, entries.length, issues);
   if (documents === null || issues.length > 0) return failResult(issues);
 
   // 4. Per-entry gates: lossless JSON value -> digest -> schema instance ->
   //    identity. Clean seat/state/projection documents are collected for the
   //    semantic gates.
-  const entries = [...manifest.assets, ...manifest.mutants];
   const listed = new Set<string>();
   const knownSeats: string[] = [];
-  const stateDocuments: unknown[] = [];
-  const projectionDocuments: Array<{ readonly entry: FixtureManifest['assets'][number]; readonly document: unknown; readonly docPath: string }> = [];
+  const stateDocuments: Array<{ readonly document: unknown; readonly usage: JsonResourceUsage }> = [];
+  const projectionDocuments: Array<{
+    readonly entry: FixtureManifest['assets'][number];
+    readonly document: unknown;
+    readonly docPath: string;
+    readonly usage: JsonResourceUsage;
+  }> = [];
   let mutantEntry: FixtureManifest['mutants'][number] | undefined;
   let mutantDocument: unknown;
+  let mutantUsage: JsonResourceUsage | undefined;
   let mutantDocumentClean = false;
   for (const entry of entries) {
     listed.add(entry.path);
     const docPath = `$/documents/${entry.path}`;
     const document = documents.get(entry.path);
     if (document === undefined) {
-      issues.push(issue(docPath, 'AIPT_FIXTURE_MISSING_ASSET', `listed fixture asset ${JSON.stringify(entry.path)} is missing from the supplied documents`));
+      if (!addFixtureIssue(issues, docPath, 'AIPT_FIXTURE_MISSING_ASSET', () => `listed fixture asset ${JSON.stringify(entry.path)} is missing from the supplied documents`)) {
+        return failResult(issues);
+      }
       continue;
     }
     const issuesBefore = issues.length;
 
     // Lossless JSON-value gate (cycles/undefined/unsafe integers/accessors/
     // symbol keys/etc.; no getter/setter invocation).
-    const lossless = validateJsonValue(document, docPath);
-    issues.push(...lossless.issues);
-    if (!lossless.valid) continue;
+    const lossless = validateJsonValueWithBudget(
+      document,
+      docPath,
+      budget.json,
+      remainingFixtureIssueCapacity(issues),
+    );
+    if (!appendFixtureIssues(issues, lossless.result.issues, docPath)) return failResult(issues);
+    if (!lossless.result.valid) continue;
 
     // Canonical digest (fail closed on lossy documents: hashing only runs
     // after the lossless gate passed).
+    const digestCharge = chargeFixtureTraversal(budget, docPath, [lossless.usage], 3);
+    if (digestCharge !== null) {
+      appendFixtureIssues(issues, [digestCharge], docPath);
+      return failResult(issues);
+    }
     const digest = sha256Hex(document);
     if (digest !== entry.sha256) {
-      issues.push(issue(docPath, 'AIPT_FIXTURE_DIGEST_DRIFT', `canonical JSON SHA-256 of ${JSON.stringify(entry.path)} drifted: got ${digest}, manifest says ${entry.sha256}`));
+      if (!addFixtureIssue(issues, docPath, 'AIPT_FIXTURE_DIGEST_DRIFT', () => `canonical JSON SHA-256 of ${JSON.stringify(entry.path)} drifted: got ${digest}, manifest says ${entry.sha256}`)) {
+        return failResult(issues);
+      }
     }
 
     // Canonical-schema instance validation against the kind-derived target.
     // The manifest-supplied schema_ref is ignored for evaluation.
     const expectedRef = (D.manifest_kind_schema_refs as Record<string, string>)[entry.kind];
     if (expectedRef !== undefined) {
-      const schemaCheck = validateSchemaInstance(schemaDoc, document, expectedRef, docPath);
-      issues.push(...schemaCheck.issues);
+      const schemaCheck = validateSchemaInstanceWithBudget(
+        schemaDoc,
+        document,
+        expectedRef,
+        docPath,
+        budget.json,
+        remainingFixtureIssueCapacity(issues),
+      );
+      if (!appendFixtureIssues(issues, schemaCheck.issues, docPath)) return failResult(issues);
     } else {
-      issues.push(issue(docPath, 'AIPT_FIXTURE_INVALID_SCHEMA', `manifest kind ${JSON.stringify(entry.kind)} has no canonical $defs target`));
+      if (!addFixtureIssue(issues, docPath, 'AIPT_FIXTURE_INVALID_SCHEMA', () => `manifest kind ${JSON.stringify(entry.kind)} has no canonical $defs target`)) {
+        return failResult(issues);
+      }
     }
 
     // Identity (mutant wrappers are checked through their inner projection).
+    const identityCharge = chargeFixtureTraversal(budget, docPath, [lossless.usage]);
+    if (identityCharge !== null) {
+      appendFixtureIssues(issues, [identityCharge], docPath);
+      return failResult(issues);
+    }
     if (entry.kind === D.mutant_kind) {
       const inner = isRecord(document) ? document.projection : undefined;
-      issues.push(...checkFixtureIdentity(inner, `${docPath}/projection`, manifest.fixture_id).issues);
+      if (!appendFixtureIssues(issues, checkFixtureIdentity(inner, `${docPath}/projection`, manifest.fixture_id).issues, docPath)) {
+        return failResult(issues);
+      }
     } else {
-      issues.push(...checkFixtureIdentity(document, docPath, manifest.fixture_id).issues);
+      if (!appendFixtureIssues(issues, checkFixtureIdentity(document, docPath, manifest.fixture_id).issues, docPath)) {
+        return failResult(issues);
+      }
     }
 
     const entryClean = issues.length === issuesBefore;
@@ -438,14 +656,15 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
           if (isRecord(seat) && typeof seat.seat_id === 'string') knownSeats.push(seat.seat_id);
         }
       } else if (entry.kind === 'state') {
-        stateDocuments.push(document);
+        stateDocuments.push({ document, usage: lossless.usage });
       } else if (entry.kind === 'projection') {
-        projectionDocuments.push({ entry, document, docPath });
+        projectionDocuments.push({ entry, document, docPath, usage: lossless.usage });
       }
     }
     if (entry.kind === D.mutant_kind) {
       mutantEntry = entry;
       mutantDocument = document;
+      mutantUsage = lossless.usage;
       mutantDocumentClean = entryClean;
     }
   }
@@ -455,15 +674,30 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
   //    validateProjectionSemantics against at least one compatible supplied
   //    state document using the supplied known seats. Hidden data must never
   //    pass as an ordinary projection.
+  const knownSeatsUsage: JsonResourceUsage = {
+    nodes: knownSeats.length + 1,
+    bytes: knownSeats.reduce((total, seat) => total + Buffer.byteLength(seat, 'utf8'), 0),
+  };
   for (const projectionDoc of projectionDocuments) {
     if (stateDocuments.length === 0) {
-      issues.push(issue(projectionDoc.docPath, 'AIPT_PROJECTION_INVALID', `ordinary projection ${JSON.stringify(projectionDoc.entry.path)} requires at least one clean supplied state document to prove its semantics, but no clean state document was supplied`));
+      if (!addFixtureIssue(issues, projectionDoc.docPath, 'AIPT_PROJECTION_INVALID', () => `ordinary projection ${JSON.stringify(projectionDoc.entry.path)} requires at least one clean supplied state document to prove its semantics, but no clean state document was supplied`)) {
+        return failResult(issues);
+      }
       continue;
     }
     let compatible = false;
     let firstFailure: ValidationIssue[] | null = null;
     for (const stateDocument of stateDocuments) {
-      const semantic = validateProjectionSemantics(stateDocument, projectionDoc.document, knownSeats);
+      const semanticCharge = chargeSemanticComparison(
+        budget,
+        projectionDoc.docPath,
+        [stateDocument.usage, projectionDoc.usage, knownSeatsUsage],
+      );
+      if (semanticCharge !== null) {
+        appendFixtureIssues(issues, [semanticCharge], projectionDoc.docPath);
+        return failResult(issues);
+      }
+      const semantic = validateProjectionSemantics(stateDocument.document, projectionDoc.document, knownSeats);
       if (semantic.valid) {
         compatible = true;
         break;
@@ -473,10 +707,17 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
     if (!compatible) {
       if (firstFailure !== null && firstFailure.length > 0) {
         for (const semanticIssue of firstFailure) {
-          issues.push(issue(`${projectionDoc.docPath}${semanticIssue.path.slice(1)}`, semanticIssue.code, semanticIssue.message));
+          if (!addFixtureIssue(
+            issues,
+            `${projectionDoc.docPath}${semanticIssue.path.slice(1)}`,
+            semanticIssue.code,
+            () => semanticIssue.message,
+          )) return failResult(issues);
         }
       } else {
-        issues.push(issue(projectionDoc.docPath, 'AIPT_PROJECTION_INVALID', `ordinary projection ${JSON.stringify(projectionDoc.entry.path)} does not pass the semantic projection contract against any compatible supplied state document`));
+        if (!addFixtureIssue(issues, projectionDoc.docPath, 'AIPT_PROJECTION_INVALID', () => `ordinary projection ${JSON.stringify(projectionDoc.entry.path)} does not pass the semantic projection contract against any compatible supplied state document`)) {
+          return failResult(issues);
+        }
       }
     }
   }
@@ -487,28 +728,43 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
   //    seat set supplied in this same bundle. The wrapper seat_id is bound to
   //    projection.seat_id and leaked_field_id is bound to the single field
   //    that produces the declared rejection (metadata drift fails closed).
-  if (mutantEntry !== undefined && mutantDocumentClean && isRecord(mutantDocument)) {
+  if (mutantEntry !== undefined && mutantDocumentClean && mutantUsage !== undefined && isRecord(mutantDocument)) {
     const expected = D.mutant_expected_semantic_rejection;
     const projection = mutantDocument.projection;
     let produced: { readonly semantic: ValidationResult } | null = null;
     for (const stateDocument of stateDocuments) {
-      const semantic = validateProjectionSemantics(stateDocument, projection, knownSeats);
+      const semanticCharge = chargeSemanticComparison(
+        budget,
+        '$/mutants/0',
+        [stateDocument.usage, mutantUsage, knownSeatsUsage],
+      );
+      if (semanticCharge !== null) {
+        appendFixtureIssues(issues, [semanticCharge], '$/mutants/0');
+        return failResult(issues);
+      }
+      const semantic = validateProjectionSemantics(stateDocument.document, projection, knownSeats);
       if (!semantic.valid && semantic.issues.length === 1 && semantic.issues[0].code === expected) {
         produced = { semantic };
         break;
       }
     }
     if (produced === null) {
-      issues.push(issue('$/mutants/0', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', `mutant ${JSON.stringify(mutantEntry.path)} must produce exactly its declared semantic rejection ${JSON.stringify(expected)} when evaluated against a bundle-supplied state document (with bundle-supplied seats), but no supplied state produces it`));
+      if (!addFixtureIssue(issues, '$/mutants/0', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', () => `mutant ${JSON.stringify(mutantEntry.path)} must produce exactly its declared semantic rejection ${JSON.stringify(expected)} when evaluated against a bundle-supplied state document (with bundle-supplied seats), but no supplied state produces it`)) {
+        return failResult(issues);
+      }
     } else {
       const projectionSeatId = isRecord(projection) ? projection.seat_id : undefined;
       if (mutantDocument.seat_id !== projectionSeatId) {
-        issues.push(issue('$/mutants/0/seat_id', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', `mutant wrapper seat_id ${JSON.stringify(mutantDocument.seat_id)} must equal the wrapped projection.seat_id ${JSON.stringify(projectionSeatId)}`));
+        if (!addFixtureIssue(issues, '$/mutants/0/seat_id', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', () => `mutant wrapper seat_id ${JSON.stringify(mutantDocument.seat_id)} must equal the wrapped projection.seat_id ${JSON.stringify(projectionSeatId)}`)) {
+          return failResult(issues);
+        }
       }
       const rejectionPath = produced.semantic.issues[0].path;
       const rejectedFieldId = rejectionPath.startsWith('$/fields/') ? rejectionPath.slice('$/fields/'.length) : null;
       if (mutantDocument.leaked_field_id !== rejectedFieldId) {
-        issues.push(issue('$/mutants/0/leaked_field_id', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', `mutant wrapper leaked_field_id ${JSON.stringify(mutantDocument.leaked_field_id)} must equal the single field that produces ${JSON.stringify(expected)} (${JSON.stringify(rejectedFieldId)})`));
+        if (!addFixtureIssue(issues, '$/mutants/0/leaked_field_id', 'AIPT_FIXTURE_MUTANT_SEMANTIC_DRIFT', () => `mutant wrapper leaked_field_id ${JSON.stringify(mutantDocument.leaked_field_id)} must equal the single field that produces ${JSON.stringify(expected)} (${JSON.stringify(rejectedFieldId)})`)) {
+          return failResult(issues);
+        }
       }
     }
   }
@@ -519,8 +775,10 @@ export function validateFixtureBundle(input: unknown, schema?: unknown): Validat
   //    listed document) and is rejected like every other unlisted document.
   for (const key of documents.keys()) {
     if (!listed.has(key)) {
-      issues.push(issue(`$/documents/${key}`, 'AIPT_FIXTURE_UNLISTED_ASSET', `supplied document ${JSON.stringify(key)} is not listed in the fixture manifest`));
+      if (!addFixtureIssue(issues, `$/documents/${key}`, 'AIPT_FIXTURE_UNLISTED_ASSET', () => `supplied document ${JSON.stringify(key)} is not listed in the fixture manifest`)) {
+        return failResult(issues);
+      }
     }
   }
-  return issues.length === 0 ? okResult() : failResult(issues);
+  return issues.length === 0 ? okResult() : failResult(limitFixtureIssues(issues, '$/documents'));
 }

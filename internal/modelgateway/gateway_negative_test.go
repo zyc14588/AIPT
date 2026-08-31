@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -42,6 +44,46 @@ func (fakeHarnessTransport) Recover(context.Context, ModelProfile, orchestrator.
 
 func (fakeHarnessTransport) Close(context.Context) error { return nil }
 
+type retryCloseHarnessTransport struct {
+	fakeHarnessTransport
+	mu           sync.Mutex
+	closeCallsN  int
+	recoverCalls int
+}
+
+type discardWriteCloser struct{ io.Writer }
+
+func (discardWriteCloser) Close() error { return nil }
+
+func (t *retryCloseHarnessTransport) Close(context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.closeCallsN++
+	if t.closeCallsN == 1 {
+		return errors.New("synthetic retryable cleanup failure")
+	}
+	return nil
+}
+
+func (t *retryCloseHarnessTransport) Recover(context.Context, ModelProfile, orchestrator.Session, orchestrator.RecoveryRequest) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.recoverCalls++
+	return nil
+}
+
+func (t *retryCloseHarnessTransport) closeCalls() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.closeCallsN
+}
+
+func (t *retryCloseHarnessTransport) recoveryCalls() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.recoverCalls
+}
+
 func fixtureHarnessResult(profile ModelProfile, request HarnessRequest, response []byte) HarnessResult {
 	digest := sha256.Sum256(response)
 	return HarnessResult{
@@ -49,6 +91,10 @@ func fixtureHarnessResult(profile ModelProfile, request HarnessRequest, response
 		HarnessIdentity: profile.Harness.BindingID(), ObservedModelID: profile.ModelID,
 		CapabilityFingerprint: profile.Harness.CapabilityFingerprint,
 		RawResponse:           response, ResponseSHA256: hex.EncodeToString(digest[:]), CompletedAt: time.Now().UTC(),
+		RequestedSamplingSHA256:        request.SamplingProfile.SHA256,
+		EffectiveSampling:              effectiveSamplingProjection(request.SamplingProfile),
+		UnsupportedSamplingParameters:  append([]string(nil), request.SamplingProfile.UnsupportedParameters...),
+		BackendSerializedRequestSHA256: fixtureSHA("backend-request-" + request.RequestID),
 	}
 }
 
@@ -62,6 +108,78 @@ func fixtureGateway(t *testing.T, transport HarnessTransport) (*Gateway, gateway
 		t.Fatalf("NewGateway: %v", err)
 	}
 	return gateway, fixture
+}
+
+func TestGatewayCloseRetriesIncompleteTransportCleanup(t *testing.T) {
+	transport := &retryCloseHarnessTransport{}
+	gateway, _ := fixtureGateway(t, transport)
+	if err := gateway.Close(context.Background()); err == nil {
+		t.Fatal("first Close unexpectedly hid retryable cleanup failure")
+	}
+	if _, err := gateway.ProbeAll(context.Background()); err == nil {
+		t.Fatal("gateway accepted new work after shutdown started")
+	}
+	if _, err := gateway.Recover(context.Background(), orchestrator.Session{}, orchestrator.RecoveryRequest{}); err == nil {
+		t.Fatal("gateway accepted recovery after failed shutdown started")
+	}
+	if calls := transport.recoveryCalls(); calls != 0 {
+		t.Fatalf("transport Recover calls after failed Close = %d, want 0", calls)
+	}
+	if err := gateway.Close(context.Background()); err != nil {
+		t.Fatalf("second Close did not retry transport cleanup: %v", err)
+	}
+	if err := gateway.Close(context.Background()); err != nil {
+		t.Fatalf("completed Close was not idempotent: %v", err)
+	}
+	if _, err := gateway.Recover(context.Background(), orchestrator.Session{}, orchestrator.RecoveryRequest{}); err == nil {
+		t.Fatal("gateway accepted recovery after completed shutdown")
+	}
+	if calls := transport.recoveryCalls(); calls != 0 {
+		t.Fatalf("transport Recover calls after completed Close = %d, want 0", calls)
+	}
+	if calls := transport.closeCalls(); calls != 2 {
+		t.Fatalf("transport Close calls = %d, want exactly 2", calls)
+	}
+}
+
+func TestAdapterProcessTransportFailedCloseNeverReopensDirectAdmission(t *testing.T) {
+	fixture := newGatewayFixture(t, BackendRemoteDeepSeek)
+	profile := fixture.profiles[0]
+	route := &adapterRoute{
+		profile: profile,
+		spec:    AdapterRouteSpec{ShutdownTimeout: time.Nanosecond},
+		cmd:     &exec.Cmd{},
+		stdin:   discardWriteCloser{Writer: io.Discard},
+		exit:    make(chan error),
+	}
+	transport := &AdapterProcessTransport{
+		routes: map[string]*adapterRoute{profile.BindingID(): route}, routeOrder: []string{profile.BindingID()},
+	}
+	closedContext, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := transport.Close(closedContext); err == nil {
+		t.Fatal("first Close unexpectedly hid incomplete route cleanup")
+	}
+	if _, err := transport.Probe(context.Background(), profile, SamplingProfile{}); err == nil {
+		t.Fatal("direct Probe admission reopened after failed Close")
+	}
+	if _, err := transport.Invoke(context.Background(), profile, SamplingProfile{}, HarnessRequest{}); err == nil {
+		t.Fatal("direct Invoke admission reopened after failed Close")
+	}
+	if err := transport.Recover(context.Background(), profile, orchestrator.Session{}, orchestrator.RecoveryRequest{}); err == nil {
+		t.Fatal("direct Recover admission reopened after failed Close")
+	}
+	route.mu.Lock()
+	route.cmd = nil
+	route.stdin = nil
+	route.exit = nil
+	route.mu.Unlock()
+	if err := transport.Close(context.Background()); err != nil {
+		t.Fatalf("retry cleanup did not complete: %v", err)
+	}
+	if err := transport.Close(context.Background()); err != nil {
+		t.Fatalf("completed transport Close was not idempotent: %v", err)
+	}
 }
 
 func TestGatewayNegativeMatrixM25AndM27ToM30(t *testing.T) {

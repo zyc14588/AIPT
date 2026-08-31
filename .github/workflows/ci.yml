@@ -162,6 +162,8 @@ jobs:
         run: go test -race ./internal/orchestrator -count=1
       - name: "AIPT MVP B004 lifecycle-aware candidate merge closeout governed model Harness gateway validator"
         run: pnpm run check:mvp-b004
+      - name: AIPT MVP B004 publication hygiene detector sentinel suite
+        run: pnpm run test:publication-hygiene
       - name: AIPT MVP B004 model gateway profile egress credential local-process context capability and negative tests
         run: pnpm run test:model-gateway
       - name: AIPT MVP B004 model Harness gateway fake ACP child cancellation identity frame and redaction tests

@@ -18,9 +18,17 @@
   "asset_locator_exported": false,
   "rocm_device_compatibility": "PASS",
   "managed_startup_identity_probe": "PASS",
+  "verified_asset_execution": "HELD_FILE_OBJECT",
+  "isolation_identity": "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1",
+  "isolation_helper_reference": "aipt-runtime-isolator-go1.26.6-linux-amd64",
+  "isolation_helper_sha256": "1bba082e39f213f85c213c7dcdadd85e610d2b64dcf39214d39d44b1c5e36d3d",
+  "endpoint_access_control": "PRIVATE_USER_NETWORK_NAMESPACE",
+  "host_direct_access": "REJECTED",
+  "llama_api_key_added": false,
   "harness_routed_minimum_role_invocation": "PASS",
   "bounded_shutdown_and_failure_probes": "PASS",
-  "local_real_model_calls": 1,
+  "local_real_model_calls": 2,
   "controlled_local_certification": "PASS",
+  "controlled_local_certification_evidence": "docs/model-certification/local-llamacpp-controlled-real-02.json",
   "private_paths_recorded": false
 }

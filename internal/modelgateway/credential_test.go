@@ -29,17 +29,36 @@ func TestEnvironmentCredentialBrokerIsWriteOnlyAndRedacted(t *testing.T) {
 	}
 	base := map[string]string{
 		"LANG": "C.UTF-8", "PATH": "/usr/bin", "DSH_AMBIENT": "must-not-pass",
-		"AIPT_API_KEY_SHADOW": "must-not-pass",
+		"AIPT_API_KEY_SHADOW":     "must-not-pass",
+		harnessRouteFDEnvironment: "5",
 	}
 	bound, err := broker.BindChildEnvironment(context.Background(), reference, base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bound["DEEPSEEK_API_KEY"] != secret || bound["DSH_AMBIENT"] != "" || bound["AIPT_API_KEY_SHADOW"] != "" {
+	if bound[remoteCredentialEnvironment] != secret || bound[harnessRouteFDEnvironment] != "5" ||
+		bound["DSH_AMBIENT"] != "" || bound["AIPT_API_KEY_SHADOW"] != "" {
 		t.Fatal("child environment did not enforce exact write-only credential binding")
 	}
 	if _, mutated := base["DEEPSEEK_API_KEY"]; mutated {
 		t.Fatal("credential broker mutated caller environment")
+	}
+}
+
+func TestRuntimeEnvironmentInjectionCannotBypassVerifiedExecutables(t *testing.T) {
+	for _, name := range []string{"LD_PRELOAD", "LD_LIBRARY_PATH", "NODE_OPTIONS", "PYTHONPATH", "DYLD_INSERT_LIBRARIES"} {
+		if err := validateManagedLlamaEnvironment(map[string]string{name: "synthetic-injection-value"}); err == nil {
+			t.Fatalf("managed llama accepted process-loader environment %s", name)
+		}
+		if isConfiguredHarnessEnvironment(name) {
+			t.Fatalf("adapter route allowlist accepted process-loader environment %s", name)
+		}
+		remote := map[string]string{
+			"LANG": "C.UTF-8", harnessRouteFDEnvironment: "5", remoteCredentialEnvironment: "synthetic-secret-value", name: "synthetic-injection-value",
+		}
+		if err := validateAdapterProcessEnvironment(remote, BackendRemoteDeepSeek, ""); err == nil {
+			t.Fatalf("final remote child environment accepted process-loader environment %s", name)
+		}
 	}
 }
 

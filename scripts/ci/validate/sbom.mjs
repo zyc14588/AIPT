@@ -223,9 +223,7 @@ const WEB_UI_NPM_PURL = 'pkg:npm/%40aipt/web-ui@0.1.0';
 function canonicalJson(value) {
   if (Array.isArray(value)) return value.map(canonicalJson);
   if (value && typeof value === 'object') {
-    const sorted = {};
-    for (const key of Object.keys(value).sort()) sorted[key] = canonicalJson(value[key]);
-    return sorted;
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalJson(value[key])]));
   }
   return value;
 }

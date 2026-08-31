@@ -5,12 +5,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"sort"
 
 	"github.com/zyc14588/AIPT/internal/orchestrator"
 )
 
 const PreparedContextSchema = "aipt.prepared-context/v1"
+
+const maxPreparedContextElementsV1 = 10_000
 
 type preparedContext struct {
 	Schema              string                          `json:"schema"`
@@ -109,6 +112,9 @@ func ValidateEgress(profile ModelProfile, bundle orchestrator.ContextBundle) (Eg
 // authorization. Only retrieved documents (from the end) and then oldest
 // event-window entries are removed until the byte bound fits.
 func PrepareContext(bundle orchestrator.ContextBundle, policy ContextPolicy) ([]byte, ContextReduction, error) {
+	if !boundedPreparedContextInput(bundle, policy.MaxRequestBytes) {
+		return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context_preflight", bundle.ContextHash, errors.New("context input exceeds the bounded preparation budget"))
+	}
 	if err := orchestrator.ValidateContextHash(bundle); err != nil {
 		return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, err)
 	}
@@ -120,23 +126,71 @@ func PrepareContext(bundle orchestrator.ContextBundle, policy ContextPolicy) ([]
 	if err != nil {
 		return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, err)
 	}
+	if len(original) > policy.MaxRequestBytes {
+		return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, errors.New("serialized context exceeds max_request_bytes"))
+	}
 	reduction := ContextReduction{
 		Schema: ContextReductionSchema, PolicyID: policy.ReductionPolicyID,
 		OriginalContextHash: bundle.ContextHash, OriginalBytes: len(original),
 	}
 	encoded := original
-	for len(encoded) > policy.MaxContextBytes && len(prepared.Retrieved) > 0 {
-		last := len(prepared.Retrieved) - 1
-		reduction.RemovedSourceIDs = append(reduction.RemovedSourceIDs, prepared.Retrieved[last].SourceID)
-		prepared.Retrieved = prepared.Retrieved[:last]
-		encoded, err = json.Marshal(prepared)
-		if err != nil {
-			return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, err)
+	if len(encoded) > policy.MaxContextBytes {
+		allRetrieved := prepared.Retrieved
+		prepared.Retrieved = nil
+		withoutRetrieved, marshalErr := json.Marshal(prepared)
+		if marshalErr != nil {
+			return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, marshalErr)
+		}
+		if len(withoutRetrieved) <= policy.MaxContextBytes {
+			encoded = withoutRetrieved
+			low, high := 0, len(allRetrieved)
+			for low < high {
+				mid := low + (high-low+1)/2
+				prepared.Retrieved = allRetrieved[:mid]
+				candidate, marshalErr := json.Marshal(prepared)
+				if marshalErr != nil {
+					return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, marshalErr)
+				}
+				if len(candidate) <= policy.MaxContextBytes {
+					low = mid
+					encoded = candidate
+				} else {
+					high = mid - 1
+				}
+			}
+			prepared.Retrieved = allRetrieved[:low]
+			for index := len(allRetrieved) - 1; index >= low; index-- {
+				reduction.RemovedSourceIDs = append(reduction.RemovedSourceIDs, allRetrieved[index].SourceID)
+			}
+		} else {
+			prepared.Retrieved = nil
+			encoded = withoutRetrieved
+			for index := len(allRetrieved) - 1; index >= 0; index-- {
+				reduction.RemovedSourceIDs = append(reduction.RemovedSourceIDs, allRetrieved[index].SourceID)
+			}
 		}
 	}
-	for len(encoded) > policy.MaxContextBytes && len(prepared.EventWindow) > 0 {
-		reduction.RemovedEventIDs = append(reduction.RemovedEventIDs, prepared.EventWindow[0].EventID)
-		prepared.EventWindow = prepared.EventWindow[1:]
+	if len(encoded) > policy.MaxContextBytes && len(prepared.EventWindow) > 0 {
+		allEvents := prepared.EventWindow
+		low, high := 0, len(allEvents)
+		for low < high {
+			mid := low + (high-low)/2
+			prepared.EventWindow = allEvents[mid:]
+			candidate, marshalErr := json.Marshal(prepared)
+			if marshalErr != nil {
+				return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, marshalErr)
+			}
+			if len(candidate) <= policy.MaxContextBytes {
+				high = mid
+				encoded = candidate
+			} else {
+				low = mid + 1
+			}
+		}
+		prepared.EventWindow = allEvents[low:]
+		for index := 0; index < low; index++ {
+			reduction.RemovedEventIDs = append(reduction.RemovedEventIDs, allEvents[index].EventID)
+		}
 		encoded, err = json.Marshal(prepared)
 		if err != nil {
 			return nil, ContextReduction{}, newError(CodeContextBudgetExceeded, "prepare_context", bundle.ContextHash, err)
@@ -152,6 +206,81 @@ func PrepareContext(bundle orchestrator.ContextBundle, policy ContextPolicy) ([]
 	reduction.PreparedContextSHA256 = hex.EncodeToString(digest[:])
 	reduction.PreparedBytes = len(encoded)
 	return encoded, reduction, nil
+}
+
+func boundedPreparedContextInput(bundle orchestrator.ContextBundle, maximum int) bool {
+	if maximum < 1024 || maximum > 16<<20 {
+		return false
+	}
+	bytes := 0
+	elements := 0
+	add := func(size int) bool {
+		if size < 0 || size > maximum-bytes {
+			return false
+		}
+		bytes += size
+		return true
+	}
+	stack := []reflect.Value{reflect.ValueOf(bundle)}
+	for len(stack) > 0 {
+		value := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		for value.IsValid() && (value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer) {
+			if value.IsNil() {
+				value = reflect.Value{}
+				break
+			}
+			value = value.Elem()
+		}
+		if !value.IsValid() {
+			continue
+		}
+		elements++
+		if elements > maxPreparedContextElementsV1 {
+			return false
+		}
+		switch value.Kind() {
+		case reflect.String:
+			if !add(value.Len()) {
+				return false
+			}
+		case reflect.Slice:
+			if value.Type().Elem().Kind() == reflect.Uint8 {
+				if !add(value.Len()) {
+					return false
+				}
+				continue
+			}
+			if value.Len() > maxPreparedContextElementsV1-elements {
+				return false
+			}
+			for index := 0; index < value.Len(); index++ {
+				stack = append(stack, value.Index(index))
+			}
+		case reflect.Array:
+			for index := 0; index < value.Len(); index++ {
+				stack = append(stack, value.Index(index))
+			}
+		case reflect.Struct:
+			for index := 0; index < value.NumField(); index++ {
+				stack = append(stack, value.Field(index))
+			}
+		case reflect.Map:
+			if value.Len() > maxPreparedContextElementsV1-elements {
+				return false
+			}
+			iterator := value.MapRange()
+			for iterator.Next() {
+				stack = append(stack, iterator.Key(), iterator.Value())
+			}
+		case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
+			if !add(32) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func verifyPreparedSubset(bundle orchestrator.ContextBundle, prepared preparedContext) error {

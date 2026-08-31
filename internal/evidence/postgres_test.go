@@ -29,6 +29,17 @@ func scanCaptureValue(destination, value any) error {
 			return fmt.Errorf("value %T is not string", value)
 		}
 		*target = actual
+	case **string:
+		if value == nil {
+			*target = nil
+			break
+		}
+		actual, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("value %T is not nullable string", value)
+		}
+		copy := actual
+		*target = &copy
 	case *[]byte:
 		actual, ok := value.([]byte)
 		if !ok {
@@ -142,7 +153,7 @@ func captureRowsFromSnapshot(snapshot LedgerSnapshot) [][]any {
 			previous = append([]byte(nil), event.PrevEventHash[:]...)
 		}
 		rows = append(rows, []any{
-			event.Sequence, event.EventID, event.EventType, event.PayloadCanonical,
+			event.Sequence, event.EventID, event.EventType, event.PayloadCanonical, int64(len(event.PayloadCanonical)),
 			append([]byte(nil), event.PayloadSHA256[:]...), previous,
 			append([]byte(nil), event.EventHash[:]...), event.CommittedAt,
 		})
@@ -152,7 +163,7 @@ func captureRowsFromSnapshot(snapshot LedgerSnapshot) [][]any {
 
 func postgresSourceForTest(snapshot LedgerSnapshot, tx *fakeCaptureTx, options *pgx.TxOptions) *PostgresSource {
 	return &PostgresSource{
-		verify: func(context.Context, *pgxpool.Pool, storagepostgres.VerifyInput) (storagepostgres.VerifiedStream, error) {
+		verify: func(context.Context, *pgxpool.Pool, storagepostgres.BoundedVerifyInput) (storagepostgres.VerifiedStream, error) {
 			var tail *[32]byte
 			if snapshot.TailHash != nil {
 				value := *snapshot.TailHash
@@ -201,6 +212,41 @@ func TestPostgresSourceCaptureSelectOnlyStableSnapshot(t *testing.T) {
 	}
 }
 
+func TestPostgresSourceCaptureRejectsOversizedVerifiedCursorBeforeRows(t *testing.T) {
+	tail := filledHash(0xee)
+	beginCalled := false
+	var verifyInput storagepostgres.BoundedVerifyInput
+	source := &PostgresSource{
+		verify: func(_ context.Context, _ *pgxpool.Pool, in storagepostgres.BoundedVerifyInput) (storagepostgres.VerifiedStream, error) {
+			verifyInput = in
+			return storagepostgres.VerifiedStream{
+				StreamID: "synthetic-ledger", Sequence: maxRawCaptureEventCount + 1,
+				EventCount: maxRawCaptureEventCount + 1, EventHash: &tail,
+			}, nil
+		},
+		begin: func(context.Context, pgx.TxOptions) (captureTx, error) {
+			beginCalled = true
+			return nil, errors.New("unexpected begin")
+		},
+	}
+	_, err := source.Capture(context.Background(), "synthetic-ledger")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("Capture error = %v, want ErrInvalidInput", err)
+	}
+	if beginCalled {
+		t.Fatal("oversized verified cursor reached row materialization")
+	}
+	if verifyInput.MaxEvents != maxRawCaptureEventCount {
+		t.Fatalf("VerifyStream MaxEvents = %d, want %d", verifyInput.MaxEvents, maxRawCaptureEventCount)
+	}
+	if verifyInput.MaxEventPayloadBytes != int64(maxRawCaptureEventLineBytes) ||
+		verifyInput.MaxTotalPayloadBytes != maxRawCaptureEventsBytes {
+		t.Fatalf("VerifyStream payload bounds = (%d, %d), want (%d, %d)",
+			verifyInput.MaxEventPayloadBytes, verifyInput.MaxTotalPayloadBytes,
+			maxRawCaptureEventLineBytes, maxRawCaptureEventsBytes)
+	}
+}
+
 func TestPostgresSourceCaptureFailsOnStreamChange(t *testing.T) {
 	want := fixtureSnapshot()
 	changedTail := filledHash(0xdd)
@@ -237,7 +283,7 @@ func TestPostgresSourceVerifyFailurePreventsRead(t *testing.T) {
 	beginCalled := false
 	verifyFailure := errors.New("synthetic verification failure containing SENSITIVE_PAYLOAD_MARKER")
 	source := &PostgresSource{
-		verify: func(context.Context, *pgxpool.Pool, storagepostgres.VerifyInput) (storagepostgres.VerifiedStream, error) {
+		verify: func(context.Context, *pgxpool.Pool, storagepostgres.BoundedVerifyInput) (storagepostgres.VerifiedStream, error) {
 			return storagepostgres.VerifiedStream{}, verifyFailure
 		},
 		begin: func(context.Context, pgx.TxOptions) (captureTx, error) {

@@ -57,6 +57,14 @@ func TestModelProfileAndRegistryNegativeMatrixM01ToM10(t *testing.T) {
 		candidate.Temperature = 1.5
 		requireCode(t, ValidateSamplingProfile(candidate), CodeSamplingDrift)
 	})
+	t.Run("M05 backend-unserialized token controls REJECT", func(t *testing.T) {
+		candidate := fixtureSampling(t, "sampling-unserialized-controls")
+		candidate.SHA256 = ""
+		candidate.MaxOutputTokens = 2048
+		if _, err := BindSamplingProfile(candidate); err == nil {
+			t.Fatal("sampling controls absent from the frozen backend serialization were accepted")
+		}
+	})
 
 	t.Run("M06 missing certification identity REJECT", func(t *testing.T) {
 		_, err := NewSyntheticRegistry(fixture.samplings, fixture.profiles, nil)

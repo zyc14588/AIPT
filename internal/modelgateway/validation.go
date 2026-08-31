@@ -109,9 +109,12 @@ func validateSamplingProfile(profile SamplingProfile, requireDigest bool) error 
 	if profile.TopP <= 0 || profile.TopP > 1 {
 		return errors.New("top_p outside governed range")
 	}
-	if profile.MaxOutputTokens < 1 || profile.MaxOutputTokens > 1_000_000 ||
-		profile.MaxContextTokens < profile.MaxOutputTokens || profile.MaxContextTokens > 10_000_000 {
-		return errors.New("token controls outside governed range")
+	// The frozen B004 Harness closure serializes exactly these two provider
+	// limits. A different otherwise-well-formed profile is unsupported until a
+	// separately identified closure is certified; accepting it here would
+	// falsely claim provider-side enforcement.
+	if profile.MaxOutputTokens != 1024 || profile.MaxContextTokens != 8192 {
+		return errors.New("token controls differ from the frozen Harness backend serialization")
 	}
 	got := append([]string(nil), profile.AppliedParameters...)
 	sort.Strings(got)
@@ -131,17 +134,61 @@ func validateSamplingProfile(profile SamplingProfile, requireDigest bool) error 
 		}
 		seen[parameter] = true
 	}
-	if !seen["max_context_tokens"] || !seen["max_output_tokens"] {
-		return errors.New("context and output controls must be applied")
+	if strings.Join(profile.AppliedParameters, "\x00") != "max_context_tokens\x00max_output_tokens" {
+		return errors.New("ACP v1 applies exactly the context and output byte-equivalent controls")
 	}
-	if seen["seed"] != (profile.Seed != nil) {
-		return errors.New("seed application claim must match the governed seed")
+	unsupported := append([]string(nil), profile.UnsupportedParameters...)
+	sort.Strings(unsupported)
+	wantUnsupported := []string{"temperature", "top_p"}
+	if profile.Seed != nil {
+		wantUnsupported = append(wantUnsupported, "seed")
+		sort.Strings(wantUnsupported)
+	}
+	for index := 1; index < len(unsupported); index++ {
+		if unsupported[index] == unsupported[index-1] {
+			return errors.New("duplicate unsupported parameter")
+		}
+	}
+	for _, parameter := range unsupported {
+		if !known[parameter] || seen[parameter] {
+			return errors.New("unknown or conflicting unsupported parameter")
+		}
+	}
+	if strings.Join(profile.UnsupportedParameters, "\x00") != strings.Join(wantUnsupported, "\x00") {
+		return errors.New("ACP v1 unsupported sampling parameters must be explicit and complete")
 	}
 	if requireDigest {
 		return verifySamplingDigest(profile)
 	}
 	if profile.SHA256 != "" {
 		return errors.New("sampling digest is computed by BindSamplingProfile")
+	}
+	return nil
+}
+
+func effectiveSamplingProjection(profile SamplingProfile) EffectiveSamplingProjection {
+	return EffectiveSamplingProjection{
+		Schema: EffectiveSamplingSchema, EnforcementIdentity: SamplingEnforcementIdentity,
+		AppliedParameters:     append([]string(nil), profile.AppliedParameters...),
+		UnsupportedParameters: append([]string(nil), profile.UnsupportedParameters...),
+		MaxContextTokens:      profile.MaxContextTokens, MaxOutputTokens: profile.MaxOutputTokens,
+		ContextUTF8ByteCeiling: profile.MaxContextTokens,
+		OutputUTF8ByteCeiling:  profile.MaxOutputTokens,
+	}
+}
+
+func validateEffectiveSampling(profile SamplingProfile, projection EffectiveSamplingProjection) error {
+	want := effectiveSamplingProjection(profile)
+	left, err := canonicalDigest(want)
+	if err != nil {
+		return err
+	}
+	right, err := canonicalDigest(projection)
+	if err != nil {
+		return err
+	}
+	if left != right {
+		return errors.New("effective sampling projection drift")
 	}
 	return nil
 }
@@ -292,6 +339,8 @@ func validateHarnessIdentity(identity HarnessIdentity) error {
 		{name: "harness protocol identity", value: identity.ProtocolIdentity},
 		{name: "harness protocol version", value: identity.ProtocolVersion},
 		{name: "harness capability fingerprint", value: identity.CapabilityFingerprint},
+		{name: "harness runtime closure kind", value: identity.RuntimeClosureKind},
+		{name: "harness runtime closure digest", value: identity.RuntimeClosureSHA256},
 	}
 	for _, field := range fields {
 		if field.value == "" || !utf8.ValidString(field.value) || len(field.value) > 256 {
@@ -305,6 +354,12 @@ func validateHarnessIdentity(identity HarnessIdentity) error {
 		return err
 	}
 	if err := validSHA("harness capability_fingerprint", identity.CapabilityFingerprint); err != nil {
+		return err
+	}
+	if identity.RuntimeClosureKind != HarnessRuntimeClosureKind {
+		return errors.New("unrecognized Harness runtime closure kind")
+	}
+	if err := validSHA("harness runtime_closure_sha256", identity.RuntimeClosureSHA256); err != nil {
 		return err
 	}
 	if identity.ProtocolIdentity != HarnessProtocolACP || identity.ProtocolVersion != HarnessProtocolVersionACP {
@@ -340,6 +395,7 @@ func validateLocalIdentity(identity LocalRuntimeIdentity) error {
 		{name: "gguf_model_identity", value: identity.GGUFModelIdentity},
 		{name: "quantization_identity", value: identity.QuantizationIdentity},
 		{name: "template_identity", value: identity.TemplateIdentity},
+		{name: "isolation_helper_reference", value: identity.IsolationHelperReference},
 		{name: "hardware.architecture", value: identity.Hardware.Architecture},
 		{name: "hardware.cpu_class", value: identity.Hardware.CPUClass},
 		{name: "hardware.gpu_backend", value: identity.Hardware.GPUBackend},
@@ -357,6 +413,12 @@ func validateLocalIdentity(identity LocalRuntimeIdentity) error {
 		return err
 	}
 	if err := validSHA("template_sha256", identity.TemplateSHA256); err != nil {
+		return err
+	}
+	if identity.IsolationIdentity != LocalIsolationIdentity {
+		return errors.New("local runtime requires the frozen Linux user/network namespace isolation identity")
+	}
+	if err := validSHA("isolation_helper_sha256", identity.IsolationHelperSHA256); err != nil {
 		return err
 	}
 	if identity.Commit != "" && !gitOIDRE.MatchString(identity.Commit) {

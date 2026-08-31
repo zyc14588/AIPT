@@ -6,7 +6,8 @@
   "additionalProperties": false,
   "required": [
     "schema", "sampling_id", "sampling_version", "temperature", "top_p",
-    "max_output_tokens", "max_context_tokens", "applied_parameters", "sha256"
+    "max_output_tokens", "max_context_tokens", "applied_parameters",
+    "unsupported_parameters", "sha256"
   ],
   "properties": {
     "schema": { "const": "aipt.sampling-profile/v1" },
@@ -25,6 +26,13 @@
       "items": {
         "enum": ["temperature", "top_p", "max_output_tokens", "max_context_tokens", "seed"]
       }
+    },
+    "unsupported_parameters": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "enum": ["temperature", "top_p", "seed"] }
     },
     "sha256": { "$ref": "#/$defs/sha256" }
   },

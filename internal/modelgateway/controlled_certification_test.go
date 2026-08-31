@@ -19,6 +19,7 @@ func controlledRemoteFixture(t *testing.T) ControlledCertificationSpec {
 		Schema: SamplingProfileSchema, SamplingID: "b004-controlled-remote-sampling",
 		SamplingVersion: "1.0.0", Temperature: 0, TopP: 1, MaxOutputTokens: 1024,
 		MaxContextTokens: 8192, AppliedParameters: []string{"max_context_tokens", "max_output_tokens"},
+		UnsupportedParameters: []string{"temperature", "top_p"},
 	})
 	if err != nil {
 		t.Fatalf("BindSamplingProfile: %v", err)
@@ -31,6 +32,7 @@ func controlledRemoteFixture(t *testing.T) ControlledCertificationSpec {
 			Commit: controlledHarnessCommit, PackageSHA256: fixtureSHA("controlled-harness-package"),
 			ProtocolIdentity: HarnessProtocolACP, ProtocolVersion: HarnessProtocolVersionACP,
 			CapabilityFingerprint: fixtureSHA("controlled-harness-capability"),
+			RuntimeClosureKind:    HarnessRuntimeClosureKind, RuntimeClosureSHA256: fixtureSHA("controlled-harness-runtime-closure"),
 		},
 		SamplingProfileID: sampling.BindingID(), StructuredOutputMode: StructuredPrompted,
 		ToolCallMode: ToolCallDisabled,
@@ -152,7 +154,11 @@ func TestNormalizeControlledCertificationFreezesOwnerBindings(t *testing.T) {
 		ExecutablePath: executable, ExecutableSHA256: fileSHA256(t, executable),
 		Arguments:           []string{argument},
 		ArgumentFileDigests: []HarnessChildArgumentDigest{{Index: 0, SHA256: fileSHA256(t, argument)}},
-		WorkingDirectory:    temporary, EnvironmentAllowlist: []string{
+		RuntimeClosure: HarnessRuntimeClosure{
+			Schema: HarnessRuntimeClosureSchema, Kind: HarnessRuntimeClosureKind,
+			EntrypointArgumentIndex: 0, SHA256: fileSHA256(t, argument),
+		},
+		WorkingDirectory: temporary, EnvironmentAllowlist: []string{
 			controlledHarnessHomeEnvironment, controlledPersistenceEnvironment, controlledCredentialLocator,
 		},
 		StartupTimeoutMS: 1_000, RequestTimeoutMS: 1_000, ShutdownTimeoutMS: 1_000,
@@ -161,6 +167,12 @@ func TestNormalizeControlledCertificationFreezesOwnerBindings(t *testing.T) {
 			MaxNotificationBytes: 4 << 20, MaxResponseAndNotificationBytes: 8 << 20,
 			MaxStderrBytes: 1 << 20,
 		},
+	}
+	spec.Profile.SHA256 = ""
+	spec.Profile.Harness.RuntimeClosureSHA256 = spec.HarnessChild.RuntimeClosure.SHA256
+	spec.Profile, err = BindModelProfile(spec.Profile)
+	if err != nil {
+		t.Fatalf("bind controlled closure profile: %v", err)
 	}
 	if _, err := normalizeControlledProfiles(spec); err != nil {
 		t.Fatalf("Owner-approved controlled spec rejected: %v", err)
