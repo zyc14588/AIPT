@@ -1,6 +1,6 @@
-// AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4
-// AIPT-M0-B003 iteration 6a, and the AIPT-M0-B004 zero-new-dependency
-// runtime shell).
+// AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4,
+// AIPT-M0-B003 iteration 6a, the AIPT-M0-B004 zero-new-dependency runtime
+// shell, and the first-party-only AIPT-MVP-B004 model gateway).
 //
 // Gates: lock presence/integrity, action SHA pins, container digest pin,
 // dependency inventory/license coverage (machine SPDX license values —
@@ -8,10 +8,11 @@
 // = MIT, composite Docker Official Image = NOASSERTION with both frozen
 // digests), a hardened licenses.json baseline, and the first-party pnpm
 // workspace model: exactly {., packages/adapter-sdk,
-// packages/harness-adapter, packages/web-ui}; root, Adapter SDK, and Web UI
-// importers are empty; Harness Adapter has exactly one workspace dependency
-// (@aipt/adapter-sdk workspace:* -> link:../adapter-sdk); and there are zero
-// third-party package records. The gate also covers negative regressions on
+// packages/harness-adapter, packages/model-harness-gateway, packages/web-ui};
+// root, Adapter SDK, and Web UI importers are empty; Harness Adapter depends
+// exactly on Adapter SDK; Model Harness Gateway depends exactly on Harness
+// Adapter; and there are zero third-party package records. The gate also
+// covers negative regressions on
 // mutated in-memory copies, deterministic SBOM inputs, and the secret-free /
 // no-real-model-config rules.
 //
@@ -120,10 +121,10 @@ const EXPECTED_SELECTED_MODULE_GRAPH = {
 //     sources/components): NOASSERTION — PostgreSQL or MIT for the whole
 //     image is rejected.
 // B002 iteration 4 adds the first-party @aipt/adapter-sdk record (MIT), and
-// B005 adds the first-party @aipt/harness-adapter record (MIT). B007 adds
-// @aipt/web-ui as a first-party MIT component covered by the immutable AIPT
-// root MIT record: it intentionally adds no licenses.json record and is
-// independently represented in the SBOM.
+// B005 adds the first-party @aipt/harness-adapter record (MIT).
+// AIPT-MVP-B004 adds the first-party @aipt/model-harness-gateway record (MIT).
+// B007 adds @aipt/web-ui as a first-party MIT component covered by the AIPT
+// root MIT record and independently represented in the SBOM.
 // AIPT-M0-B003 iteration 6a adds the six third-party Go runtime records
 // (MIT for the four jackc modules, BSD-3-Clause for the two golang.org/x
 // modules).
@@ -131,6 +132,7 @@ const EXPECTED_SPDX_LICENSES = {
   AIPT: 'MIT',
   '@aipt/adapter-sdk': 'MIT',
   '@aipt/harness-adapter': 'MIT',
+  '@aipt/model-harness-gateway': 'MIT',
   'actions/checkout': 'MIT',
   'actions/setup-go': 'MIT',
   'actions/setup-node': 'MIT',
@@ -151,9 +153,10 @@ const EXPECTED_SPDX_LICENSES = {
   'golang.org/x/tools': 'BSD-3-Clause',
 };
 
-// Exact expected record kinds for the current 21-record inventory: the exact
+// Exact expected record kinds for the current 22-record inventory: the exact
 // first-party license-record set {AIPT, @aipt/adapter-sdk,
-// @aipt/harness-adapter}, the approved tooling/CI/infrastructure records
+// @aipt/harness-adapter, @aipt/model-harness-gateway}, the approved
+// tooling/CI/infrastructure records
 // preserved from B001, the six approved third-party Go runtime modules, and
 // the two B004-selected graph-tooling modules. The first-party MIT Web UI is
 // covered by the immutable AIPT root record and independently represented in
@@ -162,6 +165,7 @@ const EXPECTED_RECORD_KINDS = {
   AIPT: 'first_party',
   '@aipt/adapter-sdk': 'first_party',
   '@aipt/harness-adapter': 'first_party',
+  '@aipt/model-harness-gateway': 'first_party',
   'actions/checkout': 'ci_action',
   'actions/setup-go': 'ci_action',
   'actions/setup-node': 'ci_action',
@@ -182,7 +186,12 @@ const EXPECTED_RECORD_KINDS = {
   'golang.org/x/tools': 'selected_go_module_graph_tooling',
 };
 
-const EXPECTED_FIRST_PARTY_IDS = ['AIPT', '@aipt/adapter-sdk', '@aipt/harness-adapter'];
+const EXPECTED_FIRST_PARTY_IDS = [
+  'AIPT',
+  '@aipt/adapter-sdk',
+  '@aipt/harness-adapter',
+  '@aipt/model-harness-gateway',
+];
 
 // Truthful B002 metadata the SDK inventory record must carry: the SDK was
 // verified in AIPT-M0-B002 iteration 4, never in B001.
@@ -200,6 +209,13 @@ const HARNESS_ADAPTER_RECORD = {
   verified_at: '2026-08-22T00:00:00Z',
 };
 
+const MODEL_GATEWAY_RECORD = {
+  id: '@aipt/model-harness-gateway',
+  version: '0.1.0',
+  selected_by_batch: 'AIPT-MVP-B004',
+  verified_at: '2026-08-30T00:00:00Z',
+};
+
 function exactScalarObject(actual, expected) {
   if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
   const actualKeys = Object.keys(actual).sort();
@@ -211,9 +227,7 @@ function exactScalarObject(actual, expected) {
 function canonicalValue(value) {
   if (Array.isArray(value)) return value.map(canonicalValue);
   if (value && typeof value === 'object') {
-    const result = {};
-    for (const key of Object.keys(value).sort()) result[key] = canonicalValue(value[key]);
-    return result;
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
   }
   return value;
 }
@@ -411,7 +425,7 @@ function checkLicenseInventory(licenses) {
     fail(`go toolchain license record selected_by_batch must be ${SUPPLY_CHAIN_BASELINE_BATCH} (historical B001 initial qualification, never rewritten)`);
   }
   // Machine-check every expected inventory record against its expected SPDX
-  // license value and kind — all 21 current identities must exist and match
+  // license value and kind — all 22 current identities must exist and match
   // exactly.
   let identityOk = true;
   for (const [id, expected] of Object.entries(EXPECTED_SPDX_LICENSES)) {
@@ -432,7 +446,7 @@ function checkLicenseInventory(licenses) {
     }
   }
   if (identityOk) {
-    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (three first-party records + B001 tooling/CI/infrastructure + B003 runtime closure + B004 graph tooling)`);
+    ok(`${Object.keys(EXPECTED_SPDX_LICENSES).length} license records carry the expected SPDX license values and kinds (four first-party records + B001 tooling/CI/infrastructure + B003 runtime closure + B004 graph tooling)`);
   }
   // Exact-set model: no unrecorded third-party identity may exist.
   const known = new Set(Object.keys(EXPECTED_SPDX_LICENSES));
@@ -443,8 +457,9 @@ function checkLicenseInventory(licenses) {
     ok(`license record set is exactly the ${known.size} expected identities (zero unrecorded third-party packages)`);
   }
   // Exact first-party license-record set: AIPT + @aipt/adapter-sdk +
-  // @aipt/harness-adapter. The B007 Web UI is covered by the immutable AIPT
-  // root MIT record and is independently represented in the SBOM.
+  // @aipt/harness-adapter + @aipt/model-harness-gateway. The B007 Web UI is
+  // covered by the AIPT root MIT record and independently represented in the
+  // SBOM.
   const firstParty = records.filter((r) => r?.kind === 'first_party').map((r) => r?.id).sort();
   if (JSON.stringify(firstParty) !== JSON.stringify([...EXPECTED_FIRST_PARTY_IDS].sort())) {
     fail(`first-party set must be exactly ${EXPECTED_FIRST_PARTY_IDS.join(' + ')}, got ${JSON.stringify(firstParty)}`);
@@ -471,6 +486,25 @@ function checkLicenseInventory(licenses) {
         !harnessRec.evidence.includes('zero npm registry')) {
       fail('@aipt/harness-adapter evidence must bind the first-party workspace SDK edge and zero registry packages');
     } else ok('@aipt/harness-adapter carries truthful B005 first-party dependency metadata');
+  }
+  const modelGatewayRec = records.find((r) => r?.id === MODEL_GATEWAY_RECORD.id);
+  if (modelGatewayRec) {
+    if (modelGatewayRec.version !== MODEL_GATEWAY_RECORD.version) {
+      fail(`@aipt/model-harness-gateway license record version must be ${MODEL_GATEWAY_RECORD.version}`);
+    }
+    if (modelGatewayRec.selected_by_batch !== MODEL_GATEWAY_RECORD.selected_by_batch) {
+      fail('@aipt/model-harness-gateway selected_by_batch must be AIPT-MVP-B004');
+    }
+    if (modelGatewayRec.verified_at !== MODEL_GATEWAY_RECORD.verified_at) {
+      fail('@aipt/model-harness-gateway verified_at drifted');
+    }
+    if (typeof modelGatewayRec.evidence !== 'string' ||
+        !modelGatewayRec.evidence.includes('packages/model-harness-gateway') ||
+        !modelGatewayRec.evidence.includes('@aipt/harness-adapter') ||
+        !modelGatewayRec.evidence.includes('workspace:*') ||
+        !modelGatewayRec.evidence.includes('zero npm registry')) {
+      fail('@aipt/model-harness-gateway evidence must bind the first-party Harness Adapter edge and zero registry packages');
+    } else ok('@aipt/model-harness-gateway carries truthful AIPT-MVP-B004 first-party dependency metadata');
   }
   // Truthful B003 Go runtime record metadata (AIPT-M0-B003 iteration 6a): the
   // six approved modules must carry exact versions, SPDX licenses, kind
@@ -661,23 +695,26 @@ function checkLicenseInventory(licenses) {
     'AIPT-M0-B005',
     '@aipt/harness-adapter@0.1.0',
     '@aipt/adapter-sdk',
+    'AIPT-MVP-B004',
+    '@aipt/model-harness-gateway@0.1.0',
     'workspace:*',
     'zero npm registry',
     'pnpm runtime third-party=0',
   ];
   if (typeof appDeps.note !== 'string' || dependencyNoteTokens.some((token) => !appDeps.note.includes(token))) {
-    fail('licenses.json application_dependencies note must preserve B003/B004 history and document the exact B005 first-party workspace edge with zero registry dependency');
+    fail('licenses.json application_dependencies note must preserve B003/M0-B004 history and document the exact B005 and MVP-B004 first-party workspace edges with zero registry dependency');
   } else {
-    ok('licenses.json application dependency note preserves B003/B004 and records the B005 first-party-only edge');
+    ok('licenses.json application dependency note preserves B003/M0-B004 and records the B005/MVP-B004 first-party-only edges');
   }
 
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
 
 // Pure machine check of the first-party pnpm workspace model.
-//   - exact importer set: . + adapter-sdk + harness-adapter + web-ui;
+//   - exact importer set: . + adapter-sdk + harness-adapter + model gateway + web-ui;
 //   - root, Adapter SDK, and Web UI are empty;
 //   - Harness Adapter has exactly one workspace SDK edge;
+//   - Model Harness Gateway has exactly one workspace Harness Adapter edge;
 //   - zero third-party packages (no `packages:` section);
 //   - pnpm-workspace.yaml declares packages/* and documents the SDK edge.
 function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
@@ -731,18 +768,30 @@ function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
         fail('pnpm-lock Harness Adapter importer must contain exactly @aipt/adapter-sdk workspace:* -> link:../adapter-sdk');
         importerShapeOk = false;
       }
+    } else if (key === 'packages/model-harness-gateway') {
+      const expectedContent = [
+        '    dependencies:',
+        "      '@aipt/harness-adapter':",
+        '        specifier: workspace:*',
+        '        version: link:../harness-adapter',
+      ];
+      if (importer.inline !== '' || JSON.stringify(importer.content) !== JSON.stringify(expectedContent)) {
+        fail('pnpm-lock Model Harness Gateway importer must contain exactly @aipt/harness-adapter workspace:* -> link:../harness-adapter');
+        importerShapeOk = false;
+      }
     } else if (!(importer.inline === '{}' && importer.content.length === 0)) {
       fail(`pnpm-lock importer ${JSON.stringify(key)} must remain exactly <key>: {}`);
       importerShapeOk = false;
     }
   }
-  if (importerShapeOk) ok('root/SDK/Web UI importers are empty; Harness Adapter has the exact first-party SDK edge');
+  if (importerShapeOk) ok('root/SDK/Web UI importers are empty; Harness Adapter and Model Harness Gateway have their exact first-party edges');
   if (typeof workspaceYaml === 'string') {
     if (!workspaceYaml.includes('"packages/*"')) fail('pnpm-workspace.yaml must keep the packages/* workspace glob');
     else if (!workspaceYaml.includes('packages/adapter-sdk')) fail('pnpm-workspace.yaml prose must name the registered first-party package packages/adapter-sdk');
     else if (!workspaceYaml.includes('@aipt/harness-adapter')) fail('pnpm-workspace.yaml prose must name @aipt/harness-adapter');
+    else if (!workspaceYaml.includes('@aipt/model-harness-gateway')) fail('pnpm-workspace.yaml prose must name @aipt/model-harness-gateway');
     else if (!workspaceYaml.includes('workspace dependency')) fail('pnpm-workspace.yaml must document the first-party workspace dependency');
-    else ok('pnpm-workspace.yaml declares packages/* and documents the Adapter SDK/Harness Adapter first-party workspace edge');
+    else ok('pnpm-workspace.yaml declares packages/* and documents both first-party workspace edges');
   }
   return { result: pass ? 'PASS' : 'FAIL', details };
 }
@@ -751,8 +800,9 @@ function checkPnpmWorkspaceModel({ lockText, importerDirs, workspaceYaml }) {
 // matching first-party license coverage. The B007 Web UI is a dependency-free
 // repository component covered by the immutable AIPT/root MIT record because
 // tools/supply-chain/licenses.json is frozen by Master Policy; every other
-// workspace package still requires its own exact record. Only Harness Adapter
-// may carry a dependency, exactly @aipt/adapter-sdk workspace:*.
+// workspace package still requires its own exact record. Harness Adapter may
+// depend exactly on @aipt/adapter-sdk workspace:*; Model Harness Gateway may
+// depend exactly on @aipt/harness-adapter workspace:*.
 function checkWorkspaceFirstParty(packageEntries, licenses) {
   const details = [];
   let pass = true;
@@ -790,11 +840,15 @@ function checkWorkspaceFirstParty(packageEntries, licenses) {
     if (record.version !== entry.version) fail(`workspace package ${entry.name} license record version ${JSON.stringify(record.version)} must equal package.json version ${JSON.stringify(entry.version)}`);
     const expectedDependencies = entry.name === '@aipt/harness-adapter'
       ? { '@aipt/adapter-sdk': 'workspace:*' }
-      : {};
+      : entry.name === '@aipt/model-harness-gateway'
+        ? { '@aipt/harness-adapter': 'workspace:*' }
+        : {};
     if (!exactJsonValue(entry.dependencies, expectedDependencies) || entry.hasNonRuntimeDeps) {
       fail(`workspace package ${entry.name} dependency shape drifted from its approved first-party contract`);
     } else if (entry.name === '@aipt/harness-adapter') {
       ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, exact SDK workspace edge, license-covered`);
+    } else if (entry.name === '@aipt/model-harness-gateway') {
+      ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, exact Harness Adapter workspace edge, license-covered`);
     } else {
       ok(`workspace package ${entry.name}@${entry.version}: first-party, MIT, dependency-free, license-covered`);
     }
@@ -1216,6 +1270,32 @@ export function run(ctx) {
       },
     },
     {
+      label: 'Model Harness Gateway inventory record deleted',
+      targetId: MODEL_GATEWAY_RECORD.id,
+      reason: /missing record @aipt\/model-harness-gateway/,
+      mutate: (recs) => {
+        recs.splice(recs.findIndex((r) => r.id === MODEL_GATEWAY_RECORD.id), 1);
+      },
+    },
+    {
+      label: 'Model Harness Gateway inventory record wrongly licensed',
+      targetId: MODEL_GATEWAY_RECORD.id,
+      reason: /MIT/,
+      mutate: (recs) => {
+        recs.find((r) => r.id === MODEL_GATEWAY_RECORD.id).license = 'Apache-2.0';
+      },
+    },
+    {
+      label: 'Model Harness Gateway inventory metadata drifted',
+      targetId: MODEL_GATEWAY_RECORD.id,
+      reason: /selected_by_batch must be AIPT-MVP-B004|verified_at drifted/,
+      mutate: (recs) => {
+        const rec = recs.find((r) => r.id === MODEL_GATEWAY_RECORD.id);
+        rec.selected_by_batch = 'AIPT-M0-B004';
+        rec.verified_at = '2026-08-20T00:00:00Z';
+      },
+    },
+    {
       label: 'unrecorded third-party license identity injected',
       targetId: 'AIPT',
       reason: /unrecorded license record ids/,
@@ -1371,9 +1451,9 @@ export function run(ctx) {
       },
     },
     {
-      label: 'B005 first-party-only dependency note removed',
+      label: 'B005/MVP-B004 first-party-only dependency note removed',
       targetId: 'AIPT',
-      reason: /application_dependencies note must preserve B003\/B004 history and document the exact B005 first-party workspace edge/,
+      reason: /application_dependencies note must preserve B003\/M0-B004 history and document the exact B005 and MVP-B004 first-party workspace edges/,
       mutate: (recs, whole) => {
         whole.application_dependencies.note = 'Historical inventory only.';
       },
@@ -1511,11 +1591,11 @@ export function run(ctx) {
   const workspaceModel = checkPnpmWorkspaceModel({ lockText: pnpmLockText, importerDirs, workspaceYaml });
   details.push(...workspaceModel.details);
   if (workspaceModel.result !== 'PASS') fail('first-party pnpm workspace model FAIL');
-  else ok('first-party pnpm workspace model PASS: exact importer set, one first-party SDK link, zero third-party packages');
+  else ok('first-party pnpm workspace model PASS: exact importer set, two governed first-party links, zero third-party packages');
   const workspaceFirstParty = checkWorkspaceFirstParty(packageEntries, licenses);
   details.push(...workspaceFirstParty.details);
   if (workspaceFirstParty.result !== 'PASS') fail('workspace first-party license coverage FAIL');
-  else ok('every workspace package has exact first-party MIT coverage, including B007 root-covered Web UI');
+  else ok('every workspace package has exact first-party MIT coverage, including the MVP-B004 Model Harness Gateway and B007 root-covered Web UI');
 
   const webEntry = packageEntries.find((entry) => entry.name === '@aipt/web-ui');
   const workspaceLicenseProbes = webEntry ? [
@@ -1555,6 +1635,47 @@ export function run(ctx) {
     } else ok(`negative-probe PASS: workspace license model rejects ${probe.label}`);
   }
   if (workspaceLicenseProbesOk) ok(`all ${workspaceLicenseProbes.length} B007 Web UI license/dependency probes rejected as expected`);
+
+  const modelGatewayEntry = packageEntries.find((entry) => entry.name === MODEL_GATEWAY_RECORD.id);
+  const modelGatewayLicenseProbes = modelGatewayEntry ? [
+    {
+      label: 'Model Harness Gateway version drift',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === modelGatewayEntry ? { ...entry, version: '0.2.0' } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Model Harness Gateway dependency removal',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === modelGatewayEntry ? { ...entry, dependencies: {} } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Model Harness Gateway registry dependency injection',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries.map((entry) => entry === modelGatewayEntry
+          ? { ...entry, dependencies: { '@aipt/harness-adapter': '^0.1.0' } } : entry), licenses,
+      ),
+    },
+    {
+      label: 'Model Harness Gateway license coverage removal',
+      mutate: () => checkWorkspaceFirstParty(
+        packageEntries, { ...licenses, records: records.filter((record) => record.id !== MODEL_GATEWAY_RECORD.id) },
+      ),
+    },
+  ] : [];
+  let modelGatewayLicenseProbesOk = modelGatewayEntry !== undefined;
+  if (!modelGatewayEntry) fail('AIPT-MVP-B004 @aipt/model-harness-gateway workspace package is missing');
+  for (const probe of modelGatewayLicenseProbes) {
+    const result = probe.mutate();
+    if (result.result !== 'FAIL') {
+      modelGatewayLicenseProbesOk = false;
+      fail(`negative workspace-license probe (${probe.label}) was NOT rejected`);
+    } else ok(`negative-probe PASS: workspace license model rejects ${probe.label}`);
+  }
+  if (modelGatewayLicenseProbesOk) {
+    ok(`all ${modelGatewayLicenseProbes.length} AIPT-MVP-B004 Model Harness Gateway license/dependency probes rejected as expected`);
+  }
   // Negative workspace probes over mutated in-memory inputs.
   const workspaceProbes = [
     {
@@ -1603,6 +1724,30 @@ export function run(ctx) {
         lockText: pnpmLockText
           .replace('specifier: workspace:*', 'specifier: ^1.0.0')
           .replace('version: link:../adapter-sdk', 'version: 1.0.0'),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'Model Harness Gateway Harness Adapter dependency removed',
+      reason: /Model Harness Gateway importer must contain exactly/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText.replace(
+          "  packages/model-harness-gateway:\n    dependencies:\n      '@aipt/harness-adapter':\n        specifier: workspace:*\n        version: link:../harness-adapter",
+          '  packages/model-harness-gateway: {}',
+        ),
+        importerDirs,
+        workspaceYaml,
+      }),
+    },
+    {
+      label: 'Model Harness Gateway edge changed to registry dependency',
+      reason: /Model Harness Gateway importer must contain exactly/,
+      mutate: () => checkPnpmWorkspaceModel({
+        lockText: pnpmLockText.replace(
+          "      '@aipt/harness-adapter':\n        specifier: workspace:*\n        version: link:../harness-adapter",
+          "      '@aipt/harness-adapter':\n        specifier: ^0.1.0\n        version: 0.1.0",
+        ),
         importerDirs,
         workspaceYaml,
       }),
@@ -2036,7 +2181,7 @@ export function run(ctx) {
   // because every hazard literal is assembled from fragments) ----
   const hazards = scanTreeForHazards(ctx.repo);
   if (hazards.length > 0) {
-    for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}: ${JSON.stringify(h.sample)}`);
+    for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}`);
   } else ok('no secrets, private paths, model endpoints or prompt bodies in tracked config or executable scripts');
   if (workflow.includes('secrets.')) fail('workflow references secrets.*');
   else ok('workflow secret-free');

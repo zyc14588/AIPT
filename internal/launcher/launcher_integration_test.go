@@ -204,12 +204,13 @@ func launcherMigrationState(t *testing.T, pool *pgxpool.Pool) (int, time.Time) {
 }
 
 func TestPostgresIntegrationLauncherConnectionMigrationAndNoOp(t *testing.T) {
+	t.Setenv("AIPT_MODEL_RUNTIME_CONFIG", "")
 	fixture := newLauncherIntegrationFixture(t)
 	configPath := fixture.configPath(t)
 
-	first := runDefaultLauncherExpect(t, configPath, CodeGateNotImplemented, GateModel)
-	if !errors.Is(first, ErrGateNotImplemented) {
-		t.Fatalf("first Run = %v, want ErrGateNotImplemented", first)
+	first := runDefaultLauncherExpect(t, configPath, CodeGateFailed, GateModel)
+	if !errors.Is(first, ErrGateFailed) {
+		t.Fatalf("first Run = %v, want ErrGateFailed", first)
 	}
 
 	pool := fixture.databasePool(t)
@@ -220,9 +221,9 @@ func TestPostgresIntegrationLauncherConnectionMigrationAndNoOp(t *testing.T) {
 	}
 	pool.Close()
 
-	second := runDefaultLauncherExpect(t, configPath, CodeGateNotImplemented, GateModel)
-	if !errors.Is(second, ErrGateNotImplemented) {
-		t.Fatalf("second Run = %v, want ErrGateNotImplemented", second)
+	second := runDefaultLauncherExpect(t, configPath, CodeGateFailed, GateModel)
+	if !errors.Is(second, ErrGateFailed) {
+		t.Fatalf("second Run = %v, want ErrGateFailed", second)
 	}
 
 	pool = fixture.databasePool(t)

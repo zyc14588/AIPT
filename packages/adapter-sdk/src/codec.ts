@@ -15,6 +15,7 @@ import { CONTRACT_DESCRIPTOR as D } from './contract/descriptor.ts';
 import { canonicalJsonString } from './canonical-json.ts';
 import { ProtocolValidationError, issue, type ValidationResult } from './errors.ts';
 import { validateJsonValue } from './json-value.ts';
+import { SDK_JSON_RESOURCE_LIMITS_V1 as LIMITS } from './resource-limits.ts';
 import type {
   ActionIntentParams,
   ApplyActionResult,
@@ -44,6 +45,11 @@ export function parseJson(text: string): JsonValue {
   if (typeof text !== 'string') {
     throw new ProtocolValidationError('parseJson requires a string', [issue('$', 'AIPT_MALFORMED_JSON', 'input is not a string')]);
   }
+	if (Buffer.byteLength(text, 'utf8') > LIMITS.max_aggregate_bytes) {
+		throw new ProtocolValidationError('JSON input exceeds the parse budget', [
+			issue('$', 'AIPT_JSON_RESOURCE_LIMIT', `input exceeds ${LIMITS.max_aggregate_bytes} bytes (${LIMITS.identity})`),
+		]);
+	}
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);

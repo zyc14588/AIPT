@@ -1,0 +1,23 @@
+{
+  "name": "@aipt/model-harness-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AIPT-MVP-B004 governed model host: additive AIPT JSON-RPC to DeepSeek Harness ACP, with no direct provider route.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model-process-worker": "./src/model-process-worker.ts"
+  },
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "dependencies": {
+    "@aipt/harness-adapter": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

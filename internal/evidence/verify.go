@@ -9,17 +9,24 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
 	"github.com/zyc14588/AIPT/internal/protocol"
 )
 
-const timeFormat = time.RFC3339Nano
+const (
+	timeFormat                  = time.RFC3339Nano
+	maxRawCaptureManifestBytes  = int64(1 << 20)
+	maxRawCaptureRootBytes      = int64(65)
+	maxRawCaptureEventsBytes    = int64(64 << 20)
+	maxRawCaptureEventCount     = int64(100_000)
+	maxRawCaptureEventLineBytes = 1 << 20
+)
 
 var (
 	lowerSHA256 = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -34,32 +41,30 @@ func VerifyRawCapture(directory string) (Verification, error) {
 	fail := func(format string, args ...any) (Verification, error) {
 		return Verification{}, fmt.Errorf("%w: %s", ErrBundleInvalid, fmt.Sprintf(format, args...))
 	}
-	st, err := os.Lstat(directory)
+	directoryFile, directoryStat, err := openRawCaptureDirectory(directory)
 	if err != nil {
-		return fail("lstat bundle: %v", err)
+		return fail("open bundle directory: %v", err)
 	}
-	if st.Mode()&os.ModeSymlink != 0 || !st.IsDir() {
-		return fail("bundle root must be a real directory")
+	defer directoryFile.Close()
+	return verifyHeldRawCapture(directoryFile, directoryStat)
+}
+
+// verifyHeldRawCapture verifies the exact directory object already held by
+// the caller. Export uses this form so the self-verified staging object is
+// never reopened through a mutable pathname before publication.
+func verifyHeldRawCapture(directoryFile *os.File, directoryStat syscall.Stat_t) (Verification, error) {
+	fail := func(format string, args ...any) (Verification, error) {
+		return Verification{}, fmt.Errorf("%w: %s", ErrBundleInvalid, fmt.Sprintf(format, args...))
 	}
-	if st.Mode().Perm() != 0o700 {
-		return fail("bundle root mode is %04o, want 0700", st.Mode().Perm())
-	}
-	entries, err := os.ReadDir(directory)
-	if err != nil {
+	entries, err := directoryFile.ReadDir(4)
+	if err != nil && !errors.Is(err, io.EOF) {
 		return fail("read bundle directory: %v", err)
+	}
+	if len(entries) > 3 {
+		return fail("bundle contains more than three members")
 	}
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		info, infoErr := entry.Info()
-		if infoErr != nil {
-			return fail("inspect %q: %v", entry.Name(), infoErr)
-		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-			return fail("%q must be a regular non-symlink file", entry.Name())
-		}
-		if info.Mode().Perm() != 0o600 {
-			return fail("%q mode is %04o, want 0600", entry.Name(), info.Mode().Perm())
-		}
 		names = append(names, entry.Name())
 	}
 	sort.Strings(names)
@@ -69,7 +74,23 @@ func VerifyRawCapture(directory string) (Verification, error) {
 		return fail("file inventory is %v, want exactly %v", names, wantNames)
 	}
 
-	manifestBytes, err := os.ReadFile(filepath.Join(directory, ManifestName))
+	manifestFile, manifestStat, err := openHeldPrivateFile(directoryFile, ManifestName, maxRawCaptureManifestBytes)
+	if err != nil {
+		return fail("open manifest: %v", err)
+	}
+	defer manifestFile.Close()
+	rootFile, rootStat, err := openHeldPrivateFile(directoryFile, RootName, maxRawCaptureRootBytes)
+	if err != nil {
+		return fail("open root: %v", err)
+	}
+	defer rootFile.Close()
+	eventsFile, eventsStat, err := openHeldPrivateFile(directoryFile, EventsName, maxRawCaptureEventsBytes)
+	if err != nil {
+		return fail("open events: %v", err)
+	}
+	defer eventsFile.Close()
+
+	manifestBytes, err := readHeldPrivateFile(manifestFile, manifestStat, maxRawCaptureManifestBytes)
 	if err != nil {
 		return fail("read manifest: %v", err)
 	}
@@ -85,7 +106,7 @@ func VerifyRawCapture(directory string) (Verification, error) {
 		return fail("manifest semantics: %v", err)
 	}
 
-	rootBytes, err := os.ReadFile(filepath.Join(directory, RootName))
+	rootBytes, err := readHeldPrivateFile(rootFile, rootStat, maxRawCaptureRootBytes)
 	if err != nil {
 		return fail("read root: %v", err)
 	}
@@ -98,7 +119,7 @@ func VerifyRawCapture(directory string) (Verification, error) {
 		return fail("root digest does not match exact manifest bytes")
 	}
 
-	eventsBytes, err := os.ReadFile(filepath.Join(directory, EventsName))
+	eventsBytes, err := readHeldPrivateFile(eventsFile, eventsStat, maxRawCaptureEventsBytes)
 	if err != nil {
 		return fail("read events: %v", err)
 	}
@@ -114,18 +135,93 @@ func VerifyRawCapture(directory string) (Verification, error) {
 	if err != nil {
 		return fail("events: %v", err)
 	}
-	if int64(len(events)) != manifest.EventCount || manifest.TailSequence != manifest.EventCount {
+	if events.Count != manifest.EventCount || manifest.TailSequence != manifest.EventCount {
 		return fail("event count/tail mismatch: decoded=%d manifest_count=%d tail_sequence=%d",
-			len(events), manifest.EventCount, manifest.TailSequence)
+			events.Count, manifest.EventCount, manifest.TailSequence)
 	}
-	if len(events) == 0 {
+	if events.Count == 0 {
 		if manifest.TailEventHash != nil {
 			return fail("empty stream carries a tail hash")
 		}
-	} else if manifest.TailEventHash == nil || *manifest.TailEventHash != events[len(events)-1].EventHash {
+	} else if manifest.TailEventHash == nil || *manifest.TailEventHash != events.TailHash {
 		return fail("tail event hash does not match final event")
 	}
+	var finalDirectoryStat syscall.Stat_t
+	if err := syscall.Fstat(int(directoryFile.Fd()), &finalDirectoryStat); err != nil || !sameFileState(directoryStat, finalDirectoryStat) {
+		return fail("bundle directory changed during verification")
+	}
 	return Verification{Root: root, Manifest: manifest}, nil
+}
+
+func openRawCaptureDirectory(directory string) (*os.File, syscall.Stat_t, error) {
+	fd, err := syscall.Open(directory, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, syscall.Stat_t{}, err
+	}
+	file := os.NewFile(uintptr(fd), directory)
+	if file == nil {
+		syscall.Close(fd)
+		return nil, syscall.Stat_t{}, errors.New("construct directory handle")
+	}
+	var state syscall.Stat_t
+	if err := syscall.Fstat(fd, &state); err != nil {
+		file.Close()
+		return nil, syscall.Stat_t{}, err
+	}
+	if state.Mode&syscall.S_IFMT != syscall.S_IFDIR || state.Mode&0o777 != 0o700 {
+		file.Close()
+		return nil, syscall.Stat_t{}, errors.New("bundle root must be a real mode-0700 directory")
+	}
+	return file, state, nil
+}
+
+func openHeldPrivateFile(directory *os.File, name string, maximumBytes int64) (*os.File, syscall.Stat_t, error) {
+	fd, err := syscall.Openat(int(directory.Fd()), name, syscall.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, syscall.Stat_t{}, err
+	}
+	file := os.NewFile(uintptr(fd), name)
+	if file == nil {
+		syscall.Close(fd)
+		return nil, syscall.Stat_t{}, errors.New("construct file handle")
+	}
+	var state syscall.Stat_t
+	if err := syscall.Fstat(fd, &state); err != nil {
+		file.Close()
+		return nil, syscall.Stat_t{}, err
+	}
+	if state.Mode&syscall.S_IFMT != syscall.S_IFREG || state.Mode&0o777 != 0o600 {
+		file.Close()
+		return nil, syscall.Stat_t{}, errors.New("member must be a regular non-symlink mode-0600 file")
+	}
+	if state.Size < 0 || state.Size > maximumBytes {
+		file.Close()
+		return nil, syscall.Stat_t{}, fmt.Errorf("member size %d exceeds bound %d", state.Size, maximumBytes)
+	}
+	return file, state, nil
+}
+
+func readHeldPrivateFile(file *os.File, before syscall.Stat_t, maximumBytes int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(file, maximumBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maximumBytes {
+		return nil, fmt.Errorf("member exceeds bound %d", maximumBytes)
+	}
+	var after syscall.Stat_t
+	if err := syscall.Fstat(int(file.Fd()), &after); err != nil {
+		return nil, err
+	}
+	if !sameFileState(before, after) || int64(len(data)) != before.Size {
+		return nil, errors.New("member changed during verification")
+	}
+	return data, nil
+}
+
+func sameFileState(left, right syscall.Stat_t) bool {
+	return left.Dev == right.Dev && left.Ino == right.Ino && left.Mode == right.Mode &&
+		left.Size == right.Size && left.Mtim == right.Mtim && left.Ctim == right.Ctim
 }
 
 func validateSnapshot(snapshot LedgerSnapshot, streamID string) error {
@@ -135,6 +231,9 @@ func validateSnapshot(snapshot LedgerSnapshot, streamID string) error {
 	if snapshot.EventCount < 0 || snapshot.TailSequence < 0 ||
 		snapshot.EventCount != int64(len(snapshot.Events)) || snapshot.TailSequence != snapshot.EventCount {
 		return fmt.Errorf("%w: source returned an inconsistent event count/tail", ErrInvalidInput)
+	}
+	if snapshot.EventCount > maxRawCaptureEventCount {
+		return fmt.Errorf("%w: source event count %d exceeds bound %d", ErrInvalidInput, snapshot.EventCount, maxRawCaptureEventCount)
 	}
 	if len(snapshot.Events) == 0 {
 		if snapshot.TailHash != nil {
@@ -146,6 +245,7 @@ func validateSnapshot(snapshot LedgerSnapshot, streamID string) error {
 		return fmt.Errorf("%w: nonempty snapshot has no tail hash", ErrInvalidInput)
 	}
 	var previous *[32]byte
+	var encodedBytes int64
 	for i := range snapshot.Events {
 		event := snapshot.Events[i]
 		if event.StreamID != streamID || event.Sequence != int64(i+1) {
@@ -171,6 +271,17 @@ func validateSnapshot(snapshot LedgerSnapshot, streamID string) error {
 		if !equalHashes(event.PrevEventHash, previous) {
 			return fmt.Errorf("%w: event %d previous hash mismatch", ErrInvalidInput, i+1)
 		}
+		line, err := encodeEventLine(event)
+		if err != nil {
+			return fmt.Errorf("%w: event %d encoding is invalid: %v", ErrInvalidInput, i+1, err)
+		}
+		if len(line) > maxRawCaptureEventLineBytes {
+			return fmt.Errorf("%w: event %d encoded line exceeds bound %d", ErrInvalidInput, i+1, maxRawCaptureEventLineBytes)
+		}
+		encodedBytes += int64(len(line))
+		if encodedBytes > maxRawCaptureEventsBytes {
+			return fmt.Errorf("%w: encoded events exceed bound %d", ErrInvalidInput, maxRawCaptureEventsBytes)
+		}
 		hash := event.EventHash
 		previous = &hash
 	}
@@ -194,6 +305,9 @@ func validateManifest(manifest RawCaptureManifest) error {
 	if manifest.EventCount < 0 || manifest.TailSequence < 0 {
 		return errors.New("negative event count/tail sequence")
 	}
+	if manifest.EventCount > maxRawCaptureEventCount {
+		return fmt.Errorf("event count exceeds bound %d", maxRawCaptureEventCount)
+	}
 	if manifest.EventCount == 0 {
 		if manifest.TailSequence != 0 || manifest.TailEventHash != nil {
 			return errors.New("empty stream tail must be sequence 0 and null hash")
@@ -207,69 +321,92 @@ func validateManifest(manifest RawCaptureManifest) error {
 	}
 	asset := manifest.Assets[0]
 	if asset.Path != EventsName || asset.MediaType != "application/x-ndjson" || asset.Bytes < 0 ||
+		asset.Bytes > maxRawCaptureEventsBytes ||
 		!lowerSHA256.MatchString(asset.SHA256) {
 		return errors.New("events asset metadata is invalid")
 	}
 	return nil
 }
 
-func decodeAndVerifyEvents(data []byte, streamID string) ([]rawEventRecord, error) {
+type verifiedEventSummary struct {
+	Count    int64
+	TailHash string
+}
+
+func decodeAndVerifyEvents(data []byte, streamID string) (verifiedEventSummary, error) {
 	if len(data) == 0 {
-		return nil, nil
+		return verifiedEventSummary{}, nil
 	}
 	if data[len(data)-1] != '\n' {
-		return nil, errors.New("events.ndjson must end in LF")
+		return verifiedEventSummary{}, errors.New("events.ndjson must end in LF")
 	}
-	lines := bytes.Split(data[:len(data)-1], []byte{'\n'})
-	out := make([]rawEventRecord, 0, len(lines))
+	body := data[:len(data)-1]
+	start := 0
+	lineNumber := int64(0)
 	var previous *string
-	for i, line := range lines {
+	for {
+		lineNumber++
+		if lineNumber > maxRawCaptureEventCount {
+			return verifiedEventSummary{}, fmt.Errorf("event count exceeds bound %d", maxRawCaptureEventCount)
+		}
+		relativeEnd := bytes.IndexByte(body[start:], '\n')
+		end := len(body)
+		if relativeEnd >= 0 {
+			end = start + relativeEnd
+		}
+		line := body[start:end]
+		if len(line) > maxRawCaptureEventLineBytes {
+			return verifiedEventSummary{}, fmt.Errorf("line %d exceeds byte bound %d", lineNumber, maxRawCaptureEventLineBytes)
+		}
 		if len(line) == 0 || bytes.ContainsRune(line, '\r') {
-			return nil, fmt.Errorf("line %d is empty or contains CR", i+1)
+			return verifiedEventSummary{}, fmt.Errorf("line %d is empty or contains CR", lineNumber)
 		}
 		body, err := canonicalJSONBody(line)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: %w", i+1, err)
+			return verifiedEventSummary{}, fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		var event rawEventRecord
 		if err := strictDecode(body, &event); err != nil {
-			return nil, fmt.Errorf("line %d decode: %w", i+1, err)
+			return verifiedEventSummary{}, fmt.Errorf("line %d decode: %w", lineNumber, err)
 		}
 		if event.Schema != RawEventSchemaID || event.Version != SchemaVersion ||
-			event.StreamID != streamID || event.Sequence != int64(i+1) {
-			return nil, fmt.Errorf("line %d schema/version/stream/sequence mismatch", i+1)
+			event.StreamID != streamID || event.Sequence != lineNumber {
+			return verifiedEventSummary{}, fmt.Errorf("line %d schema/version/stream/sequence mismatch", lineNumber)
 		}
 		if err := validateLedgerText("event_id", event.EventID); err != nil {
-			return nil, fmt.Errorf("line %d: %w", i+1, err)
+			return verifiedEventSummary{}, fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		if err := validateLedgerText("event_type", event.EventType); err != nil {
-			return nil, fmt.Errorf("line %d: %w", i+1, err)
+			return verifiedEventSummary{}, fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		canonical, err := protocol.CanonicalJSON([]byte(event.PayloadCanonical))
 		if err != nil || canonical != event.PayloadCanonical {
-			return nil, fmt.Errorf("line %d payload_canonical is not exact canonical JSON", i+1)
+			return verifiedEventSummary{}, fmt.Errorf("line %d payload_canonical is not exact canonical JSON", lineNumber)
 		}
 		payloadHash := sha256.Sum256([]byte(event.PayloadCanonical))
 		if event.PayloadSHA256 != hex.EncodeToString(payloadHash[:]) {
-			return nil, fmt.Errorf("line %d payload SHA-256 mismatch", i+1)
+			return verifiedEventSummary{}, fmt.Errorf("line %d payload SHA-256 mismatch", lineNumber)
 		}
 		if !lowerSHA256.MatchString(event.EventHash) {
-			return nil, fmt.Errorf("line %d event hash syntax is invalid", i+1)
+			return verifiedEventSummary{}, fmt.Errorf("line %d event hash syntax is invalid", lineNumber)
 		}
 		if (previous == nil && event.PrevEventHash != nil) ||
 			(previous != nil && (event.PrevEventHash == nil || *event.PrevEventHash != *previous)) {
-			return nil, fmt.Errorf("line %d previous hash linkage mismatch", i+1)
+			return verifiedEventSummary{}, fmt.Errorf("line %d previous hash linkage mismatch", lineNumber)
 		}
 		parsedTime, err := time.Parse(timeFormat, event.CommittedAt)
 		if err != nil || !strings.HasSuffix(event.CommittedAt, "Z") ||
 			parsedTime.UTC().Format(timeFormat) != event.CommittedAt {
-			return nil, fmt.Errorf("line %d committed_at is not canonical UTC RFC3339Nano", i+1)
+			return verifiedEventSummary{}, fmt.Errorf("line %d committed_at is not canonical UTC RFC3339Nano", lineNumber)
 		}
 		value := event.EventHash
 		previous = &value
-		out = append(out, event)
+		if relativeEnd < 0 {
+			break
+		}
+		start = end + 1
 	}
-	return out, nil
+	return verifiedEventSummary{Count: lineNumber, TailHash: *previous}, nil
 }
 
 func canonicalBody(file []byte) ([]byte, error) {

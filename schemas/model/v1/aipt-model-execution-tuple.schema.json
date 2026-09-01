@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.invalid/schemas/model/v1/aipt-model-execution-tuple.schema.json",
+  "title": "AIPT complete model execution tuple v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "backend_kind", "provider_identity", "model_id", "model_profile_binding",
+    "sampling_profile_binding", "requested_sampling_sha256", "effective_sampling_projection",
+    "unsupported_sampling_parameters", "backend_serialized_request_sha256",
+    "harness_identity", "harness_protocol_identity",
+    "harness_protocol_version", "structured_output_mode", "tool_call_mode",
+    "request_contract_version", "capability_fingerprint", "environment_identity", "sha256"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.model-execution-tuple/v1" },
+    "backend_kind": { "enum": ["REMOTE_DEEPSEEK", "LOCAL_LLAMACPP"] },
+    "provider_identity": { "$ref": "#/$defs/bounded" },
+    "model_id": { "$ref": "#/$defs/bounded" },
+    "model_profile_binding": { "$ref": "#/$defs/bounded" },
+    "sampling_profile_binding": { "$ref": "#/$defs/bounded" },
+    "requested_sampling_sha256": { "$ref": "#/$defs/sha256" },
+    "effective_sampling_projection": { "$ref": "#/$defs/effectiveSampling" },
+    "unsupported_sampling_parameters": { "$ref": "#/$defs/unsupportedSampling" },
+    "backend_serialized_request_sha256": { "$ref": "#/$defs/sha256" },
+    "harness_identity": { "$ref": "#/$defs/bounded" },
+    "harness_protocol_identity": { "const": "agent-client-protocol" },
+    "harness_protocol_version": { "const": "1" },
+    "structured_output_mode": { "enum": ["NATIVE_SCHEMA", "PROMPTED", "BOUNDED_REPAIR"] },
+    "tool_call_mode": { "enum": ["DISABLED", "NATIVE", "EMULATED"] },
+    "request_contract_version": { "$ref": "#/$defs/bounded" },
+    "capability_fingerprint": { "$ref": "#/$defs/sha256" },
+    "environment_identity": { "$ref": "#/$defs/bounded" },
+    "local_runtime_identity": { "$ref": "#/$defs/localRuntimeIdentity" },
+    "sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "oneOf": [
+    {
+      "properties": { "backend_kind": { "const": "REMOTE_DEEPSEEK" } },
+      "not": { "required": ["local_runtime_identity"] }
+    },
+    {
+      "properties": { "backend_kind": { "const": "LOCAL_LLAMACPP" } },
+      "required": ["local_runtime_identity"]
+    }
+  ],
+  "$defs": {
+    "bounded": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/\\-]{0,127}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+(?:\\.[0-9]+){0,2}(?:-[0-9A-Za-z]+(?:\\.[0-9A-Za-z]+)*)?$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "unsupportedSampling": {
+      "type": "array", "minItems": 2, "maxItems": 3, "uniqueItems": true,
+      "items": { "enum": ["temperature", "top_p", "seed"] }
+    },
+    "effectiveSampling": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema", "enforcement_identity", "applied_parameters", "unsupported_parameters",
+        "max_context_tokens", "max_output_tokens", "context_utf8_byte_ceiling",
+        "output_utf8_byte_ceiling"
+      ],
+      "properties": {
+        "schema": { "const": "aipt.effective-sampling-projection/v1" },
+        "enforcement_identity": { "const": "AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1" },
+        "applied_parameters": {
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+          "items": { "enum": ["max_context_tokens", "max_output_tokens"] }
+        },
+        "unsupported_parameters": { "$ref": "#/$defs/unsupportedSampling" },
+        "max_context_tokens": { "type": "integer", "minimum": 1, "maximum": 10000000 },
+        "max_output_tokens": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "context_utf8_byte_ceiling": { "type": "integer", "minimum": 1, "maximum": 10000000 },
+        "output_utf8_byte_ceiling": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "localRuntimeIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "executable_reference", "binary_sha256", "version", "commit", "gguf_reference",
+        "gguf_sha256", "gguf_model_identity", "quantization_identity", "template_identity",
+		"template_sha256", "isolation_identity", "isolation_helper_reference",
+		"isolation_helper_sha256", "launch_parameters", "hardware"
+      ],
+      "properties": {
+        "executable_reference": { "$ref": "#/$defs/identity" },
+        "binary_sha256": { "$ref": "#/$defs/sha256" },
+        "version": { "$ref": "#/$defs/version" },
+        "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40})?$" },
+        "gguf_reference": { "$ref": "#/$defs/identity" },
+        "gguf_sha256": { "$ref": "#/$defs/sha256" },
+        "gguf_model_identity": { "$ref": "#/$defs/identity" },
+        "quantization_identity": { "$ref": "#/$defs/identity" },
+        "template_identity": { "$ref": "#/$defs/identity" },
+		"template_sha256": { "$ref": "#/$defs/sha256" },
+		"isolation_identity": { "const": "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1" },
+		"isolation_helper_reference": { "$ref": "#/$defs/identity" },
+		"isolation_helper_sha256": { "$ref": "#/$defs/sha256" },
+        "launch_parameters": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+        },
+        "hardware": {
+          "type": "object", "additionalProperties": false,
+          "required": ["architecture", "cpu_class", "gpu_backend", "memory_class"],
+          "properties": {
+            "architecture": { "$ref": "#/$defs/identity" },
+            "cpu_class": { "$ref": "#/$defs/identity" },
+            "gpu_backend": { "$ref": "#/$defs/identity" },
+            "memory_class": { "$ref": "#/$defs/identity" }
+          }
+        }
+      }
+    }
+  }
+}

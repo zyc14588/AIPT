@@ -76,6 +76,8 @@ export { ProtocolValidationError, issue, okResult, failResult } from './errors.t
 export type { ValidationIssue, ValidationResult } from './errors.ts';
 export { canonicalJson, canonicalJsonString, sha256Hex } from './canonical-json.ts';
 export { validateJsonValue, requireJsonValue } from './json-value.ts';
+export { SDK_JSON_RESOURCE_LIMITS_V1 } from './resource-limits.ts';
+export type { SdkJsonResourceLimitsV1 } from './resource-limits.ts';
 export { validateSchemaInstance } from './json-schema.ts';
 export {
   isSafeIntegerId,

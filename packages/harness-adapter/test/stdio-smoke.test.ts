@@ -13,9 +13,15 @@ import {
   encodeNotification,
   encodeRequest,
   encodeResponse,
+  type JsonRpcNotification,
   type JsonRpcRequest,
 } from '@aipt/adapter-sdk';
-import { MAX_FRAME_BYTES, serveHarnessAdapter } from '../src/index.ts';
+import { HarnessAdapterError, MAX_FRAME_BYTES, serveHarnessAdapter } from '../src/index.ts';
+import {
+  chargeBackendOutputFrameBytes,
+  MAX_BACKEND_ENCODED_OUTPUT_BYTES,
+  MAX_BACKEND_NOTIFICATION_COUNT,
+} from '../src/runtime.ts';
 import { createFixtureBackend, type FixtureBackendMode } from './fixture-backend.ts';
 
 const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -146,6 +152,33 @@ test('a frame split across writes is reconstructed exactly', async () => {
   assert.equal(completed.stdout.toString('utf8'), accepted + '\n' + event + '\n');
 });
 
+test('a maximum-size frame fragmented into small chunks is reconstructed exactly', async () => {
+  const outputChunks: Buffer[] = [];
+  const diagnosticChunks: Buffer[] = [];
+  const output = new Writable({
+    write(chunk, _encoding, callback) { outputChunks.push(Buffer.from(chunk)); callback(); },
+  });
+  const diagnosticOutput = new Writable({
+    write(chunk, _encoding, callback) { diagnosticChunks.push(Buffer.from(chunk)); callback(); },
+  });
+  const requestBytes = Buffer.from(requestFrame.slice(0, -1), 'utf8');
+  const maximumFrame = Buffer.concat([
+    requestBytes,
+    Buffer.alloc(MAX_FRAME_BYTES - requestBytes.length, 0x20),
+    Buffer.from('\n'),
+  ]);
+  const fragmented: Buffer[] = [];
+  for (let offset = 0; offset < maximumFrame.length; offset += 256) {
+    fragmented.push(maximumFrame.subarray(offset, Math.min(offset + 256, maximumFrame.length)));
+  }
+  await serveHarnessAdapter({
+    backend: await createFixtureBackend('accept'),
+    input: Readable.from(fragmented), output, diagnostic: diagnosticOutput,
+  });
+  assert.equal(Buffer.concat(outputChunks).toString('utf8'), accepted + '\n' + event + '\n');
+  assert.equal(diagnosticChunks.length, 0);
+});
+
 test('malformed JSON fails closed without stdout payload echo', async () => {
   const marker = 'MALFORMED_PAYLOAD_MARKER';
   const result = await runWorker('accept', '{"' + marker + '":}\n');
@@ -242,6 +275,78 @@ test('an oversized backend frame fails closed before any stdout write', async ()
   assert.equal(result.code, 1);
   assert.equal(result.stdout.length, 0);
   assert.equal(diagnostic(result).code, 'AIPT_HARNESS_FRAME_TOO_LARGE');
+});
+
+test('backend notification count accepts the exact boundary', async () => {
+  const outputChunks: Buffer[] = [];
+  const notification = decodeNotification(event);
+  await serveHarnessAdapter({
+    backend: {
+      applyAction() {
+        return {
+          response: decodeResponse(accepted),
+          notifications: new Array<JsonRpcNotification>(MAX_BACKEND_NOTIFICATION_COUNT).fill(notification),
+        };
+      },
+    },
+    input: Readable.from([requestFrame]),
+    output: new Writable({
+      write(chunk, _encoding, callback) { outputChunks.push(Buffer.from(chunk)); callback(); },
+    }),
+    diagnostic: new Writable({ write(_chunk, _encoding, callback) { callback(); } }),
+  });
+  const frames = Buffer.concat(outputChunks).toString('utf8').trimEnd().split('\n');
+  assert.equal(frames.length, MAX_BACKEND_NOTIFICATION_COUNT + 1);
+  assert.equal(frames[0], accepted);
+  assert.ok(frames.slice(1).every((frame) => frame === event));
+});
+
+test('backend notification count is rejected before any item is inspected or output written', async () => {
+  const outputChunks: Buffer[] = [];
+  const notifications = new Array<JsonRpcNotification>(MAX_BACKEND_NOTIFICATION_COUNT + 1);
+  let inspected = false;
+  Object.defineProperty(notifications, 0, {
+    enumerable: true,
+    get() {
+      inspected = true;
+      return decodeNotification(event);
+    },
+  });
+  await assert.rejects(serveHarnessAdapter({
+    backend: {
+      applyAction() {
+        return { response: decodeResponse(accepted), notifications };
+      },
+    },
+    input: Readable.from([requestFrame]),
+    output: new Writable({
+      write(chunk, _encoding, callback) { outputChunks.push(Buffer.from(chunk)); callback(); },
+    }),
+    diagnostic: new Writable({ write(_chunk, _encoding, callback) { callback(); } }),
+  }), (error: unknown) => {
+    assert.ok(error instanceof HarnessAdapterError);
+    assert.equal(error.code, 'AIPT_HARNESS_OUTPUT_INVALID');
+    return true;
+  });
+  assert.equal(inspected, false);
+  assert.equal(outputChunks.length, 0);
+});
+
+test('backend aggregate accounting includes LF and fixes the 4 MiB boundary', () => {
+  const frame = 'x'.repeat(MAX_FRAME_BYTES - 1);
+  let accumulated = 0;
+  for (let index = 0; index < 4; index += 1) {
+    accumulated = chargeBackendOutputFrameBytes(accumulated, frame);
+  }
+  assert.equal(accumulated, MAX_BACKEND_ENCODED_OUTPUT_BYTES);
+  assert.throws(
+    () => chargeBackendOutputFrameBytes(accumulated, ''),
+    (error: unknown) => {
+      assert.ok(error instanceof HarnessAdapterError);
+      assert.equal(error.code, 'AIPT_HARNESS_FRAME_TOO_LARGE');
+      return true;
+    },
+  );
 });
 
 test('runtime honors writable backpressure before completing', async () => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// AIPT-MVP-B003 validator suite entry (`pnpm run check`).
+// AIPT-MVP-B004 validator suite entry (`pnpm run check`).
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
@@ -28,6 +28,7 @@ import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
 import { run as runMvpB002 } from './validate/mvp-b002.mjs';
 import { run as runMvpB003 } from './validate/mvp-b003.mjs';
+import { run as runMvpB004 } from './validate/mvp-b004.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
@@ -168,6 +169,7 @@ const checks = await Promise.all([
   runMvpB001(ctx),
   runMvpB002(ctx),
   runMvpB003(ctx),
+  runMvpB004(ctx),
   repairCheck,
   closeoutCheck,
 ]);
@@ -178,10 +180,10 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B003 MERGED_CLOSED / GLOBAL_WIP 0; the provider-neutral deterministic Agent Orchestrator is closed over the immutable B002 Run Core and submits mutations only through its accepted transaction boundary; the B002 accepted and failed-merge histories remain immutable; real model gateways, real model/network calls, real playtest and qualification remain unimplemented; B004 is NOT_STARTED / NOT_AUTHORIZED';
+const note = 'AIPT-MVP-B004 IN_PROGRESS / GLOBAL_WIP 1; the closed B003 provider-neutral Agent Orchestrator remains immutable; HARNESS-01 is frozen and controlled REMOTE_DEEPSEEK plus LOCAL_LLAMACPP minimum certifications passed; GGUF-04 locator validation is recorded without exporting a private path; public CI remains secret-free with zero real model/provider calls; Candidate identity derives only from the final commit/tree plus public CI Stage Review; real playtest and qualification remain unexecuted';
 const report = {
-  schema: 'aipt.public.mvp-b003-validator-run/v1',
-  task_id: 'AIPT-MVP-B003',
+  schema: 'aipt.public.mvp-b004-validator-run/v1',
+  task_id: 'AIPT-MVP-B004',
   note,
   repo: ctx.repo,
   result,

@@ -6,7 +6,7 @@
     "go_runtime_third_party_modules": 6,
     "go_selected_module_graph_tooling_modules": 2,
     "pnpm_runtime_third_party_packages": 0,
-    "note": "B001 introduced no third-party application runtime dependency; B002 registered the first-party dependency-free workspace package @aipt/adapter-sdk. AIPT-M0-B003 qualified the exact pgx v5.10.0 Go runtime closure. AIPT-M0-B004 security-requalified reachable GO-2026-5970 with x/text v0.39.0; deterministic MVS selects x/sync v0.21.0, x/mod v0.37.0 and x/tools v0.47.0 while pgx remains v5.10.0. AIPT-M0-B005 registers first-party @aipt/harness-adapter@0.1.0 with exactly one workspace:* edge to @aipt/adapter-sdk and zero npm registry or other third-party package. Current counts remain go runtime=6, selected graph tooling=2, and pnpm runtime third-party=0. Any future dependency must first be explicitly approved and qualified."
+    "note": "B001 introduced no third-party application runtime dependency; B002 registered the first-party dependency-free workspace package @aipt/adapter-sdk. AIPT-M0-B003 qualified the exact pgx v5.10.0 Go runtime closure. AIPT-M0-B004 security-requalified reachable GO-2026-5970 with x/text v0.39.0; deterministic MVS selects x/sync v0.21.0, x/mod v0.37.0 and x/tools v0.47.0 while pgx remains v5.10.0. AIPT-M0-B005 registers first-party @aipt/harness-adapter@0.1.0 with exactly one workspace:* edge to @aipt/adapter-sdk and zero npm registry or other third-party package. AIPT-MVP-B004 registers first-party @aipt/model-harness-gateway@0.1.0 with exactly one workspace:* edge to @aipt/harness-adapter and zero npm registry or other third-party package. Current counts remain go runtime=6, selected graph tooling=2, and pnpm runtime third-party=0. Any future dependency must first be explicitly approved and qualified."
   },
   "records": [
     {
@@ -34,6 +34,15 @@
       "selected_by_batch": "AIPT-M0-B005",
       "evidence": "First-party workspace package packages/harness-adapter covered by the root MIT license; its only dependency specifier is @aipt/adapter-sdk workspace:* resolving to link:../adapter-sdk, with zero npm registry or other third-party package",
       "verified_at": "2026-08-22T00:00:00Z"
+    },
+    {
+      "id": "@aipt/model-harness-gateway",
+      "kind": "first_party",
+      "license": "MIT",
+      "version": "0.1.0",
+      "selected_by_batch": "AIPT-MVP-B004",
+      "evidence": "First-party workspace package packages/model-harness-gateway covered by the root MIT license; its only dependency specifier is @aipt/harness-adapter workspace:* resolving to link:../harness-adapter, with zero npm registry or other third-party package",
+      "verified_at": "2026-08-30T00:00:00Z"
     },
     {
       "id": "actions/checkout",

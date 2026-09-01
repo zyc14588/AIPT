@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-08-29",
-  "authority_snapshot_id": "AIPT-MVP-B003-CLOSEOUT-001",
+  "authority_snapshot_id": "AIPT-MVP-B004-CONSTRUCTION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "AIPT-MVP-B004",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B004",
+      "next_serial_batch": "INT-AIPT-UNREGISTERED-MVP-001",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -26,7 +26,7 @@
         "UNREGISTERED-AIPT-P1-B000": "MERGED_CLOSED",
         "AIPT-MVP-B002": "MERGED_CLOSED",
         "AIPT-MVP-B003": "MERGED_CLOSED",
-        "AIPT-MVP-B004": "NOT_STARTED",
+        "AIPT-MVP-B004": "IN_PROGRESS",
         "INT-AIPT-UNREGISTERED-MVP-001": "NOT_STARTED",
         "AIPT-MVP-B005": "NOT_STARTED",
         "AIPT-MVP-B006": "NOT_STARTED",
@@ -77,7 +77,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -252,6 +252,130 @@
         "merged": true,
         "post_merge_verified": true,
         "closed": true,
+        "open_findings": []
+      },
+      "mvp_b004": {
+        "task_id": "AIPT-MVP-B004",
+        "state": "IN_PROGRESS",
+        "start_authority": "OWNER_DIRECTIVE_AIPT-MVP-B004",
+        "base": {
+          "commit": "98591311c4872cdc5f091e23fba1acb500ad4599",
+          "tree": "a02ffea60c59d7187975f175875fa108c78d3cac"
+        },
+        "predecessor": {
+          "task_id": "AIPT-MVP-B003",
+          "state": "MERGED_CLOSED",
+          "accepted_candidate": "4f2979f4495e3d78393e9f9ec1978308a7fb10b9",
+          "implementation_merge": "beb7c70738b1f876845d68bec8e20166ab3eac10",
+          "canonical_closeout": "98591311c4872cdc5f091e23fba1acb500ad4599"
+        },
+        "scope": "VERSIONED_MODEL_PROFILES_AND_GOVERNED_REAL_HARNESS_GATEWAY",
+        "risk": "external-model-security",
+        "supported_backends": [
+          "REMOTE_DEEPSEEK",
+          "LOCAL_LLAMACPP"
+        ],
+        "primary_remote_model": "deepseek-v4-pro",
+        "harness_identity": {
+          "registration_id": "HARNESS-01",
+          "implementation": "deepseek-harness",
+          "release": "dsh-v0.1.0-rc.8",
+          "commit": "141eb6fef83422698aef7a981029e843e8161534",
+          "source_archive_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
+          "protocol_identity": "agent-client-protocol",
+          "protocol_version": "1",
+          "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+          "runtime_closure_kind": "VERIFIED_SINGLE_FILE_DATA_URL_V1",
+          "runtime_closure_sha256": "e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db"
+        },
+        "versioned_model_profile_implemented": true,
+        "versioned_sampling_profile_implemented": true,
+        "per_role_manifest_binding_implemented": true,
+        "real_model_gateway_implemented": true,
+        "model_launcher_gate_implemented": true,
+        "harness_launcher_gate_implemented": true,
+        "launcher_plan_first_unimplemented_gate": "IPC",
+        "controlled_certification": {
+          "real_harness": "PASS",
+          "remote_deepseek": "PASS",
+          "local_llamacpp": "PASS",
+          "remote_evidence": "docs/model-certification/remote-deepseek-controlled-real-02.json",
+          "local_evidence": "docs/model-certification/local-llamacpp-controlled-real-02.json",
+          "superseded_non_final_evidence": [
+            "docs/model-certification/remote-deepseek-controlled-real-01.json",
+            "docs/model-certification/local-llamacpp-controlled-real-01.json"
+          ],
+          "public_ci_real_model_calls": 0,
+          "preflight": {
+            "product_runtime_config_registered": false,
+            "product_credential_reference_registered": true,
+            "credential_reference_kind": "ENVIRONMENT_VARIABLE",
+            "credential_reference_locator": "DEEPSEEK_API_KEY",
+            "frozen_harness_route_registered": true,
+            "frozen_harness_identity": {
+              "release": "dsh-v0.1.0-rc.8",
+              "commit": "141eb6fef83422698aef7a981029e843e8161534"
+            },
+            "gguf_registration_id": "GGUF-04",
+            "gguf_sha256": "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6",
+            "gguf_identity_registered": true,
+            "gguf_asset_locator_registered": true,
+            "gguf_asset_locator_exported": false,
+            "gguf_full_sha256_recomputed": true,
+            "gguf_metadata_identity_verified": true,
+            "llamacpp_registration_id": "LLAMACPP-01",
+            "llamacpp_runtime_registered": true,
+            "llamacpp_managed_startup_verified": true,
+            "llamacpp_bounded_shutdown_verified": true,
+            "verified_asset_execution": "HELD_FILE_OBJECT",
+            "harness_runtime_closure_verified": true,
+            "local_isolation_identity": "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1",
+            "local_isolation_helper_sha256": "1bba082e39f213f85c213c7dcdadd85e610d2b64dcf39214d39d44b1c5e36d3d",
+            "host_direct_llama_access": "REJECTED",
+            "llama_api_key_added": false,
+            "observed_owner_local_development_bridge": {
+              "use_scope": "owner-local-development",
+              "release": "0.1.2-alpha.1",
+              "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
+              "frozen_identity_match": false,
+              "accepted_as_product_certification": false
+            },
+            "real_calls_attempted": 5,
+            "successful_certification_real_model_calls": 4,
+            "local_certification_attempts": 3,
+            "local_pre_call_failures": 1,
+            "local_real_model_calls": 2,
+            "local_successful_certification_real_model_calls": 2,
+            "credential_values_recorded": 0,
+            "private_paths_recorded": 0
+          }
+        },
+        "deferred_parameters": {
+          "DEFER-002": "RESOLVED_BY_OWNER_GGUF-04_IDENTITY",
+          "DEFER-003": "DEFERRED_TO_BENCHMARK",
+          "production_local_role_eligibility": "NOT_GRANTED_DEFER_003"
+        },
+        "rejected_pre_push_candidate": {
+          "commit": "abd684a4d858376866766d67653f212c26ca4215",
+          "tree": "0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93",
+          "status": "REJECTED_PRE_PUSH_SECURITY_RESCAN",
+          "publicly_pushed": false,
+          "public_ci_started": false
+        },
+        "security_repair": {
+          "authorization": "IN_BATCH_SECURITY_REPAIR",
+          "findings_tested": 9,
+          "findings_closed": 9,
+          "remaining_reproducible": 0
+        },
+        "real_model_calls": 5,
+        "network_model_calls": 3,
+        "real_playtest_executed": false,
+        "qualification_runs_executed": 0,
+        "new_migration": "NONE",
+        "merged": false,
+        "post_merge_verified": false,
+        "closed": false,
         "open_findings": []
       },
       "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",
@@ -433,7 +557,7 @@
     }
   },
   "runtime": {
-    "status": "AIPT-MVP-B003 deterministic Agent Orchestrator merged and closed; no active batch; AIPT-MVP-B004 is not authorized or started; real model gateways, model calls and real playtests remain unimplemented",
+    "status": "AIPT-MVP-B004 construction is active over the closed B003 Agent Orchestrator; HARNESS-01 and the write-only environment credential reference are frozen, both controlled REMOTE_DEEPSEEK and LOCAL_LLAMACPP minimum certifications passed, GGUF-04 and LLAMACPP-01 are verified without exporting private paths, and no playtest or qualification Run has started",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",
@@ -442,8 +566,8 @@
     "os": "Ubuntu 26.04 LTS",
     "shell": "Bash",
     "primary_remote_model": "deepseek-v4-pro",
-    "llama_cpp_build": "b10217-ddd4ec142",
-    "local_model": "UNASSIGNED",
+    "llama_cpp_build": "10582-e85caa81ea2b65797396018c179b87ad61fa38ab",
+    "local_model": "GGUF-04_CONTROLLED_MINIMUM_CERTIFIED",
     "gpu": "AMD Radeon 8060S",
     "unified_memory": "128 GB"
   },

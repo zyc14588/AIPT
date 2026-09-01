@@ -1,12 +1,12 @@
 # Runtime Shell 与 B007 本地 Web
 
-`AIPT-M0-B004` 已 `MERGED_CLOSED`，交付 Go Launcher、严格共享配置基础与 Core lifecycle shell。`AIPT-M0-B007` 也已 `MERGED_CLOSED`，在不改变固定门禁顺序的前提下实现最终 `WEB` 组件；verified implementation identity 为 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb`（tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`）。整个 runtime 仍然**失败关闭且尚未 ready**：真实启动会完成配置、PostgreSQL 连接和 B003 迁移，然后在首个尚未实现的强制 `MODEL` 门禁返回稳定错误 `AIPT_LAUNCH_GATE_NOT_IMPLEMENTED`。更晚的已实现 Web 不能绕过这个前序门禁。
+`AIPT-M0-B004` 已 `MERGED_CLOSED`，交付 Go Launcher、严格共享配置基础与 Core lifecycle shell。`AIPT-M0-B007` 也已 `MERGED_CLOSED`，在不改变固定门禁顺序的前提下实现最终 `WEB` 组件；verified implementation identity 为 merge `e05179a223f9dd0ff1b317e78c0e466e1146f6bb`（tree `35a5cc261fef75df8d25102015670bcb1d6fbd92`）。`AIPT-MVP-B004` 当前为该固定计划接入受治理的 MODEL/HARNESS runtime。整个 runtime 仍然**失败关闭且尚未 ready**：具备合法私有 runtime config 与已认证资产时可越过 MODEL/HARNESS；首个固定未实现 gate 是 `IPC`，后续 WEB 不能绕过它。
 
 ## AIPT-MVP-B002 Deterministic Run Core
 
 `AIPT-MVP-B002` Candidate 在 [`internal/runcore`](../../internal/runcore) 提供独立、game-neutral 的 Run Core library。它接受严格的 versioned action proposal，绑定不可变 Manifest/runtime-adapter/source-package identity，执行 authorization、Rule/source、precondition、invariant、versioned RNG 与 PostgreSQL ledger commit，并从 committed state 产生 deterministic derived projection。RNG 身份固定为 `AIPT_RNG_HMAC_SHA256_V1`，seed commitment 固定为 `AIPT_SEED_COMMITMENT_SHA256_V1`；root seed 不进入普通 projection、event 或 receipt。
 
-Replay 会重新验证 ledger hash chain、binding、commitment、RNG evidence 和每次 state transition，live/replayed final canonical state hash 必须相同。B002 没有把该 library 接到真实 Launcher：MODEL、HARNESS 与 IPC gate 仍失败关闭，也没有 Agent orchestration、persistent session、prompt/context assembly、real model call 或 real playtest。
+Replay 会重新验证 ledger hash chain、binding、commitment、RNG evidence 和每次 state transition，live/replayed final canonical state hash 必须相同。B002 本身没有接入真实模型；其 business semantics 在 B004 继续 byte-identical，模型输出仍只能通过 B003 protocol 与 B002 action transaction 改变状态。
 
 ## AIPT-MVP-B003 Provider-neutral Agent Orchestrator
 
@@ -14,9 +14,17 @@ Replay 会重新验证 ledger hash chain、binding、commitment、RNG evidence �
 
 调用流程固定为：验证 floor owner → 生成 seat-authorized projection → ACL-before-retrieval → citation 与 memory-summary invariant → canonical context hash → scripted Agent invocation → strict structured response → 有界 retry/recovery → B002 Action Proposal。Timeout 由可注入 clock 与显式 policy deadline 判定，测试不 sleep；任何 timeout 都形成事件，不能静默跳过或复用旧回答。
 
-`AgentInvoker` 只是 B004 将来实现的 provider-neutral boundary。B003 中唯一实现是测试 fake；`RunCoreSubmitter` 只把一个通过 B003 protocol gate 的 action 交给 B002 `Run.Execute`，没有独立 state writer、RNG 或 ledger path。Orchestration events 与 gameplay authoritative events 分层，speech/private chat/clarification prose 都不会自动成为 gameplay fact。
+`AgentInvoker` 是 B004 实现的 provider-neutral boundary。B003 中仍只有冻结的接口与测试 fake；B004 在独立 model/gateway 层实现该接口，不把 provider 逻辑引入 floor、Persona 或 state code。`RunCoreSubmitter` 只把一个通过 B003 protocol gate 的 action 交给 B002 `Run.Execute`，没有独立 state writer、RNG 或 ledger path。Orchestration events 与 gameplay authoritative events 分层，speech/private chat/clarification prose 都不会自动成为 gameplay fact。
 
-当前仍不接 Launcher 的 MODEL/HARNESS gate：`real_model_gateway_implemented = false`、`real_model_calls = 0`、`network_model_calls = 0`、`real_playtest_executed = false`、`qualification_runs_executed = 0`。
+## AIPT-MVP-B004 Governed Model/Harness Gateway
+
+[`internal/modelgateway`](../../internal/modelgateway) 实现严格版本化 Model/Sampling Profile、complete execution tuple、独立 capability certification、每席位不可变 Manifest binding、显式 replacement disqualification、write-only credential broker、remote egress 双层 enforcement、确定性 context reduction 与 B003 `AgentInvoker`。[`packages/model-harness-gateway`](../../packages/model-harness-gateway) 以 additive AIPT JSON-RPC 控制外部进程，并继续通过 `@aipt/harness-adapter`/ACP 对接固定 DeepSeek Harness；AIPT 没有直连 provider inference endpoint。
+
+`REMOTE_DEEPSEEK` 只允许 `deepseek-v4-pro`。`LOCAL_LLAMACPP` 的正式主路径由 AIPT 以 argv 启动登记 binary/GGUF/template，并在私有 Linux user/network namespace 内动态绑定 `127.0.0.1`。llama executable、GGUF、isolation helper、Node executable、route config 与静态单文件 Harness closure 都通过一次 `O_NOFOLLOW` 打开，对同一 held file object 完成 hash/fstat，再仅以 inherited descriptor 执行或加载；pathname replacement 不会改变实际对象。Linux pidfd 固定不可复用的 process generation，统一 lifecycle mutex 线性化 Start/Stop/recovery/retirement，失败 cleanup 仅触达 PID > 1 的已绑定 generation 且全部有界。只有 namespace 内由 supervisor 启动的 governed adapter 能访问仍无 API key 的 llama loopback；宿主与无关本地进程无法直连，也没有 non-loopback fallback。bounded shutdown/recovery 后 clean baseline 永久失格。私有 endpoint、runtime config、credential 值和本机绝对路径都不是可导出的 Manifest/evidence。
+
+ACP child route 还必须携带 versioned `aipt.acp-output-budget/v1`：total stdout raw bytes、notification raw bytes、response+notification raw bytes与 stderr 分别计费。BOM、未完成 frame 与大量合法小 frame 都在解析/累计语义之前消耗预算；每个 probe/invocation 的 child lifetime 在 outer result 前被强制封口，process group 终止并排空 stdout/stderr 至 EOF 后才作最终预算判断。overflow 会终止 child、删除 partial buffer，且 terminal response 后到达的超限字节也不能产生部分成功。诊断 break-glass 同样只走 B004 Gateway：签名 grant 精确绑定最终 request digest，既有 append-only ledger 的独立 Run-audit stream 在 transport 前完成全局一次性消费和 Run-level disqualification。该 authoritative sink 对正式与诊断 Gateway 均为必需；正式 invocation append 使用现有 ledger `ExpectedSequence` 与消费线性化，任何失格并发都会使正式结果失败关闭而不是产生失格后的 clean evidence。不新增 migration，也不改变 B002 Run stream 语义。
+
+受控产品 route 已冻结为 `HARNESS-01`（`dsh-v0.1.0-rc.8` / `141eb6fef83422698aef7a981029e843e8161534`）及其静态单文件运行时闭包与 Owner 批准的 credential reference；安全修复后的受控 `REMOTE_DEEPSEEK` 和 `LOCAL_LLAMACPP` minimum re-certification 均已 PASS，[remote 最终公开证据](../model-certification/remote-deepseek-controlled-real-02.json)与 [local 最终公开证据](../model-certification/local-llamacpp-controlled-real-02.json)均不含 credential 值或私有路径，旧 `-01` 证据仅保留为 `SUPERSEDED_NON_FINAL`。受控流程累计 5 次真实模型调用：remote/network 3 次、local 2 次；本次修复后各新增最小 1 次成功调用。`GGUF-04` locator 已完成批准 root containment、canonical target、完整 SHA-256 与 metadata 验证但未导出；实际 executable/GGUF/route 消费绑定同一 held file object，`LLAMACPP-01` 与 governed adapter 位于私有 user/network namespace，宿主无法直连无 API key 的隔离 loopback endpoint。公共 CI 只运行 fake Harness/provider/llama fixtures，`public_ci_real_model_calls = 0`、`public_ci_network_model_calls = 0`、secret requirement 为 0。`real_playtest_executed = false`、`qualification_runs_executed = 0`，`DEFER-003` 未关闭。
 
 ## 固定启动计划
 
@@ -25,13 +33,13 @@ Replay 会重新验证 ledger hash chain、binding、commitment、RNG evidence �
 1. `CONFIG` — 严格加载 `aipt.config/v1`；
 2. `POSTGRESQL` — 使用配置的 URI DSN 建池，并在配置的超时内 `Ping`；
 3. `MIGRATIONS` — 直接调用 B003 `internal/storage/postgres.MigrateUp`；
-4. `MODEL` — B004 未实现，真实启动在此失败关闭；
-5. `HARNESS` — 未实现；
-6. `CORE` — lifecycle shell 已实现，但真实路径不能绕过更早的 `MODEL`；通过依赖注入测试验证；
+4. `MODEL` — B004 实现；严格验证 formal registry、credential reference、local binary/GGUF/template identity，并启动受管 local backend；
+5. `HARNESS` — B004 实现；只启动并 probe 与 Profile 精确绑定的 Harness adapter route；
+6. `CORE` — lifecycle shell 已实现；
 7. `IPC` — 未实现；
 8. `WEB` — B007 已实现安全的本地只读 Host；只有全部前序门禁成功后才可启动。
 
-`aipt plan` 输出确定性 JSON，并明确给出 `runtime_ready: false` 与 `first_blocking_gate: "MODEL"`。计划只是声明，不是启动成功证据。
+`aipt plan` 输出确定性 JSON，并明确给出 `runtime_ready: false` 与 `first_blocking_gate: "IPC"`。计划只是声明，不是启动成功证据；MODEL/HARNESS 的 implementation 标记也不等于受控认证或完整 runtime 已启动。
 
 ## 共享配置
 
@@ -113,4 +121,4 @@ pnpm run smoke:web-ui
 
 ## B007 明确边界
 
-B007 的历史交付不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine 或 game adapter。当前唯一活跃状态为 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B003`、`GLOBAL_WIP = 1`；这不会追溯改写 B007/B002 closeout，也不会启动 B004。
+B007 的历史交付不实现 Model、Harness runtime、IPC、queue/run/status backend、queue migration、报告导出或报告 generator，也不实现 Unix socket、campaign engine 或 game adapter。当前唯一活跃状态为 `construction = IN_PROGRESS`、`current_batch = AIPT-MVP-B004`、`GLOBAL_WIP = 1`；这不会追溯改写 B007/B003/B002 closeout，也不会启动 integration batch。

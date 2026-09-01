@@ -24,22 +24,26 @@ import { validateProjectionShape, validateStateShape } from './validate.ts';
 const IDENTIFIER_RE = new RegExp(D.identifier_pattern, 'u');
 
 function jsonEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== typeof b) return false;
-  if (a === null || b === null) return a === b;
-  if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b)) return false;
-    return a.length === b.length && a.every((item, index) => jsonEqual(item, b[index]));
+  const pending: Array<readonly [unknown, unknown]> = [[a, b]];
+  while (pending.length > 0) {
+    const [left, right] = pending.pop() as readonly [unknown, unknown];
+    if (left === right) continue;
+    if (typeof left !== typeof right || left === null || right === null || typeof left !== 'object') return false;
+    if (Array.isArray(left) || Array.isArray(right)) {
+      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+      for (let index = 0; index < left.length; index += 1) pending.push([left[index], right[index]]);
+      continue;
+    }
+    const recordLeft = left as Record<string, unknown>;
+    const recordRight = right as Record<string, unknown>;
+    const keysLeft = Object.keys(recordLeft);
+    if (keysLeft.length !== Object.keys(recordRight).length) return false;
+    for (const key of keysLeft) {
+      if (!Object.prototype.hasOwnProperty.call(recordRight, key)) return false;
+      pending.push([recordLeft[key], recordRight[key]]);
+    }
   }
-  if (typeof a === 'object' && typeof b === 'object') {
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    if (keysA.length !== keysB.length) return false;
-    return keysA.every((key) =>
-      Object.prototype.hasOwnProperty.call(b, key) && jsonEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
-    );
-  }
-  return false;
+  return true;
 }
 
 // Validate the caller-supplied known-seat list: every entry must be a

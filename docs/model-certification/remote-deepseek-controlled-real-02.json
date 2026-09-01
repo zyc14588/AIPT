@@ -1,0 +1,143 @@
+{
+  "schema": "aipt.public.controlled-model-certification-result/v1",
+  "result": "PASS",
+  "backend_kind": "REMOTE_DEEPSEEK",
+  "model_profile": {
+    "schema": "aipt.model-profile/v1",
+    "profile_id": "b004-remote-deepseek",
+    "profile_version": "1.0.0",
+    "backend_kind": "REMOTE_DEEPSEEK",
+    "provider_identity": "deepseek-official",
+    "model_id": "deepseek-v4-pro",
+    "harness_identity": {
+      "implementation": "deepseek-harness",
+      "version": "0.1.0-rc.8",
+      "commit": "141eb6fef83422698aef7a981029e843e8161534",
+      "package_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
+      "protocol_identity": "agent-client-protocol",
+      "protocol_version": "1",
+      "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+      "runtime_closure_kind": "VERIFIED_SINGLE_FILE_DATA_URL_V1",
+      "runtime_closure_sha256": "e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db"
+    },
+    "sampling_profile_id": "b004-remote-deepseek-sampling@1.0.0",
+    "structured_output_mode": "PROMPTED",
+    "tool_call_mode": "DISABLED",
+    "context_policy": {
+      "policy_id": "b004-controlled-public-context",
+      "policy_version": "1.0.0",
+      "max_request_bytes": 1048576,
+      "max_context_bytes": 65536,
+      "reduction_policy_id": "AIPT_CONTEXT_BUDGET_REDUCE_V1"
+    },
+    "data_egress_policy": {
+      "policy_id": "b004-controlled-public-only-egress",
+      "policy_version": "1.0.0",
+      "allowed_classifications": ["PUBLIC"],
+      "break_glass_allowed": false
+    },
+    "credential_reference": {
+      "reference_id": "deepseek-b004-owner",
+      "kind": "ENVIRONMENT_VARIABLE",
+      "locator": "DEEPSEEK_API_KEY"
+    },
+    "capability_requirements": [
+      "basic_completion",
+      "structured_output_prompted",
+      "role_invocation"
+    ],
+    "certification_identity": "b004-remote-deepseek-minimum-certification@1.0.0",
+    "sha256": "02e47c55d00eb5175d35354ac665ad086b085cf20564d877422c0c7a8cf62e80"
+  },
+  "sampling_profile": {
+    "schema": "aipt.sampling-profile/v1",
+    "sampling_id": "b004-remote-deepseek-sampling",
+    "sampling_version": "1.0.0",
+    "temperature": 0,
+    "top_p": 1,
+    "max_output_tokens": 1024,
+    "max_context_tokens": 8192,
+    "applied_parameters": ["max_context_tokens", "max_output_tokens"],
+    "unsupported_parameters": ["temperature", "top_p"],
+    "sha256": "fc42e4a33265059c857fc5479317857c34548df6145e6cfcba6bf32100ed8733"
+  },
+  "certification": {
+    "schema": "aipt.model-certification/v1",
+    "certification_id": "b004-remote-deepseek-minimum-certification",
+    "certification_version": "1.0.0",
+    "profile_binding": "b004-remote-deepseek@1.0.0",
+    "sampling_binding": "b004-remote-deepseek-sampling@1.0.0",
+    "result": "PASS",
+    "kind": "CONTROLLED_REAL",
+    "minimum_certification": true,
+    "real_model_calls": 1,
+    "evidence_identity": "AIPT-MVP-B004-REMOTE-DEEPSEEK-CONTROLLED-REAL-02",
+    "production_role_eligibility": "NOT_CLAIMED",
+    "claims": [
+      {"name": "basic_completion", "status": "CERTIFIED"},
+      {"name": "structured_output_native", "status": "NOT_CERTIFIED"},
+      {"name": "structured_output_prompted", "status": "CERTIFIED"},
+      {"name": "structured_output_repair", "status": "UNTESTED"},
+      {"name": "tool_call_native", "status": "NOT_CERTIFIED"},
+      {"name": "tool_call_emulated", "status": "UNTESTED"},
+      {"name": "context_budget", "status": "UNTESTED"},
+      {"name": "role_invocation", "status": "CERTIFIED"},
+      {"name": "transport_stability", "status": "UNTESTED"},
+      {"name": "visibility_policy_compatible", "status": "UNTESTED"},
+      {"name": "prompt_injection_boundary_compatible", "status": "UNTESTED"}
+    ],
+    "execution_tuple": {
+      "schema": "aipt.model-execution-tuple/v1",
+      "backend_kind": "REMOTE_DEEPSEEK",
+      "provider_identity": "deepseek-official",
+      "model_id": "deepseek-v4-pro",
+      "model_profile_binding": "b004-remote-deepseek@1.0.0",
+      "sampling_profile_binding": "b004-remote-deepseek-sampling@1.0.0",
+      "requested_sampling_sha256": "fc42e4a33265059c857fc5479317857c34548df6145e6cfcba6bf32100ed8733",
+      "effective_sampling_projection": {
+        "schema": "aipt.effective-sampling-projection/v1",
+        "enforcement_identity": "AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1",
+        "applied_parameters": ["max_context_tokens", "max_output_tokens"],
+        "unsupported_parameters": ["temperature", "top_p"],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "context_utf8_byte_ceiling": 8192,
+        "output_utf8_byte_ceiling": 1024
+      },
+      "unsupported_sampling_parameters": ["temperature", "top_p"],
+      "backend_serialized_request_sha256": "5e8169c5c18c0e1ba29117aa86efbfaa2a48baaa166ffb64244accb47eca22fd",
+      "harness_identity": "deepseek-harness@0.1.0-rc.8+141eb6fef83422698aef7a981029e843e8161534",
+      "harness_protocol_identity": "agent-client-protocol",
+      "harness_protocol_version": "1",
+      "structured_output_mode": "PROMPTED",
+      "tool_call_mode": "DISABLED",
+      "request_contract_version": "1",
+      "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+      "environment_identity": "aipt-b004-security-repair-host-20260901",
+      "sha256": "e0327c509de720041b67919ff81436d89a7b0b279f69d84befe4a0352f30f676"
+    },
+    "observed_at": "2026-08-31T18:55:41.176Z",
+    "sha256": "ceb49974ecbee4c5d1aedf144a9d8efeb39022171ce19f9a4f93d4bf6e0a960f"
+  },
+  "harness_probe": {
+    "harness_identity": "deepseek-harness@0.1.0-rc.8+141eb6fef83422698aef7a981029e843e8161534",
+    "protocol_identity": "agent-client-protocol",
+    "protocol_version": "1",
+    "observed_model_id": "deepseek-v4-pro",
+    "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+    "route_available": true,
+    "direct_provider_bypass_available": false
+  },
+  "credential_validation": {
+    "reference_id": "deepseek-b004-owner",
+    "kind": "ENVIRONMENT_VARIABLE",
+    "state": "VALID",
+    "metadata": {"exposure": "write-only", "source": "environment"}
+  },
+  "request_sha256": "7d21536a32f3767802ad1eec1a90036a1c97dd01b9182d50f2730fa35a172585",
+  "response_sha256": "b81792ff7224f1120a1428931ec420aef73abc90c7c322272325befc6b8ec408",
+  "response_protocol_version": "v1",
+  "route_recovery_occurred": false,
+  "credential_values_recorded": false,
+  "private_paths_recorded": false
+}

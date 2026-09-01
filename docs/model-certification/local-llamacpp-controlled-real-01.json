@@ -1,0 +1,230 @@
+{
+  "schema": "aipt.public.controlled-model-certification-result/v1",
+  "result": "PASS",
+  "evidence_status": "SUPERSEDED_NON_FINAL",
+  "superseded_reason": "LOCAL_RUNTIME_SECURITY_BOUNDARY_REPLACED",
+  "backend_kind": "LOCAL_LLAMACPP",
+  "model_profile": {
+    "schema": "aipt.model-profile/v1",
+    "profile_id": "b004-local-llamacpp",
+    "profile_version": "1.0.0",
+    "backend_kind": "LOCAL_LLAMACPP",
+    "provider_identity": "llama.cpp",
+    "model_id": "gguf-04",
+    "harness_identity": {
+      "implementation": "deepseek-harness",
+      "version": "0.1.0-rc.8",
+      "commit": "141eb6fef83422698aef7a981029e843e8161534",
+      "package_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
+      "protocol_identity": "agent-client-protocol",
+      "protocol_version": "1",
+      "capability_fingerprint": "2f40d2d065db8818628ecb2ac3f55ac84535de83c48a186e6d09d8a8e6ff3a42"
+    },
+    "sampling_profile_id": "b004-local-llamacpp-sampling@1.0.0",
+    "structured_output_mode": "PROMPTED",
+    "tool_call_mode": "DISABLED",
+    "context_policy": {
+      "policy_id": "b004-controlled-public-context",
+      "policy_version": "1.0.0",
+      "max_request_bytes": 1048576,
+      "max_context_bytes": 65536,
+      "reduction_policy_id": "AIPT_CONTEXT_BUDGET_REDUCE_V1"
+    },
+    "data_egress_policy": {
+      "policy_id": "b004-controlled-public-only-egress",
+      "policy_version": "1.0.0",
+      "allowed_classifications": [
+        "PUBLIC"
+      ],
+      "break_glass_allowed": false
+    },
+    "local_runtime_identity": {
+      "executable_reference": "llama-server-gfx1151-b10582",
+      "binary_sha256": "b3afdd9c155dd481aaff6f26204104a3f4967fa8bc4a94ec6da4e9a57e6acad2",
+      "version": "0.2.0-dev",
+      "commit": "e85caa81ea2b65797396018c179b87ad61fa38ab",
+      "gguf_reference": "GGUF-04",
+      "gguf_sha256": "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6",
+      "gguf_model_identity": "Qwen3.8-27B-Abliterated",
+      "quantization_identity": "Q8_0",
+      "template_identity": "GGUF-04-qwen35-jinja",
+      "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "launch_parameters": [
+        "--ctx-size",
+        "8192",
+        "--n-predict",
+        "1024",
+        "--n-gpu-layers",
+        "99",
+        "--model",
+        "{REGISTERED_GGUF}",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "{DYNAMIC_IPV4_LOOPBACK_PORT}",
+        "--alias",
+        "{REGISTERED_MODEL_ID}",
+        "--no-webui",
+        "--no-slots",
+        "--jinja"
+      ],
+      "hardware": {
+        "architecture": "x86_64",
+        "cpu_class": "AMD-RYZEN-AI-MAX-395",
+        "gpu_backend": "ROCm-gfx1151",
+        "memory_class": "unified-128GB"
+      }
+    },
+    "capability_requirements": [
+      "basic_completion",
+      "structured_output_prompted",
+      "role_invocation"
+    ],
+    "certification_identity": "b004-local-llamacpp-minimum-certification@1.0.0",
+    "sha256": "7e014aa0a8b8ea29161b64e4a1cb221ece8bcc30ce81ad290d609b045ececce0"
+  },
+  "sampling_profile": {
+    "schema": "aipt.sampling-profile/v1",
+    "sampling_id": "b004-local-llamacpp-sampling",
+    "sampling_version": "1.0.0",
+    "temperature": 0,
+    "top_p": 1,
+    "max_output_tokens": 1024,
+    "max_context_tokens": 8192,
+    "applied_parameters": [
+      "max_context_tokens",
+      "max_output_tokens"
+    ],
+    "sha256": "bf997fa2bbcfc3b4abee54551cc5082d6ffeeb8498eef58e748b0524325cc807"
+  },
+  "certification": {
+    "schema": "aipt.model-certification/v1",
+    "certification_id": "b004-local-llamacpp-minimum-certification",
+    "certification_version": "1.0.0",
+    "profile_binding": "b004-local-llamacpp@1.0.0",
+    "sampling_binding": "b004-local-llamacpp-sampling@1.0.0",
+    "result": "PASS",
+    "kind": "CONTROLLED_REAL",
+    "minimum_certification": true,
+    "real_model_calls": 1,
+    "evidence_identity": "AIPT-MVP-B004-LOCAL-LLAMACPP-CONTROLLED-REAL-01",
+    "production_role_eligibility": "NOT_GRANTED_DEFER_003",
+    "claims": [
+      {
+        "name": "basic_completion",
+        "status": "CERTIFIED"
+      },
+      {
+        "name": "structured_output_native",
+        "status": "NOT_CERTIFIED"
+      },
+      {
+        "name": "structured_output_prompted",
+        "status": "CERTIFIED"
+      },
+      {
+        "name": "structured_output_repair",
+        "status": "UNTESTED"
+      },
+      {
+        "name": "tool_call_native",
+        "status": "NOT_CERTIFIED"
+      },
+      {
+        "name": "tool_call_emulated",
+        "status": "UNTESTED"
+      },
+      {
+        "name": "context_budget",
+        "status": "UNTESTED"
+      },
+      {
+        "name": "role_invocation",
+        "status": "CERTIFIED"
+      },
+      {
+        "name": "transport_stability",
+        "status": "UNTESTED"
+      },
+      {
+        "name": "visibility_policy_compatible",
+        "status": "UNTESTED"
+      },
+      {
+        "name": "prompt_injection_boundary_compatible",
+        "status": "UNTESTED"
+      }
+    ],
+    "execution_tuple": {
+      "schema": "aipt.model-execution-tuple/v1",
+      "backend_kind": "LOCAL_LLAMACPP",
+      "provider_identity": "llama.cpp",
+      "model_id": "gguf-04",
+      "model_profile_binding": "b004-local-llamacpp@1.0.0",
+      "sampling_profile_binding": "b004-local-llamacpp-sampling@1.0.0",
+      "harness_identity": "deepseek-harness@0.1.0-rc.8+141eb6fef83422698aef7a981029e843e8161534",
+      "harness_protocol_identity": "agent-client-protocol",
+      "harness_protocol_version": "1",
+      "structured_output_mode": "PROMPTED",
+      "tool_call_mode": "DISABLED",
+      "request_contract_version": "1",
+      "capability_fingerprint": "2f40d2d065db8818628ecb2ac3f55ac84535de83c48a186e6d09d8a8e6ff3a42",
+      "environment_identity": "aipt-b004-controlled-host-20260830",
+      "local_runtime_identity": {
+        "executable_reference": "llama-server-gfx1151-b10582",
+        "binary_sha256": "b3afdd9c155dd481aaff6f26204104a3f4967fa8bc4a94ec6da4e9a57e6acad2",
+        "version": "0.2.0-dev",
+        "commit": "e85caa81ea2b65797396018c179b87ad61fa38ab",
+        "gguf_reference": "GGUF-04",
+        "gguf_sha256": "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6",
+        "gguf_model_identity": "Qwen3.8-27B-Abliterated",
+        "quantization_identity": "Q8_0",
+        "template_identity": "GGUF-04-qwen35-jinja",
+        "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+        "launch_parameters": [
+          "--ctx-size",
+          "8192",
+          "--n-predict",
+          "1024",
+          "--n-gpu-layers",
+          "99",
+          "--model",
+          "{REGISTERED_GGUF}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "{DYNAMIC_IPV4_LOOPBACK_PORT}",
+          "--alias",
+          "{REGISTERED_MODEL_ID}",
+          "--no-webui",
+          "--no-slots",
+          "--jinja"
+        ],
+        "hardware": {
+          "architecture": "x86_64",
+          "cpu_class": "AMD-RYZEN-AI-MAX-395",
+          "gpu_backend": "ROCm-gfx1151",
+          "memory_class": "unified-128GB"
+        }
+      },
+      "sha256": "3e77650cc524623068c1bdbe1a06746b0b791363d917e2da803d37755c429907"
+    },
+    "observed_at": "2026-08-30T13:46:09.334Z",
+    "sha256": "c1f15da381d9479f238179ffcf61bf20abdd7ac1ae1014ae26a5f6204d84599f"
+  },
+  "harness_probe": {
+    "harness_identity": "deepseek-harness@0.1.0-rc.8+141eb6fef83422698aef7a981029e843e8161534",
+    "protocol_identity": "agent-client-protocol",
+    "protocol_version": "1",
+    "observed_model_id": "gguf-04",
+    "capability_fingerprint": "2f40d2d065db8818628ecb2ac3f55ac84535de83c48a186e6d09d8a8e6ff3a42",
+    "route_available": true,
+    "direct_provider_bypass_available": false
+  },
+  "request_sha256": "936856b8c2c6f3983ba09d91c3f4028e1896b2730aa067bcf04b5d480effdbc5",
+  "response_sha256": "79d74c3b7a60c434e7c7eacb3f4ad3def59579dcf5f7e31319d8a7676b9c8733",
+  "response_protocol_version": "v1",
+  "route_recovery_occurred": false,
+  "credential_values_recorded": false,
+  "private_paths_recorded": false
+}

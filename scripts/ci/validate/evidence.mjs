@@ -24,6 +24,7 @@ const EXPECTED_DEFS = [
 ];
 const EXPECTED_PRODUCTION_FILES = ['export.go', 'postgres.go', 'types.go', 'verify.go'];
 const EXPECTED_TEST_FILES = ['export_test.go', 'postgres_integration_test.go', 'postgres_test.go'];
+const BOUNDED_VERIFY_PATH = 'internal/storage/postgres/verify_bounded.go';
 const EXPECTED_EVENTS_SHA = 'fb45425367a0f0d56efd983c31dc0c6f6b21b426202b6858757d764d6a0ad5c0';
 const EXPECTED_MANIFEST_SHA = '106ba6686d0f47304921266824c5832916867931869c45424d894410eed241a2';
 
@@ -271,7 +272,7 @@ function evidenceSourceMap(repo) {
   return sources;
 }
 
-function sourceContractProblems(sources) {
+function sourceContractProblems(sources, boundedVerifier) {
   const problems = [];
   const keys = [...sources.keys()].sort();
   const productionKeys = keys.filter((key) => !key.endsWith('_test.go'));
@@ -299,17 +300,43 @@ function sourceContractProblems(sources) {
   if (/func\s+(?:canonicalJSON|canonicalizeJSON|sortJSON)\s*\(/i.test(production)) {
     problems.push('a second JSON canonicalizer was introduced');
   }
-  for (const token of ['verify: storagepostgres.VerifyStream', 'source.verify(', 'pgx.ReadOnly', 'pgx.ReadCommitted',
-    'sequence <= $2', 'ORDER BY sequence ASC', 'SELECT last_sequence, last_event_hash']) {
+  for (const token of ['verify: storagepostgres.VerifyStreamBounded', 'source.verify(', 'MaxEvents: maxRawCaptureEventCount',
+    'MaxEventPayloadBytes: int64(maxRawCaptureEventLineBytes)', 'MaxTotalPayloadBytes: maxRawCaptureEventsBytes',
+    'pgx.ReadOnly', 'pgx.ReadCommitted', 'sequence <= $2', 'ORDER BY sequence ASC', 'LIMIT $3',
+    'octet_length(payload_canonical)', 'encodeEventLine(event)', 'SELECT last_sequence, last_event_hash']) {
     if (!postgres.includes(token)) problems.push('PostgreSQL source misses required read-only/verification token: ' + token);
   }
-  if (/\b(?:INSERT|UPDATE|DELETE|ALTER|TRUNCATE|CREATE|DROP)\b/.test(postgres) || /\bLIMIT\b/.test(postgres)) {
-    problems.push('production PostgreSQL evidence adapter contains DML/DDL/LIMIT');
+  if (/\b(?:INSERT|UPDATE|DELETE|ALTER|TRUNCATE|CREATE|DROP)\b/.test(postgres)) {
+    problems.push('production PostgreSQL evidence adapter contains DML/DDL');
   }
-  for (const token of ['os.MkdirTemp(', 'os.Rename(', 'os.RemoveAll(', 'VerifyRawCapture(tempPath)', '0o700', '0o600']) {
+  for (const token of [
+    'func VerifyStreamBounded(', 'pgx.RepeatableRead', 'pgx.ReadOnly',
+    'cursorSequence > in.MaxEvents', 'octet_length(payload_canonical)',
+    'MAX(payload_bytes)', 'SUM(payload_bytes)',
+    'maxPayloadBytes > in.MaxEventPayloadBytes', 'totalPayloadBytes > in.MaxTotalPayloadBytes',
+    'verifyStreamTx(ctx, boundedVerifyTx{',
+    'tx.maxEvents + 1', 'boundedVerifyRows',
+  ]) {
+    if (!boundedVerifier.includes(token)) problems.push('bounded frozen-ledger verifier misses token: ' + token);
+  }
+  if ((boundedVerifier.match(/LIMIT \$2/g) ?? []).length < 2) {
+    problems.push('bounded frozen-ledger verifier must limit both payload preflight and full event query');
+  }
+  if (/\b(?:INSERT|UPDATE|DELETE|ALTER|TRUNCATE|CREATE|DROP)\b/.test(boundedVerifier)) {
+    problems.push('bounded frozen-ledger verifier contains DML/DDL');
+  }
+  for (const token of [
+    'openPrivateExportParent(', 'createPrivateStagingDirectory(', 'writePrivateFileAt(',
+    'verifyHeldRawCapture(tempDirectory, tempState)', 'renameat2NoReplace(', 'samePrivateBundleDirectory(',
+    'pathMatchesHeldDirectory(', 'os.RemoveAll(', '0o700', '0o600',
+  ]) {
     if (!exporter.includes(token)) problems.push('atomic/private exporter contract misses token: ' + token);
   }
-  for (const token of ['os.Lstat(', 'os.ReadDir(', 'protocol.CanonicalJSON(', 'sha256.Sum256(', 'payload SHA-256 mismatch']) {
+  for (const token of [
+    'syscall.Open(', 'syscall.Openat(', 'syscall.O_NOFOLLOW', 'directoryFile.ReadDir(4)',
+    'io.LimitReader(', 'sameFileState(', 'protocol.CanonicalJSON(', 'sha256.Sum256(',
+    'payload SHA-256 mismatch',
+  ]) {
     if (!verifier.includes(token)) problems.push('independent verifier contract misses token: ' + token);
   }
   const forbidden = [
@@ -321,7 +348,7 @@ function sourceContractProblems(sources) {
     ['network package/API', /["'](?:net|net\/http)["']|http\s*\.\s*(?:Get|Post|Do)\s*\(/],
     ['subprocess/network escape', /exec\s*\.\s*Command(?:Context)?\s*\(/],
     ['payload logging', /(?:fmt\s*\.\s*Print|log\s*\.|slog\s*\.).{0,120}(?:Payload|payload_canonical)/s],
-    ['silent max-events truncation', /max[_A-Z-]?events|MaxEvents|\bevents\s*\[:/i],
+    ['silent max-events truncation', /\bevents\s*\[:/i],
     ['Web implementation', /internal\/web|\bWeb(?:Server|Handler|Runtime)\b/],
     ['next batch implementation', /UNREGISTERED-AIPT-P0-B002/],
     ['Harness/model runtime', /codex-harness|HarnessBackend|deepseek|model\s*\.\s*(?:Call|Generate)/i],
@@ -336,7 +363,7 @@ function sourceContractProblems(sources) {
   return problems;
 }
 
-function mutationProblems(schema, sources, rawManifest) {
+function mutationProblems(schema, sources, boundedVerifier, rawManifest) {
   const problems = [];
   const probes = [];
   probes.push(['empty schema', schemaContractProblems({}).length > 0]);
@@ -353,11 +380,25 @@ function mutationProblems(schema, sources, rawManifest) {
   const mutateSources = (mutate) => {
     const copy = new Map(sources);
     mutate(copy);
-    return sourceContractProblems(copy).length > 0;
+    return sourceContractProblems(copy, boundedVerifier).length > 0;
   };
   probes.push(['CanonicalJSON reuse removed', mutateSources((copy) => {
     for (const [key, text] of copy) if (!key.endsWith('_test.go')) copy.set(key, text.replaceAll('protocol.CanonicalJSON', 'removedCanonicalJSON'));
   })]);
+  probes.push(['held descriptor verification removed', mutateSources((copy) => {
+    const verifier = copy.get('internal/evidence/verify.go') ?? '';
+    copy.set('internal/evidence/verify.go', verifier.replace('syscall.Openat(', 'removedOpenat('));
+  })]);
+  probes.push(['no-replace publication removed', mutateSources((copy) => {
+    const exporter = copy.get('internal/evidence/export.go') ?? '';
+    copy.set('internal/evidence/export.go', exporter.replaceAll('renameat2NoReplace(', 'removedNoReplace('));
+  })]);
+  probes.push(['pre-materialization event bound removed', mutateSources((copy) => {
+    const postgres = copy.get('internal/evidence/postgres.go') ?? '';
+    copy.set('internal/evidence/postgres.go', postgres.replace('MaxEvents: maxRawCaptureEventCount', 'MaxEvents: 0'));
+  })]);
+  probes.push(['same-snapshot bounded verifier limit removed',
+    sourceContractProblems(sources, boundedVerifier.replace('LIMIT $2', 'removedLimit')).length > 0]);
   probes.push(['time/hostname/PID root pollution', mutateSources((copy) => {
     copy.set('internal/evidence/export.go', (copy.get('internal/evidence/export.go') ?? '') + '\nfunc polluted(){ _,_=time.Now(),os.Hostname(); _=os.Getpid() }\n');
   })]);
@@ -404,10 +445,11 @@ export function run(ctx) {
   for (const problem of fixtureProblems) fail(problem);
   if (fixtureProblems.length === 0) ok('synthetic NON_CANON_TEST_FIXTURE has exact canonical bytes, hashes, root, and chain');
   const sources = evidenceSourceMap(ctx.repo);
-  const sourceProblems = sourceContractProblems(sources);
+  const boundedVerifier = fs.readFileSync(path.join(ctx.repo, BOUNDED_VERIFY_PATH), 'utf8');
+  const sourceProblems = sourceContractProblems(sources, boundedVerifier);
   for (const problem of sourceProblems) fail(problem);
   if (sourceProblems.length === 0) ok('RAW_CAPTURE runtime is atomic, read-only, complete, CanonicalJSON-reusing, and capability-confined');
-  const mutations = mutationProblems(schema, sources, rawManifest);
+  const mutations = mutationProblems(schema, sources, boundedVerifier, rawManifest);
   for (const problem of mutations.problems) fail(problem);
   if (mutations.problems.length === 0) ok('all ' + mutations.count + ' evidence/schema mutation probes fail closed');
   return { result: pass ? 'PASS' : 'FAIL', details };

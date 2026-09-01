@@ -13,30 +13,63 @@ import { createHash } from 'node:crypto';
 import { requireJsonValue } from './json-value.ts';
 import type { JsonValue } from './types.ts';
 
-// Build the canonical output form. Only called after the lossless JSON-value
-// gate passed, so the walk is safe: no cycles, no accessors, no coercion.
-function buildCanonical(value: unknown): JsonValue {
-  if (value === null) return null;
-  switch (typeof value) {
-    case 'boolean':
-    case 'string':
-    case 'number':
-      return value;
-    case 'object': {
-      if (Array.isArray(value)) {
-        return value.map((item) => buildCanonical(item));
+type JsonContainer = JsonValue[] | Record<string, JsonValue>;
+
+interface CloneFrame {
+  readonly source: unknown[] | Record<string, unknown>;
+  readonly target: JsonContainer;
+}
+
+function isContainer(value: unknown): value is unknown[] | Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+function makeContainer(value: unknown[] | Record<string, unknown>): JsonContainer {
+  return Array.isArray(value) ? new Array<JsonValue>(value.length) : {};
+}
+
+// CreateDataProperty semantics are essential here.  In particular, assigning
+// `target['__proto__'] = value` on an ordinary object would invoke the legacy
+// inherited setter and silently drop a legal JSON member.  defineProperty
+// preserves the normal Object prototype of this public return value while
+// creating every untrusted key as an ordinary own data property.
+function defineJsonMember(target: JsonContainer, key: string, value: JsonValue): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
+// Iterative canonical clone.  validateJsonValue has already proved that all
+// descriptors are enumerable data properties, that there are no cycles, and
+// that the versioned resource budget is satisfied.
+function buildCanonical(value: JsonValue): JsonValue {
+  if (!isContainer(value)) return value;
+  const root = makeContainer(value);
+  const stack: CloneFrame[] = [{ source: value, target: root }];
+  while (stack.length > 0) {
+    const { source, target } = stack.pop() as CloneFrame;
+    const keys = Array.isArray(source)
+      ? Array.from({ length: source.length }, (_, index) => String(index))
+      : Object.keys(source).sort();
+    for (const key of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (descriptor === undefined || !('value' in descriptor)) {
+        throw new TypeError('validated JSON data property disappeared during canonicalization');
       }
-      const out: Record<string, JsonValue> = {};
-      const record = value as Record<string, unknown>;
-      for (const key of Object.keys(record).sort()) {
-        out[key] = buildCanonical(record[key]);
+      const child = descriptor.value as JsonValue;
+      if (isContainer(child)) {
+        const childTarget = makeContainer(child);
+        defineJsonMember(target, key, childTarget);
+        stack.push({ source: child, target: childTarget });
+      } else {
+        defineJsonMember(target, key, child);
       }
-      return out;
     }
-    default:
-      // Unreachable after requireJsonValue; kept for exhaustiveness.
-      throw new TypeError(`unrepresentable value of type ${typeof value}`);
   }
+  return root;
 }
 
 export function canonicalJson(value: unknown): JsonValue {

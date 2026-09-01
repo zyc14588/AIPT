@@ -666,7 +666,12 @@ function validateB002LifecycleFacts(facts) {
       if (!facts.candidate || !facts.candidateTree || !facts.lineage?.descendsBase || !facts.lineage?.linear ||
           facts.lineage?.merges?.length !== 0) problems.push('B002 Candidate lineage is not linear/zero-merge from exact Base');
       if (!facts.scopeValid) problems.push('B002 Candidate Base diff is outside the frozen B002 scope or misses required artifacts');
-      if (!facts.worktreeClean) problems.push('B002 lifecycle checkout is not clean');
+      // A later authorized batch may have an intentionally dirty construction
+      // worktree. In CLOSED_HISTORICAL the accepted B002 identities and
+      // artifacts are checked independently; the active batch owns its scope.
+      if (facts.phase !== 'CLOSED_HISTORICAL' && !facts.worktreeClean) {
+        problems.push('B002 lifecycle checkout is not clean');
+      }
     }
     switch (facts.phase) {
       case 'INITIAL_CANDIDATE':

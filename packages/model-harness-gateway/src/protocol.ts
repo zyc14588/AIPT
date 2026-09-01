@@ -1,0 +1,23 @@
+export const AIPT_MODEL_ADAPTER_PROTOCOL_VERSION = '1' as const;
+export const AIPT_MODEL_ROUTE_SCHEMA = 'aipt.harness-route/v1' as const;
+export const AIPT_ACP_OUTPUT_BUDGET_SCHEMA = 'aipt.acp-output-budget/v1' as const;
+export const AIPT_MODEL_ADAPTER_METHODS = [
+  'aipt.model.probe',
+  'aipt.model.invoke',
+  'aipt.model.cancel',
+] as const;
+
+export const AIPT_MODEL_GATEWAY_ERROR_CODES = [
+  'AIPT_MODEL_GATEWAY_CONFIG_INVALID',
+  'AIPT_MODEL_GATEWAY_IDENTITY_MISMATCH',
+  'AIPT_MODEL_GATEWAY_FRAME_INVALID',
+  'AIPT_MODEL_GATEWAY_OUTPUT_LIMIT',
+  'AIPT_MODEL_GATEWAY_HARNESS_BOOT_FAILED',
+  'AIPT_MODEL_GATEWAY_HARNESS_FAILED',
+  'AIPT_MODEL_GATEWAY_MODEL_REQUEST_FAILED',
+  'AIPT_MODEL_GATEWAY_SESSION_FAILED',
+  'AIPT_MODEL_GATEWAY_TIMEOUT',
+  'AIPT_MODEL_GATEWAY_CANCELLED',
+] as const;
+
+export type AiptModelGatewayErrorCode = (typeof AIPT_MODEL_GATEWAY_ERROR_CODES)[number];

@@ -25,14 +25,15 @@ type captureTx interface {
 // dependency-free tests of the SELECT-only transaction and change detector.
 type PostgresSource struct {
 	pool   *pgxpool.Pool
-	verify func(context.Context, *pgxpool.Pool, storagepostgres.VerifyInput) (storagepostgres.VerifiedStream, error)
+	verify func(context.Context, *pgxpool.Pool, storagepostgres.BoundedVerifyInput) (storagepostgres.VerifiedStream, error)
 	begin  func(context.Context, pgx.TxOptions) (captureTx, error)
 }
 
 // NewPostgresSource binds a PostgreSQL pool without copying any B003 chain or
-// hash logic. Capture always calls storage/postgres.VerifyStream first.
+// hash logic. Capture always calls the additive bounded wrapper around the
+// frozen storage/postgres VerifyStream chain verifier first.
 func NewPostgresSource(pool *pgxpool.Pool) *PostgresSource {
-	source := &PostgresSource{pool: pool, verify: storagepostgres.VerifyStream}
+	source := &PostgresSource{pool: pool, verify: storagepostgres.VerifyStreamBounded}
 	source.begin = func(ctx context.Context, options pgx.TxOptions) (captureTx, error) {
 		if pool == nil {
 			return nil, errors.New("nil *pgxpool.Pool")
@@ -54,13 +55,20 @@ func (source *PostgresSource) Capture(ctx context.Context, streamID string) (Led
 	if source == nil || source.verify == nil || source.begin == nil {
 		return LedgerSnapshot{}, fmt.Errorf("%w: uninitialized PostgreSQL source", ErrInvalidInput)
 	}
-	verified, err := source.verify(ctx, source.pool, storagepostgres.VerifyInput{StreamID: streamID})
+	verified, err := source.verify(ctx, source.pool, storagepostgres.BoundedVerifyInput{
+		StreamID: streamID, MaxEvents: maxRawCaptureEventCount,
+		MaxEventPayloadBytes: int64(maxRawCaptureEventLineBytes),
+		MaxTotalPayloadBytes: maxRawCaptureEventsBytes,
+	})
 	if err != nil {
 		return LedgerSnapshot{}, classifyError(ErrLedgerVerify, "verify PostgreSQL ledger stream", err)
 	}
 	if verified.StreamID != streamID || verified.Sequence < 0 || verified.EventCount < 0 ||
 		verified.Sequence != verified.EventCount || (verified.EventCount == 0) != (verified.EventHash == nil) {
 		return LedgerSnapshot{}, fmt.Errorf("%w: VerifyStream returned an inconsistent identity", ErrInvalidInput)
+	}
+	if verified.EventCount > maxRawCaptureEventCount {
+		return LedgerSnapshot{}, fmt.Errorf("%w: verified event count %d exceeds export bound %d", ErrInvalidInput, verified.EventCount, maxRawCaptureEventCount)
 	}
 
 	tx, err := source.begin(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: pgx.ReadOnly})
@@ -69,27 +77,32 @@ func (source *PostgresSource) Capture(ctx context.Context, streamID string) (Led
 	}
 	defer tx.Rollback(ctx)
 	rows, err := tx.Query(ctx, `
-		SELECT sequence, event_id, event_type, payload_canonical, payload_sha256,
+		SELECT sequence, event_id, event_type,
+		       CASE WHEN octet_length(payload_canonical) <= $4 THEN payload_canonical ELSE NULL END,
+		       octet_length(payload_canonical), payload_sha256,
 		       prev_event_hash, event_hash, committed_at
 		FROM aipt.ledger_events
 		WHERE stream_id = $1 AND sequence <= $2
-		ORDER BY sequence ASC`, streamID, verified.Sequence)
+		ORDER BY sequence ASC
+		LIMIT $3`, streamID, verified.Sequence, maxRawCaptureEventCount+1, maxRawCaptureEventLineBytes)
 	if err != nil {
 		return LedgerSnapshot{}, fmt.Errorf("read verified ledger prefix: %w", err)
 	}
-	events := make([]LedgerEvent, 0)
+	events := make([]LedgerEvent, 0, int(verified.EventCount))
+	var encodedBytes int64
 	for rows.Next() {
 		var (
 			sequence         int64
 			eventID          string
 			eventType        string
-			payloadCanonical string
+			payloadCanonical *string
+			payloadBytes     int64
 			payloadHash      []byte
 			previousHash     []byte
 			eventHash        []byte
 			committedAt      time.Time
 		)
-		if err := rows.Scan(&sequence, &eventID, &eventType, &payloadCanonical, &payloadHash,
+		if err := rows.Scan(&sequence, &eventID, &eventType, &payloadCanonical, &payloadBytes, &payloadHash,
 			&previousHash, &eventHash, &committedAt); err != nil {
 			rows.Close()
 			return LedgerSnapshot{}, fmt.Errorf("scan verified ledger prefix: %w", err)
@@ -98,6 +111,10 @@ func (source *PostgresSource) Capture(ctx context.Context, streamID string) (Led
 		if err != nil {
 			rows.Close()
 			return LedgerSnapshot{}, err
+		}
+		if payloadCanonical == nil || payloadBytes < 0 || payloadBytes > int64(maxRawCaptureEventLineBytes) {
+			rows.Close()
+			return LedgerSnapshot{}, fmt.Errorf("%w: event payload exceeds RAW_CAPTURE line bound", ErrInvalidInput)
 		}
 		hash, err := requiredDatabaseHash("event_hash", eventHash)
 		if err != nil {
@@ -109,11 +126,22 @@ func (source *PostgresSource) Capture(ctx context.Context, streamID string) (Led
 			rows.Close()
 			return LedgerSnapshot{}, err
 		}
-		events = append(events, LedgerEvent{
+		event := LedgerEvent{
 			StreamID: streamID, Sequence: sequence, EventID: eventID, EventType: eventType,
-			PayloadCanonical: payloadCanonical, PayloadSHA256: payload,
+			PayloadCanonical: *payloadCanonical, PayloadSHA256: payload,
 			PrevEventHash: previous, EventHash: hash, CommittedAt: committedAt,
-		})
+		}
+		line, err := encodeEventLine(event)
+		if err != nil {
+			rows.Close()
+			return LedgerSnapshot{}, fmt.Errorf("%w: preflight event encoding: %v", ErrInvalidInput, err)
+		}
+		if len(line) > maxRawCaptureEventLineBytes || encodedBytes+int64(len(line)) > maxRawCaptureEventsBytes {
+			rows.Close()
+			return LedgerSnapshot{}, fmt.Errorf("%w: RAW_CAPTURE encoded event budget exceeded", ErrInvalidInput)
+		}
+		encodedBytes += int64(len(line))
+		events = append(events, event)
 	}
 	rowsErr := rows.Err()
 	rows.Close()

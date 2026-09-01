@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -23,6 +24,15 @@ type staticSource struct {
 func (source *staticSource) Capture(context.Context, string) (LedgerSnapshot, error) {
 	source.calls++
 	return source.snapshot, source.err
+}
+
+func privateTempDir(t *testing.T) string {
+	t.Helper()
+	directory := t.TempDir()
+	if err := os.Chmod(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return directory
 }
 
 func fixtureSourceIdentity() SourceIdentity {
@@ -81,7 +91,7 @@ func fixtureSnapshot() LedgerSnapshot {
 
 func exportFixture(t *testing.T) string {
 	t.Helper()
-	destination := filepath.Join(t.TempDir(), "raw-capture")
+	destination := filepath.Join(privateTempDir(t), "raw-capture")
 	verification, err := ExportRawCapture(context.Background(), &staticSource{snapshot: fixtureSnapshot()}, ExportInput{
 		Destination: destination,
 		Source:      fixtureSourceIdentity(),
@@ -146,7 +156,7 @@ func TestExportRawCaptureDeterministicGoldenAndPrivate(t *testing.T) {
 }
 
 func TestExportRawCaptureEmptyStream(t *testing.T) {
-	destination := filepath.Join(t.TempDir(), "empty")
+	destination := filepath.Join(privateTempDir(t), "empty")
 	snapshot := LedgerSnapshot{StreamID: "empty-ledger"}
 	verification, err := ExportRawCapture(context.Background(), &staticSource{snapshot: snapshot}, ExportInput{
 		Destination: destination, Source: fixtureSourceIdentity(), StreamID: "empty-ledger",
@@ -174,7 +184,7 @@ func TestExportRawCaptureSemanticIdentityAndCanonicalMapOrdering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	changedSourceDestination := filepath.Join(t.TempDir(), "changed-source")
+	changedSourceDestination := filepath.Join(privateTempDir(t), "changed-source")
 	changedSource := fixtureSourceIdentity()
 	changedSource.Commit = strings.Repeat("3", 40)
 	changedSourceVerification, err := ExportRawCapture(context.Background(), &staticSource{snapshot: fixtureSnapshot()}, ExportInput{
@@ -187,7 +197,7 @@ func TestExportRawCaptureSemanticIdentityAndCanonicalMapOrdering(t *testing.T) {
 		t.Fatal("source commit semantic change did not change the root")
 	}
 
-	changedEventDestination := filepath.Join(t.TempDir(), "changed-event")
+	changedEventDestination := filepath.Join(privateTempDir(t), "changed-event")
 	changedSnapshot := fixtureSnapshot()
 	changedSnapshot.Events[1].EventType = "fixture.changed"
 	changedEventVerification, err := ExportRawCapture(context.Background(), &staticSource{snapshot: changedSnapshot}, ExportInput{
@@ -214,8 +224,24 @@ func TestExportRawCaptureSemanticIdentityAndCanonicalMapOrdering(t *testing.T) {
 }
 
 func TestExportRawCaptureAtomicFailureAndExistingTarget(t *testing.T) {
+	t.Run("group-writable parent is rejected before source access", func(t *testing.T) {
+		parent := privateTempDir(t)
+		if err := os.Chmod(parent, 0o770); err != nil {
+			t.Fatal(err)
+		}
+		source := &staticSource{snapshot: fixtureSnapshot()}
+		_, err := ExportRawCapture(context.Background(), source, ExportInput{
+			Destination: filepath.Join(parent, "capture"), Source: fixtureSourceIdentity(), StreamID: "synthetic-ledger",
+		})
+		if !errors.Is(err, ErrUnsafePath) {
+			t.Fatalf("error = %v, want ErrUnsafePath", err)
+		}
+		if source.calls != 0 {
+			t.Fatalf("unsafe parent was checked after source access (%d calls)", source.calls)
+		}
+	})
 	t.Run("source failure leaves no final or temporary content", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := privateTempDir(t)
 		destination := filepath.Join(parent, "capture")
 		sourceFailure := errors.New("synthetic source failure containing SENSITIVE_PAYLOAD_MARKER")
 		_, err := ExportRawCapture(context.Background(), &staticSource{err: sourceFailure}, ExportInput{
@@ -242,7 +268,7 @@ func TestExportRawCaptureAtomicFailureAndExistingTarget(t *testing.T) {
 		}
 	})
 	t.Run("unsafe parent symlink is rejected before source access", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := privateTempDir(t)
 		realParent := filepath.Join(parent, "real")
 		if err := os.Mkdir(realParent, 0o700); err != nil {
 			t.Fatal(err)
@@ -263,13 +289,13 @@ func TestExportRawCaptureAtomicFailureAndExistingTarget(t *testing.T) {
 		}
 	})
 	t.Run("write failures carry a stable category", func(t *testing.T) {
-		err := writePrivateFile(filepath.Join(t.TempDir(), "missing"), EventsName, []byte("synthetic"))
+		err := writePrivateFile(filepath.Join(privateTempDir(t), "missing"), EventsName, []byte("synthetic"))
 		if !errors.Is(err, ErrWriteFailed) {
 			t.Fatalf("error = %v, want ErrWriteFailed", err)
 		}
 	})
 	t.Run("inconsistent source is never truncated", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := privateTempDir(t)
 		destination := filepath.Join(parent, "capture")
 		snapshot := fixtureSnapshot()
 		snapshot.EventCount = 2
@@ -285,7 +311,7 @@ func TestExportRawCaptureAtomicFailureAndExistingTarget(t *testing.T) {
 	})
 	for _, kind := range []string{"file", "directory", "symlink"} {
 		t.Run("reject existing "+kind, func(t *testing.T) {
-			parent := t.TempDir()
+			parent := privateTempDir(t)
 			destination := filepath.Join(parent, "capture")
 			switch kind {
 			case "file":
@@ -312,6 +338,30 @@ func TestExportRawCaptureAtomicFailureAndExistingTarget(t *testing.T) {
 				t.Fatalf("existing target was checked after source access (%d calls)", source.calls)
 			}
 		})
+	}
+}
+
+func TestRenameat2NoReplacePreservesBothDirectoryEntries(t *testing.T) {
+	parent := privateTempDir(t)
+	parentFile, _, err := openPrivateExportParent(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer parentFile.Close()
+	if err := os.Mkdir(filepath.Join(parent, "verified-source"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(parent, "appeared-destination"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	err = renameat2NoReplace(int(parentFile.Fd()), "verified-source", int(parentFile.Fd()), "appeared-destination")
+	if !errors.Is(err, syscall.EEXIST) {
+		t.Fatalf("renameat2NoReplace error = %v, want EEXIST", err)
+	}
+	for _, name := range []string{"verified-source", "appeared-destination"} {
+		if info, statErr := os.Lstat(filepath.Join(parent, name)); statErr != nil || !info.IsDir() {
+			t.Fatalf("%s was replaced or removed: info=%v err=%v", name, info, statErr)
+		}
 	}
 }
 
@@ -431,11 +481,20 @@ func TestVerifyRawCaptureTamperTable(t *testing.T) {
 		{"asset bytes", func(t *testing.T, dir string) {
 			mutateManifest(t, dir, func(manifest *RawCaptureManifest) { manifest.Assets[0].Bytes++ })
 		}},
+		{"asset bytes exceed verifier bound", func(t *testing.T, dir string) {
+			mutateManifest(t, dir, func(manifest *RawCaptureManifest) { manifest.Assets[0].Bytes = maxRawCaptureEventsBytes + 1 })
+		}},
 		{"asset SHA", func(t *testing.T, dir string) {
 			mutateManifest(t, dir, func(manifest *RawCaptureManifest) { manifest.Assets[0].SHA256 = strings.Repeat("d", 64) })
 		}},
 		{"event count", func(t *testing.T, dir string) {
 			mutateManifest(t, dir, func(manifest *RawCaptureManifest) { manifest.EventCount = 2; manifest.TailSequence = 2 })
+		}},
+		{"event count exceeds verifier bound", func(t *testing.T, dir string) {
+			mutateManifest(t, dir, func(manifest *RawCaptureManifest) {
+				manifest.EventCount = maxRawCaptureEventCount + 1
+				manifest.TailSequence = manifest.EventCount
+			})
 		}},
 		{"tail hash", func(t *testing.T, dir string) {
 			mutateManifest(t, dir, func(manifest *RawCaptureManifest) {
@@ -492,6 +551,11 @@ func TestVerifyRawCaptureTamperTable(t *testing.T) {
 			data, _ := os.ReadFile(filepath.Join(dir, EventsName))
 			rewriteEvents(t, dir, append(data, []byte("{}\n")...))
 		}},
+		{"oversized sparse events member", func(t *testing.T, dir string) {
+			if err := os.Truncate(filepath.Join(dir, EventsName), maxRawCaptureEventsBytes+1); err != nil {
+				t.Fatal(err)
+			}
+		}},
 		{"blank line", func(t *testing.T, dir string) {
 			data, _ := os.ReadFile(filepath.Join(dir, EventsName))
 			rewriteEvents(t, dir, append([]byte("\n"), data...))
@@ -526,5 +590,42 @@ func TestVerifyRawCaptureTamperTable(t *testing.T) {
 				t.Fatalf("VerifyRawCapture error = %v, want ErrBundleInvalid", err)
 			}
 		})
+	}
+}
+
+func TestDecodeAndVerifyEventsRejectsOversizedLineBeforeJSONWork(t *testing.T) {
+	data := []byte(strings.Repeat("x", maxRawCaptureEventLineBytes+1) + "\n")
+	if _, err := decodeAndVerifyEvents(data, "fixture-ledger"); err == nil || !strings.Contains(err.Error(), "line 1 exceeds byte bound") {
+		t.Fatalf("decodeAndVerifyEvents error = %v, want line byte bound rejection", err)
+	}
+}
+
+func TestHeldPrivateFileRejectsPathReplacementWithoutReopening(t *testing.T) {
+	directory := privateTempDir(t)
+	if err := os.Chmod(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, EventsName)
+	if err := os.WriteFile(path, []byte("verified bytes\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	directoryFile, _, err := openRawCaptureDirectory(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer directoryFile.Close()
+	held, state, err := openHeldPrivateFile(directoryFile, EventsName, maxRawCaptureEventsBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held.Close()
+	if err := os.Rename(path, path+".replaced"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("attacker bytes\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readHeldPrivateFile(held, state, maxRawCaptureEventsBytes); err == nil || !strings.Contains(err.Error(), "member changed") {
+		t.Fatalf("readHeldPrivateFile error = %v, want replacement rejection on the held file object", err)
 	}
 }

@@ -22,8 +22,9 @@ type Launcher struct {
 	shutdownTimeout time.Duration
 }
 
-// NewDefault constructs the production B007 launcher. Its real execution
-// reaches CONFIG, POSTGRESQL, and MIGRATIONS, then fails closed at MODEL.
+// NewDefault constructs the production B004 launcher. With a complete private
+// runtime configuration it completes MODEL/HARNESS/CORE, then fails closed at
+// IPC; missing model assets or credentials fail earlier at their real gate.
 func NewDefault(configPath string) (*Launcher, error) {
 	return New(configPath, Options{
 		Dependencies:    DefaultDependencies(DefaultShutdownTimeout),

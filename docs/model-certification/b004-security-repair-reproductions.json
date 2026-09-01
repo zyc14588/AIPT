@@ -1,0 +1,202 @@
+{
+  "schema": "aipt.public.b004-security-repair-reproductions/v1",
+  "task_id": "AIPT-MVP-B004",
+  "authorization": "IN_BATCH_SECURITY_REPAIR",
+  "base_commit": "98591311c4872cdc5f091e23fba1acb500ad4599",
+  "rejected_candidate": {
+    "commit": "abd684a4d858376866766d67653f212c26ca4215",
+    "tree": "0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93",
+    "status": "REJECTED_PRE_PUSH_SECURITY_RESCAN"
+  },
+  "real_model_calls": 0,
+  "provider_network_calls": 0,
+  "findings_tested": 9,
+  "remaining_reproducible": 0,
+  "reproductions": [
+    {
+      "finding_id": "F01_PROTO_CANONICAL_COLLISION",
+      "cwe": "CWE-1321",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:packages/adapter-sdk/src/canonical-json.ts",
+        "observation": "The rejected implementation rebuilt untrusted objects with ordinary property assignment, so an own __proto__ member was consumed by the legacy prototype setter and disappeared from canonical bytes and digests."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "node --test --test-isolation=none --test-name-pattern='canonical JSON preserves own __proto__' packages/adapter-sdk/test/security-repair.test.ts"
+        ],
+        "observation": "Own __proto__, constructor, and prototype keys survive at every tested nesting position; canonical bytes and SHA-256 differ from an object without __proto__, and Object.prototype remains unchanged."
+      }
+    },
+    {
+      "finding_id": "F02_VERIFIED_PATH_REOPEN_TOCTOU",
+      "cwe": "CWE-367",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:internal/modelgateway/local.go && git show abd684a4d858376866766d67653f212c26ca4215:packages/model-harness-gateway/src/model-process-worker.ts",
+        "observation": "The rejected implementation hashed executable, GGUF, and Harness paths, then later reopened those pathnames for execution or loading."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "go test ./internal/modelgateway -run '^(TestVerifiedAssetUsesWriteSealedSnapshotAfterInPlaceMutation|TestVerifiedAssetPathReplacementCannotChangeExecutableOrGGUF|TestRuntimeEnvironmentInjectionCannotBypassVerifiedExecutables)$' -count=1 -v",
+          "node --test --test-isolation=none --test-name-pattern='verified Harness runtime pathname replacement' packages/model-harness-gateway/test/model-process-worker.test.ts"
+        ],
+        "observation": "Executable, GGUF, Node executable, route, and single-file Harness closure are copied from the verified descriptors into write-sealed anonymous file objects and consumed only through those held objects; pathname replacement, in-place mutation, and inherited environment injection cannot change what is executed or loaded."
+      }
+    },
+    {
+      "finding_id": "F03_PUBLICATION_DETECTOR_FALSE_ZERO",
+      "cwe": "CWE-693",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:scripts/ci/validate/mvp-b004.mjs",
+        "observation": "The rejected gate emitted zero leak counters without executing or proving coverage for the required detector classes."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "node --test scripts/ci/test/publication-hygiene.test.mjs"
+        ],
+        "observation": "Seven required synthetic leak classes are each detected across the exact tracked-plus-untracked publication inventory, clean removal passes, and missing, skipped, crashed, unsupported, oversized, raced, or non-UTF-8 coverage fails closed with bounded redacted findings and auditable detector identity, version, file count, byte count, and coverage. Legacy hazard reports retain only file and hazard identifiers and never matched secret material."
+      }
+    },
+    {
+      "finding_id": "F04_SAMPLING_CONTROL_DROP",
+      "cwe": "CWE-693",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:internal/modelgateway/adapter_process.go && git show abd684a4d858376866766d67653f212c26ca4215:packages/model-harness-gateway/src/model-process-worker.ts",
+        "observation": "The rejected request path bound a Sampling Profile in evidence but discarded its governed controls before the Harness/backend request."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "go test ./internal/modelgateway -run '^TestGatewayPositiveProbeInvocationAndEvidence$' -count=1 -v",
+          "go test ./internal/modelgateway -run '^TestModelProfileAndRegistryNegativeMatrixM01ToM10$/^M05 backend-unserialized token controls REJECT$' -count=1 -v",
+          "node --test --test-isolation=none --test-name-pattern='probe and invocation traverse|sampling profile drift|active session output is charged incrementally' packages/model-harness-gateway/test/model-process-worker.test.ts"
+        ],
+        "observation": "The exact requested Sampling Profile hash reaches ACP, max context/output controls become exact frozen values plus conservative byte ceilings in the backend request, temperature/top_p are explicitly unsupported, active output is charged before accumulation, and the serialized backend request hash is returned and bound. Backend claims that omit serialized token controls are rejected."
+      }
+    },
+    {
+      "finding_id": "F05_PROCESS_LIFECYCLE_RACE",
+      "cwe": "CWE-362",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:internal/modelgateway/local.go && git show abd684a4d858376866766d67653f212c26ca4215:internal/modelgateway/adapter_process.go",
+        "observation": "The rejected lifecycle split state checks from spawn and cleanup, allowing concurrent Start/Stop to publish a late generation or duplicate process set."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "go test ./internal/modelgateway -run '^TestManagedLifecycleConcurrentStartStopIsLinearizableAndLeakFree$' -count=20 -v",
+          "go test -race ./internal/modelgateway -run '^TestManagedLifecycleConcurrentStartStopIsLinearizableAndLeakFree$' -count=1"
+        ],
+        "observation": "Start, Stop, recovery, and retirement are serialized under one owner; ownership is recorded before verification and retained whenever bounded cleanup cannot prove settlement. Repeated concurrent probes publish at most one generation and leave no child processes, including detached descendants in the private PID namespace."
+      }
+    },
+    {
+      "finding_id": "F06_FAILED_SPAWN_CLEANUP",
+      "cwe": "CWE-755",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:internal/modelgateway/local.go",
+        "observation": "The rejected error path could invoke unbounded cleanup without first proving a created, owned process with PID greater than one."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "go test ./internal/modelgateway -run '^TestFailedSpawnCleanupIsBoundedAndNeverSignalsInvalidOrUnrelatedPID$' -count=20 -v",
+          "node --test --test-name-pattern='partial Harness initialization failure' packages/model-harness-gateway/test/model-process-worker.test.ts"
+        ],
+        "observation": "Not-found, invalid executable format, nil-process, and partial-start failures finish within fixed bounds; PID 1 and unrelated processes never enter a signal path. Partial ownership is retained for safe retry until exact process identity and stream settlement are proven, and detached namespace descendants are retired."
+      }
+    },
+    {
+      "finding_id": "F07_RECURSION_STACK_DOS",
+      "cwe": "CWE-674",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:packages/adapter-sdk/src/canonical-json.ts && git show abd684a4d858376866766d67653f212c26ca4215:packages/adapter-sdk/src/json-value.ts",
+        "observation": "The rejected SDK recursively traversed caller-controlled JSON and schemas without explicit depth, node, width, or aggregate-byte budgets."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "node --test --test-isolation=none --test-name-pattern='versioned JSON depth|schema enum and uniqueItems|shallow document' packages/adapter-sdk/test/security-repair.test.ts",
+          "go test ./internal/modelgateway -run '^TestPrepareContextRejectsOversizedElementInventoryBeforeHashing$' -count=1 -v"
+        ],
+        "observation": "Versioned iterative traversal accepts the exact depth boundary and deterministically rejects depth plus one, excessive width, node count, bytes, nested arrays, recursive schema-reference expansion, and over-budget enum/const/unique deep comparisons without stack exhaustion or quadratic work. Go context preparation preflights element and byte budgets before hashing or marshaling."
+      }
+    },
+    {
+      "finding_id": "F08_LOCAL_LLAMA_UNAUTH_ACCESS",
+      "cwe": "CWE-306",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:internal/modelgateway/local.go",
+        "observation": "The rejected no-API-key llama server listened on host loopback, so an unrelated host-local process could directly invoke the HTTP endpoint."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "go test ./internal/modelgateway -run '^TestOnlyIsolatedAdapterCanReachManagedLlamaLoopback$' -count=1 -v"
+        ],
+        "observation": "llama and its governed adapter run in private user, network, PID, and mount namespaces with a private procfs; llama still uses unauthenticated isolated loopback, while the host and unrelated local processes cannot reach the endpoint, detached adapter descendants are retired, and no non-loopback fallback exists."
+      }
+    },
+    {
+      "finding_id": "F09_SCHEMA_REGEX_DOS",
+      "cwe": "CWE-1333",
+      "status": "FIXED",
+      "original_issue_confirmed": true,
+      "post_fix_test": "PASS",
+      "original": {
+        "status": "CONFIRMED",
+        "command": "git show abd684a4d858376866766d67653f212c26ca4215:packages/adapter-sdk/src/json-schema.ts && git show abd684a4d858376866766d67653f212c26ca4215:scripts/ci/lib/json-schema.mjs",
+        "observation": "The rejected evaluators passed caller-controlled schema.pattern strings directly to the backtracking JavaScript regular-expression engine."
+      },
+      "post_fix": {
+        "status": "REJECTED_AFTER_FIX",
+        "commands": [
+          "node --test --test-isolation=none --test-name-pattern='catastrophic schema patterns' packages/adapter-sdk/test/security-repair.test.ts",
+          "node --test scripts/ci/test/json-schema-security.test.mjs"
+        ],
+        "observation": "Both SDK and shared CI evaluators enforce the same bounded safe subset and reject nested ambiguous quantifiers, overlapping quantified atoms such as ^a*a{1024}b$, backreferences, lookaround, unsafe constructs, and oversized patterns before regex execution."
+      }
+    }
+  ],
+  "postgresql_atomicity": {
+    "local_status": "NOT_RUN_NO_LOOPBACK_DSN",
+    "public_ci_required": true,
+    "normal_command": "AIPT_REQUIRE_POSTGRES_INTEGRATION=1 go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v",
+    "race_command": "AIPT_REQUIRE_POSTGRES_INTEGRATION=1 go test -race ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v",
+    "claim": "No local PostgreSQL PASS is claimed. The pinned public-CI PostgreSQL job must execute both commands against the exact frozen candidate SHA."
+  }
+}

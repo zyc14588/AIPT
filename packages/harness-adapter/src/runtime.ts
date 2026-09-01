@@ -7,6 +7,21 @@ import type { HarnessBackend, HarnessBackendResult } from './backend.ts';
 import { asHarnessAdapterError, HarnessAdapterError, type HarnessAdapterErrorCode } from './errors.ts';
 import { MAX_FRAME_BYTES, readLineFrames } from './framing.ts';
 
+export const MAX_BACKEND_NOTIFICATION_COUNT = 256;
+export const MAX_BACKEND_ENCODED_OUTPUT_BYTES = 4 * MAX_FRAME_BYTES;
+
+export function chargeBackendOutputFrameBytes(accumulatedBytes: number, frame: string): number {
+  const frameBytes = Buffer.byteLength(frame, 'utf8');
+  if (frameBytes > MAX_FRAME_BYTES) {
+    throw new HarnessAdapterError('AIPT_HARNESS_FRAME_TOO_LARGE');
+  }
+  const nextBytes = accumulatedBytes + frameBytes + 1;
+  if (nextBytes > MAX_BACKEND_ENCODED_OUTPUT_BYTES) {
+    throw new HarnessAdapterError('AIPT_HARNESS_FRAME_TOO_LARGE');
+  }
+  return nextBytes;
+}
+
 export interface HarnessAdapterStreams {
   readonly input: Readable;
   readonly output: Writable;
@@ -51,7 +66,7 @@ function normalizeBackendResult(value: HarnessBackendResult): {
     throw new HarnessAdapterError('AIPT_HARNESS_OUTPUT_INVALID');
   }
   const notifications = value.notifications ?? [];
-  if (!Array.isArray(notifications)) {
+  if (!Array.isArray(notifications) || notifications.length > MAX_BACKEND_NOTIFICATION_COUNT) {
     throw new HarnessAdapterError('AIPT_HARNESS_OUTPUT_INVALID');
   }
   return { response: value.response, notifications };
@@ -60,11 +75,20 @@ function normalizeBackendResult(value: HarnessBackendResult): {
 function prepareOutput(request: JsonRpcRequest, value: HarnessBackendResult): readonly string[] {
   const { response, notifications } = normalizeBackendResult(value);
   assertIdentity(request, response);
-  let responseFrame: string;
-  let notificationFrames: string[];
+  if ('error' in response && notifications.length !== 0) {
+    throw new HarnessAdapterError('AIPT_HARNESS_OUTPUT_INVALID');
+  }
+  const frames: string[] = [];
+  let encodedOutputBytes = 0;
+  const appendFrame = (frame: string): void => {
+    encodedOutputBytes = chargeBackendOutputFrameBytes(encodedOutputBytes, frame);
+    frames.push(frame);
+  };
   try {
-    responseFrame = encodeResponse(response);
-    notificationFrames = notifications.map((notification) => {
+    appendFrame(encodeResponse(response));
+    const notificationCount = notifications.length;
+    for (let index = 0; index < notificationCount; index += 1) {
+      const notification = notifications[index]!;
       if (notification.protocol_version !== request.protocol_version ||
           notification.schema_version !== request.schema_version ||
           notification.fixture_id !== request.fixture_id ||
@@ -73,25 +97,15 @@ function prepareOutput(request: JsonRpcRequest, value: HarnessBackendResult): re
           notification.params.event.fixture_id !== request.fixture_id) {
         throw new HarnessAdapterError('AIPT_HARNESS_RESPONSE_IDENTITY_MISMATCH');
       }
-      return encodeNotification(notification);
-    });
+      if ('result' in response &&
+          notification.params.event.transition_id !== response.result.transition_id) {
+        throw new HarnessAdapterError('AIPT_HARNESS_RESPONSE_IDENTITY_MISMATCH');
+      }
+      appendFrame(encodeNotification(notification));
+    }
   } catch (error) {
     if (error instanceof HarnessAdapterError) throw error;
     throw new HarnessAdapterError('AIPT_HARNESS_OUTPUT_INVALID');
-  }
-  if ('error' in response && notifications.length !== 0) {
-    throw new HarnessAdapterError('AIPT_HARNESS_OUTPUT_INVALID');
-  }
-  if ('result' in response) {
-    for (const notification of notifications) {
-      if (notification.params.event.transition_id !== response.result.transition_id) {
-        throw new HarnessAdapterError('AIPT_HARNESS_RESPONSE_IDENTITY_MISMATCH');
-      }
-    }
-  }
-  const frames = [responseFrame, ...notificationFrames];
-  if (frames.some((frame) => Buffer.byteLength(frame, 'utf8') > MAX_FRAME_BYTES)) {
-    throw new HarnessAdapterError('AIPT_HARNESS_FRAME_TOO_LARGE');
   }
   return frames;
 }

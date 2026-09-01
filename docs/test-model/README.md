@@ -1,9 +1,15 @@
 # 测试模型（TEST MODEL）
 
 > 公开测试模型设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> `AIPT-MVP-B001` 已实现 Test Plan、Manifest 与 Queue/Lease/Attempt 合同，`AIPT-MVP-B002` 已关闭 Deterministic Run Core；当前 `AIPT-MVP-B003` 只施工 provider-neutral Deterministic Agent Orchestrator，仍不执行真实模型或真实桌测。
+> `AIPT-MVP-B001` 已实现 Test Plan/Manifest/Queue，`AIPT-MVP-B002` 与 `AIPT-MVP-B003` 已关闭 Run Core 和 provider-neutral Orchestrator；当前 `AIPT-MVP-B004` 施工 governed model/Harness gateway，仍不执行真实桌测或 qualification Run。
 
-## B003 验证矩阵
+## B004 模型网关验证矩阵
+
+公共 CI 使用 fake ACP Harness、fake provider、synthetic GGUF/binary/template 文件与 synthetic credential reference，验证 Model/Sampling Profile、complete execution tuple、五席位 immutable assignment、credential redaction、remote egress、deterministic context reduction、managed local process、timeout/cancellation/recovery 与 M01–M30 fail-closed 矩阵。它运行 `pnpm run check:mvp-b004`、`pnpm run test:model-gateway`、`pnpm run test:model-harness-gateway` 与 `go test -race ./internal/modelgateway -count=1`，真实模型/网络调用和 secret requirement 都为 0。
+
+Synthetic certification 只证明合同与失败路径，不能冒充 controlled-real minimum certification。安全修复后的受控 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP` minimum re-certification 已在冻结的 `HARNESS-01` 单文件运行时闭包上 PASS，[remote 最终公开证据](../model-certification/remote-deepseek-controlled-real-02.json)与 [local 最终公开证据](../model-certification/local-llamacpp-controlled-real-02.json)均不含 credential 值或私有路径；旧 `-01` 证据仅保留为 `SUPERSEDED_NON_FINAL`。受控流程累计 5 次真实模型调用：remote/network 3 次、local 2 次，本次修复后各新增最小 1 次成功调用。`GGUF-04` locator、完整摘要、metadata、held-file consumption 和 `LLAMACPP-01` 私有 namespace/startup/invocation/shutdown probes 均已验证，且没有导出 locator、下载、猜测、替代资产或改变 no-API-key authority。`DEFER-003` 未关闭，不声称 full GM/Player、Campaign、long-context、tool-use、production performance 或 production readiness。
+
+## B003 冻结回归矩阵
 
 `AIPT-MVP-B003` 以 synthetic、game-neutral、无网络 fixture 验证固定 `1 GM + 4 Player` 座席、Run/seat 绑定 Session、Persona/Character 分层、固定 GM profiles、Visibility/ACL-before-retrieval、canonical Context Bundle/hash、摘要事实保留、discussion/interruption/private chat/group decision/GM clarification floor，以及结构化 speech/action 协议。
 

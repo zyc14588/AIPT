@@ -160,6 +160,16 @@ jobs:
         run: pnpm run test:orchestrator
       - name: AIPT MVP B003 Agent Orchestrator race concurrency and double-commit tests
         run: go test -race ./internal/orchestrator -count=1
+      - name: "AIPT MVP B004 lifecycle-aware candidate merge closeout governed model Harness gateway validator"
+        run: pnpm run check:mvp-b004
+      - name: AIPT MVP B004 publication hygiene detector sentinel suite
+        run: pnpm run test:publication-hygiene
+      - name: AIPT MVP B004 model gateway profile egress credential local-process context capability and negative tests
+        run: pnpm run test:model-gateway
+      - name: AIPT MVP B004 model Harness gateway fake ACP child cancellation identity frame and redaction tests
+        run: pnpm run test:model-harness-gateway
+      - name: AIPT MVP B004 model gateway race process recovery transport and registry tests
+        run: go test -race ./internal/modelgateway -count=1
       - name: "B004 runtime shell: fixed gate order + config + Core + Launcher + CLI mutation probes"
         run: pnpm run check:runtime-shell
       - name: "B005 Harness Adapter contract: thin stdio runtime + security mutation probes"
@@ -342,20 +352,22 @@ jobs:
             "18.4"*) ;;
             *) echo "unexpected server_version: ${SERVER_VERSION}"; exit 1 ;;
           esac
-      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)
+      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)
         run: |
           export AIPT_POSTGRES_DSN="postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable"
           export AIPT_REQUIRE_POSTGRES_INTEGRATION=1
           go test ./internal/storage/postgres -run '^TestPostgresIntegration' -count=1 -v
           go test ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v
+          go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v
           node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration
           go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
-      - name: PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + frozen-Base B004 runtime shell + B006 Evidence)
+      - name: PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence)
         run: |
           export AIPT_POSTGRES_DSN="postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable"
           export AIPT_REQUIRE_POSTGRES_INTEGRATION=1
           go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends|QueueConcurrentFormalClaimsWIP1|QueueLeaseHeartbeatExpiryRecoveryAndStaleHolder)$' -count=1 -v
           go test -race ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v
+          go test -race ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v
           node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration --race
           go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
       - name: Remove ephemeral PostgreSQL container (CI-only cleanup, never production)

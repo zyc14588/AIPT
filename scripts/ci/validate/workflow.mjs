@@ -1,4 +1,4 @@
-// B003 workflow validator: the public .github/workflows/ci.yml must be the
+// B004 workflow validator: the public .github/workflows/ci.yml must be the
 // durable `AIPT M0 CI` workflow — secret-free, full-SHA action pins agreed
 // with the frozen action lock, digest-pinned containers, Linux-only, the
 // four required jobs, and the toolchain matrix (ubuntu-24.04 +
@@ -145,10 +145,14 @@ const STORAGE_FULL_TEST = "go test ./internal/storage/postgres -run '^TestPostgr
 const STORAGE_RACE_TEST = "go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends|QueueConcurrentFormalClaimsWIP1|QueueLeaseHeartbeatExpiryRecoveryAndStaleHolder)$' -count=1 -v";
 const STORAGE_RUN_CORE_FULL_TEST = "go test ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v";
 const STORAGE_RUN_CORE_RACE_TEST = "go test -race ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v";
+const STORAGE_MODEL_GATEWAY_FULL_TEST = "go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v";
+const STORAGE_MODEL_GATEWAY_RACE_TEST = "go test -race ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v";
 const STORAGE_LAUNCHER_FULL_TEST = 'node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration';
 const STORAGE_LAUNCHER_RACE_TEST = 'node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration --race';
 const STORAGE_EVIDENCE_FULL_TEST = "go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
 const STORAGE_EVIDENCE_RACE_TEST = "go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
+const STORAGE_FULL_CONTRACT_REASON = /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/;
+const STORAGE_RACE_CONTRACT_REASON = /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/;
 
 // The closed-world storage-postgres job is exactly these eleven ordered named
 // steps. Step names are parsed NORMALIZED (`- name:`, `- 'name':`,
@@ -164,8 +168,8 @@ const STORAGE_POSTGRES_STEPS = [
   'Verify exact Node.js version',
   'Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)',
   'Verify PostgreSQL 18.4 readiness and server version',
-  'PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)',
-  'PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + frozen-Base B004 runtime shell + B006 Evidence)',
+  'PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)',
+  'PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence)',
   'Remove ephemeral PostgreSQL container (CI-only cleanup, never production)',
 ];
 
@@ -221,6 +225,26 @@ const FOCUSED_COMMANDS = [
   {
     command: 'go test -race ./internal/orchestrator -count=1',
     nameTokens: ['aipt', 'mvp', 'b003', 'agent orchestrator', 'race', 'concurrency', 'double-commit', 'tests'],
+  },
+  {
+    command: 'pnpm run check:mvp-b004',
+    nameTokens: ['aipt', 'mvp', 'b004', 'lifecycle-aware', 'candidate', 'merge', 'closeout', 'governed', 'model', 'harness', 'gateway', 'validator'],
+  },
+  {
+    command: 'pnpm run test:publication-hygiene',
+    nameTokens: ['aipt', 'mvp', 'b004', 'publication hygiene', 'detector', 'sentinel', 'suite'],
+  },
+  {
+    command: 'pnpm run test:model-gateway',
+    nameTokens: ['aipt', 'mvp', 'b004', 'model gateway', 'profile', 'egress', 'credential', 'local-process', 'context', 'capability', 'negative', 'tests'],
+  },
+  {
+    command: 'pnpm run test:model-harness-gateway',
+    nameTokens: ['aipt', 'mvp', 'b004', 'model harness gateway', 'fake', 'acp', 'child', 'cancellation', 'identity', 'frame', 'redaction', 'tests'],
+  },
+  {
+    command: 'go test -race ./internal/modelgateway -count=1',
+    nameTokens: ['aipt', 'mvp', 'b004', 'model gateway', 'race', 'process', 'recovery', 'transport', 'registry', 'tests'],
   },
   {
     command: 'pnpm run check:runtime-shell',
@@ -519,25 +543,27 @@ const BLOCK_GATES = {
       ],
     },
     {
-      label: 'the full B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 runtime-shell + B006 Evidence PostgreSQL integration commands (test-only DSN, required flag)',
+      label: 'the full B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + B004 runtime-shell + B006 Evidence PostgreSQL integration commands (test-only DSN, required flag)',
       anchor: STORAGE_FULL_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
         STORAGE_REQUIRE_FLAG,
         STORAGE_FULL_TEST,
         STORAGE_RUN_CORE_FULL_TEST,
+        STORAGE_MODEL_GATEWAY_FULL_TEST,
         STORAGE_LAUNCHER_FULL_TEST,
         STORAGE_EVIDENCE_FULL_TEST,
       ],
     },
     {
-      label: 'the B003 ledger concurrency + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 runtime-shell + B006 Evidence PostgreSQL integration race commands',
+      label: 'the B003 ledger concurrency + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + B004 runtime-shell + B006 Evidence PostgreSQL integration race commands',
       anchor: STORAGE_RACE_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
         STORAGE_REQUIRE_FLAG,
         STORAGE_RACE_TEST,
         STORAGE_RUN_CORE_RACE_TEST,
+        STORAGE_MODEL_GATEWAY_RACE_TEST,
         STORAGE_LAUNCHER_RACE_TEST,
         STORAGE_EVIDENCE_RACE_TEST,
       ],
@@ -1509,7 +1535,7 @@ function checkWorkflowText(text, lock) {
       fail(`storage-postgres job mapping must contain exactly one name:, one runs-on: and one steps: (normalized keys) and no other job-level key; parsed ${JSON.stringify(jobLevelKeys.map((e) => e.key))}`);
     }
 
-    // ---- closed world: exactly the nine ordered named steps ----
+    // ---- closed world: exactly the eleven ordered named steps ----
     // Step names are parsed NORMALIZED (`- name:`, `- 'name':`, `- "name":`,
     // `- name :` all start a real step), so a quoted-name shadow or a
     // duplicate step can never hide beside the canonical nine: the job must
@@ -1519,9 +1545,9 @@ function checkWorkflowText(text, lock) {
       storageAnalyzed.length === STORAGE_POSTGRES_STEPS.length &&
       storageStepNames.every((n, i) => n === STORAGE_POSTGRES_STEPS[i]);
     if (nineOrdered) {
-      ok(`storage-postgres job contains exactly the nine ordered named steps (${STORAGE_POSTGRES_STEPS.length}): ${STORAGE_POSTGRES_STEPS.join(' | ')}`);
+      ok(`storage-postgres job contains exactly the eleven ordered named steps (${STORAGE_POSTGRES_STEPS.length}): ${STORAGE_POSTGRES_STEPS.join(' | ')}`);
     } else {
-      fail(`storage-postgres job must contain exactly the nine ordered named steps ${JSON.stringify(STORAGE_POSTGRES_STEPS)}; parsed ${JSON.stringify(storageStepNames)}`);
+      fail(`storage-postgres job must contain exactly the eleven ordered named steps ${JSON.stringify(STORAGE_POSTGRES_STEPS)}; parsed ${JSON.stringify(storageStepNames)}`);
     }
 
     // ---- closed world: exact normalized per-step key multisets ----
@@ -1738,7 +1764,7 @@ export function run(ctx) {
   if (main.result !== 'PASS') pass = false;
 
   const fullTestStepName =
-    '      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)';
+    '      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)';
   const probes = [
     {
       label: 'storage-postgres job removed',
@@ -1803,7 +1829,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full integration command removed',
-      reason: /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      reason: STORAGE_FULL_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1814,7 +1840,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full integration command altered (dropped -count=1)',
-      reason: /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      reason: STORAGE_FULL_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1825,7 +1851,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres race coverage command removed',
-      reason: /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
+      reason: STORAGE_RACE_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_RACE_TEST, 'go test -race ./internal/storage/postgres')),
@@ -1834,7 +1860,7 @@ export function run(ctx) {
     },
     {
       label: 'MVP-B002 Run Core PostgreSQL integration command removed',
-      reason: /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      reason: STORAGE_FULL_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_RUN_CORE_FULL_TEST, 'go test ./internal/runcore')),
@@ -1843,7 +1869,7 @@ export function run(ctx) {
     },
     {
       label: 'MVP-B002 Run Core PostgreSQL race command removed',
-      reason: /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
+      reason: STORAGE_RACE_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_RUN_CORE_RACE_TEST, 'go test -race ./internal/runcore')),
@@ -1851,8 +1877,28 @@ export function run(ctx) {
         ),
     },
     {
+      label: 'B004 model gateway PostgreSQL integration command removed',
+      reason: STORAGE_FULL_CONTRACT_REASON,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_MODEL_GATEWAY_FULL_TEST, 'go test ./internal/modelgateway')),
+          lock,
+        ),
+    },
+    {
+      label: 'B004 model gateway PostgreSQL race command removed',
+      reason: STORAGE_RACE_CONTRACT_REASON,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'storage-postgres', (t) =>
+            t.replace(STORAGE_MODEL_GATEWAY_RACE_TEST, 'go test -race ./internal/modelgateway')),
+          lock,
+        ),
+    },
+    {
       label: 'B004 launcher full PostgreSQL integration command removed',
-      reason: /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      reason: STORAGE_FULL_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1863,7 +1909,7 @@ export function run(ctx) {
     },
     {
       label: 'B004 launcher PostgreSQL integration race command removed',
-      reason: /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
+      reason: STORAGE_RACE_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1874,7 +1920,7 @@ export function run(ctx) {
     },
     {
       label: 'B006 Evidence PostgreSQL integration command removed',
-      reason: /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      reason: STORAGE_FULL_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1885,7 +1931,7 @@ export function run(ctx) {
     },
     {
       label: 'B006 Evidence PostgreSQL race command removed',
-      reason: /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/,
+      reason: STORAGE_RACE_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
@@ -1896,7 +1942,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres full command masked with || true',
-      reason: /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/,
+      reason: STORAGE_FULL_CONTRACT_REASON,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) => t.replace(STORAGE_FULL_TEST, `${STORAGE_FULL_TEST} || true`)),
@@ -1998,6 +2044,56 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: go test -race ./internal/orchestrator -count=1', '        run: go version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B004 lifecycle-aware validator removed from toolchain',
+      reason: /check:mvp-b004.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:mvp-b004', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B004 model gateway tests removed from toolchain',
+      reason: /test:model-gateway.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:model-gateway', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B004 publication hygiene sentinel suite removed from toolchain',
+      reason: /test:publication-hygiene.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:publication-hygiene', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B004 Harness process tests removed from toolchain',
+      reason: /test:model-harness-gateway.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:model-harness-gateway', '        run: node --version')),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B004 model gateway race gate removed from toolchain',
+      reason: /go test -race \.\/internal\/modelgateway -count=1.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: go test -race ./internal/modelgateway -count=1', '        run: go version')),
           lock,
         ),
     },
@@ -2376,7 +2472,7 @@ export function run(ctx) {
     },
     {
       label: 'storage-postgres quoted-name duplicate step (bypass of the exact nine ordered steps)',
-      reason: /must contain exactly the nine ordered named steps/,
+      reason: /must contain exactly the eleven ordered named steps/,
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>

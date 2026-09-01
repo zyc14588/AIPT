@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/zyc14588/AIPT/internal/config"
 	"github.com/zyc14588/AIPT/internal/core"
+	"github.com/zyc14588/AIPT/internal/modelgateway"
 	"github.com/zyc14588/AIPT/internal/storage/postgres"
 	"github.com/zyc14588/AIPT/internal/web"
 )
@@ -43,8 +45,8 @@ type WebStart func(context.Context, WebStartState) (StopFunc, error)
 
 // Dependencies are implementations only; they cannot supply, omit, or reorder
 // gates. DefaultDependencies wires the real CONFIG, POSTGRESQL, MIGRATIONS,
-// Core, and WEB components and installs fail-closed MODEL/HARNESS/IPC
-// placeholders.
+// Core, and WEB components and installs the B004 MODEL/HARNESS runtime plus a
+// fail-closed IPC placeholder.
 type Dependencies struct {
 	LoadConfig   func(string) (*config.Config, error)
 	OpenPostgres func(context.Context, string) (PostgresPool, error)
@@ -60,13 +62,16 @@ type Dependencies struct {
 // shell used by NewDefault.
 const DefaultShutdownTimeout = 10 * time.Second
 
-// DefaultDependencies returns the production B007 wiring. MODEL, HARNESS, and
-// IPC remain fail-closed placeholders; WEB is real but cannot be reached by
-// the production launcher until every mandatory predecessor succeeds.
+// DefaultDependencies returns the production B004 wiring. MODEL and HARNESS
+// are real governed gates; IPC remains fail-closed, so WEB cannot be reached.
 func DefaultDependencies(shutdownTimeout time.Duration) Dependencies {
 	if shutdownTimeout <= 0 {
 		shutdownTimeout = DefaultShutdownTimeout
 	}
+	runtime := modelgateway.NewRuntimeCoordinator(
+		os.Getenv("AIPT_MODEL_RUNTIME_CONFIG"),
+		modelgateway.EnvironmentCredentialBroker{},
+	)
 	return Dependencies{
 		LoadConfig: config.LoadFile,
 		OpenPostgres: func(ctx context.Context, dsn string) (PostgresPool, error) {
@@ -79,11 +84,17 @@ func DefaultDependencies(shutdownTimeout time.Duration) Dependencies {
 			}
 			return postgres.MigrateUp(ctx, pgxPool)
 		},
-		StartModel:   unimplementedComponent(GateModel),
-		StartHarness: unimplementedComponent(GateHarness),
-		StartCore:    coreComponent(shutdownTimeout),
-		StartIPC:     unimplementedComponent(GateIPC),
-		StartWeb:     webComponent(),
+		StartModel: func(ctx context.Context) (StopFunc, error) {
+			stop, err := runtime.StartModel(ctx)
+			return StopFunc(stop), err
+		},
+		StartHarness: func(ctx context.Context) (StopFunc, error) {
+			stop, err := runtime.StartHarness(ctx)
+			return StopFunc(stop), err
+		},
+		StartCore: coreComponent(shutdownTimeout),
+		StartIPC:  unimplementedComponent(GateIPC),
+		StartWeb:  webComponent(),
 	}
 }
 

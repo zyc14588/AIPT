@@ -174,7 +174,7 @@ func TestFixedGateOrderAndPlanAreImmutable(t *testing.T) {
 	}
 
 	plan := Plan()
-	if plan.Schema != planSchema || plan.RuntimeReady || plan.FirstBlockingGate != GateModel {
+	if plan.Schema != planSchema || plan.RuntimeReady || plan.FirstBlockingGate != GateIPC {
 		t.Fatalf("Plan = %+v", plan)
 	}
 	if len(plan.Gates) != len(want) {
@@ -184,10 +184,9 @@ func TestFixedGateOrderAndPlanAreImmutable(t *testing.T) {
 		if gate.Position != index+1 || gate.Gate != want[index] {
 			t.Errorf("plan gate %d = %+v", index, gate)
 		}
-		wantImplementation := NotImplemented
-		if gate.Gate == GateConfig || gate.Gate == GatePostgreSQL ||
-			gate.Gate == GateMigrations || gate.Gate == GateCore || gate.Gate == GateWeb {
-			wantImplementation = Implemented
+		wantImplementation := Implemented
+		if gate.Gate == GateIPC {
+			wantImplementation = NotImplemented
 		}
 		if gate.Implementation != wantImplementation {
 			t.Errorf("%s implementation = %s, want %s", gate.Gate, gate.Implementation, wantImplementation)
@@ -211,7 +210,7 @@ func TestFixedGateOrderAndPlanAreImmutable(t *testing.T) {
 		t.Fatalf("plan JSON is not deterministic:\n%s\n%s", first, second)
 	}
 	if !strings.Contains(string(first), "\"runtime_ready\":false") ||
-		!strings.Contains(string(first), "\"first_blocking_gate\":\"MODEL\"") {
+		!strings.Contains(string(first), "\"first_blocking_gate\":\"IPC\"") {
 		t.Fatalf("plan JSON does not state fail-closed readiness: %s", first)
 	}
 }
@@ -455,7 +454,8 @@ func TestConfiguredPingTimeoutFailsClosed(t *testing.T) {
 	}
 }
 
-func TestProductionModelGateFailsClosed(t *testing.T) {
+func TestProductionModelGateFailsClosedWithoutPrivateRuntimeConfiguration(t *testing.T) {
+	t.Setenv("AIPT_MODEL_RUNTIME_CONFIG", "")
 	log := &eventLog{}
 	dependencies, pool := successfulDependencies(t, log, time.Second)
 	production := DefaultDependencies(time.Second)
@@ -466,8 +466,8 @@ func TestProductionModelGateFailsClosed(t *testing.T) {
 		t.Fatal("plan must not claim runtime readiness")
 	}
 	err := instance.Run(context.Background())
-	if !errors.Is(err, ErrGateNotImplemented) ||
-		CodeOf(err) != CodeGateNotImplemented || GateOf(err) != GateModel {
+	if !errors.Is(err, ErrGateFailed) ||
+		CodeOf(err) != CodeGateFailed || GateOf(err) != GateModel {
 		t.Fatalf("Run = %v", err)
 	}
 	want := []string{

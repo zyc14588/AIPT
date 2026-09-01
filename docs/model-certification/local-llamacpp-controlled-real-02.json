@@ -1,0 +1,186 @@
+{
+  "schema": "aipt.public.controlled-model-certification-result/v1",
+  "result": "PASS",
+  "backend_kind": "LOCAL_LLAMACPP",
+  "model_profile": {
+    "schema": "aipt.model-profile/v1",
+    "profile_id": "b004-local-llamacpp",
+    "profile_version": "1.0.0",
+    "backend_kind": "LOCAL_LLAMACPP",
+    "provider_identity": "llama.cpp",
+    "model_id": "gguf-04",
+    "harness_identity": {
+      "implementation": "deepseek-harness",
+      "version": "0.1.0-rc.8",
+      "commit": "141eb6fef83422698aef7a981029e843e8161534",
+      "package_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
+      "protocol_identity": "agent-client-protocol",
+      "protocol_version": "1",
+      "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+      "runtime_closure_kind": "VERIFIED_SINGLE_FILE_DATA_URL_V1",
+      "runtime_closure_sha256": "e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db"
+    },
+    "sampling_profile_id": "b004-local-llamacpp-sampling@1.0.0",
+    "structured_output_mode": "PROMPTED",
+    "tool_call_mode": "DISABLED",
+    "context_policy": {
+      "policy_id": "b004-controlled-public-context",
+      "policy_version": "1.0.0",
+      "max_request_bytes": 1048576,
+      "max_context_bytes": 65536,
+      "reduction_policy_id": "AIPT_CONTEXT_BUDGET_REDUCE_V1"
+    },
+    "data_egress_policy": {
+      "policy_id": "b004-controlled-public-only-egress",
+      "policy_version": "1.0.0",
+      "allowed_classifications": ["PUBLIC"],
+      "break_glass_allowed": false
+    },
+    "local_runtime_identity": {
+      "executable_reference": "llama-server-gfx1151-b10582",
+      "binary_sha256": "b3afdd9c155dd481aaff6f26204104a3f4967fa8bc4a94ec6da4e9a57e6acad2",
+      "version": "0.2.0-dev",
+      "commit": "e85caa81ea2b65797396018c179b87ad61fa38ab",
+      "gguf_reference": "GGUF-04",
+      "gguf_sha256": "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6",
+      "gguf_model_identity": "Qwen3.8-27B-Abliterated",
+      "quantization_identity": "Q8_0",
+      "template_identity": "GGUF-04-qwen35-jinja",
+      "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+      "isolation_identity": "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1",
+      "isolation_helper_reference": "aipt-runtime-isolator-go1.26.6-linux-amd64",
+      "isolation_helper_sha256": "1bba082e39f213f85c213c7dcdadd85e610d2b64dcf39214d39d44b1c5e36d3d",
+      "launch_parameters": [
+        "--ctx-size", "8192", "--n-predict", "1024", "--n-gpu-layers", "99",
+        "--model", "{REGISTERED_GGUF}", "--host", "127.0.0.1", "--port",
+        "{DYNAMIC_IPV4_LOOPBACK_PORT}", "--alias", "{REGISTERED_MODEL_ID}",
+        "--no-webui", "--no-slots", "--jinja"
+      ],
+      "hardware": {
+        "architecture": "x86_64",
+        "cpu_class": "AMD-RYZEN-AI-MAX-395",
+        "gpu_backend": "ROCm-gfx1151",
+        "memory_class": "unified-128GB"
+      }
+    },
+    "capability_requirements": [
+      "basic_completion",
+      "structured_output_prompted",
+      "role_invocation"
+    ],
+    "certification_identity": "b004-local-llamacpp-minimum-certification@1.0.0",
+    "sha256": "5a55264ad2a6429275b22ff4c7e71297d5233acf29d6f4c8aa2806cb8316b26c"
+  },
+  "sampling_profile": {
+    "schema": "aipt.sampling-profile/v1",
+    "sampling_id": "b004-local-llamacpp-sampling",
+    "sampling_version": "1.0.0",
+    "temperature": 0,
+    "top_p": 1,
+    "max_output_tokens": 1024,
+    "max_context_tokens": 8192,
+    "applied_parameters": ["max_context_tokens", "max_output_tokens"],
+    "unsupported_parameters": ["temperature", "top_p"],
+    "sha256": "67ff1b46376f0e908a3b874a7867bc3b9371a7f1e20751b19fed23260aef2553"
+  },
+  "certification": {
+    "schema": "aipt.model-certification/v1",
+    "certification_id": "b004-local-llamacpp-minimum-certification",
+    "certification_version": "1.0.0",
+    "profile_binding": "b004-local-llamacpp@1.0.0",
+    "sampling_binding": "b004-local-llamacpp-sampling@1.0.0",
+    "result": "PASS",
+    "kind": "CONTROLLED_REAL",
+    "minimum_certification": true,
+    "real_model_calls": 1,
+    "evidence_identity": "AIPT-MVP-B004-LOCAL-LLAMACPP-CONTROLLED-REAL-02",
+    "production_role_eligibility": "NOT_GRANTED_DEFER_003",
+    "claims": [
+      {"name": "basic_completion", "status": "CERTIFIED"},
+      {"name": "structured_output_native", "status": "NOT_CERTIFIED"},
+      {"name": "structured_output_prompted", "status": "CERTIFIED"},
+      {"name": "structured_output_repair", "status": "UNTESTED"},
+      {"name": "tool_call_native", "status": "NOT_CERTIFIED"},
+      {"name": "tool_call_emulated", "status": "UNTESTED"},
+      {"name": "context_budget", "status": "UNTESTED"},
+      {"name": "role_invocation", "status": "CERTIFIED"},
+      {"name": "transport_stability", "status": "UNTESTED"},
+      {"name": "visibility_policy_compatible", "status": "UNTESTED"},
+      {"name": "prompt_injection_boundary_compatible", "status": "UNTESTED"}
+    ],
+    "execution_tuple": {
+      "schema": "aipt.model-execution-tuple/v1",
+      "backend_kind": "LOCAL_LLAMACPP",
+      "provider_identity": "llama.cpp",
+      "model_id": "gguf-04",
+      "model_profile_binding": "b004-local-llamacpp@1.0.0",
+      "sampling_profile_binding": "b004-local-llamacpp-sampling@1.0.0",
+      "requested_sampling_sha256": "67ff1b46376f0e908a3b874a7867bc3b9371a7f1e20751b19fed23260aef2553",
+      "effective_sampling_projection": {
+        "schema": "aipt.effective-sampling-projection/v1",
+        "enforcement_identity": "AIPT_ACP_CONSERVATIVE_UTF8_BYTE_BUDGET_V1",
+        "applied_parameters": ["max_context_tokens", "max_output_tokens"],
+        "unsupported_parameters": ["temperature", "top_p"],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "context_utf8_byte_ceiling": 8192,
+        "output_utf8_byte_ceiling": 1024
+      },
+      "unsupported_sampling_parameters": ["temperature", "top_p"],
+      "backend_serialized_request_sha256": "9cc0bd81a47cc425918c51f4c3c7fc2ac6be59c042d7a0bf980fb6ac6fa8b67c",
+      "harness_identity": "deepseek-harness@0.1.0-rc.8+141eb6fef83422698aef7a981029e843e8161534",
+      "harness_protocol_identity": "agent-client-protocol",
+      "harness_protocol_version": "1",
+      "structured_output_mode": "PROMPTED",
+      "tool_call_mode": "DISABLED",
+      "request_contract_version": "1",
+      "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+      "environment_identity": "aipt-b004-security-repair-host-20260901",
+      "local_runtime_identity": {
+        "executable_reference": "llama-server-gfx1151-b10582",
+        "binary_sha256": "b3afdd9c155dd481aaff6f26204104a3f4967fa8bc4a94ec6da4e9a57e6acad2",
+        "version": "0.2.0-dev",
+        "commit": "e85caa81ea2b65797396018c179b87ad61fa38ab",
+        "gguf_reference": "GGUF-04",
+        "gguf_sha256": "31756fca94beca71ea4b8706d6fdc896dab2a3c6376ab0c1863b98512a24f8d6",
+        "gguf_model_identity": "Qwen3.8-27B-Abliterated",
+        "quantization_identity": "Q8_0",
+        "template_identity": "GGUF-04-qwen35-jinja",
+        "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+        "isolation_identity": "AIPT_LINUX_USER_NETNS_SUPERVISOR_V1",
+        "isolation_helper_reference": "aipt-runtime-isolator-go1.26.6-linux-amd64",
+        "isolation_helper_sha256": "1bba082e39f213f85c213c7dcdadd85e610d2b64dcf39214d39d44b1c5e36d3d",
+        "launch_parameters": [
+          "--ctx-size", "8192", "--n-predict", "1024", "--n-gpu-layers", "99",
+          "--model", "{REGISTERED_GGUF}", "--host", "127.0.0.1", "--port",
+          "{DYNAMIC_IPV4_LOOPBACK_PORT}", "--alias", "{REGISTERED_MODEL_ID}",
+          "--no-webui", "--no-slots", "--jinja"
+        ],
+        "hardware": {
+          "architecture": "x86_64",
+          "cpu_class": "AMD-RYZEN-AI-MAX-395",
+          "gpu_backend": "ROCm-gfx1151",
+          "memory_class": "unified-128GB"
+        }
+      },
+      "sha256": "acea103d485148711290746d6924129a22d31080574dfb4ec8b3bdac65245034"
+    },
+    "observed_at": "2026-08-31T18:57:43.893Z",
+    "sha256": "e4a947569548d34afb0f451ef781cb61ab0acf0188582e0349e2f843c06c71f6"
+  },
+  "harness_probe": {
+    "harness_identity": "deepseek-harness@0.1.0-rc.8+141eb6fef83422698aef7a981029e843e8161534",
+    "protocol_identity": "agent-client-protocol",
+    "protocol_version": "1",
+    "observed_model_id": "gguf-04",
+    "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+    "route_available": true,
+    "direct_provider_bypass_available": false
+  },
+  "request_sha256": "4c2aa4ff7a08bcb1b04d4f89400e9ec0d095960c2ecb2a02d70df59686e6969a",
+  "response_sha256": "66a138d5d8ab9d0d48887cc7d6484f38889f6ed38b8d24a83f40329e304e64c7",
+  "response_protocol_version": "v1",
+  "route_recovery_occurred": false,
+  "credential_values_recorded": false,
+  "private_paths_recorded": false
+}
