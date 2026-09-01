@@ -1,20 +1,21 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-08-30**；施工状态快照 ID：`AIPT-MVP-B004-CONSTRUCTION-001`。
+> 状态日期：**2026-09-02**；closeout 状态快照 ID：`AIPT-MVP-B004-CLOSEOUT-001`。
 
 ## 工作轨
 
 | 工作轨 | 状态 |
 |---|---|
-| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B004`，`GLOBAL_WIP = 1`；全部 B003 及更早批次均为不可变 `MERGED_CLOSED` 历史 |
+| `AIPT-STANDALONE` | 设计冻结：`FROZEN_R0_R16_DCA_BOOTSTRAP`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`；AIPT-MVP-B004 及全部更早批次均为不可变 `MERGED_CLOSED` 历史 |
 | `AIPT-PLATFORM-INTEGRATION` | `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`；`DEFER-001`、`R0-Q011`） |
 
 ## 当前里程碑
 
-- 当前里程碑：**MVP / AIPT-MVP-B004 IN_PROGRESS**。Owner 授权精确 Base 为 B003 canonical closeout `98591311c4872cdc5f091e23fba1acb500ad4599`（tree `a02ffea60c59d7187975f175875fa108c78d3cac`）。B003 Candidate `4f2979f4495e3d78393e9f9ec1978308a7fb10b9`、accepted merge `beb7c70738b1f876845d68bec8e20166ab3eac10`、post-merge CI `33264083089` 与 closeout CI `33264649945` 均保持冻结。
-- B004 已实现版本化 Model/Sampling Profile、完整 execution tuple、per-role immutable binding、受治理 DeepSeek Harness ACP gateway、write-only credential、双层 egress、确定性 context budget，以及受管 IPv4-loopback `llama.cpp` 进程；backend 闭集为 `REMOTE_DEEPSEEK` / `LOCAL_LLAMACPP`，remote model 固定为 `deepseek-v4-pro`。`HARNESS-01` 固定为 `dsh-v0.1.0-rc.8` / `141eb6fef83422698aef7a981029e843e8161534`，Owner 批准的 credential reference 已绑定且 route 已冻结；`GGUF-04` 身份与摘要已冻结，`LLAMACPP-01` binary 已登记。MODEL 与 HARNESS launcher gate 已实现，IPC 仍是首个未实现 gate，runtime 不 ready。
-- 安全修复后的受控 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP` minimum re-certification 均已 PASS；[remote 最终公开证据](../model-certification/remote-deepseek-controlled-real-02.json)与 [local 最终公开证据](../model-certification/local-llamacpp-controlled-real-02.json)只包含绑定身份、摘要与稳定结果，不含 credential 值或私有路径，旧 `-01` 证据仅保留为 `SUPERSEDED_NON_FINAL`。受控流程累计 5 次真实模型调用：remote/network 3 次、local 2 次，本次修复后各新增最小 1 次成功调用。`GGUF-04` locator 完成批准 root、canonical target、完整 SHA-256 与 metadata 验证但未导出；executable/GGUF/Harness closure 实际消费同一 held file object，`LLAMACPP-01` 与 governed adapter 位于私有 user/network namespace，宿主无法直连仍无 API key 的隔离 loopback endpoint。上一 Candidate `abd684a4d858376866766d67653f212c26ca4215` / `0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93` 已标记 `REJECTED_PRE_PUSH_SECURITY_RESCAN` 且从未公开推送。`DEFER-003` 仍为 `DEFERRED_TO_BENCHMARK`，local production role eligibility 未授予。公共 CI 真实模型/网络调用和 secret requirement 均为 0；真实 playtest 为 false，qualification Run 为 0；替代 Candidate 必须获得新的公开披露授权，未 merge、未 closeout、未启动下一串行批次。
+- 当前里程碑：**MVP / AIPT-MVP-B004 MERGED_CLOSED**。唯一 accepted Candidate `af717770f22d1e3e65c52f912f8ddebf5cc0e4b8`（tree `df25e8389872fc03eceb9dc1bccfe31330b47738`，Candidate CI `33567885453` success）由显式 no-ff merge `01f11271da6548593df6a559da7be574e5007ebb` 集成；merge parents 精确为 B003 closeout `98591311c4872cdc5f091e23fba1acb500ad4599` 与 accepted Candidate，merge tree 与 Candidate tree 完全相同。新 merge CI `33571035127` 的 5 个 jobs 全部 success，并由唯一 canonical append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。
+- B004 历史保持完整：`abd684a4d858376866766d67653f212c26ca4215` / `0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93` 为 `REJECTED_PRE_PUSH_SECURITY_RESCAN` 且从未公开推送；`41cb2a940909e151c82f55aff48d6c39eda5fba6` / `b35c1777d60626ca328a0f0ed4763aee627f9d3c` 为 `REJECTED_PUBLIC_CI_FAIL`，失败 CI `33525113421` 未 rerun。两者均未冒充 accepted identity。
+- B004 关闭交付包含版本化 Model/Sampling Profile、完整 execution tuple、per-role immutable binding、受治理 DeepSeek Harness ACP gateway、write-only credential、双层 egress、确定性 context budget，以及受管 IPv4-loopback `llama.cpp` 进程；backend 闭集为 `REMOTE_DEEPSEEK` / `LOCAL_LLAMACPP`。Agent orchestration、persistent Agent sessions、MODEL/HARNESS launcher gates 与 real model gateway 已实现，但 `runtime_ready = false`，首个阻塞 gate 仍为 `IPC`。
+- 安全修复后的受控 `REMOTE_DEEPSEEK` 与 `LOCAL_LLAMACPP` minimum certification 均保持 PASS；[remote 最终公开证据](../model-certification/remote-deepseek-controlled-real-02.json)与 [local 最终公开证据](../model-certification/local-llamacpp-controlled-real-02.json)不含 credential 值或私有路径。历史受控流程累计 5 次真实模型调用（remote/network 3 次、local 2 次），merge/closeout 新增真实模型调用为 0；公共 CI provider/model 调用和 secret requirement 均为 0。`DEFER-002 = RESOLVED`（resolved by `AIPT-MVP-B004`）；`DEFER-003 = DEFERRED_TO_BENCHMARK`，local production role eligibility 仍未授予。真实 playtest 为 false，qualification Run 为 0，下一串行批次未授权且未启动。
 - B002 原始 Candidate `d81f201d57e62c9983bac67509513367ef369b64` 的首次 merge `f4ceabe3e3a3e7bea31481bd91681a1b87f27d56` 与 CI `33237860359` 永久保留为失败历史且未创建生命周期记录。Owner 批准的 R1 Candidate `dd634f575cdec5ec572696409ac574102442af3e`（tree `2b7240f11b1bcf934d34d95a286bdd49dbf021b5`，Candidate CI `33241732672` success）由第二次合法 merge `a5d9e9b0aeea5f2a9990d976258ddd34b9b8375e` 精确集成；post-merge CI `33243508362` 的 5 个 jobs 全部 success，并由 canonical append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。
 - B002 关闭交付只包含 action transaction pipeline、authoritative Run state、versioned domain-separated RNG、seed commitment、invariants、derived projection、strict replay 与既有 PostgreSQL ledger 集成。Agent 编排、持久 Agent session、model gateway、真实模型调用、真实桌测与 qualification Run 明确不在范围；`real_model_calls = 0`、`real_playtest_executed = false`、`qualification_runs_executed = 0`。
 - `AIPT-M0-B000` = **MERGED/CLOSED**（合并提交 `777a3f39ba78c1ef3168597890c61abf7a55d962`，树 `f5f845b860ba0944ef104b4679fa074ad6efecbb`，GPT 审计 PASS）。
@@ -35,7 +36,7 @@
 
 | 仓库 | 说明 |
 |---|---|
-| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；M0 verified implementation identity 继续固定为 B008 implementation merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`，不得用 M0/MVP closeout 替换；B003 与更早记录不可变；当前 active batch 仅为 `AIPT-MVP-B004` |
+| AIPT | <https://github.com/zyc14588/AIPT>，默认分支 `main`；M0 verified implementation identity 继续固定为 B008 implementation merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`，不得用 M0/MVP closeout 替换；B004 与更早记录不可变；当前无 active batch |
 | 《未登记》UNREGISTERED | <https://github.com/zyc14588/UNREGISTERED>，默认分支 `main`；P1-B000 accepted merge `fe0965977447caf8cd7b6e58252bc1b991b7cc6f`、tree `34597e79c586fb034256daa32d67640692ec589d` 只读；AIPT lifecycle closeout `411bf2997cd0f10ba1a022ac687d27a1bd19eb36`；本批不得修改该仓库；就绪等级 `PLAYTESTABLE_DRAFT` |
 
 ## 运行环境与模型（设计基线）
@@ -63,9 +64,9 @@
 
 ## 下一步
 
-- `AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B003` 与 `UNREGISTERED-AIPT-P1-B000` 均保持 `MERGED_CLOSED`；`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B004`，`GLOBAL_WIP = 1`。
+- `AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B004` 与 `UNREGISTERED-AIPT-P1-B000` 均保持 `MERGED_CLOSED`；`construction = IDLE_WAITING_NEXT_BATCH`，`current_batch = NO_ACTIVE_BATCH`，`GLOBAL_WIP = 0`。
 - B008 verified implementation identity 固定为 merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`；`M0 Development Pass = GRANTED`。
-- `next_serial_batch = INT-AIPT-UNREGISTERED-MVP-001`、`next_batch_state = NOT_AUTHORIZED`、`batch_history[AIPT-MVP-B003] = MERGED_CLOSED`、`batch_history[AIPT-MVP-B004] = IN_PROGRESS`、`next_batch_authorized = false`、`next_batch_started = false`；不得启动 integration batch。
+- `next_serial_batch = INT-AIPT-UNREGISTERED-MVP-001`、`next_batch_state = NOT_AUTHORIZED`、`batch_history[AIPT-MVP-B004] = MERGED_CLOSED`、`batch_history[INT-AIPT-UNREGISTERED-MVP-001] = NOT_STARTED`、`next_batch_authorized = false`、`next_batch_started = false`；不得启动 integration batch。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。
 
 ## 相邻文档
