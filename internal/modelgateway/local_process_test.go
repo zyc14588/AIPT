@@ -29,6 +29,8 @@ import (
 
 const managedFixtureTemplate = "{{ fixture governed chat template }}"
 
+const syntheticRuntimeIsolationEnvironment = "AIPT_TEST_SYNTHETIC_RUNTIME_ISOLATOR"
+
 func fileSHA256(t *testing.T, path string) string {
 	t.Helper()
 	file, err := os.Open(path)
@@ -138,11 +140,276 @@ func managedFixture(t *testing.T, mode string) (ModelProfile, ManagedLlamaSpec) 
 	}
 }
 
+// syntheticRuntimeIsolationPlatform exists only in the Go test binary. It
+// removes the kernel namespace dependency from semantic/lifecycle tests while
+// preserving the verified-process, control-protocol, readiness, ownership, and
+// cleanup state machines those tests are intended to exercise.
+type syntheticRuntimeIsolationPlatform struct{}
+
+func (syntheticRuntimeIsolationPlatform) start(command *exec.Cmd, pidfd *int) error {
+	command.Env = append(command.Env, syntheticRuntimeIsolationEnvironment+"=1")
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, PidFD: pidfd}
+	return command.Start()
+}
+
+func (syntheticRuntimeIsolationPlatform) namespaceIdentity(pid int) (os.FileInfo, error) {
+	return os.Stat(fmt.Sprintf("/proc/%d/ns/net", pid))
+}
+
+func (syntheticRuntimeIsolationPlatform) namespaceIdentityCurrent(pid int, identity os.FileInfo) bool {
+	if pid <= 1 || identity == nil {
+		return false
+	}
+	observed, err := os.Stat(fmt.Sprintf("/proc/%d/ns/net", pid))
+	return err == nil && os.SameFile(observed, identity)
+}
+
+func useSyntheticRuntimeIsolation(t *testing.T, manager *ManagedLlama) {
+	t.Helper()
+	if manager == nil {
+		t.Fatal("managed runtime unavailable")
+	}
+	if _, ok := manager.isolationPlatform.(realLinuxRuntimeIsolator); !ok {
+		t.Fatalf("production constructor did not bind the real Linux isolator: %T", manager.isolationPlatform)
+	}
+	manager.isolationPlatform = syntheticRuntimeIsolationPlatform{}
+}
+
+type rejectingRuntimeIsolationPlatform struct {
+	startCalls atomic.Int32
+	err        error
+}
+
+func (platform *rejectingRuntimeIsolationPlatform) start(command *exec.Cmd, _ *int) error {
+	platform.startCalls.Add(1)
+	if command.Process != nil {
+		return errors.New("rejected platform observed an already-started process")
+	}
+	return platform.err
+}
+
+func (*rejectingRuntimeIsolationPlatform) namespaceIdentity(int) (os.FileInfo, error) {
+	return nil, errors.New("rejected platform cannot publish a namespace identity")
+}
+
+func (*rejectingRuntimeIsolationPlatform) namespaceIdentityCurrent(int, os.FileInfo) bool {
+	return false
+}
+
+func TestProductionRuntimeIsolationCapabilityUnavailableFailsClosed(t *testing.T) {
+	profile, spec := managedFixture(t, "ready")
+	manager, err := NewManagedLlama(profile, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	platform := &rejectingRuntimeIsolationPlatform{err: syscall.EPERM}
+	manager.isolationPlatform = platform
+	err = manager.Start(context.Background())
+	requireCode(t, err, CodeLocalIsolationUnavailable)
+	if !errors.Is(err, syscall.EPERM) {
+		t.Fatalf("namespace policy errno was not retained internally: %v", err)
+	}
+	var capability *runtimeIsolationCapabilityError
+	if !errors.As(err, &capability) || capability.category != "namespace_launch_denied" {
+		t.Fatalf("capability category = %#v", capability)
+	}
+	if platform.startCalls.Load() != 1 {
+		t.Fatalf("isolation launch attempts = %d, want 1", platform.startCalls.Load())
+	}
+	manager.mu.Lock()
+	state, command, process := manager.state, manager.cmd, manager.process
+	manager.mu.Unlock()
+	if state != managedStopped || command != nil || process != nil {
+		t.Fatalf("capability rejection published process ownership: state=%s command=%v process=%v", state, command != nil, process != nil)
+	}
+	if _, endpointErr := manager.Endpoint(); endpointErr == nil {
+		t.Fatal("capability rejection exposed a host-loopback endpoint")
+	}
+	if err := manager.Retire(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSyntheticRuntimeIsolationCannotBeSelectedFromProductionInputs(t *testing.T) {
+	t.Setenv(syntheticRuntimeIsolationEnvironment, "1")
+	profile, spec := managedFixture(t, "ready")
+	manager, err := NewManagedLlama(profile, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := manager.isolationPlatform.(realLinuxRuntimeIsolator); !ok {
+		t.Fatalf("environment selected a non-production isolator: %T", manager.isolationPlatform)
+	}
+	if err := manager.Retire(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	profile.SHA256 = ""
+	profile.LocalRuntimeIdentity.IsolationIdentity = "AIPT_TEST_SYNTHETIC_RUNTIME_ISOLATOR"
+	if _, err := BindModelProfile(profile); err == nil {
+		t.Fatal("Model Profile selected a synthetic runtime isolator")
+	}
+}
+
+func runSyntheticRuntimeIsolator() error {
+	controlFile := os.NewFile(4, "aipt-synthetic-isolator-control")
+	if controlFile == nil {
+		return errors.New("synthetic isolation control unavailable")
+	}
+	raw, err := net.FileConn(controlFile)
+	_ = controlFile.Close()
+	if err != nil {
+		return err
+	}
+	control, ok := raw.(*net.UnixConn)
+	if !ok {
+		_ = raw.Close()
+		return errors.New("synthetic isolation control is not Unix seqpacket")
+	}
+	defer control.Close()
+	var initial isolationControlMessage
+	if err := readIsolationFrame(control, &initial); err != nil {
+		return err
+	}
+	supervisor, err := newIsolationSupervisor(control, initial)
+	if err != nil {
+		code := CodeOf(err)
+		if code == "" {
+			code = CodeLocalReadinessFailed
+		}
+		stage := "SUPERVISOR_START"
+		var staged *isolationStageError
+		if errors.As(err, &staged) {
+			stage = staged.stage
+		}
+		_ = writeIsolationFrame(control, isolationControlResponse{
+			Schema: isolationProtocolSchema, Operation: "START_MODEL", Result: "FAIL",
+			Code: string(code), FailureStage: stage,
+		})
+		return err
+	}
+	if err := writeIsolationFrame(control, isolationControlResponse{
+		Schema: isolationProtocolSchema, Operation: "START_MODEL", Result: "PASS", Port: supervisor.port,
+		IsolationIdentity: LocalIsolationIdentity,
+	}); err != nil {
+		_ = syntheticStopAll(supervisor)
+		return err
+	}
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(signals)
+	return syntheticIsolationLoop(supervisor, signals)
+}
+
+func syntheticIsolationLoop(supervisor *isolationSupervisor, signals <-chan os.Signal) error {
+	requests := make(chan isolationControlMessage)
+	readFailures := make(chan error, 1)
+	go func() {
+		for {
+			var request isolationControlMessage
+			if err := readIsolationFrame(supervisor.control, &request); err != nil {
+				readFailures <- err
+				return
+			}
+			requests <- request
+		}
+	}()
+	for {
+		select {
+		case <-signals:
+			return errors.Join(errors.New("synthetic isolation supervisor terminated"), syntheticStopAll(supervisor))
+		case <-supervisor.llamaExit:
+			return errors.New("synthetic isolated llama exited")
+		case <-supervisor.adapterExit:
+			return errors.New("synthetic isolated adapter exited")
+		case err := <-readFailures:
+			return err
+		case request := <-requests:
+			if request.Schema != isolationProtocolSchema {
+				return errors.New("synthetic isolation protocol mismatch")
+			}
+			switch request.Operation {
+			case "START_ADAPTER":
+				err := supervisor.startAdapter()
+				response := isolationControlResponse{Schema: isolationProtocolSchema, Operation: request.Operation, Result: "PASS"}
+				if err != nil {
+					response.Result = "FAIL"
+					code := CodeOf(err)
+					if code == "" {
+						code = CodeHarnessBoot
+					}
+					response.Code = string(code)
+					var staged *isolationStageError
+					if errors.As(err, &staged) {
+						response.FailureStage = staged.stage
+					}
+				} else {
+					response.AdapterPID = supervisor.adapter.Process.Pid
+				}
+				if writeIsolationFrame(supervisor.control, response) != nil {
+					return errors.New("synthetic isolation response failed")
+				}
+			case "STOP_ADAPTER":
+				cleanupErr := syntheticStopAdapter(supervisor)
+				response := isolationControlResponse{Schema: isolationProtocolSchema, Operation: request.Operation, Result: "PASS"}
+				if cleanupErr != nil {
+					response.Result = "FAIL"
+					response.Code = string(CodeLocalShutdownFailed)
+				}
+				if writeIsolationFrame(supervisor.control, response) != nil {
+					return errors.New("synthetic isolation response failed")
+				}
+			case "STOP_ALL":
+				cleanupErr := syntheticStopAll(supervisor)
+				response := isolationControlResponse{Schema: isolationProtocolSchema, Operation: request.Operation, Result: "PASS"}
+				if cleanupErr != nil {
+					response.Result = "FAIL"
+					response.Code = string(CodeLocalShutdownFailed)
+				}
+				_ = writeIsolationFrame(supervisor.control, response)
+				return cleanupErr
+			default:
+				return errors.New("unknown synthetic isolation operation")
+			}
+		}
+	}
+}
+
+func syntheticStopAdapter(supervisor *isolationSupervisor) error {
+	if supervisor.adapter == nil {
+		return nil
+	}
+	_ = terminateOwnedProcessGroup(supervisor.adapterProcess, syscall.SIGTERM)
+	settled := waitProcessExit(supervisor.adapterExit, time.Duration(supervisor.initial.ShutdownTimeoutMS)*time.Millisecond)
+	if !settled {
+		_ = terminateOwnedProcessGroup(supervisor.adapterProcess, syscall.SIGKILL)
+		settled = waitProcessExit(supervisor.adapterExit, time.Second)
+	}
+	if !settled {
+		return errors.New("synthetic isolated adapter did not settle after SIGKILL")
+	}
+	supervisor.adapterProcess.close()
+	supervisor.adapter = nil
+	supervisor.adapterProcess = nil
+	supervisor.adapterExit = nil
+	return nil
+}
+
+func syntheticStopAll(supervisor *isolationSupervisor) error {
+	return errors.Join(syntheticStopAdapter(supervisor), supervisor.stopLlama())
+}
+
 func TestRuntimeIsolationHelperProcess(t *testing.T) {
 	if os.Getenv("AIPT_RUNTIME_ISOLATOR") != "1" {
 		return
 	}
-	if err := RunRuntimeIsolator(); err != nil {
+	var err error
+	if os.Getenv(syntheticRuntimeIsolationEnvironment) == "1" {
+		err = runSyntheticRuntimeIsolator()
+	} else {
+		err = RunRuntimeIsolator()
+	}
+	if err != nil {
 		os.Exit(30)
 	}
 	os.Exit(0)
@@ -252,6 +519,7 @@ func TestListenerOwnershipRaceIsRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	useSyntheticRuntimeIsolation(t, manager)
 	err = manager.Start(context.Background())
 	requireCode(t, err, CodeLocalReadinessFailed)
 	if !errors.Is(err, Sentinel(CodeLocalProcessMismatch)) {
@@ -311,6 +579,7 @@ func TestLocalSecurityNegativeMatrixM16ToM20(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		useSyntheticRuntimeIsolation(t, manager)
 		err = manager.Start(context.Background())
 		requireCode(t, err, CodeLocalReadinessFailed)
 		if !errors.Is(err, Sentinel(CodeLocalTemplateMismatch)) {
@@ -351,6 +620,7 @@ func TestManagedLocalStartupLoopbackShutdownAndM26RecoveryDisqualification(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
+	useSyntheticRuntimeIsolation(t, manager)
 	if err := manager.Start(context.Background()); err != nil {
 		var ownership *listenerOwnershipError
 		if errors.As(err, &ownership) {
@@ -362,20 +632,16 @@ func TestManagedLocalStartupLoopbackShutdownAndM26RecoveryDisqualification(t *te
 	if err != nil || !IsIPv4LoopbackURL(endpoint) || endpoint.Port() == "" {
 		t.Fatalf("managed endpoint = %v, %v", endpoint, err)
 	}
-	probeContext, cancelProbe := context.WithTimeout(context.Background(), time.Second)
-	defer cancelProbe()
-	if !endpointUnreachableFromHost(probeContext, endpoint) {
-		t.Fatal("private namespace loopback endpoint was reachable from the host namespace")
-	}
+	// This hermetic test proves lifecycle/readiness semantics only. Real network
+	// namespace reachability is covered by the capability-branch test below.
 	if !manager.CleanBaselineEligible() || manager.FormalEligibilityError() != nil {
 		t.Fatal("fresh managed runtime is not clean-baseline eligible")
 	}
 
 	manager.mu.Lock()
-	pid := manager.cmd.Process.Pid
 	process := manager.process
 	manager.mu.Unlock()
-	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
+	if err := manager.cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatalf("crash fixture process: %v", err)
 	}
 	deadline := time.Now().Add(2 * time.Second)
@@ -416,6 +682,7 @@ func TestManagedLlamaRejectsConflictingLLAMACPP01ModelEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	useSyntheticRuntimeIsolation(t, manager)
 	err = manager.Start(context.Background())
 	requireCode(t, err, CodeLocalReadinessFailed)
 	if !errors.Is(err, Sentinel(CodeModelIdentityMismatch)) {
@@ -429,6 +696,7 @@ func TestVerifiedAssetPathReplacementCannotChangeExecutableOrGGUF(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	useSyntheticRuntimeIsolation(t, manager)
 	originalExecutable := spec.ExecutablePath + ".verified"
 	if err := os.Rename(spec.ExecutablePath, originalExecutable); err != nil {
 		t.Fatal(err)
@@ -469,6 +737,7 @@ func TestFailedSpawnCleanupIsBoundedAndNeverSignalsInvalidOrUnrelatedPID(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
+	useSyntheticRuntimeIsolation(t, manager)
 	started := time.Now()
 	err = manager.Start(context.Background())
 	requireCode(t, err, CodeLocalStartupFailed)
@@ -514,6 +783,7 @@ func TestManagedLifecycleConcurrentStartStopIsLinearizableAndLeakFree(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
+		useSyntheticRuntimeIsolation(t, manager)
 		var successes atomic.Int32
 		var group sync.WaitGroup
 		start := make(chan struct{})
@@ -578,27 +848,37 @@ func TestManagedLifecycleConcurrentStartStopIsLinearizableAndLeakFree(t *testing
 	}
 }
 
-func TestOnlyIsolatedAdapterCanReachManagedLlamaLoopback(t *testing.T) {
+type isolatedAdapterTestFixture struct {
+	route                AdapterRouteSpec
+	descendantLeakMarker string
+}
+
+func newIsolatedAdapterTestFixture(t *testing.T, profile ModelProfile, detachedDescendant bool) isolatedAdapterTestFixture {
+	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
-		t.Skip("Node runtime unavailable")
+		t.Fatal("Node runtime unavailable")
 	}
 	nodeOutput, err := exec.Command(node, "-p", "process.execPath").Output()
 	if err != nil {
-		t.Skip("exact Node executable unavailable")
+		t.Fatal("exact Node executable unavailable")
 	}
 	node = strings.TrimSpace(string(nodeOutput))
-	profile, llamaSpec := managedFixture(t, "ready")
 	root := t.TempDir()
-	descendantLeakMarker := filepath.Join(root, "detached-adapter-descendant-leaked")
-	descendantSource := fmt.Sprintf(
-		"setTimeout(()=>import('node:fs').then((fs)=>fs.writeFileSync(%s,'leaked')),500)",
-		strconv.Quote(descendantLeakMarker),
-	)
+	descendantLeakMarker := ""
+	detachedSpawn := ""
+	if detachedDescendant {
+		descendantLeakMarker = filepath.Join(root, "detached-adapter-descendant-leaked")
+		descendantSource := fmt.Sprintf(
+			"setTimeout(()=>import('node:fs').then((fs)=>fs.writeFileSync(%s,'leaked')),500)",
+			strconv.Quote(descendantLeakMarker),
+		)
+		detachedSpawn = fmt.Sprintf("if(!spawned){spawned=true;spawn('/proc/self/exe',['--input-type=module','--eval',%s],{detached:true,stdio:'ignore'}).unref()}", strconv.Quote(descendantSource))
+	}
 	entry := filepath.Join(root, "isolated-adapter.mjs")
 	source := fmt.Sprintf(`import{spawn}from'node:child_process';import{createInterface}from'node:readline';
 const lines=createInterface({input:process.stdin});
-let spawned=false;lines.on('line',async(line)=>{if(!spawned){spawned=true;spawn('/proc/self/exe',['--input-type=module','--eval',%s],{detached:true,stdio:'ignore'}).unref()}const request=JSON.parse(line);const response=await fetch(process.env.AIPT_LOCAL_TEST_ENDPOINT+'/health');if(!response.ok)process.exit(41);const p=request.params;process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,protocol_version:'1',result:{harness_identity:p.harness_identity,protocol_identity:p.protocol_identity,protocol_version:p.protocol_version,observed_model_id:p.expected_model_id,capability_fingerprint:p.capability_fingerprint,route_available:true,direct_provider_bypass_available:false}})+'\n')});`, strconv.Quote(descendantSource))
+let spawned=false;lines.on('line',async(line)=>{%sconst request=JSON.parse(line);const response=await fetch(process.env.AIPT_LOCAL_TEST_ENDPOINT+'/health');if(!response.ok)process.exit(41);const p=request.params;process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:request.id,protocol_version:'1',result:{harness_identity:p.harness_identity,protocol_identity:p.protocol_identity,protocol_version:p.protocol_version,observed_model_id:p.expected_model_id,capability_fingerprint:p.capability_fingerprint,route_available:true,direct_provider_bypass_available:false}})+'\n')});`, detachedSpawn)
 	if err := os.WriteFile(entry, []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -620,32 +900,16 @@ let spawned=false;lines.on('line',async(line)=>{if(!spawned){spawned=true;spawn(
 	if err := os.WriteFile(routeConfig, routeBytes, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	route := AdapterRouteSpec{
+	return isolatedAdapterTestFixture{route: AdapterRouteSpec{
 		ProfileBinding: profile.BindingID(), ExecutablePath: node, ExecutableSHA256: fileSHA256(t, node),
 		AdapterEntrypointPath: entry, AdapterEntrypointSHA256: entryDigest,
 		RouteConfigPath: routeConfig, RouteConfigSHA256: fileSHA256(t, routeConfig),
 		WorkingDirectory: root, StartupTimeout: 3 * time.Second, ShutdownTimeout: 2 * time.Second,
-	}
-	manager, err := NewManagedLlama(profile, llamaSpec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = manager.Retire(context.Background()) }()
-	if err := manager.PrepareIsolatedAdapter(route, "AIPT_LOCAL_TEST_ENDPOINT"); err != nil {
-		t.Fatal(err)
-	}
-	if err := manager.Start(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	endpoint, err := manager.Endpoint()
-	if err != nil {
-		t.Fatal(err)
-	}
-	hostProbe, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	if !endpointUnreachableFromHost(hostProbe, endpoint) {
-		t.Fatal("host-local process reached the unauthenticated private llama endpoint")
-	}
+	}, descendantLeakMarker: descendantLeakMarker}
+}
+
+func exerciseGovernedIsolatedAdapter(t *testing.T, manager *ManagedLlama, profile ModelProfile, route AdapterRouteSpec) {
+	t.Helper()
 	route.IsolatedLauncher = manager
 	transport, err := NewAdapterProcessTransport([]ModelProfile{profile}, []AdapterRouteSpec{route}, nil)
 	if err != nil {
@@ -661,8 +925,90 @@ let spawned=false;lines.on('line',async(line)=>{if(!spawned){spawned=true;spawn(
 	if err := transport.Close(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestGovernedIsolatedAdapterRouteSemanticsAreHermetic(t *testing.T) {
+	profile, llamaSpec := managedFixture(t, "ready")
+	fixture := newIsolatedAdapterTestFixture(t, profile, false)
+	manager, err := NewManagedLlama(profile, llamaSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	useSyntheticRuntimeIsolation(t, manager)
+	defer func() { _ = manager.Retire(context.Background()) }()
+	if err := manager.PrepareIsolatedAdapter(fixture.route, "AIPT_LOCAL_TEST_ENDPOINT"); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	direct := fixture.route
+	direct.IsolatedLauncher = nil
+	if transport, err := NewAdapterProcessTransport([]ModelProfile{profile}, []AdapterRouteSpec{direct}, nil); err == nil {
+		_ = transport.Close(context.Background())
+		t.Fatal("local adapter route was accepted without the managed isolation launcher")
+	}
+	exerciseGovernedIsolatedAdapter(t, manager, profile, fixture.route)
+	manager.mu.Lock()
+	adapterRunning := manager.isolationAdapterRunning
+	manager.mu.Unlock()
+	if adapterRunning {
+		t.Fatal("hermetic governed adapter retained lifecycle ownership after close")
+	}
+}
+
+func TestOnlyIsolatedAdapterCanReachManagedLlamaLoopback(t *testing.T) {
+	profile, llamaSpec := managedFixture(t, "ready")
+	fixture := newIsolatedAdapterTestFixture(t, profile, true)
+	manager, err := NewManagedLlama(profile, llamaSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = manager.Retire(context.Background()) }()
+	if _, ok := manager.isolationPlatform.(realLinuxRuntimeIsolator); !ok {
+		t.Fatalf("production constructor selected %T", manager.isolationPlatform)
+	}
+	if err := manager.PrepareIsolatedAdapter(fixture.route, "AIPT_LOCAL_TEST_ENDPOINT"); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(context.Background()); err != nil {
+		if CodeOf(err) != CodeLocalIsolationUnavailable {
+			t.Fatal(err)
+		}
+		manager.mu.Lock()
+		state, command, process := manager.state, manager.cmd, manager.process
+		manager.mu.Unlock()
+		if state != managedStopped || command != nil || process != nil {
+			t.Fatalf("unsupported host retained a runtime generation: state=%s command=%v process=%v", state, command != nil, process != nil)
+		}
+		if _, endpointErr := manager.Endpoint(); endpointErr == nil {
+			t.Fatal("unsupported host exposed a local llama endpoint")
+		}
+		if _, markerErr := os.Stat(fixture.descendantLeakMarker); !os.IsNotExist(markerErr) {
+			t.Fatal("unsupported host executed the isolated adapter fixture")
+		}
+		return
+	}
+	manager.mu.Lock()
+	pid := manager.process.pid
+	manager.mu.Unlock()
+	for _, namespace := range []string{"user", "net", "pid", "mnt"} {
+		if !processNamespaceDiffers(pid, namespace) {
+			t.Fatalf("real runtime isolator lacks a distinct %s namespace", namespace)
+		}
+	}
+	endpoint, err := manager.Endpoint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hostProbe, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if !endpointUnreachableFromHost(hostProbe, endpoint) {
+		t.Fatal("host-local process reached the unauthenticated private llama endpoint")
+	}
+	exerciseGovernedIsolatedAdapter(t, manager, profile, fixture.route)
 	time.Sleep(750 * time.Millisecond)
-	if _, err := os.Stat(descendantLeakMarker); !os.IsNotExist(err) {
+	if _, err := os.Stat(fixture.descendantLeakMarker); !os.IsNotExist(err) {
 		t.Fatal("detached adapter descendant survived governed Harness cleanup")
 	}
 }

@@ -113,6 +113,7 @@ type ManagedLlama struct {
 	isolationInput          *os.File
 	isolationOutput         *os.File
 	isolationNetNS          os.FileInfo
+	isolationPlatform       runtimeIsolationPlatform
 	isolationControlMu      sync.Mutex
 	isolationAdapterRunning bool
 }
@@ -189,7 +190,10 @@ func NewManagedLlama(profile ModelProfile, spec ManagedLlamaSpec) (*ManagedLlama
 	}
 	spec.WorkingDirectory = working
 	spec.Environment = cloneStringMap(spec.Environment)
-	return &ManagedLlama{profile: profile, spec: spec, binary: binary, gguf: gguf, isolator: isolator, state: managedStopped}, nil
+	return &ManagedLlama{
+		profile: profile, spec: spec, binary: binary, gguf: gguf, isolator: isolator,
+		isolationPlatform: realLinuxRuntimeIsolator{}, state: managedStopped,
+	}, nil
 }
 
 func verifyRegularFileDigest(path, expected string, executable bool) error {

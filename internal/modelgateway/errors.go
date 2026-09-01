@@ -42,6 +42,7 @@ const (
 	CodeLocalGGUFMismatch         Code = "AIPT_LLAMA_GGUF_IDENTITY_MISMATCH"
 	CodeLocalTemplateMismatch     Code = "AIPT_LLAMA_TEMPLATE_IDENTITY_MISMATCH"
 	CodeLocalProcessMismatch      Code = "AIPT_LLAMA_PROCESS_IDENTITY_MISMATCH"
+	CodeLocalIsolationUnavailable Code = "AIPT_LOCAL_ISOLATION_UNAVAILABLE"
 	CodeLocalStartupFailed        Code = "AIPT_LLAMA_STARTUP_FAILED"
 	CodeLocalReadinessFailed      Code = "AIPT_LLAMA_READINESS_FAILED"
 	CodeLocalShutdownFailed       Code = "AIPT_LLAMA_SHUTDOWN_FAILED"
@@ -64,7 +65,7 @@ func init() {
 		CodeHarnessFrameTooLarge, CodeHarnessBoot, CodeHarnessTimeout, CodeHarnessCancelled,
 		CodeHarnessTransport, CodeHarnessSession, CodeModelRequestFailed, CodeModelIdentityMismatch,
 		CodeLocalEndpointNotLoopback, CodeLocalBinaryMismatch, CodeLocalGGUFMismatch,
-		CodeLocalTemplateMismatch, CodeLocalProcessMismatch, CodeLocalStartupFailed,
+		CodeLocalTemplateMismatch, CodeLocalProcessMismatch, CodeLocalIsolationUnavailable, CodeLocalStartupFailed,
 		CodeLocalReadinessFailed, CodeLocalShutdownFailed,
 		CodeLocalRecoveryDisqualifies, CodeEvidenceUnsafe, CodeDirectProviderBypass,
 	} {

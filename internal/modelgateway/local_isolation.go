@@ -70,6 +70,94 @@ func isolationFailure(stage string, cause error) error {
 	return &isolationStageError{stage: stage, cause: cause}
 }
 
+// runtimeIsolationPlatform is deliberately unexported. The production
+// constructor binds realLinuxRuntimeIsolator unconditionally; test binaries may
+// provide a synthetic implementation from *_test.go without adding a product
+// configuration, environment, profile, CLI, or payload selector.
+type runtimeIsolationPlatform interface {
+	start(command *exec.Cmd, pidfd *int) error
+	namespaceIdentity(pid int) (os.FileInfo, error)
+	namespaceIdentityCurrent(pid int, identity os.FileInfo) bool
+}
+
+type realLinuxRuntimeIsolator struct{}
+
+func (realLinuxRuntimeIsolator) start(command *exec.Cmd, pidfd *int) error {
+	command.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags:                 syscall.CLONE_NEWUSER | syscall.CLONE_NEWNET | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
+		UidMappings:                []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
+		GidMappings:                []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
+		GidMappingsEnableSetgroups: false,
+		Setpgid:                    true,
+		PidFD:                      pidfd,
+	}
+	return command.Start()
+}
+
+func (realLinuxRuntimeIsolator) namespaceIdentity(pid int) (os.FileInfo, error) {
+	hostNetNS, hostErr := os.Stat("/proc/self/ns/net")
+	childNetNS, childErr := os.Stat(fmt.Sprintf("/proc/%d/ns/net", pid))
+	if hostErr != nil || childErr != nil {
+		return nil, &runtimeIsolationCapabilityError{
+			category: "namespace_identity_unavailable",
+			cause:    errors.Join(hostErr, childErr),
+		}
+	}
+	if os.SameFile(hostNetNS, childNetNS) ||
+		!processNamespaceDiffers(pid, "user") ||
+		!processNamespaceDiffers(pid, "pid") ||
+		!processNamespaceDiffers(pid, "mnt") {
+		return nil, &runtimeIsolationCapabilityError{category: "required_namespaces_absent"}
+	}
+	return childNetNS, nil
+}
+
+func (realLinuxRuntimeIsolator) namespaceIdentityCurrent(pid int, identity os.FileInfo) bool {
+	if pid <= 1 || identity == nil {
+		return false
+	}
+	observed, err := os.Stat(fmt.Sprintf("/proc/%d/ns/net", pid))
+	return err == nil && os.SameFile(observed, identity)
+}
+
+type runtimeIsolationCapabilityError struct {
+	category string
+	cause    error
+}
+
+func (e *runtimeIsolationCapabilityError) Error() string {
+	if e == nil || e.category == "" {
+		return "runtime isolation capability unavailable"
+	}
+	return "runtime isolation capability unavailable: " + e.category
+}
+
+func (e *runtimeIsolationCapabilityError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
+}
+
+func classifyRuntimeIsolationStartError(err error) (Code, error) {
+	if err == nil {
+		return "", nil
+	}
+	category := ""
+	switch {
+	case errors.Is(err, syscall.EPERM), errors.Is(err, syscall.EACCES):
+		category = "namespace_launch_denied"
+	case errors.Is(err, syscall.ENOSYS), errors.Is(err, syscall.EINVAL):
+		category = "namespace_launch_unsupported"
+	case errors.Is(err, syscall.ENOSPC), errors.Is(err, syscall.EUSERS):
+		category = "namespace_capacity_unavailable"
+	}
+	if category == "" {
+		return CodeLocalStartupFailed, err
+	}
+	return CodeLocalIsolationUnavailable, &runtimeIsolationCapabilityError{category: category, cause: err}
+}
+
 func writeIsolationFrame(connection *net.UnixConn, value any) error {
 	if connection == nil {
 		return errors.New("isolation control unavailable")
@@ -305,14 +393,8 @@ func (m *ManagedLlama) startIsolatedLifecycle(ctx context.Context) error {
 	command.Stdout = io.Discard
 	command.Stderr = io.Discard
 	pidfd := -1
-	command.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags:                 syscall.CLONE_NEWUSER | syscall.CLONE_NEWNET | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
-		UidMappings:                []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
-		GidMappings:                []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
-		GidMappingsEnableSetgroups: false,
-		Setpgid:                    true, PidFD: &pidfd,
-	}
-	if err := command.Start(); err != nil {
+	platform := m.isolationPlatform
+	if platform == nil {
 		_ = placeholder.Close()
 		_ = control.Close()
 		_ = childControl.Close()
@@ -321,7 +403,19 @@ func (m *ManagedLlama) startIsolatedLifecycle(ctx context.Context) error {
 		_ = outputReader.Close()
 		_ = outputWriter.Close()
 		m.resetIsolatedStartFailure()
-		return newError(CodeLocalStartupFailed, "exec_runtime_isolator", m.profile.BindingID(), err)
+		return newError(CodeLocalIsolationUnavailable, "resolve_runtime_isolation_platform", m.profile.BindingID(), &runtimeIsolationCapabilityError{category: "production_platform_unbound"})
+	}
+	if err := platform.start(command, &pidfd); err != nil {
+		_ = placeholder.Close()
+		_ = control.Close()
+		_ = childControl.Close()
+		_ = inputReader.Close()
+		_ = inputWriter.Close()
+		_ = outputReader.Close()
+		_ = outputWriter.Close()
+		m.resetIsolatedStartFailure()
+		code, classified := classifyRuntimeIsolationStartError(err)
+		return newError(code, "exec_runtime_isolator", m.profile.BindingID(), classified)
 	}
 	_ = placeholder.Close()
 	_ = childControl.Close()
@@ -346,12 +440,10 @@ func (m *ManagedLlama) startIsolatedLifecycle(ctx context.Context) error {
 		cleanupErr := m.abortIsolatedStart(command, process, exit, control, inputWriter, outputReader, nil)
 		return errors.Join(newError(CodeLocalProcessMismatch, "verify_runtime_isolator", m.profile.BindingID(), err), cleanupErr)
 	}
-	hostNetNS, hostErr := os.Stat("/proc/self/ns/net")
-	childNetNS, childErr := os.Stat(fmt.Sprintf("/proc/%d/ns/net", command.Process.Pid))
-	if hostErr != nil || childErr != nil || os.SameFile(hostNetNS, childNetNS) ||
-		!processNamespaceDiffers(command.Process.Pid, "pid") || !processNamespaceDiffers(command.Process.Pid, "mnt") {
+	childNetNS, namespaceErr := platform.namespaceIdentity(command.Process.Pid)
+	if namespaceErr != nil {
 		cleanupErr := m.abortIsolatedStart(command, process, exit, control, inputWriter, outputReader, childNetNS)
-		return errors.Join(newError(CodeLocalEndpointNotLoopback, "verify_private_network_namespace", m.profile.BindingID(), errors.New("runtime isolator did not enter distinct network and PID namespaces")), cleanupErr)
+		return errors.Join(newError(CodeLocalIsolationUnavailable, "verify_runtime_isolation_capability", m.profile.BindingID(), namespaceErr), cleanupErr)
 	}
 	adapterEnvironment := map[string]string{}
 	var adapterArguments []string
@@ -486,12 +578,12 @@ func (m *ManagedLlama) isolatedEndpoint() (*url.URL, error) {
 	endpoint := *m.endpoint
 	process := m.process
 	netIdentity := m.isolationNetNS
+	platform := m.isolationPlatform
 	m.mu.Unlock()
-	if !IsIPv4LoopbackURL(&endpoint) || process.requireAlive() != nil {
+	if !IsIPv4LoopbackURL(&endpoint) || process.requireAlive() != nil || platform == nil {
 		return nil, newError(CodeLocalEndpointNotLoopback, "isolated_llama_endpoint", m.profile.BindingID(), errors.New("isolated endpoint identity unavailable"))
 	}
-	observed, err := os.Stat(fmt.Sprintf("/proc/%d/ns/net", process.pid))
-	if err != nil || !os.SameFile(observed, netIdentity) {
+	if !platform.namespaceIdentityCurrent(process.pid, netIdentity) {
 		return nil, newError(CodeLocalEndpointNotLoopback, "isolated_llama_endpoint", m.profile.BindingID(), errors.New("network namespace generation drift"))
 	}
 	return &endpoint, nil
@@ -1259,7 +1351,7 @@ func isolatedNetNamespaceDiffers(pid int) bool {
 }
 
 func processNamespaceDiffers(pid int, namespace string) bool {
-	if pid <= 1 || (namespace != "net" && namespace != "pid" && namespace != "mnt") {
+	if pid <= 1 || (namespace != "user" && namespace != "net" && namespace != "pid" && namespace != "mnt") {
 		return false
 	}
 	host, hostErr := os.Stat(filepath.Join("/proc/self/ns", namespace))
