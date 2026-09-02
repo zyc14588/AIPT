@@ -53,6 +53,7 @@ AIPT 的权威信息分两层：
 | [registry/authority-lifecycle/registry.json](registry/authority-lifecycle/registry.json) | canonical lifecycle record registry、legacy immutable anchors、ordering 与 projection rules |
 | [amendments/INT_AIPT_UNREGISTERED_MVP_001_CLOSEOUT_AUTHORITY_001.md](amendments/INT_AIPT_UNREGISTERED_MVP_001_CLOSEOUT_AUTHORITY_001.md) | read-only integration closeout governance gap、固定证据边界与 B005 predecessor contract |
 | [registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json](registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json) | `INT-AIPT-UNREGISTERED-MVP-001` canonical closeout record；仅含 Commit/Tree/SHA-256/stable IDs/result/counters/classification |
+| [registry/authority-lifecycle/records/int-aipt-unregistered-mvp-001-closeout-authority-001/003-closed.json](registry/authority-lifecycle/records/int-aipt-unregistered-mvp-001-closeout-authority-001/003-closed.json) | `INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001` canonical Authority closeout；前驱记录冻结 exact merge 与 post-merge CI |
 
 ## Authority Amendment 解析规则
 
@@ -64,7 +65,7 @@ Amendment-002 已按批准 candidate/tree 合法 merge，且 merge CI 已通过�
 
 Amendment-003 candidate 定义唯一 canonical lifecycle chain：`MERGED → POST_MERGE_VERIFIED → CLOSED`。Record 通过 sequence、explicit predecessor digest 与 accepted Git commit ordinal 排序；mtime、文件枚举、lexical latest 与 main descendant 都不构成 acceptance。`project-status.json` 只能是可重建 projection。Amendment-003 尚未获得 merge/closeout 权限，Amendment-002 closeout 与 B000 implementation 也仍未授权。
 
-`INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001` 增加独立的 read-only integration lifecycle contract。它不扩展或改写上述 Git Authority lifecycle；integration 的 `CLOSED` 由固定来源、冻结 evidence hashes、replay/security/model/qualification counters、Owner authorization 与 append-only record identity 共同解析。Project status 的 `MERGED_CLOSED` 仅是现有 batch-history 枚举投影，必须同时验证 `repository_merge_performed = false`。
+`INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001` 增加独立的 read-only integration lifecycle contract。它不扩展或改写 integration lifecycle；integration 的 `CLOSED` 由固定来源、冻结 evidence hashes、replay/security/model/qualification counters、Owner authorization 与 append-only record identity 共同解析。Project status 的 `MERGED_CLOSED` 仅是现有 batch-history 枚举投影，必须同时验证 `repository_merge_performed = false`。Authority Amendment 本身则复用既有通用 Git Authority lifecycle，并由唯一 append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。
 
 领域文档：架构 [../architecture/README.md](../architecture/README.md) · 安全 [../security/README.md](../security/README.md) · 证据 [../evidence/README.md](../evidence/README.md) · 测试模型 [../test-model/README.md](../test-model/README.md) · 集成 [../integration/README.md](../integration/README.md) · 许可 [../licensing/README.md](../licensing/README.md) · 供应链 [../supply-chain/README.md](../supply-chain/README.md)
 
