@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// AIPT-MVP-B004 validator suite entry (`pnpm run check`).
+// INT-AIPT-UNREGISTERED-MVP-001 closeout-authority Candidate suite entry
+// (`pnpm run check`).
 //
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
@@ -29,6 +30,7 @@ import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
 import { run as runMvpB002 } from './validate/mvp-b002.mjs';
 import { run as runMvpB003 } from './validate/mvp-b003.mjs';
 import { run as runMvpB004 } from './validate/mvp-b004.mjs';
+import { run as runInt001CloseoutAuthority } from './validate/int001-closeout-authority.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
@@ -170,6 +172,7 @@ const checks = await Promise.all([
   runMvpB002(ctx),
   runMvpB003(ctx),
   runMvpB004(ctx),
+  runInt001CloseoutAuthority(ctx),
   repairCheck,
   closeoutCheck,
 ]);
@@ -180,10 +183,11 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'AIPT-MVP-B004 IN_PROGRESS / GLOBAL_WIP 1; the closed B003 provider-neutral Agent Orchestrator remains immutable; HARNESS-01 is frozen and controlled REMOTE_DEEPSEEK plus LOCAL_LLAMACPP minimum certifications passed; GGUF-04 locator validation is recorded without exporting a private path; public CI remains secret-free with zero real model/provider calls; Candidate identity derives only from the final commit/tree plus public CI Stage Review; real playtest and qualification remain unexecuted';
+const note = 'INT-AIPT-UNREGISTERED-MVP-001 stage and local read-only closeout PASS without rerun; exact fixed-pair identities and frozen evidence hashes are registered by a governance-only Authority Candidate; B001-B004 semantics remain immutable; project-status is idle at GLOBAL_WIP 0 and AIPT-MVP-B005 remains NOT_AUTHORIZED/NOT_STARTED; public CI uses zero real model/provider calls and no secret input; qualification remains unexecuted';
 const report = {
-  schema: 'aipt.public.mvp-b004-validator-run/v1',
-  task_id: 'AIPT-MVP-B004',
+  schema: 'aipt.public.int001-closeout-authority-validator-run/v1',
+  task_id: 'INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001',
+  integration_task: 'INT-AIPT-UNREGISTERED-MVP-001',
   note,
   repo: ctx.repo,
   result,

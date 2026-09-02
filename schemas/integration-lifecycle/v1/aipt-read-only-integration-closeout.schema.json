@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/integration-lifecycle/v1/aipt-read-only-integration-closeout.schema.json",
+  "title": "AIPT read-only fixed-pair integration closeout v1",
+  "description": "Game-neutral machine contract for closing a fixed-pair, read-only integration without inventing a candidate commit, repository merge, merge parents, or merge CI.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "record_id",
+    "task_id",
+    "state",
+    "classification",
+    "closeout_kind",
+    "integration_kind",
+    "repository_merge_performed",
+    "fixed_pair",
+    "artifact_hashes",
+    "execution",
+    "replay",
+    "security",
+    "model_execution",
+    "qualification",
+    "owner_authorization",
+    "record_identity",
+    "provenance",
+    "open_findings"
+  ],
+  "properties": {
+    "schema": { "const": "aipt.public.read-only-integration-closeout/v1" },
+    "record_id": { "$ref": "#/$defs/identity" },
+    "task_id": { "$ref": "#/$defs/identity" },
+    "state": { "const": "CLOSED" },
+    "classification": { "$ref": "#/$defs/identity" },
+    "closeout_kind": { "const": "READ_ONLY_INTEGRATION" },
+    "integration_kind": { "const": "READ_ONLY_FIXED_PAIR" },
+    "repository_merge_performed": { "const": false },
+    "fixed_pair": { "$ref": "#/$defs/fixedPair" },
+    "artifact_hashes": { "$ref": "#/$defs/artifactHashes" },
+    "execution": { "$ref": "#/$defs/execution" },
+    "replay": { "$ref": "#/$defs/replay" },
+    "security": { "$ref": "#/$defs/security" },
+    "model_execution": { "$ref": "#/$defs/modelExecution" },
+    "qualification": { "$ref": "#/$defs/qualification" },
+    "owner_authorization": { "$ref": "#/$defs/ownerAuthorization" },
+    "record_identity": { "$ref": "#/$defs/recordIdentity" },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "open_findings": {
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,239}$"
+    },
+    "gitOid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/identity" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" }
+      }
+    },
+    "nestedSourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree", "source_digest_sha256"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/identity" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "tree": { "$ref": "#/$defs/gitOid" },
+        "source_digest_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "integrationSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_id", "package_version", "test_unit_id"],
+      "properties": {
+        "package_id": { "$ref": "#/$defs/identity" },
+        "package_version": { "$ref": "#/$defs/identity" },
+        "test_unit_id": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "fixedPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aipt_source",
+        "unregistered_package",
+        "unregistered_nested_source",
+        "integration_subject"
+      ],
+      "properties": {
+        "aipt_source": { "$ref": "#/$defs/sourceIdentity" },
+        "unregistered_package": { "$ref": "#/$defs/sourceIdentity" },
+        "unregistered_nested_source": { "$ref": "#/$defs/nestedSourceIdentity" },
+        "integration_subject": { "$ref": "#/$defs/integrationSubject" }
+      }
+    },
+    "artifactHashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_manifest_sha256",
+        "runtime_adapter_sha256",
+        "integration_manifest_sha256",
+        "stage_evidence_root_sha256",
+        "local_closeout_record_sha256",
+        "final_evidence_root_sha256"
+      ],
+      "properties": {
+        "package_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_adapter_sha256": { "$ref": "#/$defs/sha256" },
+        "integration_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "stage_evidence_root_sha256": { "$ref": "#/$defs/sha256" },
+        "local_closeout_record_sha256": { "$ref": "#/$defs/sha256" },
+        "final_evidence_root_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "local_closeout",
+        "source_stage_result",
+        "source_local_closeout_result",
+        "frozen_evidence_revalidation",
+        "rerun_performed"
+      ],
+      "properties": {
+        "stage": { "const": "PASS" },
+        "local_closeout": { "const": "PASS" },
+        "source_stage_result": { "$ref": "#/$defs/identity" },
+        "source_local_closeout_result": { "$ref": "#/$defs/identity" },
+        "frozen_evidence_revalidation": { "const": "PASS" },
+        "rerun_performed": { "const": false }
+      }
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "hash_match", "final_state_hash", "rng_used"],
+      "properties": {
+        "result": { "const": "PASS" },
+        "hash_match": { "const": true },
+        "final_state_hash": { "$ref": "#/$defs/sha256" },
+        "rng_used": { "type": "boolean" }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "credential_leaks",
+        "hidden_information_leaks",
+        "private_prompt_leaks",
+        "private_asset_locator_leaks",
+        "game_body_copied"
+      ],
+      "properties": {
+        "result": { "const": "PASS" },
+        "credential_leaks": { "const": 0 },
+        "hidden_information_leaks": { "const": 0 },
+        "private_prompt_leaks": { "const": 0 },
+        "private_asset_locator_leaks": { "const": 0 },
+        "game_body_copied": { "const": false }
+      }
+    },
+    "modelExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remote_real_model_calls", "local_real_model_calls", "provider_network_calls"],
+      "properties": {
+        "remote_real_model_calls": { "const": 0 },
+        "local_real_model_calls": { "const": 0 },
+        "provider_network_calls": { "const": 0 }
+      }
+    },
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["counts_toward_qualification", "qualification_runs_executed"],
+      "properties": {
+        "counts_toward_qualification": { "const": false },
+        "qualification_runs_executed": { "const": 0 }
+      }
+    },
+    "ownerAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorized",
+        "authorized_by",
+        "execution_directive",
+        "registration_directive",
+        "authority_task"
+      ],
+      "properties": {
+        "authorized": { "const": true },
+        "authorized_by": { "const": "Owner" },
+        "execution_directive": { "$ref": "#/$defs/identity" },
+        "registration_directive": { "$ref": "#/$defs/identity" },
+        "authority_task": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "recordIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_scheme", "path", "accepted_commit_source", "append_only"],
+      "properties": {
+        "identity_scheme": { "const": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT" },
+        "path": { "$ref": "#/$defs/repoPath" },
+        "accepted_commit_source": { "const": "CONTAINING_GIT_COMMIT" },
+        "append_only": { "const": true }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "governance_gap",
+        "source_task",
+        "registration_task",
+        "source_evidence_basis",
+        "source_repositories_mutated",
+        "historical_evidence_claimed_only_if_proven"
+      ],
+      "properties": {
+        "governance_gap": { "const": "READ_ONLY_INTEGRATION_CLOSEOUT_NOT_PERSISTED_IN_MACHINE_AUTHORITY" },
+        "source_task": { "$ref": "#/$defs/identity" },
+        "registration_task": { "$ref": "#/$defs/identity" },
+        "source_evidence_basis": { "const": "EXISTING_FROZEN_CLOSEOUT_BYTES" },
+        "source_repositories_mutated": { "const": false },
+        "historical_evidence_claimed_only_if_proven": { "const": true }
+      }
+    }
+  }
+}
