@@ -1,0 +1,94 @@
+{
+  "schema": "aipt.public.read-only-integration-closeout/v1",
+  "record_id": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-001",
+  "task_id": "INT-AIPT-UNREGISTERED-MVP-001",
+  "state": "CLOSED",
+  "classification": "FIXED_PAIR_RUNTIME_CONFORMANCE_SMOKE_PASS",
+  "closeout_kind": "READ_ONLY_INTEGRATION",
+  "integration_kind": "READ_ONLY_FIXED_PAIR",
+  "repository_merge_performed": false,
+  "fixed_pair": {
+    "aipt_source": {
+      "repository": "zyc14588/AIPT",
+      "commit": "c65075691e0b9503a8e3bd9da1220bf319354a26",
+      "tree": "bd2fa7d7374f1bbff44c1f5aa4746a86f68d41eb"
+    },
+    "unregistered_package": {
+      "repository": "zyc14588/UNREGISTERED",
+      "commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+      "tree": "34597e79c586fb034256daa32d67640692ec589d"
+    },
+    "unregistered_nested_source": {
+      "repository": "zyc14588/UNREGISTERED",
+      "commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+      "tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+      "source_digest_sha256": "605b4a72dda8348fc51245f0d0947d69cc47b174346bb9f14b378fb703ff594d"
+    },
+    "integration_subject": {
+      "package_id": "zyc14588/agent-sim",
+      "package_version": "1.0.0",
+      "test_unit_id": "UNREGISTERED-T000-VERTICAL-SLICE"
+    }
+  },
+  "artifact_hashes": {
+    "package_manifest_sha256": "99683081677f5ac098dc94ee1221b4ae1fd5a75b416da7094276dbf694bb23bd",
+    "runtime_adapter_sha256": "b6b80ef8b671414ca7bc34b7e65510db9a3bad5910996f43ea92120ecaec773d",
+    "integration_manifest_sha256": "de553465a6bd79e0c0ccb89af678721f132d9fe98ec39a41136402a5386ca164",
+    "stage_evidence_root_sha256": "dc105e0a5159bd62d42f2a8177dd943160d127446fcbaf146097253bfa71ec06",
+    "local_closeout_record_sha256": "d6a7380cf33a8530cc1e863bbb5705b2143be8f6108fb45cb8cdbe2fef592ccb",
+    "final_evidence_root_sha256": "7ce5014d1951f21d88ca838ef1f7e14fb802b2d8c8c03db6aa3cc902f75cb777"
+  },
+  "execution": {
+    "stage": "PASS",
+    "local_closeout": "PASS",
+    "source_stage_result": "INTEGRATION_STAGE_PASS",
+    "source_local_closeout_result": "PASS_READ_ONLY_CLOSED",
+    "frozen_evidence_revalidation": "PASS",
+    "rerun_performed": false
+  },
+  "replay": {
+    "result": "PASS",
+    "hash_match": true,
+    "final_state_hash": "8264e9b4a0ed8bc631001a931854ef8b0915be2efb94e5d9c6c0faead8373a6f",
+    "rng_used": false
+  },
+  "security": {
+    "result": "PASS",
+    "credential_leaks": 0,
+    "hidden_information_leaks": 0,
+    "private_prompt_leaks": 0,
+    "private_asset_locator_leaks": 0,
+    "game_body_copied": false
+  },
+  "model_execution": {
+    "remote_real_model_calls": 0,
+    "local_real_model_calls": 0,
+    "provider_network_calls": 0
+  },
+  "qualification": {
+    "counts_toward_qualification": false,
+    "qualification_runs_executed": 0
+  },
+  "owner_authorization": {
+    "authorized": true,
+    "authorized_by": "Owner",
+    "execution_directive": "OWNER_CLOSEOUT_INT-AIPT-UNREGISTERED-MVP-001-001",
+    "registration_directive": "FORMAL_CLOSEOUT_REGISTRATION_001",
+    "authority_task": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001"
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "provenance": {
+    "governance_gap": "READ_ONLY_INTEGRATION_CLOSEOUT_NOT_PERSISTED_IN_MACHINE_AUTHORITY",
+    "source_task": "INT-AIPT-UNREGISTERED-MVP-001",
+    "registration_task": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001",
+    "source_evidence_basis": "EXISTING_FROZEN_CLOSEOUT_BYTES",
+    "source_repositories_mutated": false,
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "open_findings": []
+}

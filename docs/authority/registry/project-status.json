@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-09-02",
-  "authority_snapshot_id": "AIPT-MVP-B004-CLOSEOUT-001",
+  "authority_snapshot_id": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-REGISTRATION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
       "construction": "IDLE_WAITING_NEXT_BATCH",
       "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "INT-AIPT-UNREGISTERED-MVP-001",
+      "next_serial_batch": "AIPT-MVP-B005",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -27,7 +27,7 @@
         "AIPT-MVP-B002": "MERGED_CLOSED",
         "AIPT-MVP-B003": "MERGED_CLOSED",
         "AIPT-MVP-B004": "MERGED_CLOSED",
-        "INT-AIPT-UNREGISTERED-MVP-001": "NOT_STARTED",
+        "INT-AIPT-UNREGISTERED-MVP-001": "MERGED_CLOSED",
         "AIPT-MVP-B005": "NOT_STARTED",
         "AIPT-MVP-B006": "NOT_STARTED",
         "AIPT-MVP-B007": "NOT_STARTED",
@@ -631,6 +631,55 @@
       "aipt_canonical_lifecycle_closeout": "411bf2997cd0f10ba1a022ac687d27a1bd19eb36",
       "readiness": "PLAYTESTABLE_DRAFT",
       "formal_name_zh": "《未登记》"
+    }
+  },
+  "integration_closeouts": {
+    "INT-AIPT-UNREGISTERED-MVP-001": {
+      "task_id": "INT-AIPT-UNREGISTERED-MVP-001",
+      "state": "CLOSED",
+      "classification": "FIXED_PAIR_RUNTIME_CONFORMANCE_SMOKE_PASS",
+      "closeout_kind": "READ_ONLY_INTEGRATION",
+      "integration_kind": "READ_ONLY_FIXED_PAIR",
+      "repository_merge_performed": false,
+      "canonical_record": {
+        "schema": "aipt.public.read-only-integration-closeout/v1",
+        "record_id": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-001",
+        "path": "docs/authority/registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json",
+        "sha256": "1f22028561c90619755314eedb50869bb40e78b4ef55458e35eb654bf8d9ebc2"
+      },
+      "fixed_pair": {
+        "aipt_commit": "c65075691e0b9503a8e3bd9da1220bf319354a26",
+        "aipt_tree": "bd2fa7d7374f1bbff44c1f5aa4746a86f68d41eb",
+        "unregistered_package_commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+        "unregistered_package_tree": "34597e79c586fb034256daa32d67640692ec589d",
+        "unregistered_source_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+        "unregistered_source_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240"
+      },
+      "execution": {
+        "stage": "PASS",
+        "local_closeout": "PASS",
+        "rerun_performed": false
+      },
+      "model_execution": {
+        "remote_real_model_calls": 0,
+        "local_real_model_calls": 0,
+        "provider_network_calls": 0
+      },
+      "qualification": {
+        "counts_toward_qualification": false,
+        "qualification_runs_executed": 0
+      },
+      "security": {
+        "result": "PASS",
+        "credential_leaks": 0,
+        "hidden_information_leaks": 0,
+        "private_prompt_leaks": 0,
+        "private_asset_locator_leaks": 0,
+        "game_body_copied": false
+      },
+      "registration_authority_task": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001",
+      "closed": true,
+      "open_findings": []
     }
   },
   "runtime": {

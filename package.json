@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B004 is constructing versioned model profiles and a governed real Harness gateway over the closed B003 Orchestrator; real playtests and qualification remain out of scope.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B004 is closed; the completed read-only fixed-pair integration closeout is being registered without rerun, and AIPT-MVP-B005 remains unauthorized and not started.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -23,6 +23,7 @@
     "check:mvp-b002": "node scripts/ci/validate/mvp-b002.mjs",
     "check:mvp-b003": "node scripts/ci/validate/mvp-b003.mjs",
     "check:mvp-b004": "node scripts/ci/validate/mvp-b004.mjs",
+    "check:int001-closeout-authority": "node scripts/ci/validate/int001-closeout-authority.mjs",
     "check:p1-b000-authority": "node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority",
     "check:p1-b000-authority-amendment": "node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority-amendment",
     "check:p1-b000-authority-amendment-002": "node scripts/ci/validate/p1-b000-authority-amendment-002.mjs",
