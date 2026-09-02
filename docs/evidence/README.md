@@ -1,23 +1,28 @@
 # 证据与审计（EVIDENCE）
 
 > 公开证据流水线设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema；其余能力仍按下表明确标记为未实现。B000 使用简化的 Bootstrap 证据路径（见文末）。
+> M0-B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema；AIPT-MVP-B005 在保持该 v1 基线字节兼容的前提下实现离线 `AUDIT_READY` closure。B000 使用简化的 Bootstrap 证据路径（见文末）。
 > `B006 = MERGED_CLOSED`：Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，CI `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree），post-merge CI `32578143923` success。
 
-## B006 能力矩阵
+## 当前能力矩阵
 
 | 能力 | 状态 |
 |---|---|
 | `RAW_CAPTURE_EXPORT` | `IMPLEMENTED_MINIMAL` |
 | `AUDIT_READY_SCHEMA` | `IMPLEMENTED` |
-| `AUDIT_READY_GENERATOR` | `NOT_IMPLEMENTED` |
+| `AUDIT_READY_GENERATOR` | `IMPLEMENTED_B005_OFFLINE` |
+| `AUDIT_READY_VERIFIER` | `IMPLEMENTED_B005_OFFLINE` |
+| `RUN_EVIDENCE_CLOSURE` | `IMPLEMENTED_B005` |
+| `REPLAY_EVIDENCE_CONTRACT` | `IMPLEMENTED_B005` |
+| `DEFECT_FAMILY_OCCURRENCE_CONTRACTS` | `IMPLEMENTED_B005` |
+| `RUN_REPORT_CANONICAL_AND_DERIVATIVES` | `IMPLEMENTED_B005` |
 | `AUDIT_RESULT_SCHEMA` | `IMPLEMENTED` |
 | `AUDIT_RESULT_GENERATOR` | `NOT_IMPLEMENTED` |
 | `SIGNING` | `NOT_IMPLEMENTED` |
 | `ENCRYPTION` | `NOT_IMPLEMENTED` |
-| `CHUNKING` | `NOT_IMPLEMENTED` |
+| `CHUNKING` | `IMPLEMENTED_B005_CONTENT_ADDRESSED` |
 
-唯一公开 Schema 根为 [aipt-evidence.schema.json](../../schemas/evidence/v1/aipt-evidence.schema.json)：Draft 2020-12、根为严格三阶段 `oneOf`、未知 version/stage/字段拒绝。B006 runtime 只生成 `RAW_CAPTURE`；Schema 表达 `AUDIT_READY` 与 `AUDIT_RESULT` 不等于存在对应 generator。
+原有公开 Schema 根 [aipt-evidence.schema.json](../../schemas/evidence/v1/aipt-evidence.schema.json) 保持字节不变：Draft 2020-12、根为严格三阶段 `oneOf`、未知 version/stage/字段拒绝。M0-B006 runtime 仍只生成 `RAW_CAPTURE`。B005 通过 additive contract schemas 实现 `AUDIT_READY`；`AUDIT_RESULT` 仍只有 Schema，没有 generator。
 
 ## 最小 RAW_CAPTURE
 
@@ -33,7 +38,22 @@ Exporter 在同一文件系统的私有临时 sibling 中写入、fsync、调用
 
 PostgreSQL source 先调用 B003 `postgres.VerifyStream` 得到 `N/H`，再以 read-only transaction 只执行 `SELECT ... sequence <= N ORDER BY sequence ASC`，要求精确 N 条且最后 hash 为 H；结束前重读 cursor，变化则返回 `AIPT_EVIDENCE_STREAM_CHANGED`。公共 CI 只连接 digest-pinned、loopback-only 的 ephemeral PostgreSQL 18.4，并只使用完全合成 PUBLIC 数据；不得连接生产数据库。
 
-RAW_CAPTURE 是本地原生证据，B006 不自动外传，不调用网络、远端模型、construction Harness 或 GitHub API。Manifest/root 语义不含 export wall clock、hostname、PID、username、本机绝对路径、DSN 或 credential；没有 `max-events` 成功截断模式，超体积分块仍是未来能力。
+RAW_CAPTURE 是本地原生证据，M0-B006 不自动外传，不调用网络、远端模型、construction Harness 或 GitHub API。Manifest/root 语义不含 export wall clock、hostname、PID、username、本机绝对路径、DSN 或 credential；没有 `max-events` 成功截断模式。B005 不改变这些语义。
+
+## B005 AUDIT_READY closure
+
+[`GenerateAuditReady`](../../internal/evidence/audit_ready.go) 首先调用独立 `VerifyRawCapture`，随后持有已验证目录与成员描述符；它通过只读本地 bare mirror 精确验证 HTTPS repository、40-hex commit object 与该 commit 的 tree。规范化过程只写 owner-controlled private sibling，执行 fsync、自验证、输入稳定性复验，再以 no-replace rename 发布。它不 fetch、不读取 branch/tag/working tree、不调用模型/Harness、不写 source、Run 或 PostgreSQL。
+
+新增的 additive schemas 为：
+
+- [Run Evidence Closure](../../schemas/evidence/v1/aipt-run-evidence-closure.schema.json)：绑定 Run Manifest、source、PostgreSQL ledger tail、action receipts、projection、Rule、RNG、replay、coverage、defect occurrence、anomaly、gate 与 model/Harness evidence identity。
+- [Defect contracts](../../schemas/evidence/v1/aipt-defect-contracts.schema.json)：分离 family 与 occurrence；稳定 projection 经 canonical JSON → SHA-256。不同 fingerprint 只能产生 `SEMANTIC_DUPLICATE_CANDIDATE`。状态名称由外部 Authority policy 提供，B005 只执行显式图与 append-only hash-linked decisions。
+- [Run Report](../../schemas/evidence/v1/aipt-run-report.schema.json)：Canonical JSON 为权威，Markdown/CSV/JUnit/静态 HTML 均可逐字节再生；生命周期严格为 `PROVISIONAL → FINALIZING → SEALED`，SEALED 后只能新增 addendum，不能隐式 unseal。
+- [Bundle Index](../../schemas/evidence/v1/aipt-audit-ready-bundle-index.schema.json)：部署 `ExportProfile` 提供 inline/chunk/size/count 参数；大资产按 exact bytes SHA-256 分块、跨逻辑资产安全去重并逐字节重组，从无成功截断模式。
+
+命令 `go run ./cmd/aipt-audit-ready generate --spec <request>` 与 `verify --bundle <directory> --mirror <bare-mirror> --repository <https-identity>` 是离线 audit workflow surface。生成请求只允许 base64 内联 supplemental bytes，未知字段拒绝；公开错误只输出稳定错误码。`PUBLIC` 对非公开 classification、credential、private prompt、private locator、game body 与本机路径 fail closed。由于 B005 没有获准设计 crypto，需加密的 `EXTERNAL_AUDITOR` 和所有 `PRIVATE_FULL` 请求返回 `ENCRYPTION_REQUIRED_BUT_UNAVAILABLE`，绝不明文降级。
+
+正式 N01–N35 负向矩阵位于 [b005-negative-matrix.json](../../testdata/evidence/v1/b005-negative-matrix.json)，Authority recovery 与逐项 acceptance mapping 位于 [B005 Authority Matrix](B005_AUTHORITY_MATRIX.md)。公共 PostgreSQL gate 只使用 ephemeral loopback 18.4 与 synthetic PUBLIC 数据，重复生成必须 file-set/bytes/root 完全相同；该 smoke 不计 qualification。
 
 ## 权威来源
 

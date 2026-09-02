@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/evidence/v1/aipt-run-report.schema.json",
+  "title": "AIPT Run Report and Addendum v1",
+  "description": "Canonical JSON report authority with PROVISIONAL to FINALIZING to SEALED runtime transition enforcement and append-only post-seal addenda.",
+  "oneOf": [
+    {"$ref": "#/$defs/report"},
+    {"$ref": "#/$defs/addendum"}
+  ],
+  "$defs": {
+    "identifier": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git_oid": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "nullable_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^https://\\S+$"},
+        "commit": {"$ref": "#/$defs/git_oid"},
+        "tree": {"$ref": "#/$defs/git_oid"}
+      }
+    },
+    "artifact_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema", "canonical_sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "schema": {"$ref": "#/$defs/identifier"},
+        "canonical_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "rng": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used", "version", "seed_commitment", "seed_disclosure_status"],
+      "properties": {
+        "used": {"type": "boolean"},
+        "version": {"type": "string", "maxLength": 256},
+        "seed_commitment": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/sha256"}]},
+        "seed_disclosure_status": {"enum": ["NOT_APPLICABLE", "COMMITTED_NOT_DISCLOSED", "DISCLOSED_AS_EVIDENCE"]}
+      },
+      "oneOf": [
+        {"properties": {"used": {"const": false}, "version": {"const": "NONE"}, "seed_commitment": {"const": ""}, "seed_disclosure_status": {"const": "NOT_APPLICABLE"}}},
+        {"properties": {"used": {"const": true}, "version": {"$ref": "#/$defs/identifier"}, "seed_commitment": {"$ref": "#/$defs/sha256"}, "seed_disclosure_status": {"enum": ["COMMITTED_NOT_DISCLOSED", "DISCLOSED_AS_EVIDENCE"]}}}
+      ]
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "run_id", "run_manifest_sha256", "ledger_stream_id", "ledger_tail_sequence", "ledger_tail_hash", "live_final_state_hash", "replayed_final_state_hash", "hash_match", "implementation", "rng"],
+      "properties": {
+        "schema": {"const": "aipt.replay-evidence/v1"},
+        "version": {"const": "1.0.0"},
+        "run_id": {"$ref": "#/$defs/identifier"},
+        "run_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_stream_id": {"$ref": "#/$defs/identifier"},
+        "ledger_tail_sequence": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "ledger_tail_hash": {"$ref": "#/$defs/nullable_sha256"},
+        "live_final_state_hash": {"$ref": "#/$defs/sha256"},
+        "replayed_final_state_hash": {"$ref": "#/$defs/sha256"},
+        "hash_match": {"const": true},
+        "implementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "sha256"],
+          "properties": {
+            "id": {"$ref": "#/$defs/identifier"},
+            "version": {"$ref": "#/$defs/identifier"},
+            "sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "rng": {"$ref": "#/$defs/rng"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "evidence_id", "severity"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/identifier"},
+        "evidence_id": {"$ref": "#/$defs/identifier"},
+        "severity": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "gate_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate", "eligible", "reason_code"],
+      "properties": {
+        "gate": {"$ref": "#/$defs/identifier"},
+        "eligible": {"type": "boolean"},
+        "reason_code": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "evidence_root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sha256"],
+      "properties": {
+        "kind": {"$ref": "#/$defs/identifier"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "audit_result": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["asset_path", "sha256", "verdict"],
+          "properties": {
+            "asset_path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "verdict": {"enum": ["PASS", "FAIL", "BLOCKED"]}
+          }
+        }
+      ]
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "report_id", "revision", "predecessor_report_sha256", "lifecycle", "run_id", "source", "run_manifest", "execution_status", "coverage", "replay", "defect_family_references", "defect_occurrence_references", "anomaly_codes", "security_findings", "visibility_findings", "model_execution", "gate_eligibility_facts", "qualification_eligible", "evidence_roots", "auditor_verdict_claimed", "audit_result"],
+      "properties": {
+        "schema": {"const": "aipt.run-report/v1"},
+        "version": {"const": "1.0.0"},
+        "report_id": {"$ref": "#/$defs/identifier"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "predecessor_report_sha256": {"$ref": "#/$defs/nullable_sha256"},
+        "lifecycle": {"enum": ["PROVISIONAL", "FINALIZING", "SEALED"]},
+        "run_id": {"$ref": "#/$defs/identifier"},
+        "source": {"$ref": "#/$defs/source"},
+        "run_manifest": {"$ref": "#/$defs/artifact_identity"},
+        "execution_status": {"$ref": "#/$defs/identifier"},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["references", "total", "covered"],
+          "properties": {
+            "references": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/evidence_reference"}},
+            "total": {"type": "integer", "minimum": 0, "maximum": 1000000},
+            "covered": {"type": "integer", "minimum": 0, "maximum": 1000000}
+          }
+        },
+        "replay": {"$ref": "#/$defs/replay"},
+        "defect_family_references": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "defect_occurrence_references": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "anomaly_codes": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "security_findings": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/finding"}},
+        "visibility_findings": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/finding"}},
+        "model_execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["remote_deepseek_real_calls", "local_llamacpp_real_calls", "provider_model_network_calls", "reference_ids"],
+          "properties": {
+            "remote_deepseek_real_calls": {"type": "integer", "minimum": 0},
+            "local_llamacpp_real_calls": {"type": "integer", "minimum": 0},
+            "provider_model_network_calls": {"type": "integer", "minimum": 0},
+            "reference_ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}}
+          }
+        },
+        "gate_eligibility_facts": {"type": "array", "minItems": 1, "maxItems": 1000, "items": {"$ref": "#/$defs/gate_fact"}},
+        "qualification_eligible": {"type": "boolean"},
+        "evidence_roots": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/evidence_root"}},
+        "auditor_verdict_claimed": {"type": "boolean"},
+        "audit_result": {"$ref": "#/$defs/audit_result"}
+      },
+      "allOf": [
+        {"not": {"required": ["auditor_verdict_claimed", "audit_result"], "properties": {"auditor_verdict_claimed": {"const": false}, "audit_result": {"not": {"type": "null"}}}}},
+        {"not": {"required": ["auditor_verdict_claimed", "audit_result"], "properties": {"auditor_verdict_claimed": {"const": true}, "audit_result": {"type": "null"}}}}
+      ],
+      "oneOf": [
+        {"properties": {"revision": {"const": 1}, "predecessor_report_sha256": {"type": "null"}, "lifecycle": {"const": "PROVISIONAL"}}},
+        {"properties": {"revision": {"const": 2}, "predecessor_report_sha256": {"$ref": "#/$defs/sha256"}, "lifecycle": {"const": "FINALIZING"}}},
+        {"properties": {"revision": {"const": 3}, "predecessor_report_sha256": {"$ref": "#/$defs/sha256"}, "lifecycle": {"const": "SEALED"}}}
+      ]
+    },
+    "addendum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "addendum_id", "sealed_report_sha256", "sequence", "predecessor_addendum_sha256", "content_sha256", "evidence_references"],
+      "properties": {
+        "schema": {"const": "aipt.run-report-addendum/v1"},
+        "version": {"const": "1.0.0"},
+        "addendum_id": {"$ref": "#/$defs/identifier"},
+        "sealed_report_sha256": {"$ref": "#/$defs/sha256"},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "predecessor_addendum_sha256": {"$ref": "#/$defs/nullable_sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_references": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/evidence_reference"}}
+      },
+      "oneOf": [
+        {"properties": {"sequence": {"const": 1}, "predecessor_addendum_sha256": {"type": "null"}}},
+        {"properties": {"sequence": {"type": "integer", "minimum": 2, "maximum": 100000}, "predecessor_addendum_sha256": {"$ref": "#/$defs/sha256"}}}
+      ]
+    }
+  }
+}

@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-09-02",
-  "authority_snapshot_id": "INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-REGISTRATION-001",
+  "as_of": "2026-09-03",
+  "authority_snapshot_id": "AIPT-MVP-B005-CONSTRUCTION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "AIPT-MVP-B005",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B005",
+      "next_serial_batch": "AIPT-MVP-B006",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -28,7 +28,7 @@
         "AIPT-MVP-B003": "MERGED_CLOSED",
         "AIPT-MVP-B004": "MERGED_CLOSED",
         "INT-AIPT-UNREGISTERED-MVP-001": "MERGED_CLOSED",
-        "AIPT-MVP-B005": "NOT_STARTED",
+        "AIPT-MVP-B005": "IN_PROGRESS",
         "AIPT-MVP-B006": "NOT_STARTED",
         "AIPT-MVP-B007": "NOT_STARTED",
         "AIPT-MVP-B008": "NOT_STARTED",
@@ -77,7 +77,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -455,6 +455,50 @@
         "closed": true,
         "open_findings": []
       },
+      "mvp_b005": {
+        "task_id": "AIPT-MVP-B005",
+        "state": "IN_PROGRESS",
+        "start_authority": "OWNER_DIRECTIVE_AIPT-MVP-B005",
+        "base": {
+          "commit": "176f33d8f20f94a77ab688f4869e944b6ffe97c6",
+          "tree": "210320957a35633bcf766a3d88ea50a3493bd0fc"
+        },
+        "predecessor": {
+          "task_id": "INT-AIPT-UNREGISTERED-MVP-001",
+          "state": "CLOSED",
+          "canonical_closeout_sha256": "1f22028561c90619755314eedb50869bb40e78b4ef55458e35eb654bf8d9ebc2",
+          "integration_manifest_sha256": "de553465a6bd79e0c0ccb89af678721f132d9fe98ec39a41136402a5386ca164",
+          "final_evidence_root_sha256": "7ce5014d1951f21d88ca838ef1f7e14fb802b2d8c8c03db6aa3cc902f75cb777",
+          "rerun_performed": false
+        },
+        "scope": "RUN_EVIDENCE_CLOSURE_AUDIT_READY_ONLY",
+        "risk": "evidence-integrity",
+        "raw_capture_backward_compatible": true,
+        "audit_ready_generator_implemented": true,
+        "audit_ready_verifier_implemented": true,
+        "run_evidence_closure_implemented": true,
+        "replay_contract_implemented": true,
+        "defect_family_occurrence_contracts_implemented": true,
+        "report_contract_and_lifecycle_implemented": true,
+        "deterministic_export_implemented": true,
+        "content_addressed_chunking_implemented": true,
+        "encryption_implemented": false,
+        "signing_implemented": false,
+        "audit_result_generator_implemented": false,
+        "synthetic_public_postgresql_18_4_gate": "PASS",
+        "negative_probe_count": 35,
+        "unexpected_acceptances": 0,
+        "real_model_calls": 0,
+        "provider_network_calls": 0,
+        "real_playtest_executed": false,
+        "qualification_runs_executed": 0,
+        "new_migration": "NONE",
+        "runtime_ready": false,
+        "first_blocking_gate": "IPC",
+        "publicly_pushed": false,
+        "public_ci_status": "NOT_STARTED_AWAITING_OWNER_DISCLOSURE_AUTHORIZATION",
+        "open_findings": []
+      },
       "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",
       "verified_tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
       "verified_state": {
@@ -683,7 +727,7 @@
     }
   },
   "runtime": {
-    "status": "AIPT-MVP-B004 is merged, post-merge verified, and closed with no active batch; HARNESS-01 and the write-only environment credential reference remain frozen, controlled REMOTE_DEEPSEEK and LOCAL_LLAMACPP minimum certifications remain PASS, runtime_ready remains false at the IPC gate, and no playtest or qualification Run has started",
+    "status": "AIPT-MVP-B005 is the sole active construction batch at GLOBAL_WIP 1; it adds offline AUDIT_READY evidence closure only, does not change Launcher gates, and runtime_ready remains false at IPC with no playtest or qualification Run started",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

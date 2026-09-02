@@ -568,15 +568,10 @@ function actualTopology(repo, paths) {
   const branch = currentBranch(repo);
   const baseExact = commitFacts(repo, BASE_COMMIT)?.tree === BASE_TREE;
   const lifecyclePresent = lifecycleInventory(repo).length > 0;
-  if (worktreeDirty(repo)) {
-    const facts = {
-      kind: 'CONSTRUCTION', baseExact, scopeValid: paths.every(allowedPath), requiredPresent: requiredPresent(paths),
-      branch, descendsBase: isAncestor(repo, BASE_COMMIT, head),
-      linear: head === BASE_COMMIT || candidateLinearity(repo, head), lifecyclePresent,
-    };
-    return { phase: classifyTopology(facts), head, headFacts, branch, scopePaths: paths, lifecycle: { state: 'NONE', problems: [] } };
-  }
-
+  // Once the append-only B004 lifecycle exists, classify against its accepted
+  // Candidate and immutable business artifacts before looking at a later
+  // successor's dirty worktree. Otherwise an authorized B005 construction
+  // payload is incorrectly reinterpreted as an in-progress B004 Candidate.
   const lifecycle = validateLifecycle(repo, head);
   if (lifecycle.state !== 'NONE') {
     const scopePaths = lifecycle.candidatePaths ?? [];
@@ -609,6 +604,15 @@ function actualTopology(repo, paths) {
       return { phase: classifyTopology(facts), head, headFacts, branch, scopePaths, lifecycle };
     }
     return { phase: 'REJECTED', head, headFacts, branch, scopePaths, lifecycle };
+  }
+
+  if (worktreeDirty(repo)) {
+    const facts = {
+      kind: 'CONSTRUCTION', baseExact, scopeValid: paths.every(allowedPath), requiredPresent: requiredPresent(paths),
+      branch, descendsBase: isAncestor(repo, BASE_COMMIT, head),
+      linear: head === BASE_COMMIT || candidateLinearity(repo, head), lifecyclePresent,
+    };
+    return { phase: classifyTopology(facts), head, headFacts, branch, scopePaths: paths, lifecycle: { state: 'NONE', problems: [] } };
   }
 
   if (headFacts?.parents.length === 2) {

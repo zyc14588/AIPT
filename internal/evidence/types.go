@@ -1,6 +1,7 @@
-// Package evidence implements the AIPT-M0-B006 minimal native RAW_CAPTURE
-// exporter and verifier. It deliberately does not implement AUDIT_READY or
-// AUDIT_RESULT generation, signing, encryption, or chunking.
+// Package evidence implements the frozen AIPT-M0-B006 native RAW_CAPTURE
+// exporter/verifier and the additive AIPT-MVP-B005 AUDIT_READY closure. This
+// file remains the legacy RAW_CAPTURE contract; B005 types live separately.
+// AUDIT_RESULT generation, signing, and encryption remain outside the package.
 package evidence
 
 import (
