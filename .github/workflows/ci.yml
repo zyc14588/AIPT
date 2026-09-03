@@ -180,6 +180,12 @@ jobs:
         run: pnpm run check:evidence
       - name: "B006 Evidence Go exporter/verifier deterministic and tamper tests"
         run: pnpm run test:evidence-go
+      - name: "AIPT MVP B005 AUDIT_READY closure lifecycle chunking and negative validator"
+        run: pnpm run check:mvp-b005
+      - name: AIPT MVP B005 AUDIT_READY generator verifier report chunking and CLI tests
+        run: pnpm run test:audit-ready-go
+      - name: AIPT MVP B005 AUDIT_READY race and input mutation tests
+        run: go test -race ./internal/evidence ./cmd/aipt-audit-ready -count=1
       - name: "B007 strict Web validator: loopback Host/Origin/CSRF + six truthful panels + embedded artifact"
         run: pnpm run check:web-ui
       - name: B007 TypeScript Dashboard contract tests (Node 24 native type stripping)
@@ -352,7 +358,7 @@ jobs:
             "18.4"*) ;;
             *) echo "unexpected server_version: ${SERVER_VERSION}"; exit 1 ;;
           esac
-      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)
+      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure, test-only DSN)
         run: |
           export AIPT_POSTGRES_DSN="postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable"
           export AIPT_REQUIRE_POSTGRES_INTEGRATION=1
@@ -361,7 +367,7 @@ jobs:
           go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v
           node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration
           go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
-      - name: PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence)
+      - name: PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure)
         run: |
           export AIPT_POSTGRES_DSN="postgres://postgres@127.0.0.1:5432/postgres?sslmode=disable"
           export AIPT_REQUIRE_POSTGRES_INTEGRATION=1

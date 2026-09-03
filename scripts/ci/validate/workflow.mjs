@@ -151,8 +151,8 @@ const STORAGE_LAUNCHER_FULL_TEST = 'node scripts/ci/validate/mvp-b001.mjs --hist
 const STORAGE_LAUNCHER_RACE_TEST = 'node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration --race';
 const STORAGE_EVIDENCE_FULL_TEST = "go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
 const STORAGE_EVIDENCE_RACE_TEST = "go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
-const STORAGE_FULL_CONTRACT_REASON = /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration commands/;
-const STORAGE_RACE_CONTRACT_REASON = /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 Evidence PostgreSQL integration race commands/;
+const STORAGE_FULL_CONTRACT_REASON = /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 RAW_CAPTURE \+ MVP-B005 AUDIT_READY PostgreSQL integration commands/;
+const STORAGE_RACE_CONTRACT_REASON = /must keep the B003 ledger concurrency \+ MVP-B001 WIP1\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 RAW_CAPTURE \+ MVP-B005 AUDIT_READY PostgreSQL integration race commands/;
 
 // The closed-world storage-postgres job is exactly these eleven ordered named
 // steps. Step names are parsed NORMALIZED (`- name:`, `- 'name':`,
@@ -168,8 +168,8 @@ const STORAGE_POSTGRES_STEPS = [
   'Verify exact Node.js version',
   'Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)',
   'Verify PostgreSQL 18.4 readiness and server version',
-  'PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)',
-  'PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence)',
+  'PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure, test-only DSN)',
+  'PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure)',
   'Remove ephemeral PostgreSQL container (CI-only cleanup, never production)',
 ];
 
@@ -265,6 +265,18 @@ const FOCUSED_COMMANDS = [
   {
     command: 'pnpm run test:evidence-go',
     nameTokens: ['b006', 'evidence', 'go', 'exporter', 'verifier', 'deterministic', 'tamper tests'],
+  },
+  {
+    command: 'pnpm run check:mvp-b005',
+    nameTokens: ['aipt', 'mvp', 'b005', 'audit_ready', 'closure', 'lifecycle', 'chunking', 'negative', 'validator'],
+  },
+  {
+    command: 'pnpm run test:audit-ready-go',
+    nameTokens: ['aipt', 'mvp', 'b005', 'audit_ready', 'generator', 'verifier', 'report', 'chunking', 'cli', 'tests'],
+  },
+  {
+    command: 'go test -race ./internal/evidence ./cmd/aipt-audit-ready -count=1',
+    nameTokens: ['aipt', 'mvp', 'b005', 'audit_ready', 'race', 'input mutation', 'tests'],
   },
   {
     command: 'pnpm run check:web-ui',
@@ -543,7 +555,7 @@ const BLOCK_GATES = {
       ],
     },
     {
-      label: 'the full B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + B004 runtime-shell + B006 Evidence PostgreSQL integration commands (test-only DSN, required flag)',
+      label: 'the full B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + B004 runtime-shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY PostgreSQL integration commands (test-only DSN, required flag)',
       anchor: STORAGE_FULL_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
@@ -556,7 +568,7 @@ const BLOCK_GATES = {
       ],
     },
     {
-      label: 'the B003 ledger concurrency + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + B004 runtime-shell + B006 Evidence PostgreSQL integration race commands',
+      label: 'the B003 ledger concurrency + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + B004 runtime-shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY PostgreSQL integration race commands',
       anchor: STORAGE_RACE_TEST,
       lines: [
         `export AIPT_POSTGRES_DSN="${STORAGE_TEST_DSN}"`,
@@ -1764,7 +1776,7 @@ export function run(ctx) {
   if (main.result !== 'PASS') pass = false;
 
   const fullTestStepName =
-    '      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 Evidence, test-only DSN)';
+    '      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure, test-only DSN)';
   const probes = [
     {
       label: 'storage-postgres job removed',
@@ -2157,6 +2169,39 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'toolchain', (t) =>
             t.replace('        run: pnpm run test:evidence-go', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B005 AUDIT_READY lifecycle validator removed from toolchain',
+      reason: /check:mvp-b005.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run check:mvp-b005', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B005 AUDIT_READY Go tests removed from toolchain',
+      reason: /test:audit-ready-go.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: pnpm run test:audit-ready-go', '        run: node --version'),
+          ),
+          lock,
+        ),
+    },
+    {
+      label: 'AIPT MVP B005 AUDIT_READY race gate removed from toolchain',
+      reason: /go test -race \.\/internal\/evidence \.\/cmd\/aipt-audit-ready -count=1.*exactly once/,
+      run: () =>
+        checkWorkflowText(
+          mutateJobText(text, 'toolchain', (t) =>
+            t.replace('        run: go test -race ./internal/evidence ./cmd/aipt-audit-ready -count=1', '        run: go version'),
           ),
           lock,
         ),

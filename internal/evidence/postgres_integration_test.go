@@ -167,7 +167,7 @@ func TestPostgresIntegrationEvidenceExportAndVerify(t *testing.T) {
 	defer cancel()
 	appendSyntheticEvents(t, ctx, pool, "synthetic-evidence-ledger", 3)
 	source := NewPostgresSource(pool)
-	parent := t.TempDir()
+	parent := privateTempDir(t)
 	inputs := []ExportInput{
 		{Destination: filepath.Join(parent, "first"), Source: fixtureSourceIdentity(), StreamID: "synthetic-evidence-ledger"},
 		{Destination: filepath.Join(parent, "second"), Source: fixtureSourceIdentity(), StreamID: "synthetic-evidence-ledger"},
@@ -205,6 +205,54 @@ func TestPostgresIntegrationEvidenceExportAndVerify(t *testing.T) {
 	}
 }
 
+func TestPostgresIntegrationEvidenceAuditReadyClosureDeterministic(t *testing.T) {
+	fixture := newEvidenceIntegrationFixture(t)
+	pool := fixture.pool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	appendSyntheticEvents(t, ctx, pool, "synthetic-b005-closure-ledger", 3)
+	sourceIdentity, sourceVerifier := syntheticGitMirror(t)
+	parent := privateTempDir(t)
+	rawPath := filepath.Join(parent, "raw-capture")
+	raw, err := ExportRawCapture(ctx, NewPostgresSource(pool), ExportInput{
+		Destination: rawPath, Source: sourceIdentity, StreamID: "synthetic-b005-closure-ledger",
+	})
+	if err != nil {
+		t.Fatalf("ExportRawCapture: %v", err)
+	}
+	if verified, err := VerifyRawCapture(rawPath); err != nil || verified.Root != raw.Root {
+		t.Fatalf("VerifyRawCapture = %+v, %v", verified, err)
+	}
+	first, _ := fixtureAuditInputForRaw(t, rawPath, fixtureExportProfile())
+	second, _ := fixtureAuditInputForRaw(t, rawPath, fixtureExportProfile())
+	first.SourceVerifier = sourceVerifier
+	second.SourceVerifier = sourceVerifier
+	first.Destination = filepath.Join(parent, "audit-ready-a")
+	second.Destination = filepath.Join(parent, "audit-ready-b")
+	firstResult, err := GenerateAuditReady(ctx, first)
+	if err != nil {
+		t.Fatalf("GenerateAuditReady(first): %v", err)
+	}
+	secondResult, err := GenerateAuditReady(ctx, second)
+	if err != nil {
+		t.Fatalf("GenerateAuditReady(second): %v", err)
+	}
+	if firstResult.Root != secondResult.Root {
+		t.Fatalf("repeated AUDIT_READY roots differ: %s != %s", firstResult.Root, secondResult.Root)
+	}
+	compareFlatDirectories(t, first.Destination, second.Destination)
+	verified, err := VerifyAuditReady(ctx, first.Destination, sourceVerifier)
+	if err != nil || verified.Root != firstResult.Root {
+		t.Fatalf("VerifyAuditReady = %+v, %v", verified, err)
+	}
+	if verified.Report.QualificationEligible || verified.Report.ModelExecution.RemoteDeepSeekRealCalls != 0 ||
+		verified.Report.ModelExecution.LocalLlamaCPPRealCalls != 0 || verified.Report.ModelExecution.ProviderModelNetworkCalls != 0 ||
+		verified.Report.AuditorVerdictClaimed || verified.Report.AuditResult != nil {
+		t.Fatalf("synthetic boundary drifted: %+v", verified.Report)
+	}
+	t.Logf("B005_SYNTHETIC_AUDIT_READY_ROOT=%s", verified.Root)
+}
+
 func TestPostgresIntegrationEvidenceTamperLeavesNoFinal(t *testing.T) {
 	fixture := newEvidenceIntegrationFixture(t)
 	pool := fixture.pool(t)
@@ -222,7 +270,7 @@ func TestPostgresIntegrationEvidenceTamperLeavesNoFinal(t *testing.T) {
 		"synthetic-tamper-ledger"); err != nil {
 		t.Fatal(err)
 	}
-	parent := t.TempDir()
+	parent := privateTempDir(t)
 	destination := filepath.Join(parent, "must-not-exist")
 	_, err := ExportRawCapture(ctx, NewPostgresSource(pool), ExportInput{
 		Destination: destination, Source: fixtureSourceIdentity(), StreamID: "synthetic-tamper-ledger",
@@ -279,7 +327,7 @@ func TestPostgresIntegrationEvidenceConcurrentAppendLeavesNoFinal(t *testing.T) 
 		}
 		return wrapper, nil
 	}
-	parent := t.TempDir()
+	parent := privateTempDir(t)
 	destination := filepath.Join(parent, "must-not-exist")
 	_, err := ExportRawCapture(ctx, source, ExportInput{
 		Destination: destination, Source: fixtureSourceIdentity(), StreamID: "synthetic-changing-ledger",

@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/evidence/v1/aipt-run-evidence-closure.schema.json",
+  "title": "AIPT Run Evidence Closure v1",
+  "description": "Additive B005 contract binding one Run to immutable source, PostgreSQL ledger, replay, coverage, defects, gates, and model execution identities.",
+  "$ref": "#/$defs/run_evidence_closure",
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,255}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git_oid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^https://\\S+$"},
+        "commit": {"$ref": "#/$defs/git_oid"},
+        "tree": {"$ref": "#/$defs/git_oid"}
+      }
+    },
+    "artifact_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema", "canonical_sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "schema": {"$ref": "#/$defs/identifier"},
+        "canonical_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "nullable_sha256": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "rng": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["used", "version", "seed_commitment", "seed_disclosure_status"],
+          "properties": {
+            "used": {"const": false},
+            "version": {"const": "NONE"},
+            "seed_commitment": {"const": ""},
+            "seed_disclosure_status": {"const": "NOT_APPLICABLE"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["used", "version", "seed_commitment", "seed_disclosure_status"],
+          "properties": {
+            "used": {"const": true},
+            "version": {"$ref": "#/$defs/identifier"},
+            "seed_commitment": {"$ref": "#/$defs/sha256"},
+            "seed_disclosure_status": {"enum": ["COMMITTED_NOT_DISCLOSED", "DISCLOSED_AS_EVIDENCE"]}
+          }
+        }
+      ]
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "run_id", "run_manifest_sha256", "ledger_stream_id", "ledger_tail_sequence", "ledger_tail_hash", "live_final_state_hash", "replayed_final_state_hash", "hash_match", "implementation", "rng"],
+      "properties": {
+        "schema": {"const": "aipt.replay-evidence/v1"},
+        "version": {"const": "1.0.0"},
+        "run_id": {"$ref": "#/$defs/identifier"},
+        "run_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "ledger_stream_id": {"$ref": "#/$defs/identifier"},
+        "ledger_tail_sequence": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "ledger_tail_hash": {"$ref": "#/$defs/nullable_sha256"},
+        "live_final_state_hash": {"$ref": "#/$defs/sha256"},
+        "replayed_final_state_hash": {"$ref": "#/$defs/sha256"},
+        "hash_match": {"const": true},
+        "implementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "sha256"],
+          "properties": {
+            "id": {"$ref": "#/$defs/identifier"},
+            "version": {"$ref": "#/$defs/identifier"},
+            "sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "rng": {"$ref": "#/$defs/rng"}
+      }
+    },
+    "gate_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate", "eligible", "reason_code"],
+      "properties": {
+        "gate": {"$ref": "#/$defs/identifier"},
+        "eligible": {"type": "boolean"},
+        "reason_code": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "run_evidence_closure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "run_id", "run_manifest", "source", "state_authority", "ledger", "action_receipts", "projection", "rule_citations", "rng", "replay", "coverage_references", "defect_occurrence_ids", "anomaly_codes", "gate_eligibility_facts", "model_execution_references"],
+      "properties": {
+        "schema": {"const": "aipt.run-evidence-closure/v1"},
+        "version": {"const": "1.0.0"},
+        "run_id": {"$ref": "#/$defs/identifier"},
+        "run_manifest": {"$ref": "#/$defs/artifact_identity"},
+        "source": {"$ref": "#/$defs/source"},
+        "state_authority": {"const": "POSTGRESQL_APPEND_ONLY_HASH_CHAIN"},
+        "ledger": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stream_id", "event_count", "tail_sequence", "tail_event_hash"],
+          "properties": {
+            "stream_id": {"$ref": "#/$defs/identifier"},
+            "event_count": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "tail_sequence": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "tail_event_hash": {"$ref": "#/$defs/nullable_sha256"}
+          }
+        },
+        "action_receipts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action_id", "sequence", "event_hash", "state_hash", "projection_hash", "evidence"],
+            "properties": {
+              "action_id": {"$ref": "#/$defs/identifier"},
+              "sequence": {"type": "integer", "minimum": 1, "maximum": 100000},
+              "event_hash": {"$ref": "#/$defs/sha256"},
+              "state_hash": {"$ref": "#/$defs/sha256"},
+              "projection_hash": {"$ref": "#/$defs/sha256"},
+              "evidence": {"$ref": "#/$defs/evidence_reference"}
+            }
+          }
+        },
+        "projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "canonical_sha256", "final_state_hash"],
+          "properties": {
+            "schema": {"$ref": "#/$defs/identifier"},
+            "canonical_sha256": {"$ref": "#/$defs/sha256"},
+            "final_state_hash": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "rule_citations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rule_id", "source_sha256"],
+            "properties": {
+              "rule_id": {"$ref": "#/$defs/identifier"},
+              "source_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        "rng": {"$ref": "#/$defs/rng"},
+        "replay": {"$ref": "#/$defs/replay"},
+        "coverage_references": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/evidence_reference"}},
+        "defect_occurrence_ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "anomaly_codes": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "gate_eligibility_facts": {"type": "array", "minItems": 1, "maxItems": 1000, "items": {"$ref": "#/$defs/gate_fact"}},
+        "model_execution_references": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["execution_id", "model_profile", "harness_identity", "evidence_sha256"],
+            "properties": {
+              "execution_id": {"$ref": "#/$defs/identifier"},
+              "model_profile": {"$ref": "#/$defs/identifier"},
+              "harness_identity": {"$ref": "#/$defs/identifier"},
+              "evidence_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

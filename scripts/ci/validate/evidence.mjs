@@ -22,8 +22,12 @@ const EXPECTED_DEFS = [
   'raw_event', 'raw_events_asset', 'remote_immutable_verification', 'schema_id',
   'schema_version', 'sha256_hex', 'source_identity', 'unencrypted',
 ];
-const EXPECTED_PRODUCTION_FILES = ['export.go', 'postgres.go', 'types.go', 'verify.go'];
-const EXPECTED_TEST_FILES = ['export_test.go', 'postgres_integration_test.go', 'postgres_test.go'];
+const EXPECTED_LEGACY_PRODUCTION_FILES = ['export.go', 'postgres.go', 'types.go', 'verify.go'];
+const EXPECTED_B005_PRODUCTION_FILES = [
+  'audit_ready.go', 'closure_types.go', 'closure_validate.go', 'raw_material.go',
+  'report_render.go', 'source_verify.go',
+];
+const EXPECTED_TEST_FILES = ['audit_ready_test.go', 'export_test.go', 'postgres_integration_test.go', 'postgres_test.go'];
 const BOUNDED_VERIFY_PATH = 'internal/storage/postgres/verify_bounded.go';
 const EXPECTED_EVENTS_SHA = 'fb45425367a0f0d56efd983c31dc0c6f6b21b426202b6858757d764d6a0ad5c0';
 const EXPECTED_MANIFEST_SHA = '106ba6686d0f47304921266824c5832916867931869c45424d894410eed241a2';
@@ -277,7 +281,8 @@ function sourceContractProblems(sources, boundedVerifier) {
   const keys = [...sources.keys()].sort();
   const productionKeys = keys.filter((key) => !key.endsWith('_test.go'));
   const testKeys = keys.filter((key) => key.endsWith('_test.go'));
-  if (!same(productionKeys.map((key) => path.posix.basename(key)).sort(), [...EXPECTED_PRODUCTION_FILES].sort())) {
+  const expectedProductionFiles = [...EXPECTED_LEGACY_PRODUCTION_FILES, ...EXPECTED_B005_PRODUCTION_FILES];
+  if (!same(productionKeys.map((key) => path.posix.basename(key)).sort(), expectedProductionFiles.sort())) {
     problems.push('production evidence Go inventory drifted: ' + JSON.stringify(productionKeys));
   }
   if (!same(testKeys.map((key) => path.posix.basename(key)).sort(), [...EXPECTED_TEST_FILES].sort())) {
@@ -289,7 +294,13 @@ function sourceContractProblems(sources, boundedVerifier) {
       problems.push('unauthorized next-batch/Web path entered evidence source: ' + key);
     }
   }
-  const production = productionKeys.map((key) => sources.get(key)).join('\n');
+  // This validator owns the frozen B006 RAW_CAPTURE contract. B005 is an
+  // additive package extension with its own stricter validator; scope the
+  // historical capability bans to the exact legacy file set so both gates can
+  // coexist without weakening either one.
+  const legacyProductionKeys = productionKeys.filter((key) =>
+    EXPECTED_LEGACY_PRODUCTION_FILES.includes(path.posix.basename(key)));
+  const production = legacyProductionKeys.map((key) => sources.get(key)).join('\n');
   const postgres = sources.get('internal/evidence/postgres.go') ?? '';
   const exporter = sources.get('internal/evidence/export.go') ?? '';
   const verifier = sources.get('internal/evidence/verify.go') ?? '';
@@ -448,7 +459,7 @@ export function run(ctx) {
   const boundedVerifier = fs.readFileSync(path.join(ctx.repo, BOUNDED_VERIFY_PATH), 'utf8');
   const sourceProblems = sourceContractProblems(sources, boundedVerifier);
   for (const problem of sourceProblems) fail(problem);
-  if (sourceProblems.length === 0) ok('RAW_CAPTURE runtime is atomic, read-only, complete, CanonicalJSON-reusing, and capability-confined');
+  if (sourceProblems.length === 0) ok('frozen RAW_CAPTURE runtime remains atomic, read-only, complete, CanonicalJSON-reusing, and capability-confined alongside the additive B005 files');
   const mutations = mutationProblems(schema, sources, boundedVerifier, rawManifest);
   for (const problem of mutations.problems) fail(problem);
   if (mutations.problems.length === 0) ok('all ' + mutations.count + ' evidence/schema mutation probes fail closed');

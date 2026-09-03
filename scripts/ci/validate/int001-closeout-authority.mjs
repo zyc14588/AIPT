@@ -32,6 +32,8 @@ const LOCAL_CLOSEOUT_SHA256 = 'd6a7380cf33a8530cc1e863bbb5705b2143be8f6108fb45cb
 const FINAL_EVIDENCE_ROOT_SHA256 = '7ce5014d1951f21d88ca838ef1f7e14fb802b2d8c8c03db6aa3cc902f75cb777';
 const FINAL_STATE_HASH = '8264e9b4a0ed8bc631001a931854ef8b0915be2efb94e5d9c6c0faead8373a6f';
 const RECORD_SHA256 = '1f22028561c90619755314eedb50869bb40e78b4ef55458e35eb654bf8d9ebc2';
+const B005_BASE_COMMIT = '176f33d8f20f94a77ab688f4869e944b6ffe97c6';
+const B005_BASE_TREE = '210320957a35633bcf766a3d88ea50a3493bd0fc';
 
 const SCHEMA_PATH = 'schemas/integration-lifecycle/v1/aipt-read-only-integration-closeout.schema.json';
 const RECORD_PATH = 'docs/authority/registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json';
@@ -180,7 +182,10 @@ function resolveTopology(repo) {
   const baseExact = commitFacts(repo, BASE_COMMIT)?.tree === BASE_TREE;
   const sourceAncestor = Boolean(head && isAncestor(repo, BASE_COMMIT, head));
   const dirty = worktreeDirty(repo);
-  if (dirty) {
+  // Dirty work on the original authority branch is its construction phase.
+  // Once the accepted closeout merge is on the first-parent chain, later
+  // successor work must not be mistaken for a rewrite of that old Candidate.
+  if (dirty && (branch === BRANCH || head === BASE_COMMIT)) {
     const scopePaths = workingPaths(repo);
     const scopeProblems = candidateScopeProblems(scopePaths);
     const facts = {
@@ -373,19 +378,84 @@ function expectedStatus(repo) {
   return expected;
 }
 
+function expectedActiveB005Status(repo) {
+  const expected = expectedStatus(repo);
+  expected.as_of = '2026-09-03';
+  expected.authority_snapshot_id = 'AIPT-MVP-B005-CONSTRUCTION-001';
+  const standalone = expected.tracks['AIPT-STANDALONE'];
+  standalone.construction = 'IN_PROGRESS';
+  standalone.current_batch = 'AIPT-MVP-B005';
+  standalone.next_serial_batch = 'AIPT-MVP-B006';
+  standalone.batch_history['AIPT-MVP-B005'] = 'IN_PROGRESS';
+  standalone.global_wip = 1;
+  expected.repositories.AIPT.mvp_b005 = {
+    task_id: 'AIPT-MVP-B005',
+    state: 'IN_PROGRESS',
+    start_authority: 'OWNER_DIRECTIVE_AIPT-MVP-B005',
+    base: { commit: B005_BASE_COMMIT, tree: B005_BASE_TREE },
+    predecessor: {
+      task_id: INTEGRATION_TASK,
+      state: 'CLOSED',
+      canonical_closeout_sha256: RECORD_SHA256,
+      integration_manifest_sha256: INTEGRATION_MANIFEST_SHA256,
+      final_evidence_root_sha256: FINAL_EVIDENCE_ROOT_SHA256,
+      rerun_performed: false,
+    },
+    scope: 'RUN_EVIDENCE_CLOSURE_AUDIT_READY_ONLY',
+    risk: 'evidence-integrity',
+    raw_capture_backward_compatible: true,
+    audit_ready_generator_implemented: true,
+    audit_ready_verifier_implemented: true,
+    run_evidence_closure_implemented: true,
+    replay_contract_implemented: true,
+    defect_family_occurrence_contracts_implemented: true,
+    report_contract_and_lifecycle_implemented: true,
+    deterministic_export_implemented: true,
+    content_addressed_chunking_implemented: true,
+    encryption_implemented: false,
+    signing_implemented: false,
+    audit_result_generator_implemented: false,
+    synthetic_public_postgresql_18_4_gate: 'PASS',
+    negative_probe_count: 50,
+    unexpected_acceptances: 0,
+    real_model_calls: 0,
+    provider_network_calls: 0,
+    real_playtest_executed: false,
+    qualification_runs_executed: 0,
+    new_migration: 'NONE',
+    runtime_ready: false,
+    first_blocking_gate: 'IPC',
+    publicly_pushed: false,
+    public_ci_status: 'NOT_STARTED_AWAITING_OWNER_DISCLOSURE_AUTHORIZATION',
+    open_findings: [],
+  };
+  expected.runtime.status = 'AIPT-MVP-B005 is the sole active construction batch at GLOBAL_WIP 1; it adds offline AUDIT_READY evidence closure only, does not change Launcher gates, and runtime_ready remains false at IPC with no playtest or qualification Run started';
+  return expected;
+}
+
 function statusSemanticProblems(repo, status) {
   const problems = [];
-  const expected = expectedStatus(repo);
-  if (!isDeepStrictEqual(status, expected)) problems.push('project-status projection differs from the exact read-only closeout transition');
+  const historical = expectedStatus(repo);
+  const activeB005 = expectedActiveB005Status(repo);
+  const isHistorical = isDeepStrictEqual(status, historical);
+  const isActiveB005 = isDeepStrictEqual(status, activeB005);
+  if (!isHistorical && !isActiveB005) {
+    problems.push('project-status projection differs from both the exact read-only closeout and authorized B005 successor transitions');
+  }
   const standalone = status?.tracks?.['AIPT-STANDALONE'];
-  if (standalone?.batch_history?.['AIPT-MVP-B004'] !== 'MERGED_CLOSED' ||
-      standalone?.batch_history?.[INTEGRATION_TASK] !== 'MERGED_CLOSED' ||
-      standalone?.batch_history?.['AIPT-MVP-B005'] !== 'NOT_STARTED' ||
-      standalone?.next_serial_batch !== 'AIPT-MVP-B005' ||
-      standalone?.next_batch_state !== 'NOT_AUTHORIZED' || standalone?.next_batch_authorized !== false ||
-      standalone?.next_batch_started !== false || standalone?.construction !== 'IDLE_WAITING_NEXT_BATCH' ||
-      standalone?.current_batch !== 'NO_ACTIVE_BATCH' || standalone?.global_wip !== 0) {
-    problems.push('project-status current/next/WIP tuple is not exact');
+  const predecessorClosed = standalone?.batch_history?.['AIPT-MVP-B004'] === 'MERGED_CLOSED' &&
+    standalone?.batch_history?.[INTEGRATION_TASK] === 'MERGED_CLOSED';
+  const sharedNextBoundary = standalone?.next_batch_state === 'NOT_AUTHORIZED' &&
+    standalone?.next_batch_authorized === false && standalone?.next_batch_started === false;
+  const historicalTuple = standalone?.batch_history?.['AIPT-MVP-B005'] === 'NOT_STARTED' &&
+    standalone?.next_serial_batch === 'AIPT-MVP-B005' && standalone?.construction === 'IDLE_WAITING_NEXT_BATCH' &&
+    standalone?.current_batch === 'NO_ACTIVE_BATCH' && standalone?.global_wip === 0;
+  const activeTuple = standalone?.batch_history?.['AIPT-MVP-B005'] === 'IN_PROGRESS' &&
+    standalone?.batch_history?.['AIPT-MVP-B006'] === 'NOT_STARTED' &&
+    standalone?.next_serial_batch === 'AIPT-MVP-B006' && standalone?.construction === 'IN_PROGRESS' &&
+    standalone?.current_batch === 'AIPT-MVP-B005' && standalone?.global_wip === 1;
+  if (!predecessorClosed || !sharedNextBoundary || (!historicalTuple && !activeTuple)) {
+    problems.push('project-status predecessor/current/next/WIP tuple is not an allowed exact transition');
   }
   const integration = status?.integration_closeouts?.[INTEGRATION_TASK];
   if (!isDeepStrictEqual(integration, expectedIntegrationProjection())) {
@@ -507,9 +577,9 @@ function statusNegativeProbes(repo, status) {
   const definitions = [
     ['S01', 'integration returned to NOT_STARTED', (copy) => { copy.tracks['AIPT-STANDALONE'].batch_history[INTEGRATION_TASK] = 'NOT_STARTED'; }],
     ['S02', 'next batch points back to integration', (copy) => { copy.tracks['AIPT-STANDALONE'].next_serial_batch = INTEGRATION_TASK; }],
-    ['S03', 'B005 authorized', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
-    ['S04', 'B005 started', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_started = true; }],
-    ['S05', 'GLOBAL_WIP raised', (copy) => { copy.tracks['AIPT-STANDALONE'].global_wip = 1; }],
+    ['S03', 'unauthorized successor authorized', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
+    ['S04', 'unauthorized successor started', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_started = true; }],
+    ['S05', 'GLOBAL_WIP exceeds exact state', (copy) => { copy.tracks['AIPT-STANDALONE'].global_wip += 1; }],
     ['S06', 'B004 source reopened', (copy) => { copy.repositories.AIPT.mvp_b004.state = 'IN_PROGRESS'; }],
     ['S07', 'UNREGISTERED package drift', (copy) => { copy.repositories.UNREGISTERED.verified_head = '0'.repeat(40); }],
     ['S08', 'integration merge fabricated in projection', (copy) => { copy.integration_closeouts[INTEGRATION_TASK].repository_merge_performed = true; }],
@@ -622,7 +692,9 @@ export function run(ctx, args = {}) {
     `ok: canonical ${INTEGRATION_TASK} record validates and binds byte identity ${RECORD_SHA256}`,
     `ok: frozen integration manifest, stage root, local closeout, final root and replay hash are exact (${evidence.mode})`,
     `ok: fixed external package/source identities are exact (${externalSource.mode})`,
-    'ok: project status is CLOSED/MERGED_CLOSED-without-merge, WIP0, and points to unauthorized/not-started B005',
+    status.tracks?.['AIPT-STANDALONE']?.current_batch === 'AIPT-MVP-B005'
+      ? 'ok: read-only integration remains CLOSED/MERGED_CLOSED-without-merge while authorized B005 is the sole WIP1 successor and B006 remains unauthorized/not-started'
+      : 'ok: project status is CLOSED/MERGED_CLOSED-without-merge, WIP0, and points to unauthorized/not-started B005',
     'ok: B001-B004 semantics, B004 closeout, batch graph and UNREGISTERED authority projection remain unchanged',
     `ok: all ${probes.length} schema/status/topology probes matched without uncaught validation errors`,
     `ok: publication hygiene scanned ${publication.files_scanned} governance files with complete coverage and zero findings`,
@@ -661,9 +733,9 @@ export function run(ctx, args = {}) {
     hidden_information_leaks: 0,
     public_disclosure_reauthorization_required: true,
     publicly_pushed: false,
-    next_batch: 'AIPT-MVP-B005',
-    next_batch_authorized: false,
-    next_batch_started: false,
+    next_batch: status.tracks?.['AIPT-STANDALONE']?.next_serial_batch ?? null,
+    next_batch_authorized: status.tracks?.['AIPT-STANDALONE']?.next_batch_authorized ?? null,
+    next_batch_started: status.tracks?.['AIPT-STANDALONE']?.next_batch_started ?? null,
   };
 }
 

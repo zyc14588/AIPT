@@ -5,9 +5,9 @@
 // Runs every validator with the repository root as context and prints a
 // single machine-readable report. Exit code 0 only when every check is PASS.
 // The report preserves every historical M0 gate and adds the exact MVP
-// bootstrap authority/lifecycle gate, the B001 exact-Base regression replay,
-// the closed deterministic Run Core gate, and the current deterministic Agent
-// Orchestrator gate. M0/B000/B001/B002 remain immutable; B003 is closed.
+// bootstrap authority/lifecycle gate, every closed MVP regression gate, the
+// immutable read-only integration closeout, and the active B005 evidence
+// closure gate. Historical semantics remain immutable.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,6 +30,7 @@ import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
 import { run as runMvpB002 } from './validate/mvp-b002.mjs';
 import { run as runMvpB003 } from './validate/mvp-b003.mjs';
 import { run as runMvpB004 } from './validate/mvp-b004.mjs';
+import { run as runMvpB005 } from './validate/mvp-b005.mjs';
 import { run as runInt001CloseoutAuthority } from './validate/int001-closeout-authority.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
@@ -172,6 +173,7 @@ const checks = await Promise.all([
   runMvpB002(ctx),
   runMvpB003(ctx),
   runMvpB004(ctx),
+  runMvpB005(ctx),
   runInt001CloseoutAuthority(ctx),
   repairCheck,
   closeoutCheck,
@@ -183,7 +185,7 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = 'INT-AIPT-UNREGISTERED-MVP-001 stage and local read-only closeout PASS without rerun; exact fixed-pair identities and frozen evidence hashes are registered by a governance-only Authority Candidate; B001-B004 semantics remain immutable; project-status is idle at GLOBAL_WIP 0 and AIPT-MVP-B005 remains NOT_AUTHORIZED/NOT_STARTED; public CI uses zero real model/provider calls and no secret input; qualification remains unexecuted';
+const note = `INT-AIPT-UNREGISTERED-MVP-001 remains immutably closed without rerun; B001-B004 semantics remain immutable; ${standalone?.current_batch ?? 'UNKNOWN'} is the sole active batch at GLOBAL_WIP ${standalone?.global_wip ?? 'UNKNOWN'} and ${standalone?.next_serial_batch ?? 'UNKNOWN'} remains ${standalone?.next_batch_state ?? 'UNKNOWN'}; B005 public CI paths use zero real model/provider calls and no secret input; qualification remains unexecuted`;
 const report = {
   schema: 'aipt.public.int001-closeout-authority-validator-run/v1',
   task_id: 'INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001',
