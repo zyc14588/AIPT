@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
+	"unicode"
+	"unicode/utf8"
 )
 
 const remoteVerificationStatus = "VERIFIED_IMMUTABLE_REMOTE_COMMIT"
@@ -31,10 +34,13 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 	if err := ctx.Err(); err != nil {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify source identity", err)
 	}
-	if err := validateSourceIdentity(source); err != nil {
+	if err := validateAuditReadySourceIdentity(source); err != nil {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify source identity", err)
 	}
-	if verifier.MirrorPath == "" || verifier.ExpectedRepository == "" || source.Repository != verifier.ExpectedRepository {
+	if err := ValidateAuditReadyRepositoryIdentity(verifier.ExpectedRepository); err != nil {
+		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify expected repository identity", err)
+	}
+	if verifier.MirrorPath == "" || source.Repository != verifier.ExpectedRepository {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify source identity", errors.New("source is outside configured repository"))
 	}
 	remoteName := verifier.RemoteName
@@ -63,6 +69,7 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 		command.Env = []string{
 			"GIT_CONFIG_NOSYSTEM=1",
 			"GIT_CONFIG_GLOBAL=/dev/null",
+			"GIT_NO_LAZY_FETCH=1",
 			"GIT_OPTIONAL_LOCKS=0",
 			"GIT_TERMINAL_PROMPT=0",
 			"LC_ALL=C",
@@ -74,7 +81,7 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 		if len(output) > 4096 {
 			return "", errors.New("git verification output exceeds bound")
 		}
-		return strings.TrimSpace(string(output)), nil
+		return strings.TrimSuffix(string(output), "\n"), nil
 	}
 
 	bare, err := run("rev-parse", "--is-bare-repository")
@@ -85,7 +92,7 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 		return run("config", "--local", "--get", "remote."+remoteName+".url")
 	}
 	remoteBefore, err := readRemote()
-	if err != nil || remoteBefore != source.Repository {
+	if err != nil || ValidateAuditReadyRepositoryIdentity(remoteBefore) != nil || remoteBefore != source.Repository {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify source remote", errors.New("remote identity mismatch"))
 	}
 	objectType, err := run("cat-file", "-t", source.Commit)
@@ -110,8 +117,41 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 }
 
 func validateRemoteVerification(verification RemoteVerification, source SourceIdentity) error {
-	if verification.Remote != source.Repository || verification.Commit != source.Commit || verification.Status != remoteVerificationStatus {
+	if validateAuditReadySourceIdentity(source) != nil || ValidateAuditReadyRepositoryIdentity(verification.Remote) != nil ||
+		verification.Remote != source.Repository || verification.Commit != source.Commit || verification.Status != remoteVerificationStatus {
 		return fmt.Errorf("%w: remote verification does not bind source", ErrSourceUnverified)
 	}
 	return nil
+}
+
+// ValidateAuditReadyRepositoryIdentity enforces the additive B005 repository
+// identity contract without changing the byte-frozen RAW_CAPTURE v1 rules.
+// It deliberately returns no parser detail because net/url errors may echo the
+// credential-bearing input.
+func ValidateAuditReadyRepositoryIdentity(repository string) error {
+	invalid := func() error {
+		return fmt.Errorf("%w: repository identity must be a credential-free HTTPS URL", ErrSourceUnverified)
+	}
+	if repository == "" || !utf8.ValidString(repository) || utf8.RuneCountInString(repository) > 512 ||
+		containsControl(repository) || strings.Contains(repository, "#") {
+		return invalid()
+	}
+	parsed, err := url.Parse(repository)
+	if err != nil || !parsed.IsAbs() || parsed.Scheme != "https" || parsed.Opaque != "" || parsed.Host == "" || parsed.Hostname() == "" ||
+		parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" || parsed.RawFragment != "" ||
+		containsControl(parsed.Host) || containsControl(parsed.Path) {
+		return invalid()
+	}
+	return nil
+}
+
+func validateAuditReadySourceIdentity(source SourceIdentity) error {
+	if validateSourceIdentity(source) != nil || ValidateAuditReadyRepositoryIdentity(source.Repository) != nil {
+		return fmt.Errorf("%w: invalid credential-free immutable source identity", ErrSourceUnverified)
+	}
+	return nil
+}
+
+func containsControl(value string) bool {
+	return strings.IndexFunc(value, unicode.IsControl) >= 0
 }

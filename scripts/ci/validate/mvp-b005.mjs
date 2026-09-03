@@ -14,6 +14,9 @@ const TASK_ID = 'AIPT-MVP-B005';
 const BRANCH = `task/${TASK_ID}`;
 const BASE_COMMIT = '176f33d8f20f94a77ab688f4869e944b6ffe97c6';
 const BASE_TREE = '210320957a35633bcf766a3d88ea50a3493bd0fc';
+const PREVIOUS_PUBLIC_CANDIDATE = '7ca1f9679c42c502e4b56103f66fff5e6798c184';
+const PREVIOUS_PUBLIC_TREE = '127b17486d66df0a21e3e4048a89eda2ce8e1e04';
+const PREVIOUS_PUBLIC_CI = 33738314143;
 const PREDECESSOR = 'INT-AIPT-UNREGISTERED-MVP-001';
 const PREDECESSOR_RECORD = 'docs/authority/registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json';
 const PREDECESSOR_SHA256 = '1f22028561c90619755314eedb50869bb40e78b4ef55458e35eb654bf8d9ebc2';
@@ -23,6 +26,7 @@ const LEGACY_GOLDEN = 'testdata/evidence/v1/minimal-raw-capture/manifest.json';
 const LEGACY_GOLDEN_SHA256 = '106ba6686d0f47304921266824c5832916867931869c45424d894410eed241a2';
 const STATUS_PATH = 'docs/authority/registry/project-status.json';
 const MATRIX_PATH = 'testdata/evidence/v1/b005-negative-matrix.json';
+const NEGATIVE_PROBE_COUNT = 50;
 
 const SCHEMAS = Object.freeze({
   closure: 'schemas/evidence/v1/aipt-run-evidence-closure.schema.json',
@@ -121,15 +125,19 @@ function resolveTopology(repo) {
   const headFacts = commitFacts(repo, head);
   const branch = currentBranch(repo);
   const baseExact = commitFacts(repo, BASE_COMMIT)?.tree === BASE_TREE;
-  if (!baseExact || !head || !isAncestor(repo, BASE_COMMIT, head)) {
+  const previousExact = commitFacts(repo, PREVIOUS_PUBLIC_CANDIDATE)?.tree === PREVIOUS_PUBLIC_TREE &&
+    linearCandidate(repo, PREVIOUS_PUBLIC_CANDIDATE);
+  if (!baseExact || !previousExact || !head || !isAncestor(repo, BASE_COMMIT, head)) {
     return { phase: 'REJECTED', head, headFacts, branch, candidate: null, paths: candidateInventory(repo) };
   }
   if (dirty(repo)) {
     const paths = candidateInventory(repo);
-    const valid = head === BASE_COMMIT && branch === BRANCH && paths.every(allowedPath);
+    const repairHead = head === PREVIOUS_PUBLIC_CANDIDATE && headFacts?.tree === PREVIOUS_PUBLIC_TREE;
+    const valid = (head === BASE_COMMIT || repairHead) && branch === BRANCH && paths.every(allowedPath);
     return { phase: valid ? 'CONSTRUCTION' : 'REJECTED', head, headFacts, branch, candidate: null, paths };
   }
-  if (branch === BRANCH && headFacts?.parents.length === 1 && linearCandidate(repo, head)) {
+  if (branch === BRANCH && head !== PREVIOUS_PUBLIC_CANDIDATE && headFacts?.parents.length === 1 &&
+      linearCandidate(repo, head) && isAncestor(repo, PREVIOUS_PUBLIC_CANDIDATE, head)) {
     const paths = changedPaths(repo, BASE_COMMIT, head);
     return { phase: paths.every(allowedPath) ? 'CANDIDATE' : 'REJECTED', head, headFacts, branch, candidate: head, paths };
   }
@@ -214,6 +222,11 @@ function examples() {
   };
   const index = {
     schema: 'aipt.audit-ready.bundle-index/v1', version: '1.0.0',
+    core_evidence_classifications: {
+      schema: 'aipt.core-evidence-classification/v1', version: '1.0.0', raw_capture: 'PUBLIC',
+      run_evidence_closure: 'PUBLIC', replay_evidence: 'PUBLIC', defect_family: 'PUBLIC',
+      defect_occurrence: 'PUBLIC', run_report: 'PUBLIC', report_derivatives: 'PUBLIC',
+    },
     export_profile: { profile_id: 'SYNTHETIC', inline_threshold: 8, chunk_size: 4, max_asset_bytes: 1024, max_total_bytes: 4096, max_assets: 16, max_chunks: 64 },
     logical_assets: [{ path: 'supplemental/evidence.txt', media_type: 'text/plain', bytes: 9, sha256: h('a'), classification: 'PUBLIC', content_kind: 'SUPPLEMENTAL', storage: { kind: 'CONTENT_ADDRESSED_CHUNKS', chunks: [{ ordinal: 0, path: `chunk-${h('a')}.bin`, bytes: 4, sha256: h('a') }] } }],
   };
@@ -265,12 +278,12 @@ function sourceProblems(repo) {
   const sources = Object.fromEntries(productionPaths.map((relative) => [relative, read(repo, relative)]));
   const all = Object.values(sources).join('\n');
   const requiredTokens = new Map([
-    ['internal/evidence/audit_ready.go', ['func GenerateAuditReady(', 'func VerifyAuditReady(', 'renameat2NoReplace(', 'CONTENT_ADDRESSED_CHUNKS', 'validateContractEvidenceReferences(', 'inputUnchanged()', 'ErrEncryptionRequired']],
+    ['internal/evidence/audit_ready.go', ['func GenerateAuditReady(', 'func VerifyAuditReady(', 'renameat2NoReplace(', 'CONTENT_ADDRESSED_CHUNKS', 'validateContractEvidenceReferences(', 'validateCoreEvidenceClassifications(', 'validateCoreLogicalAssetDescriptors(', 'inputUnchanged()', 'ErrEncryptionRequired']],
     ['internal/evidence/raw_material.go', ['VerifyRawCapture(directory)', 'openHeldPrivateFile(', 'func (held *heldRawCapture) Stable() bool']],
-    ['internal/evidence/source_verify.go', ['type GitMirrorVerifier struct', 'trustedGitExecutable = "/usr/bin/git"', '--no-replace-objects', '--git-dir=/proc/self/fd/3', 'command.ExtraFiles', 'exec.CommandContext(', 'cat-file', '--format=%T']],
+    ['internal/evidence/source_verify.go', ['type GitMirrorVerifier struct', 'trustedGitExecutable = "/usr/bin/git"', '--no-replace-objects', '--git-dir=/proc/self/fd/3', 'command.ExtraFiles', 'exec.CommandContext(', 'GIT_NO_LAZY_FETCH=1', 'url.Parse(', 'ValidateAuditReadyRepositoryIdentity(', 'cat-file', '--format=%T']],
     ['internal/evidence/closure_validate.go', ['func DefectFingerprint(', 'SEMANTIC_DUPLICATE_CANDIDATE', 'func ResolveDefectDecisionChain(', 'func ValidateReportTransition(', 'previous.Lifecycle == ReportSealed', 'func ValidateReportAddendumChain(']],
     ['internal/evidence/report_render.go', ['func RenderRunReport(', 'renderReportMarkdown(', 'renderReportCSV(', 'renderReportJUnit(', 'renderReportHTML(']],
-    ['cmd/aipt-audit-ready/main.go', ['case "generate":', 'case "verify":', 'base64.StdEncoding.Strict()', 'stableErrorCode(']],
+    ['cmd/aipt-audit-ready/main.go', ['case "generate":', 'case "verify":', 'base64.StdEncoding.Strict()', 'ValidateAuditReadyRepositoryIdentity(', 'stableErrorCode(']],
   ]);
   for (const [relative, tokens] of requiredTokens) {
     for (const token of tokens) if (!sources[relative].includes(token)) problems.push(`${relative} misses required token ${token}`);
@@ -322,7 +335,7 @@ function statusProblems(status, phase) {
       b005.report_contract_and_lifecycle_implemented !== true || b005.deterministic_export_implemented !== true ||
       b005.content_addressed_chunking_implemented !== true || b005.encryption_implemented !== false ||
       b005.signing_implemented !== false || b005.audit_result_generator_implemented !== false ||
-      b005.synthetic_public_postgresql_18_4_gate !== 'PASS' || b005.negative_probe_count !== 35 ||
+      b005.synthetic_public_postgresql_18_4_gate !== 'PASS' || b005.negative_probe_count !== NEGATIVE_PROBE_COUNT ||
       b005.unexpected_acceptances !== 0 || b005.real_model_calls !== 0 ||
       b005.provider_network_calls !== 0 || b005.real_playtest_executed !== false || b005.qualification_runs_executed !== 0 ||
       b005.new_migration !== 'NONE' || b005.runtime_ready !== false || b005.first_blocking_gate !== 'IPC' ||
@@ -374,7 +387,7 @@ function expectedConstructionStatus(baseline) {
     signing_implemented: false,
     audit_result_generator_implemented: false,
     synthetic_public_postgresql_18_4_gate: 'PASS',
-    negative_probe_count: 35,
+    negative_probe_count: NEGATIVE_PROBE_COUNT,
     unexpected_acceptances: 0,
     real_model_calls: 0,
     provider_network_calls: 0,
@@ -393,8 +406,8 @@ function expectedConstructionStatus(baseline) {
 
 function matrixProblems(matrix) {
   const problems = [];
-  if (matrix?.schema !== 'aipt.b005.negative-matrix/v1' || matrix?.task_id !== TASK_ID || !Array.isArray(matrix?.probes) || matrix.probes.length !== 35) {
-    return ['negative matrix identity or exact N01-N35 count is invalid'];
+  if (matrix?.schema !== 'aipt.b005.negative-matrix/v1' || matrix?.task_id !== TASK_ID || !Array.isArray(matrix?.probes) || matrix.probes.length !== NEGATIVE_PROBE_COUNT) {
+    return [`negative matrix identity or exact N01-N${NEGATIVE_PROBE_COUNT} count is invalid`];
   }
   for (let index = 0; index < matrix.probes.length; index += 1) {
     const probe = matrix.probes[index];
@@ -463,17 +476,20 @@ export function run(ctx) {
     problems.push('publication hygiene did not complete with exact zero-finding coverage');
   }
 
+  const indexWithoutCoreClassifications = structuredClone(examples().index);
+  delete indexWithoutCoreClassifications.core_evidence_classifications;
   const mutationProbes = [
     ['M01', topology.phase !== 'REJECTED'],
     ['M02', sha256(read(ctx.repo, PREDECESSOR_RECORD)) === PREDECESSOR_SHA256],
     ['M03', schemas.problems.length === 0],
-    ['M04', matrix?.probes?.length === 35],
+    ['M04', matrix?.probes?.length === NEGATIVE_PROBE_COUNT],
     ['M05', !validateInstance(schemas.documents.closure ?? {}, { ...examples().closure, unexpected: true }).valid],
     ['M06', !validateInstance(schemas.documents.closure ?? {}, { ...examples().closure, version: '99.0.0' }).valid],
     ['M07', !validateInstance(schemas.documents.report ?? {}, { ...examples().report, lifecycle: 'UNSEALED' }).valid],
     ['M08', !validateInstance(schemas.documents.index ?? {}, { ...examples().index, unexpected: true }).valid],
     ['M09', !sourceProblems(ctx.repo).length],
     ['M10', protectedHistoryProblems(ctx.repo, topology.paths).length === 0],
+    ['M11', !validateInstance(schemas.documents.index ?? {}, indexWithoutCoreClassifications).valid],
   ];
   for (const [id, matched] of mutationProbes) if (!matched) problems.push(`${id} validator mutation/control probe failed open`);
 
@@ -483,12 +499,16 @@ export function run(ctx) {
     'ok: legacy RAW_CAPTURE schema/golden remain byte-exact and additive B005 schemas are strict Draft 2020-12 documents',
     'ok: AUDIT_READY generator/verifier, immutable Git identity, replay, defects, report lifecycle, derivatives and content-addressed chunks are present',
     'ok: offline boundary excludes model/provider calls, predecessor semantics, migrations, Web UI, decompression and database mutation',
-    `ok: exact N01-N35 executable negative matrix is registered; all ${mutationProbes.length} validator control probes matched`,
+    `ok: exact N01-N${NEGATIVE_PROBE_COUNT} executable negative matrix is registered; all ${mutationProbes.length} validator control probes matched`,
     `ok: publication hygiene scanned ${publication.files_scanned} Candidate payload files with complete zero-finding coverage`,
   ] : problems.map((problem) => `FAIL: ${problem}`);
   return {
     result: problems.length === 0 ? 'PASS' : 'FAIL', task_id: TASK_ID, details,
     lifecycle_phase: topology.phase, base_commit: BASE_COMMIT, base_tree: BASE_TREE,
+    previous_public_candidate: {
+      commit: PREVIOUS_PUBLIC_CANDIDATE, tree: PREVIOUS_PUBLIC_TREE, public_ci: PREVIOUS_PUBLIC_CI,
+      ci_conclusion: 'success', status: 'REJECTED_PRE_MERGE_SECURITY_FINDINGS',
+    },
     head_commit: topology.head, head_tree: topology.headFacts?.tree ?? null, branch: topology.branch,
     changed_paths: topology.paths, predecessor: { task_id: PREDECESSOR, canonical_closeout_sha256: PREDECESSOR_SHA256 },
     negative_probe_count: matrix?.probes?.length ?? 0,

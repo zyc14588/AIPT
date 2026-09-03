@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/zyc14588/AIPT/schemas/evidence/v1/aipt-audit-ready-bundle-index.schema.json",
   "title": "AIPT AUDIT_READY Bundle Index v1",
-  "description": "Deterministic logical-to-physical mapping for inline and SHA-256 content-addressed evidence. Deployment profiles supply thresholds and hard limits.",
+  "description": "Deterministic logical-to-physical mapping for inline and SHA-256 content-addressed evidence. Core evidence classifications are explicit identity-bound authority; deployment profiles supply thresholds and hard limits.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "version", "export_profile", "logical_assets"],
+  "required": ["schema", "version", "core_evidence_classifications", "export_profile", "logical_assets"],
   "properties": {
     "schema": {"const": "aipt.audit-ready.bundle-index/v1"},
     "version": {"const": "1.0.0"},
+    "core_evidence_classifications": {"$ref": "#/$defs/core_evidence_classifications"},
     "export_profile": {"$ref": "#/$defs/export_profile"},
     "logical_assets": {
       "type": "array",
@@ -20,8 +21,25 @@
   "$defs": {
     "identifier": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]{0,255}$"},
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "classification": {"enum": ["PUBLIC", "UNRELEASED_REMOTE_ALLOWED", "TABLE_HIDDEN_REMOTE_ALLOWED", "LOCAL_ONLY_SECRET", "HUMAN_PRIVATE_DATA", "CREDENTIAL_SECRET"]},
     "logical_path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$"},
     "physical_path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,255}$"},
+    "core_evidence_classifications": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "raw_capture", "run_evidence_closure", "replay_evidence", "defect_family", "defect_occurrence", "run_report", "report_derivatives"],
+      "properties": {
+        "schema": {"const": "aipt.core-evidence-classification/v1"},
+        "version": {"const": "1.0.0"},
+        "raw_capture": {"$ref": "#/$defs/classification"},
+        "run_evidence_closure": {"$ref": "#/$defs/classification"},
+        "replay_evidence": {"$ref": "#/$defs/classification"},
+        "defect_family": {"$ref": "#/$defs/classification"},
+        "defect_occurrence": {"$ref": "#/$defs/classification"},
+        "run_report": {"$ref": "#/$defs/classification"},
+        "report_derivatives": {"$ref": "#/$defs/classification"}
+      }
+    },
     "export_profile": {
       "type": "object",
       "additionalProperties": false,
@@ -74,7 +92,7 @@
         "media_type": {"type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]*/[A-Za-z0-9][A-Za-z0-9.+-]*$"},
         "bytes": {"type": "integer", "minimum": 0, "maximum": 134217728},
         "sha256": {"$ref": "#/$defs/sha256"},
-        "classification": {"enum": ["PUBLIC", "UNRELEASED_REMOTE_ALLOWED", "TABLE_HIDDEN_REMOTE_ALLOWED", "LOCAL_ONLY_SECRET", "HUMAN_PRIVATE_DATA", "CREDENTIAL_SECRET"]},
+        "classification": {"$ref": "#/$defs/classification"},
         "content_kind": {"enum": ["CONTRACT", "RAW_CAPTURE", "REPORT_DERIVATIVE", "SUPPLEMENTAL", "PRIVATE_PROMPT", "CREDENTIAL", "PRIVATE_ASSET_LOCATOR", "GAME_BODY"]},
         "storage": {
           "oneOf": [

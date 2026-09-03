@@ -416,7 +416,7 @@ function expectedActiveB005Status(repo) {
     signing_implemented: false,
     audit_result_generator_implemented: false,
     synthetic_public_postgresql_18_4_gate: 'PASS',
-    negative_probe_count: 35,
+    negative_probe_count: 50,
     unexpected_acceptances: 0,
     real_model_calls: 0,
     provider_network_calls: 0,

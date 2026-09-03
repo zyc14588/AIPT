@@ -57,6 +57,9 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
+	if err := validateCoreEvidenceClassifications(input.CoreClassifications); err != nil {
+		return AuditReadyVerification{}, err
+	}
 	if err := preflightGenerateInput(input, preflightProfile); err != nil {
 		return AuditReadyVerification{}, err
 	}
@@ -80,6 +83,9 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
+	if err := validateCoreEvidenceClassifications(input.CoreClassifications); err != nil {
+		return AuditReadyVerification{}, err
+	}
 	finalPath, parent, err := validateAbsentDestination(input.Destination)
 	if err != nil {
 		return AuditReadyVerification{}, err
@@ -96,6 +102,9 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	}
 	defer raw.Close()
 	source := raw.material.Verification.Manifest.Source
+	if err := validateAuditReadySourceIdentity(source); err != nil {
+		return AuditReadyVerification{}, classifyError(ErrSourceUnverified, "verify source identity before normalization", err)
+	}
 	remote, err := input.SourceVerifier.Verify(ctx, source)
 	if err != nil || validateRemoteVerification(remote, source) != nil {
 		return AuditReadyVerification{}, classifyError(ErrSourceUnverified, "verify source before normalization", errOrFixed(err))
@@ -114,7 +123,7 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
-	logical, err := buildCoreLogicalAssets(raw.material, closure, families, occurrences, report)
+	logical, err := buildCoreLogicalAssets(raw.material, closure, families, occurrences, report, input.CoreClassifications)
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
@@ -126,7 +135,7 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 		return AuditReadyVerification{}, err
 	}
 
-	index, physical, err := materializeLogicalAssets(logical, profile)
+	index, physical, err := materializeLogicalAssets(logical, profile, input.CoreClassifications)
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
@@ -369,6 +378,12 @@ func verifyHeldAuditReady(ctx context.Context, directory *os.File, directoryStat
 		return fail("bundle index contract")
 	}
 	index.ExportProfile = profile
+	if err := validateCoreEvidenceClassifications(index.CoreEvidenceClassifications); err != nil {
+		return AuditReadyVerification{}, err
+	}
+	if err := validateCoreLogicalAssetDescriptors(index.LogicalAssets, index.CoreEvidenceClassifications); err != nil {
+		return AuditReadyVerification{}, err
+	}
 	logical, err := reassembleLogicalAssets(index, physical, physicalMedia)
 	if err != nil {
 		return AuditReadyVerification{}, err
@@ -478,28 +493,28 @@ func normalizeAuditContracts(raw Verification, eventHashes map[int64]string, clo
 	return normalizedClosure, normalizedFamilies, normalizedOccurrences, normalizedReport, nil
 }
 
-func buildCoreLogicalAssets(raw rawCaptureMaterial, closure RunEvidenceClosure, families []DefectFamily, occurrences []DefectOccurrence, report RunReport) ([]LogicalAssetInput, error) {
-	encode := func(path string, value any) (LogicalAssetInput, error) {
+func buildCoreLogicalAssets(raw rawCaptureMaterial, closure RunEvidenceClosure, families []DefectFamily, occurrences []DefectOccurrence, report RunReport, classifications CoreEvidenceClassifications) ([]LogicalAssetInput, error) {
+	encode := func(path string, classification ContentClassification, value any) (LogicalAssetInput, error) {
 		line, err := canonicalLine(value)
-		return LogicalAssetInput{Path: path, MediaType: "application/json", Classification: ContentPublic, ContentKind: ContentKindContract, Data: line}, err
+		return LogicalAssetInput{Path: path, MediaType: "application/json", Classification: classification, ContentKind: ContentKindContract, Data: line}, err
 	}
-	closureAsset, err := encode(RunClosureName, closure)
+	closureAsset, err := encode(RunClosureName, classifications.RunEvidenceClosure, closure)
 	if err != nil {
 		return nil, err
 	}
-	replayAsset, err := encode(ReplayEvidenceName, closure.Replay)
+	replayAsset, err := encode(ReplayEvidenceName, classifications.ReplayEvidence, closure.Replay)
 	if err != nil {
 		return nil, err
 	}
-	familyAsset, err := encode(DefectFamiliesName, defectFamilyEnvelope{Schema: "aipt.defect-families/v1", Version: ContractVersion, Families: families})
+	familyAsset, err := encode(DefectFamiliesName, classifications.DefectFamily, defectFamilyEnvelope{Schema: "aipt.defect-families/v1", Version: ContractVersion, Families: families})
 	if err != nil {
 		return nil, err
 	}
-	occurrenceAsset, err := encode(DefectOccurrencesName, defectOccurrenceEnvelope{Schema: "aipt.defect-occurrences/v1", Version: ContractVersion, Occurrences: occurrences})
+	occurrenceAsset, err := encode(DefectOccurrencesName, classifications.DefectOccurrence, defectOccurrenceEnvelope{Schema: "aipt.defect-occurrences/v1", Version: ContractVersion, Occurrences: occurrences})
 	if err != nil {
 		return nil, err
 	}
-	reportAsset, err := encode(RunReportName, report)
+	reportAsset, err := encode(RunReportName, classifications.RunReport, report)
 	if err != nil {
 		return nil, err
 	}
@@ -508,15 +523,74 @@ func buildCoreLogicalAssets(raw rawCaptureMaterial, closure RunEvidenceClosure, 
 		return nil, err
 	}
 	return []LogicalAssetInput{
-		{Path: RawManifestAssetName, MediaType: "application/json", Classification: ContentPublic, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.ManifestBytes...)},
-		{Path: RawEventsAssetName, MediaType: "application/x-ndjson", Classification: ContentPublic, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.EventsBytes...)},
-		{Path: RawRootAssetName, MediaType: "text/plain", Classification: ContentPublic, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.RootBytes...)},
+		{Path: RawManifestAssetName, MediaType: "application/json", Classification: classifications.RawCapture, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.ManifestBytes...)},
+		{Path: RawEventsAssetName, MediaType: "application/x-ndjson", Classification: classifications.RawCapture, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.EventsBytes...)},
+		{Path: RawRootAssetName, MediaType: "text/plain", Classification: classifications.RawCapture, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.RootBytes...)},
 		closureAsset, replayAsset, familyAsset, occurrenceAsset, reportAsset,
-		{Path: RunReportMarkdownName, MediaType: "text/markdown", Classification: ContentPublic, ContentKind: ContentKindReportDerivative, Data: derivatives.Markdown},
-		{Path: RunReportCSVName, MediaType: "text/csv", Classification: ContentPublic, ContentKind: ContentKindReportDerivative, Data: derivatives.CSV},
-		{Path: RunReportJUnitName, MediaType: "application/xml", Classification: ContentPublic, ContentKind: ContentKindReportDerivative, Data: derivatives.JUnit},
-		{Path: RunReportHTMLName, MediaType: "text/html", Classification: ContentPublic, ContentKind: ContentKindReportDerivative, Data: derivatives.HTML},
+		{Path: RunReportMarkdownName, MediaType: "text/markdown", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.Markdown},
+		{Path: RunReportCSVName, MediaType: "text/csv", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.CSV},
+		{Path: RunReportJUnitName, MediaType: "application/xml", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.JUnit},
+		{Path: RunReportHTMLName, MediaType: "text/html", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.HTML},
 	}, nil
+}
+
+func validateCoreEvidenceClassifications(classifications CoreEvidenceClassifications) error {
+	values := []ContentClassification{
+		classifications.RawCapture,
+		classifications.RunEvidenceClosure,
+		classifications.ReplayEvidence,
+		classifications.DefectFamily,
+		classifications.DefectOccurrence,
+		classifications.RunReport,
+		classifications.ReportDerivatives,
+	}
+	if classifications.Schema != CoreClassificationSchema || classifications.Version != ContractVersion {
+		return fmt.Errorf("%w: core evidence classification schema/version", ErrAuditReadyInvalid)
+	}
+	for _, classification := range values {
+		if !validContentClassification(classification) {
+			return fmt.Errorf("%w: missing or unknown core evidence classification", ErrAuditReadyInvalid)
+		}
+	}
+	if classifications.ReportDerivatives != classifications.RunReport {
+		return fmt.Errorf("%w: report derivatives must inherit the Run Report classification", ErrDisclosureViolation)
+	}
+	return nil
+}
+
+func validateCoreLogicalAssetDescriptors(descriptors []LogicalAsset, classifications CoreEvidenceClassifications) error {
+	type expectedDescriptor struct {
+		classification ContentClassification
+		kind           ContentKind
+	}
+	expected := map[string]expectedDescriptor{
+		RawManifestAssetName:  {classifications.RawCapture, ContentKindRawCapture},
+		RawEventsAssetName:    {classifications.RawCapture, ContentKindRawCapture},
+		RawRootAssetName:      {classifications.RawCapture, ContentKindRawCapture},
+		RunClosureName:        {classifications.RunEvidenceClosure, ContentKindContract},
+		ReplayEvidenceName:    {classifications.ReplayEvidence, ContentKindContract},
+		DefectFamiliesName:    {classifications.DefectFamily, ContentKindContract},
+		DefectOccurrencesName: {classifications.DefectOccurrence, ContentKindContract},
+		RunReportName:         {classifications.RunReport, ContentKindContract},
+		RunReportMarkdownName: {classifications.ReportDerivatives, ContentKindReportDerivative},
+		RunReportCSVName:      {classifications.ReportDerivatives, ContentKindReportDerivative},
+		RunReportJUnitName:    {classifications.ReportDerivatives, ContentKindReportDerivative},
+		RunReportHTMLName:     {classifications.ReportDerivatives, ContentKindReportDerivative},
+	}
+	for _, descriptor := range descriptors {
+		want, core := expected[descriptor.Path]
+		if !core {
+			continue
+		}
+		if descriptor.Classification != want.classification || descriptor.ContentKind != want.kind {
+			return fmt.Errorf("%w: core logical asset classification or kind mismatch", ErrDisclosureViolation)
+		}
+		delete(expected, descriptor.Path)
+	}
+	if len(expected) != 0 {
+		return fmt.Errorf("%w: core logical asset classification binding is incomplete", ErrAuditReadyInvalid)
+	}
+	return nil
 }
 
 func validateExportProfile(profile ExportProfile) (ExportProfile, error) {
@@ -669,10 +743,13 @@ func validateOneDisclosure(classification ContentClassification, kind ContentKin
 	return nil
 }
 
-func materializeLogicalAssets(inputs []LogicalAssetInput, profile ExportProfile) (BundleIndex, map[string]physicalAsset, error) {
+func materializeLogicalAssets(inputs []LogicalAssetInput, profile ExportProfile, classifications CoreEvidenceClassifications) (BundleIndex, map[string]physicalAsset, error) {
 	ordered := cloneLogicalAssetInputs(inputs)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].Path < ordered[j].Path })
-	index := BundleIndex{Schema: BundleIndexSchema, Version: ContractVersion, ExportProfile: profile, LogicalAssets: make([]LogicalAsset, 0, len(ordered))}
+	index := BundleIndex{
+		Schema: BundleIndexSchema, Version: ContractVersion, CoreEvidenceClassifications: classifications,
+		ExportProfile: profile, LogicalAssets: make([]LogicalAsset, 0, len(ordered)),
+	}
 	physical := map[string]physicalAsset{}
 	chunkCount := 0
 	for _, input := range ordered {
@@ -869,7 +946,7 @@ func verifyCoreLogicalAssets(manifest AuditReadyManifest, logical map[string][]b
 func validateAuditReadyManifest(manifest AuditReadyManifest) error {
 	if manifest.Schema != SchemaID || manifest.Version != SchemaVersion || manifest.Stage != AuditReadyStage ||
 		manifest.NormalizationVersion != AuditReadyNormalizationVersion || validSHA("raw_capture_root", manifest.RawCaptureRoot) != nil ||
-		validateSourceIdentity(manifest.Source) != nil || validateRemoteVerification(manifest.RemoteVerification, manifest.Source) != nil ||
+		validateAuditReadySourceIdentity(manifest.Source) != nil || validateRemoteVerification(manifest.RemoteVerification, manifest.Source) != nil ||
 		validateDisclosure(manifest.Disclosure) != nil || len(manifest.NormalizedAssets) == 0 || len(manifest.NormalizedAssets) > maxAuditReadyAssets {
 		return ErrAuditReadyInvalid
 	}
@@ -962,15 +1039,16 @@ type supplementalInputSnapshot struct {
 }
 
 type semanticGenerateInput struct {
-	Destination       string                      `json:"destination"`
-	RawCapture        string                      `json:"raw_capture"`
-	Disclosure        Disclosure                  `json:"disclosure"`
-	Closure           RunEvidenceClosure          `json:"closure"`
-	DefectFamilies    []DefectFamily              `json:"defect_families"`
-	DefectOccurrences []DefectOccurrence          `json:"defect_occurrences"`
-	Report            RunReport                   `json:"report"`
-	Supplemental      []supplementalInputSnapshot `json:"supplemental"`
-	ExportProfile     ExportProfile               `json:"export_profile"`
+	Destination         string                      `json:"destination"`
+	RawCapture          string                      `json:"raw_capture"`
+	Disclosure          Disclosure                  `json:"disclosure"`
+	CoreClassifications CoreEvidenceClassifications `json:"core_evidence_classifications"`
+	Closure             RunEvidenceClosure          `json:"closure"`
+	DefectFamilies      []DefectFamily              `json:"defect_families"`
+	DefectOccurrences   []DefectOccurrence          `json:"defect_occurrences"`
+	Report              RunReport                   `json:"report"`
+	Supplemental        []supplementalInputSnapshot `json:"supplemental"`
+	ExportProfile       ExportProfile               `json:"export_profile"`
 }
 
 func preflightGenerateInput(input GenerateAuditReadyInput, profile ExportProfile) error {
@@ -1002,7 +1080,8 @@ func semanticInput(input GenerateAuditReadyInput) semanticGenerateInput {
 	}
 	return semanticGenerateInput{
 		Destination: input.Destination, RawCapture: input.RawCapture, Disclosure: input.Disclosure,
-		Closure: input.Closure, DefectFamilies: input.DefectFamilies, DefectOccurrences: input.DefectOccurrences,
+		CoreClassifications: input.CoreClassifications,
+		Closure:             input.Closure, DefectFamilies: input.DefectFamilies, DefectOccurrences: input.DefectOccurrences,
 		Report: input.Report, Supplemental: supplemental, ExportProfile: input.ExportProfile,
 	}
 }
@@ -1035,7 +1114,8 @@ func snapshotGenerateInput(input GenerateAuditReadyInput) (GenerateAuditReadyInp
 	}
 	copy := GenerateAuditReadyInput{
 		Destination: owned.Destination, RawCapture: owned.RawCapture, SourceVerifier: input.SourceVerifier,
-		Disclosure: owned.Disclosure, Closure: owned.Closure, DefectFamilies: owned.DefectFamilies,
+		Disclosure: owned.Disclosure, CoreClassifications: owned.CoreClassifications,
+		Closure: owned.Closure, DefectFamilies: owned.DefectFamilies,
 		DefectOccurrences: owned.DefectOccurrences, Report: owned.Report, Supplemental: supplemental,
 		ExportProfile: owned.ExportProfile,
 	}

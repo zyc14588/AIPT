@@ -7,11 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -162,8 +166,9 @@ func fixtureAuditInputForRaw(t *testing.T, rawPath string, profile ExportProfile
 	verifier := &staticSourceVerifier{expected: raw.Manifest.Source}
 	input := GenerateAuditReadyInput{
 		RawCapture: rawPath, SourceVerifier: verifier,
-		Disclosure: Disclosure{Profile: DisclosurePublic, Encryption: Encryption{Status: EncryptionUnencrypted}},
-		Closure:    closure, DefectFamilies: []DefectFamily{family}, DefectOccurrences: []DefectOccurrence{occurrence}, Report: report,
+		Disclosure:          Disclosure{Profile: DisclosurePublic, Encryption: Encryption{Status: EncryptionUnencrypted}},
+		CoreClassifications: publicCoreEvidenceClassifications(),
+		Closure:             closure, DefectFamilies: []DefectFamily{family}, DefectOccurrences: []DefectOccurrence{occurrence}, Report: report,
 		Supplemental: []LogicalAssetInput{
 			{Path: actionReference.Path, MediaType: "text/plain", Classification: ContentPublic, ContentKind: ContentKindSupplemental, Data: actionBytes},
 			{Path: coverageReference.Path, MediaType: "text/plain", Classification: ContentPublic, ContentKind: ContentKindSupplemental, Data: coverageBytes},
@@ -177,6 +182,14 @@ func fixtureAuditInputForRaw(t *testing.T, rawPath string, profile ExportProfile
 
 func fixtureExportProfile() ExportProfile {
 	return ExportProfile{ProfileID: "SYNTHETIC-PUBLIC", InlineThreshold: 1 << 20, ChunkSize: 64 << 10, MaxAssetBytes: 8 << 20, MaxTotalBytes: 32 << 20, MaxAssets: 256, MaxChunks: 4096}
+}
+
+func publicCoreEvidenceClassifications() CoreEvidenceClassifications {
+	return CoreEvidenceClassifications{
+		Schema: CoreClassificationSchema, Version: ContractVersion,
+		RawCapture: ContentPublic, RunEvidenceClosure: ContentPublic, ReplayEvidence: ContentPublic,
+		DefectFamily: ContentPublic, DefectOccurrence: ContentPublic, RunReport: ContentPublic, ReportDerivatives: ContentPublic,
+	}
 }
 
 func compareFlatDirectories(t *testing.T, left, right string) {
@@ -240,6 +253,119 @@ func TestAuditReadyDeterministicRoundTrip(t *testing.T) {
 	}
 	if firstVerifier.calls < 5 || secondVerifier.calls < 4 {
 		t.Fatalf("source identity was not repeatedly verified: first=%d second=%d", firstVerifier.calls, secondVerifier.calls)
+	}
+}
+
+func assertCoreClassificationRejected(t *testing.T, mutate func(*GenerateAuditReadyInput), wanted error) {
+	t.Helper()
+	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input.Destination = filepath.Join(privateTempDir(t), "rejected-classification")
+	mutate(&input)
+	if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, wanted) {
+		t.Fatalf("classification error = %v, want %v", err, wanted)
+	}
+	if _, err := os.Lstat(input.Destination); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("rejected classification left a final bundle: %v", err)
+	}
+}
+
+func TestF1N01RawCaptureClassificationAbsentOrUnknownRejected(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value ContentClassification
+	}{
+		{"absent", ""},
+		{"unknown", ContentClassification("UNKNOWN")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			assertCoreClassificationRejected(t, func(input *GenerateAuditReadyInput) {
+				input.CoreClassifications.RawCapture = test.value
+			}, ErrAuditReadyInvalid)
+		})
+	}
+}
+
+func TestF1N02NonPublicRawCaptureRejectedByPublicProfile(t *testing.T) {
+	assertCoreClassificationRejected(t, func(input *GenerateAuditReadyInput) {
+		input.CoreClassifications.RawCapture = ContentUnreleasedRemote
+	}, ErrDisclosureViolation)
+}
+
+func TestF1N03NonPublicRunReportRejectedByPublicProfile(t *testing.T) {
+	assertCoreClassificationRejected(t, func(input *GenerateAuditReadyInput) {
+		input.CoreClassifications.RunReport = ContentUnreleasedRemote
+		input.CoreClassifications.ReportDerivatives = ContentUnreleasedRemote
+	}, ErrDisclosureViolation)
+}
+
+func TestF1N04ReportDerivativeCannotBypassParentClassification(t *testing.T) {
+	assertCoreClassificationRejected(t, func(input *GenerateAuditReadyInput) {
+		input.CoreClassifications.RunReport = ContentUnreleasedRemote
+		input.CoreClassifications.ReportDerivatives = ContentPublic
+	}, ErrDisclosureViolation)
+}
+
+func TestF1N05MarkerFreeNonPublicCorePayloadRejected(t *testing.T) {
+	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	events, err := os.ReadFile(filepath.Join(input.RawCapture, EventsName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateOneDisclosure(ContentPublic, ContentKindRawCapture, events, input.Disclosure); err != nil {
+		t.Fatalf("fixture unexpectedly triggered defense-in-depth content scanning: %v", err)
+	}
+	input.CoreClassifications.RawCapture = ContentUnreleasedRemote
+	input.Destination = filepath.Join(privateTempDir(t), "marker-free-rejected")
+	if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, ErrDisclosureViolation) {
+		t.Fatalf("marker-free non-PUBLIC RAW_CAPTURE error = %v", err)
+	}
+}
+
+func TestF1N06ClassificationMutationChangesDeterministicRoot(t *testing.T) {
+	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input.Destination = filepath.Join(privateTempDir(t), "classification-root")
+	result, err := GenerateAuditReady(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutatedIndex := result.BundleIndex
+	mutatedIndex.LogicalAssets = append([]LogicalAsset(nil), result.BundleIndex.LogicalAssets...)
+	mutatedIndex.CoreEvidenceClassifications.RawCapture = ContentUnreleasedRemote
+	for index := range mutatedIndex.LogicalAssets {
+		switch mutatedIndex.LogicalAssets[index].Path {
+		case RawManifestAssetName, RawEventsAssetName, RawRootAssetName:
+			mutatedIndex.LogicalAssets[index].Classification = ContentUnreleasedRemote
+		}
+	}
+	indexBytes, err := canonicalLine(mutatedIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutatedManifest := result.Manifest
+	mutatedManifest.NormalizedAssets = append([]Asset(nil), result.Manifest.NormalizedAssets...)
+	found := false
+	for index := range mutatedManifest.NormalizedAssets {
+		if mutatedManifest.NormalizedAssets[index].Path != BundleIndexName {
+			continue
+		}
+		mutatedManifest.NormalizedAssets[index].Bytes = int64(len(indexBytes))
+		mutatedManifest.NormalizedAssets[index].SHA256 = digestText(indexBytes)
+		found = true
+	}
+	if !found {
+		t.Fatal("generated manifest does not bind the bundle index")
+	}
+	manifestBytes, err := canonicalLine(mutatedManifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutatedRoot := digestText(manifestBytes)
+	if mutatedRoot == result.Root {
+		t.Fatal("core classification mutation preserved the AUDIT_READY root")
+	}
+	secondManifestBytes, err := canonicalLine(mutatedManifest)
+	if err != nil || digestText(secondManifestBytes) != mutatedRoot {
+		t.Fatalf("classification-bound root is not deterministic: %v", err)
 	}
 }
 
@@ -689,6 +815,27 @@ func TestAuditReadyVerifierRejectsTamperingAndContractConfusion(t *testing.T) {
 			body["verdict"] = "PASS"
 			writeCanonicalManifestAndRoot(t, directory, body)
 		}},
+		{"bundle index missing core classification authority", func(t *testing.T, directory string) {
+			rewriteBundleIndexAndRoot(t, directory, func(index map[string]any) {
+				delete(index, "core_evidence_classifications")
+			})
+		}},
+		{"core descriptor classification bypass", func(t *testing.T, directory string) {
+			rewriteBundleIndexAndRoot(t, directory, func(index map[string]any) {
+				assets, ok := index["logical_assets"].([]any)
+				if !ok {
+					t.Fatal("bundle index logical_assets is not an array")
+				}
+				for _, value := range assets {
+					asset, ok := value.(map[string]any)
+					if ok && asset["path"] == RawEventsAssetName {
+						asset["classification"] = string(ContentUnreleasedRemote)
+						return
+					}
+				}
+				t.Fatal("bundle index misses RAW events descriptor")
+			})
+		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -731,6 +878,34 @@ func readJSONMap(t *testing.T, path string) map[string]any {
 		t.Fatal(err)
 	}
 	return value
+}
+
+func rewriteBundleIndexAndRoot(t *testing.T, directory string, mutate func(map[string]any)) {
+	t.Helper()
+	index := readJSONMap(t, filepath.Join(directory, BundleIndexName))
+	mutate(index)
+	indexBytes, err := canonicalLine(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, BundleIndexName), indexBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manifest := readJSONMap(t, filepath.Join(directory, ManifestName))
+	assets, ok := manifest["normalized_assets"].([]any)
+	if !ok {
+		t.Fatal("manifest normalized_assets is not an array")
+	}
+	for _, value := range assets {
+		asset, ok := value.(map[string]any)
+		if ok && asset["path"] == BundleIndexName {
+			asset["bytes"] = len(indexBytes)
+			asset["sha256"] = digestText(indexBytes)
+			writeCanonicalManifestAndRoot(t, directory, manifest)
+			return
+		}
+	}
+	t.Fatal("manifest does not bind bundle-index.json")
 }
 
 func writeCanonicalManifestAndRoot(t *testing.T, directory string, manifest map[string]any) {
@@ -807,6 +982,202 @@ func TestGitMirrorVerifierBindsRemoteCommitAndTree(t *testing.T) {
 	}
 }
 
+func assertUnsafeAuditReadyRepository(t *testing.T, repository string) {
+	t.Helper()
+	if err := ValidateAuditReadyRepositoryIdentity(repository); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatalf("unsafe repository was accepted: %v", err)
+	} else if strings.Contains(err.Error(), repository) || strings.Contains(err.Error(), "probe-value") {
+		t.Fatalf("repository validation error disclosed its input: %v", err)
+	}
+}
+
+func TestF2N01PasswordUserinfoRepositoryRejected(t *testing.T) {
+	assertUnsafeAuditReadyRepository(t, "https://"+"probe-user:probe-value"+"@example.invalid/aipt.git")
+	assertUnsafeAuditReadyRepository(t, "https://"+"probe-user%3Aprobe-value"+"@example.invalid/aipt.git")
+}
+
+func TestF2N02TokenStyleUserinfoRepositoryRejected(t *testing.T) {
+	assertUnsafeAuditReadyRepository(t, "https://"+"probe-value"+"@example.invalid/aipt.git")
+}
+
+func TestF2N03QueryCredentialRepositoryRejected(t *testing.T) {
+	assertUnsafeAuditReadyRepository(t, "https://example.invalid/aipt.git"+"?access=probe-value")
+	assertUnsafeAuditReadyRepository(t, "https://example.invalid/aipt.git?")
+}
+
+func TestF2N04FragmentCredentialRepositoryRejected(t *testing.T) {
+	assertUnsafeAuditReadyRepository(t, "https://example.invalid/aipt.git"+"#access=probe-value")
+	assertUnsafeAuditReadyRepository(t, "https://example.invalid/aipt.git#")
+}
+
+func TestF2RepositoryParserRejectsMissingHostAndDecodedControls(t *testing.T) {
+	assertUnsafeAuditReadyRepository(t, "https:///missing-host.git")
+	assertUnsafeAuditReadyRepository(t, "https://example.invalid/aipt.git%0aescaped-control")
+}
+
+func TestF2N05CredentialBearingMirrorRemoteRejected(t *testing.T) {
+	source, verifier := syntheticGitMirror(t)
+	injected := "https://" + "mirror-probe-value" + "@example.invalid/aipt.git"
+	runGitTest(t, "--git-dir", verifier.MirrorPath, "remote", "set-url", "origin", injected)
+	if _, err := verifier.Verify(context.Background(), source); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatalf("credential-bearing mirror remote was accepted: %v", err)
+	} else if strings.Contains(err.Error(), "mirror-probe-value") {
+		t.Fatalf("mirror validation error disclosed credential material: %v", err)
+	}
+}
+
+func TestF2N06CredentialBearingExpectedRepositoryRejected(t *testing.T) {
+	source, verifier := syntheticGitMirror(t)
+	injected := "https://" + "expected-probe-value" + "@example.invalid/aipt.git"
+	verifier.ExpectedRepository = injected
+	if _, err := verifier.Verify(context.Background(), source); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatalf("credential-bearing expected repository was accepted: %v", err)
+	} else if strings.Contains(err.Error(), "expected-probe-value") {
+		t.Fatalf("expected-repository error disclosed credential material: %v", err)
+	}
+}
+
+func TestF2N07CredentialBearingRawCaptureCannotEnterAuditReadyBundleOrErrors(t *testing.T) {
+	source := fixtureSourceIdentity()
+	sentinel := "raw-probe-value"
+	source.Repository = "https://" + sentinel + "@example.invalid/aipt.git"
+	rawPath := filepath.Join(privateTempDir(t), "legacy-raw-capture")
+	if _, err := ExportRawCapture(context.Background(), &staticSource{snapshot: fixtureSnapshot()}, ExportInput{
+		Destination: rawPath, Source: source, StreamID: "synthetic-ledger",
+	}); err != nil {
+		t.Fatalf("frozen RAW_CAPTURE v1 fixture setup failed: %v", err)
+	}
+	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	verifier := &staticSourceVerifier{expected: source}
+	input.RawCapture = rawPath
+	input.SourceVerifier = verifier
+	input.Destination = filepath.Join(privateTempDir(t), "must-not-exist")
+	if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatalf("credential-bearing RAW_CAPTURE source error = %v", err)
+	} else if strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("AUDIT_READY error disclosed repository credential material: %v", err)
+	}
+	if verifier.calls != 0 {
+		t.Fatalf("untrusted source verifier was invoked %d time(s) before B005 identity validation", verifier.calls)
+	}
+	if _, err := os.Lstat(input.Destination); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("credential-bearing source entered an AUDIT_READY bundle: %v", err)
+	}
+}
+
+func TestF3N01GitMirrorVerifierPromisorMissingObjectNeverFetches(t *testing.T) {
+	source, _ := syntheticGitMirror(t)
+	var requests atomic.Int64
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		http.NotFound(writer, nil)
+	})
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &httptest.Server{
+		Listener: listener,
+		Config:   &http.Server{Handler: handler},
+	}
+	server.StartTLS()
+	defer server.Close()
+
+	mirror := filepath.Join(privateTempDir(t), "promisor.git")
+	runGitTest(t, "init", "--quiet", "--bare", "--object-format=sha1", mirror)
+	if err := os.Chmod(mirror, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repository := server.URL + "/aipt.git"
+	runGitTest(t, "--git-dir", mirror, "config", "remote.origin.url", repository)
+	runGitTest(t, "--git-dir", mirror, "config", "remote.origin.promisor", "true")
+	runGitTest(t, "--git-dir", mirror, "config", "remote.origin.partialclonefilter", "blob:none")
+	runGitTest(t, "--git-dir", mirror, "config", "extensions.partialClone", "origin")
+	runGitTest(t, "--git-dir", mirror, "config", "http.sslVerify", "false")
+	source.Repository = repository
+
+	if gitObjectExistsWithoutFetch(mirror, source.Commit) {
+		t.Fatal("promisor fixture unexpectedly contains the target commit")
+	}
+	objectsBefore := snapshotObjectStore(t, mirror)
+	verifier := GitMirrorVerifier{MirrorPath: mirror, ExpectedRepository: repository}
+	if _, err := verifier.Verify(context.Background(), source); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatalf("missing promised commit error = %v", err)
+	}
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("offline verifier contacted the promisor remote %d time(s)", got)
+	}
+	objectsAfter := snapshotObjectStore(t, mirror)
+	if !canonicalEqual(objectsAfter, objectsBefore) {
+		t.Fatalf("promisor object store changed: before=%v after=%v", objectsBefore, objectsAfter)
+	}
+	if gitObjectExistsWithoutFetch(mirror, source.Commit) {
+		t.Fatal("missing promised commit appeared in the local object database")
+	}
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("local absence recheck contacted the promisor remote %d time(s)", got)
+	}
+}
+
+func gitObjectExistsWithoutFetch(mirror, object string) bool {
+	command := exec.Command(trustedGitExecutable, "--no-replace-objects", "--git-dir="+mirror, "cat-file", "-e", object+"^{commit}")
+	command.Env = []string{
+		"GIT_CONFIG_NOSYSTEM=1",
+		"GIT_CONFIG_GLOBAL=/dev/null",
+		"GIT_NO_LAZY_FETCH=1",
+		"GIT_OPTIONAL_LOCKS=0",
+		"GIT_TERMINAL_PROMPT=0",
+		"LC_ALL=C",
+	}
+	return command.Run() == nil
+}
+
+func snapshotObjectStore(t *testing.T, mirror string) map[string]string {
+	t.Helper()
+	root := filepath.Join(mirror, "objects")
+	snapshot := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		identity := fmt.Sprintf("mode=%s;size=%d;mtime=%d", info.Mode(), info.Size(), info.ModTime().UnixNano())
+		switch {
+		case entry.IsDir():
+			snapshot[filepath.ToSlash(relative)] = "directory;" + identity
+			return nil
+		case info.Mode().IsRegular():
+			data, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return readErr
+			}
+			snapshot[filepath.ToSlash(relative)] = "file;" + identity + ";sha256=" + digestText(data)
+			return nil
+		case info.Mode()&os.ModeSymlink != 0:
+			target, readErr := os.Readlink(path)
+			if readErr != nil {
+				return readErr
+			}
+			snapshot[filepath.ToSlash(relative)] = "symlink;" + identity + ";target=" + target
+			return nil
+		default:
+			snapshot[filepath.ToSlash(relative)] = "other;" + identity
+			return nil
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return snapshot
+}
+
 func syntheticGitMirror(t *testing.T) (SourceIdentity, GitMirrorVerifier) {
 	t.Helper()
 	root := privateTempDir(t)
@@ -851,7 +1222,7 @@ func TestReassemblyRejectsChunkReorderUnexpectedContentAndDuplicatePaths(t *test
 		{Path: "a.bin", MediaType: "application/octet-stream", Classification: ContentPublic, ContentKind: ContentKindSupplemental, Data: []byte("abcdefgh")},
 		{Path: "b.bin", MediaType: "application/octet-stream", Classification: ContentPublic, ContentKind: ContentKindSupplemental, Data: []byte("abcdefgh")},
 	}
-	index, physicalAssets, err := materializeLogicalAssets(inputs, profile)
+	index, physicalAssets, err := materializeLogicalAssets(inputs, profile, publicCoreEvidenceClassifications())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -926,10 +1297,10 @@ func TestB005NegativeMatrixIsExactAndBackedByExecutableTests(t *testing.T) {
 	if err := decoder.Decode(&registered); err != nil {
 		t.Fatal(err)
 	}
-	if registered.Schema != "aipt.b005.negative-matrix/v1" || registered.TaskID != "AIPT-MVP-B005" || len(registered.Probes) != 35 {
+	if registered.Schema != "aipt.b005.negative-matrix/v1" || registered.TaskID != "AIPT-MVP-B005" || len(registered.Probes) != 50 {
 		t.Fatalf("negative matrix identity/count = %s/%s/%d", registered.Schema, registered.TaskID, len(registered.Probes))
 	}
-	sourceFiles := []string{"audit_ready_test.go", "export_test.go", "postgres_integration_test.go"}
+	sourceFiles := []string{"audit_ready_test.go", "export_test.go", "postgres_integration_test.go", filepath.Join("..", "..", "cmd", "aipt-audit-ready", "main_test.go")}
 	var source strings.Builder
 	for _, name := range sourceFiles {
 		content, readErr := os.ReadFile(name)

@@ -240,7 +240,7 @@ func NormalizeRunEvidenceClosure(closure RunEvidenceClosure) (RunEvidenceClosure
 	if err := validateArtifactIdentity("run_manifest", closure.RunManifest); err != nil {
 		return RunEvidenceClosure{}, fmt.Errorf("%w: %v", ErrAuditReadyInvalid, err)
 	}
-	if err := validateSourceIdentity(closure.Source); err != nil {
+	if err := validateAuditReadySourceIdentity(closure.Source); err != nil {
 		return RunEvidenceClosure{}, fmt.Errorf("%w: source", ErrAuditReadyInvalid)
 	}
 	if closure.StateAuthority != "POSTGRESQL_APPEND_ONLY_HASH_CHAIN" {
@@ -451,7 +451,7 @@ func NormalizeDefectOccurrence(occurrence DefectOccurrence) (DefectOccurrence, e
 		validContractIdentifier("occurrence.run_id", occurrence.RunID) != nil ||
 		validSHA("occurrence.family_fingerprint", occurrence.FamilyFingerprint) != nil ||
 		validSHA("occurrence.observed_context_sha256", occurrence.ObservedContextSHA256) != nil ||
-		validateSourceIdentity(occurrence.Source) != nil {
+		validateAuditReadySourceIdentity(occurrence.Source) != nil {
 		return DefectOccurrence{}, fmt.Errorf("%w: occurrence identity", ErrDefectInvalid)
 	}
 	var err error
@@ -651,7 +651,7 @@ func NormalizeRunReport(report RunReport) (RunReport, error) {
 		return RunReport{}, fmt.Errorf("%w: schema/version/revision", ErrReportInvalid)
 	}
 	if err := validContractIdentifier("report_id", report.ReportID); err != nil || validContractIdentifier("report.run_id", report.RunID) != nil ||
-		validateSourceIdentity(report.Source) != nil || validateArtifactIdentity("report.run_manifest", report.RunManifest) != nil ||
+		validateAuditReadySourceIdentity(report.Source) != nil || validateArtifactIdentity("report.run_manifest", report.RunManifest) != nil ||
 		validContractIdentifier("execution_status", report.ExecutionStatus) != nil {
 		return RunReport{}, fmt.Errorf("%w: identity", ErrReportInvalid)
 	}

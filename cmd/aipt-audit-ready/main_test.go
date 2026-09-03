@@ -36,3 +36,36 @@ func TestStableErrorCodesNeverEchoUntrustedCauses(t *testing.T) {
 		t.Fatalf("unstable or leaking error code %q", code)
 	}
 }
+
+func TestF2N08CredentialRepositoryNeverReachesCLIStdoutOrStderr(t *testing.T) {
+	sentinel := "injected-user:injected-value"
+	repository := "https://" + sentinel + "@example.invalid/aipt.git"
+	directory := t.TempDir()
+	spec := filepath.Join(directory, "credential-spec.json")
+	if err := os.WriteFile(spec, []byte(`{"expected_repository":"`+repository+`"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tests := [][]string{
+		{"generate", "--spec", spec},
+		{"verify", "--bundle", filepath.Join(directory, "missing-bundle"), "--mirror", filepath.Join(directory, "missing-mirror"), "--repository", repository},
+	}
+	for _, arguments := range tests {
+		stdout := &bytes.Buffer{}
+		err := run(context.Background(), arguments, stdout)
+		if !errors.Is(err, evidence.ErrSourceUnverified) {
+			t.Fatalf("arguments %v error = %v", arguments, err)
+		}
+		stderr := stableErrorCode(err)
+		if stdout.Len() != 0 || strings.Contains(stdout.String(), sentinel) || strings.Contains(stderr, sentinel) || strings.Contains(err.Error(), sentinel) {
+			t.Fatalf("credential reached CLI output: stdout=%q stderr=%q error=%q", stdout.String(), stderr, err.Error())
+		}
+	}
+
+	stdout := &bytes.Buffer{}
+	err := writeResult(stdout, evidence.AuditReadyVerification{
+		Manifest: evidence.AuditReadyManifest{Source: evidence.SourceIdentity{Repository: repository}},
+	})
+	if !errors.Is(err, evidence.ErrSourceUnverified) || stdout.Len() != 0 || strings.Contains(stdout.String(), sentinel) {
+		t.Fatalf("writeResult accepted credential-bearing source: error=%v stdout=%q", err, stdout.String())
+	}
+}

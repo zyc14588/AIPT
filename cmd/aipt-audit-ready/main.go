@@ -29,18 +29,19 @@ type supplementalSpec struct {
 }
 
 type generateSpec struct {
-	Destination        string                      `json:"destination"`
-	RawCapture         string                      `json:"raw_capture"`
-	MirrorPath         string                      `json:"mirror_path"`
-	ExpectedRepository string                      `json:"expected_repository"`
-	RemoteName         string                      `json:"remote_name,omitempty"`
-	Disclosure         evidence.Disclosure         `json:"disclosure"`
-	Closure            evidence.RunEvidenceClosure `json:"closure"`
-	DefectFamilies     []evidence.DefectFamily     `json:"defect_families"`
-	DefectOccurrences  []evidence.DefectOccurrence `json:"defect_occurrences"`
-	Report             evidence.RunReport          `json:"report"`
-	Supplemental       []supplementalSpec          `json:"supplemental"`
-	ExportProfile      evidence.ExportProfile      `json:"export_profile"`
+	Destination         string                               `json:"destination"`
+	RawCapture          string                               `json:"raw_capture"`
+	MirrorPath          string                               `json:"mirror_path"`
+	ExpectedRepository  string                               `json:"expected_repository"`
+	RemoteName          string                               `json:"remote_name,omitempty"`
+	Disclosure          evidence.Disclosure                  `json:"disclosure"`
+	CoreClassifications evidence.CoreEvidenceClassifications `json:"core_evidence_classifications"`
+	Closure             evidence.RunEvidenceClosure          `json:"closure"`
+	DefectFamilies      []evidence.DefectFamily              `json:"defect_families"`
+	DefectOccurrences   []evidence.DefectOccurrence          `json:"defect_occurrences"`
+	Report              evidence.RunReport                   `json:"report"`
+	Supplemental        []supplementalSpec                   `json:"supplemental"`
+	ExportProfile       evidence.ExportProfile               `json:"export_profile"`
 }
 
 type commandResult struct {
@@ -73,6 +74,9 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if err := evidence.ValidateAuditReadyRepositoryIdentity(spec.ExpectedRepository); err != nil {
+			return err
+		}
 		supplemental := make([]evidence.LogicalAssetInput, len(spec.Supplemental))
 		for index, item := range spec.Supplemental {
 			data, decodeErr := base64.StdEncoding.Strict().DecodeString(item.DataBase64)
@@ -89,7 +93,8 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		}
 		result, err := evidence.GenerateAuditReady(ctx, evidence.GenerateAuditReadyInput{
 			Destination: spec.Destination, RawCapture: spec.RawCapture, SourceVerifier: verifier,
-			Disclosure: spec.Disclosure, Closure: spec.Closure, DefectFamilies: spec.DefectFamilies,
+			Disclosure: spec.Disclosure, CoreClassifications: spec.CoreClassifications,
+			Closure: spec.Closure, DefectFamilies: spec.DefectFamilies,
 			DefectOccurrences: spec.DefectOccurrences, Report: spec.Report, Supplemental: supplemental,
 			ExportProfile: spec.ExportProfile,
 		})
@@ -106,6 +111,9 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		remote := flags.String("remote", "origin", "mirror remote name")
 		if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 || *bundle == "" || *mirror == "" || *repository == "" {
 			return errors.New("usage")
+		}
+		if err := evidence.ValidateAuditReadyRepositoryIdentity(*repository); err != nil {
+			return err
 		}
 		result, err := evidence.VerifyAuditReady(ctx, *bundle, evidence.GitMirrorVerifier{
 			MirrorPath: *mirror, ExpectedRepository: *repository, RemoteName: *remote,
@@ -143,6 +151,9 @@ func readGenerateSpec(path string) (generateSpec, error) {
 }
 
 func writeResult(output io.Writer, result evidence.AuditReadyVerification) error {
+	if err := evidence.ValidateAuditReadyRepositoryIdentity(result.Manifest.Source.Repository); err != nil {
+		return err
+	}
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(true)
 	return encoder.Encode(commandResult{Result: "PASS", Stage: evidence.AuditReadyStage, Root: result.Root, Source: result.Manifest.Source})

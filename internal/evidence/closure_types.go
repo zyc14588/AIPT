@@ -18,6 +18,7 @@ const (
 	RunReportSchema                = "aipt.run-report/v1"
 	ReportAddendumSchema           = "aipt.run-report-addendum/v1"
 	BundleIndexSchema              = "aipt.audit-ready.bundle-index/v1"
+	CoreClassificationSchema       = "aipt.core-evidence-classification/v1"
 	ContractVersion                = "1.0.0"
 
 	BundleIndexName       = "bundle-index.json"
@@ -382,6 +383,22 @@ type LogicalAssetInput struct {
 	Data           []byte                `json:"-"`
 }
 
+// CoreEvidenceClassifications is the explicit B005 classification authority
+// for every required AUDIT_READY core evidence category. ReportDerivatives is
+// declared separately so the machine contract can enforce its deterministic
+// inheritance from RunReport instead of trusting individual asset labels.
+type CoreEvidenceClassifications struct {
+	Schema             string                `json:"schema"`
+	Version            string                `json:"version"`
+	RawCapture         ContentClassification `json:"raw_capture"`
+	RunEvidenceClosure ContentClassification `json:"run_evidence_closure"`
+	ReplayEvidence     ContentClassification `json:"replay_evidence"`
+	DefectFamily       ContentClassification `json:"defect_family"`
+	DefectOccurrence   ContentClassification `json:"defect_occurrence"`
+	RunReport          ContentClassification `json:"run_report"`
+	ReportDerivatives  ContentClassification `json:"report_derivatives"`
+}
+
 type ExportProfile struct {
 	ProfileID       string `json:"profile_id"`
 	InlineThreshold int64  `json:"inline_threshold"`
@@ -416,23 +433,25 @@ type LogicalAsset struct {
 }
 
 type BundleIndex struct {
-	Schema        string         `json:"schema"`
-	Version       string         `json:"version"`
-	ExportProfile ExportProfile  `json:"export_profile"`
-	LogicalAssets []LogicalAsset `json:"logical_assets"`
+	Schema                      string                      `json:"schema"`
+	Version                     string                      `json:"version"`
+	CoreEvidenceClassifications CoreEvidenceClassifications `json:"core_evidence_classifications"`
+	ExportProfile               ExportProfile               `json:"export_profile"`
+	LogicalAssets               []LogicalAsset              `json:"logical_assets"`
 }
 
 type GenerateAuditReadyInput struct {
-	Destination       string
-	RawCapture        string
-	SourceVerifier    SourceVerifier
-	Disclosure        Disclosure
-	Closure           RunEvidenceClosure
-	DefectFamilies    []DefectFamily
-	DefectOccurrences []DefectOccurrence
-	Report            RunReport
-	Supplemental      []LogicalAssetInput
-	ExportProfile     ExportProfile
+	Destination         string
+	RawCapture          string
+	SourceVerifier      SourceVerifier
+	Disclosure          Disclosure
+	CoreClassifications CoreEvidenceClassifications
+	Closure             RunEvidenceClosure
+	DefectFamilies      []DefectFamily
+	DefectOccurrences   []DefectOccurrence
+	Report              RunReport
+	Supplemental        []LogicalAssetInput
+	ExportProfile       ExportProfile
 }
 
 type AuditReadyVerification struct {
