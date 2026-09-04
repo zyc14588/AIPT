@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B005 is the authorized private construction batch for offline deterministic Run evidence closure and AUDIT_READY export.",
+  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B005 remains in progress after post-merge security blocked its offline remote-provenance model; ONLINE_GITHUB_REMOTE_PROVENANCE_V1 is Authority-defined with implementation pending R1.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -24,6 +24,7 @@
     "check:mvp-b003": "node scripts/ci/validate/mvp-b003.mjs",
     "check:mvp-b004": "node scripts/ci/validate/mvp-b004.mjs",
     "check:mvp-b005": "node scripts/ci/validate/mvp-b005.mjs",
+    "check:b005-remote-provenance-authority": "node scripts/ci/validate/b005-remote-provenance-authority.mjs",
     "check:int001-closeout-authority": "node scripts/ci/validate/int001-closeout-authority.mjs",
     "check:p1-b000-authority": "node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority",
     "check:p1-b000-authority-amendment": "node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority-amendment",

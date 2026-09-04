@@ -1,7 +1,7 @@
 # 证据与审计（EVIDENCE）
 
 > 公开证据流水线设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> M0-B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema；AIPT-MVP-B005 在保持该 v1 基线字节兼容的前提下实现离线 `AUDIT_READY` closure。B000 使用简化的 Bootstrap 证据路径（见文末）。
+> M0-B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema。当前 merged B005 implementation 为 `MERGED_POST_MERGE_SECURITY_BLOCKED`：其 offline remote-provenance model 为 `NOT_ACCEPTED`。`ONLINE_GITHUB_REMOTE_PROVENANCE_V1` 已 `AUTHORITY_DEFINED`，production implementation 为 `IMPLEMENTATION_PENDING_R1`。B000 使用简化的 Bootstrap 证据路径（见文末）。
 > `B006 = MERGED_CLOSED`：Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，CI `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree），post-merge CI `32578143923` success。
 
 ## 当前能力矩阵
@@ -10,8 +10,10 @@
 |---|---|
 | `RAW_CAPTURE_EXPORT` | `IMPLEMENTED_MINIMAL` |
 | `AUDIT_READY_SCHEMA` | `IMPLEMENTED` |
-| `AUDIT_READY_GENERATOR` | `IMPLEMENTED_B005_OFFLINE` |
-| `AUDIT_READY_VERIFIER` | `IMPLEMENTED_B005_OFFLINE` |
+| `AUDIT_READY_GENERATOR` | `MERGED_POST_MERGE_SECURITY_BLOCKED` |
+| `AUDIT_READY_VERIFIER` | `MERGED_POST_MERGE_SECURITY_BLOCKED` |
+| `OFFLINE_REMOTE_PROVENANCE_MODEL` | `NOT_ACCEPTED` |
+| `ONLINE_GITHUB_REMOTE_PROVENANCE_V1` | `AUTHORITY_DEFINED_IMPLEMENTATION_PENDING_R1` |
 | `RUN_EVIDENCE_CLOSURE` | `IMPLEMENTED_B005` |
 | `REPLAY_EVIDENCE_CONTRACT` | `IMPLEMENTED_B005` |
 | `DEFECT_FAMILY_OCCURRENCE_CONTRACTS` | `IMPLEMENTED_B005` |
@@ -22,7 +24,7 @@
 | `ENCRYPTION` | `NOT_IMPLEMENTED` |
 | `CHUNKING` | `IMPLEMENTED_B005_CONTENT_ADDRESSED` |
 
-原有公开 Schema 根 [aipt-evidence.schema.json](../../schemas/evidence/v1/aipt-evidence.schema.json) 保持字节不变：Draft 2020-12、根为严格三阶段 `oneOf`、未知 version/stage/字段拒绝。M0-B006 runtime 仍只生成 `RAW_CAPTURE`。B005 通过 additive contract schemas 实现 `AUDIT_READY`；`AUDIT_RESULT` 仍只有 Schema，没有 generator。
+原有公开 Schema 根 [aipt-evidence.schema.json](../../schemas/evidence/v1/aipt-evidence.schema.json) 保持字节不变：Draft 2020-12、根为严格三阶段 `oneOf`、未知 version/stage/字段拒绝。M0-B006 runtime 仍只生成 `RAW_CAPTURE`。Merged B005 添加了 `AUDIT_READY` contracts 与 implementation，但该 implementation 因 remote provenance security failure 尚未被接受或关闭；`AUDIT_RESULT` 仍只有 Schema，没有 generator。
 
 ## 最小 RAW_CAPTURE
 
@@ -40,9 +42,11 @@ PostgreSQL source 先调用 B003 `postgres.VerifyStream` 得到 `N/H`，再以 r
 
 RAW_CAPTURE 是本地原生证据，M0-B006 不自动外传，不调用网络、远端模型、construction Harness 或 GitHub API。Manifest/root 语义不含 export wall clock、hostname、PID、username、本机绝对路径、DSN 或 credential；没有 `max-events` 成功截断模式。B005 不改变这些语义。
 
-## B005 AUDIT_READY closure
+## B005 AUDIT_READY blocked merged implementation
 
-[`GenerateAuditReady`](../../internal/evidence/audit_ready.go) 首先调用独立 `VerifyRawCapture`，随后持有已验证目录与成员描述符；它通过只读本地 bare mirror 精确验证 HTTPS repository、40-hex commit object 与该 commit 的 tree。规范化过程只写 owner-controlled private sibling，执行 fsync、自验证、输入稳定性复验，再以 no-replace rename 发布。它不 fetch、不读取 branch/tag/working tree、不调用模型/Harness、不写 source、Run 或 PostgreSQL。
+Merge `c07e1aae94f681733ad73c1800423248bcc72376`（tree `828defa8ea85a757b43d1a04ce05016ebeea9020`）的 CI `33767358596` 为 success，但 post-merge security 为 `FAIL`；没有 lifecycle records，且该 merge 不是 final accepted merge。以下描述仅记录当前 blocked implementation，不表示其 remote provenance 已满足 Authority。
+
+当前 [`GenerateAuditReady`](../../internal/evidence/audit_ready.go) 首先调用独立 `VerifyRawCapture`，随后持有已验证目录与成员描述符；它使用只读本地 bare mirror 检查 HTTPS repository、40-hex commit object 与该 commit 的 tree。该 mirror 检查只能产生 local consistency fact，不能证明 Commit 曾存在于权威远端，也不能铸造 `VERIFIED_IMMUTABLE_REMOTE_COMMIT`。因此此 offline 路径为 `NOT_ACCEPTED`。规范化、owner-controlled private sibling、fsync、自验证、输入稳定性复验与 no-replace publish 等其他描述不改变这一 provenance blocker。
 
 新增的 additive schemas 为：
 
@@ -51,7 +55,11 @@ RAW_CAPTURE 是本地原生证据，M0-B006 不自动外传，不调用网络、
 - [Run Report](../../schemas/evidence/v1/aipt-run-report.schema.json)：Canonical JSON 为权威，Markdown/CSV/JUnit/静态 HTML 均可逐字节再生；生命周期严格为 `PROVISIONAL → FINALIZING → SEALED`，SEALED 后只能新增 addendum，不能隐式 unseal。
 - [Bundle Index](../../schemas/evidence/v1/aipt-audit-ready-bundle-index.schema.json)：内含版本化 `aipt.core-evidence-classification/v1` 权威，显式覆盖 `RAW_CAPTURE`、Run closure、Replay、Defect family/occurrence、Run Report 与 derivatives；RAW 三件套确定性继承 `RAW_CAPTURE`，四种 report derivatives 必须继承 canonical Run Report classification。缺失/未知 classification 失败关闭，声明与每个 core descriptor 一并进入确定性 bundle/root 身份。部署 `ExportProfile` 提供 inline/chunk/size/count 参数；大资产按 exact bytes SHA-256 分块、跨逻辑资产安全去重并逐字节重组，从无成功截断模式。
 
-命令 `go run ./cmd/aipt-audit-ready generate --spec <request>` 与 `verify --bundle <directory> --mirror <bare-mirror> --repository <https-identity>` 是离线 audit workflow surface。B005 使用标准 URL parser 独立验证 RAW source、ExpectedRepository 与 mirror remote：仅接受无 userinfo、query、fragment、control character 且 host 非空的 HTTPS identity，验证前、比较前、写 manifest/bundle 前与 stdout 前均失败关闭；offending URL 不进入错误文本。所有 immutable-source Git subprocess 都显式设置 `GIT_NO_LAZY_FETCH=1`，promisor mirror 缺少对象时不发请求、不补对象、不改变 object store。生成请求只允许 base64 内联 supplemental bytes，未知字段拒绝；公开错误只输出稳定错误码。`PUBLIC` 要求实际进入 bundle 的每个 logical asset 都有显式 `PUBLIC` classification；marker/credential 扫描只是额外防线，扫描未命中不能授予 PUBLIC。由于 B005 没有获准设计 crypto，需加密的 `EXTERNAL_AUDITOR` 和所有 `PRIVATE_FULL` 请求返回 `ENCRYPTION_REQUIRED_BUT_UNAVAILABLE`，绝不明文降级。
+命令 `go run ./cmd/aipt-audit-ready generate --spec <request>` 与 `verify --bundle <directory> --mirror <bare-mirror> --repository <https-identity>` 是当前 blocked offline workflow surface，不是合格的 production remote-provenance verifier。其 credential-free URL validation、`GIT_NO_LAZY_FETCH=1`、stable error codes、explicit PUBLIC classification、encryption refusal 与其他已修复边界必须在 R1 保留，但这些边界不能把 local mirror 提升为 remote Authority。
+
+Owner Authority [AIPT-MVP-B005 Remote Provenance Authority 001](../authority/amendments/AIPT_MVP_B005_REMOTE_PROVENANCE_AUTHORITY_001.md) 与 machine policy [remote-provenance-policy.json](../authority/registry/remote-provenance-policy.json) 现冻结：Development MVP 仅支持 `PUBLIC_GITHUB_REPOSITORY`；内建 `GITHUB_PUBLIC_HTTPS_API_V1` 必须对固定 `api.github.com` endpoint 执行无凭据、禁止 redirect、bounded、fail-closed 的 online exact Commit/Tree verification。AUDIT_READY generation 与 independent verification 各自重新执行一次，不信任 bundle 内既有 claim、旧 cache 或 mirror fallback。Private GitHub 与 non-GitHub remotes 当前均为 unsupported。
+
+R1 还必须生成 deterministic `aipt.remote-provenance/v1` receipt，字段仅为 `schema`、`version`、`policy_id`、`provider`、`repository`、`commit`、`tree`、`status`，并绑定进 deterministic bundle/root。Receipt 不记录 verification time、HTTP metadata、request identity、rate-limit state、主机/本地路径、credential 或 response body。同一 stable provenance fact tuple 产生相同 canonical bytes；legacy RAW_CAPTURE v1 语义保持不变。
 
 正式 N01–N50 负向矩阵位于 [b005-negative-matrix.json](../../testdata/evidence/v1/b005-negative-matrix.json)；N36–N41 对应 security repair F1-N01…F1-N06，N42–N49 对应 F2-N01…F2-N08，N50 对应 F3-N01。Authority recovery 与逐项 acceptance mapping 位于 [B005 Authority Matrix](B005_AUTHORITY_MATRIX.md)。公共 PostgreSQL gate 只使用 ephemeral loopback 18.4 与 synthetic PUBLIC 数据，重复生成必须 file-set/bytes/root 完全相同；该 smoke 不计 qualification。
 

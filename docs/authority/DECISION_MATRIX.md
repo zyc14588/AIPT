@@ -69,6 +69,7 @@
 | 领域 | 当前唯一权威 | 关键决定 ID |
 |---|---|---|
 | 证据流水线 | RAW_CAPTURE→AUDIT_READY→AUDIT_RESULT；Canonical JSON 为机器权威；审计包以版本化 JSON Manifest 为机器权威 | `R10-Q001`、`R9-F001`、`R8-Q021`、`R9-Q002` |
+| 远端 provenance | `ONLINE_GITHUB_REMOTE_PROVENANCE_V1`：Development MVP 仅由内建 `GITHUB_PUBLIC_HTTPS_API_V1` 对公开 GitHub 仓库执行无凭据、固定 endpoint、禁止 redirect 的在线 exact Commit/Tree 核验；生成与独立验证各核验一次；local mirror 仅为非权威 cache/consistency check，不能铸造 `VERIFIED_IMMUTABLE_REMOTE_COMMIT` | `B005-PROV-Q001=A`；operational refinement of `R9-Q004`、`R10-Q005`，并保留 `R0-Q004`、`R0-Q012`、`R11-Q003`、`R11-Q004` |
 | 证据披露 | PUBLIC、EXTERNAL_AUDITOR、PRIVATE_FULL 三种 Profile；大型证据内容寻址分块 | `R10-Q012`、`R10-Q009`、`R9-Q013` |
 | 审计安全 | 所有环境执行包安全验证；生产/发行追加证据资格、签名和核心环境完整性验证 | `R10-Q013`、`R10-Q014`、`R10-F002`、`R9-Q015`、`R9-F002`、`R10-Q016` |
 | Codex 权限 | 只读 source-mirror、可销毁 verification-worktree、持久可写 audit-output；无原始 Docker Socket | `R10-Q005`、`R11-Q002`、`R11-Q003`、`R11-Q004`、`R11-F005` |
