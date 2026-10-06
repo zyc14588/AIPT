@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zyc14588/AIPT/schemas/remote-provenance/v1/aipt-remote-provenance.schema.json",
+  "title": "AIPT deterministic authoritative remote provenance receipt v1",
+  "description": "Eight source facts only; this receipt is bound into the AUDIT_READY logical asset index and root. Fresh online verification is still mandatory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "policy_id",
+    "provider",
+    "repository",
+    "commit",
+    "tree",
+    "status"
+  ],
+  "properties": {
+    "schema": {
+      "const": "aipt.remote-provenance/v1"
+    },
+    "version": {
+      "const": "1.0.0"
+    },
+    "policy_id": {
+      "const": "ONLINE_GITHUB_REMOTE_PROVENANCE_V1"
+    },
+    "provider": {
+      "const": "GITHUB_PUBLIC_HTTPS_API_V1"
+    },
+    "repository": {
+      "type": "string",
+      "maxLength": 159,
+      "pattern": "^https://github[.]com/[A-Za-z0-9_./-]{3,140}$",
+      "$comment": "The production canonicalGitHubRepository parser additionally enforces exactly one owner/repository pair, owner/name limits, no dot components, and no .git suffix in the receipt. This pattern stays within the frozen B004 schema regex linear subset."
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "tree": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "status": {
+      "const": "VERIFIED_IMMUTABLE_REMOTE_COMMIT"
+    }
+  }
+}

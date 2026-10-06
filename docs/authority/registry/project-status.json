@@ -1,7 +1,7 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-09-03",
-  "authority_snapshot_id": "AIPT-MVP-B005-CONSTRUCTION-001",
+  "as_of": "2026-10-06",
+  "authority_snapshot_id": "AIPT-MVP-B005-R1-CONSTRUCTION-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
@@ -495,9 +495,64 @@
         "new_migration": "NONE",
         "runtime_ready": false,
         "first_blocking_gate": "IPC",
-        "publicly_pushed": false,
-        "public_ci_status": "NOT_STARTED_AWAITING_OWNER_DISCLOSURE_AUTHORIZATION",
-        "open_findings": []
+        "publicly_pushed": true,
+        "public_ci_status": "HISTORICAL_MERGE_CI_SUCCESS_POST_MERGE_SECURITY_BLOCKED_R1_PENDING",
+        "open_findings": [
+          "csf_a1972a15d20bffccad42fbdb",
+          "csf_4c0f54541fae325dd26494b0",
+          "csf_b28e7fb44b3e754d93704fa2"
+        ],
+        "blocked_implementation": {
+          "commit": "c07e1aae94f681733ad73c1800423248bcc72376",
+          "tree": "828defa8ea85a757b43d1a04ce05016ebeea9020",
+          "public_ci_run": 33767358596,
+          "public_ci_conclusion": "success",
+          "post_merge_security_result": "FAIL",
+          "accepted_as_final_merge": false,
+          "lifecycle_records_created": false
+        },
+        "r1_recovery": {
+          "task_id": "AIPT-MVP-B005",
+          "revision": "R1",
+          "state": "IN_PROGRESS_PENDING_INDEPENDENT_ACCEPTANCE",
+          "start_authority": "OWNER_CONTINUE_M0_MVP_AND_AUTHORIZED_B005_R1",
+          "base": {
+            "commit": "fdbf9637b38a773fbc7ea57a21e6f75dd89b235f",
+            "tree": "a307008b48f78ab1b89d5ae5009669244318693f"
+          },
+          "governance": {
+            "task_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+            "state": "CLOSED",
+            "candidate_commit": "09bdd1c4787a283846356db6738b54db582342e8",
+            "merge_commit": "7cedc640f64052103162b4160ffae2f0f8a901df",
+            "closeout_commit": "fdbf9637b38a773fbc7ea57a21e6f75dd89b235f",
+            "policy_sha256": "fb0cfe0f253c468bc00816d7f1d499e6945898e807db36207a8dd04752a82649",
+            "independent_ci_catalogue_sha256": "3c9957885db84923efb60eecd38b114eb61eb4aefec70379e6332662c5166059"
+          },
+          "policy_id": "ONLINE_GITHUB_REMOTE_PROVENANCE_V1",
+          "provider": "GITHUB_PUBLIC_HTTPS_API_V1",
+          "production_entry": "BUILTIN_FIXED_ANONYMOUS_HTTPS_ONLY",
+          "test_seam": "PACKAGE_PRIVATE_SYNTHETIC_ONLY",
+          "mirror_status": "LOCAL_OBJECT_MATCH",
+          "receipt_fields": 8,
+          "receipt_bound_into_root": true,
+          "fresh_github_requests_per_generation": 1,
+          "fresh_github_requests_per_independent_verification": 1,
+          "expected_repository_bound_before_online_verification": true,
+          "optional_mirror_bound_to_held_raw_source": true,
+          "remote_probe_count": 12,
+          "git_safety_probe_count": 2,
+          "synthetic_ci_github_requests": 0,
+          "real_model_calls": 0,
+          "qualification_runs_executed": 0,
+          "public_candidate_status": "PENDING",
+          "independent_security_acceptance": "PENDING",
+          "open_findings": [
+            "csf_a1972a15d20bffccad42fbdb",
+            "csf_4c0f54541fae325dd26494b0",
+            "csf_b28e7fb44b3e754d93704fa2"
+          ]
+        }
       },
       "verified_head": "8927a2779f3f123dabd472623d76d8e910152133",
       "verified_tree": "9ad4341317e977d455e98ced20f3880d9e50c691",
@@ -727,7 +782,7 @@
     }
   },
   "runtime": {
-    "status": "AIPT-MVP-B005 is the sole active construction batch at GLOBAL_WIP 1; it adds offline AUDIT_READY evidence closure only, does not change Launcher gates, and runtime_ready remains false at IPC with no playtest or qualification Run started",
+    "status": "AIPT-MVP-B005 R1 is the sole active construction batch at GLOBAL_WIP 1 after accepted remote-provenance governance closeout; fixed online GitHub Commit/Tree verification and bounded local consistency checks are implemented pending independent acceptance; runtime_ready remains false at IPC and real playtest/qualification Runs remain unexecuted",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

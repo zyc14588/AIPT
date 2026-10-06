@@ -6,7 +6,7 @@
 // single machine-readable report. Exit code 0 only when every check is PASS.
 // The report preserves every historical M0 gate and adds the exact MVP
 // bootstrap authority/lifecycle gate, every closed MVP regression gate, the
-// immutable read-only integration closeout, the blocked active B005 evidence
+// immutable read-only integration closeout, the current B005 R1 evidence
 // closure gate, and its governance-only remote-provenance Authority gate.
 // Historical semantics remain immutable.
 import fs from 'node:fs';
@@ -188,7 +188,7 @@ const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = `INT-AIPT-UNREGISTERED-MVP-001 remains immutably closed without rerun; B001-B004 semantics remain immutable; ${standalone?.current_batch ?? 'UNKNOWN'} is the sole active batch at GLOBAL_WIP ${standalone?.global_wip ?? 'UNKNOWN'} and ${standalone?.next_serial_batch ?? 'UNKNOWN'} remains ${standalone?.next_batch_state ?? 'UNKNOWN'}; ONLINE_GITHUB_REMOTE_PROVENANCE_V1 Authority is defined with implementation pending R1, and governance/public CI validation makes zero external GitHub or model/provider calls; qualification remains unexecuted`;
+const note = `INT-AIPT-UNREGISTERED-MVP-001 remains immutably closed without rerun; B001-B004 semantics remain immutable; ${standalone?.current_batch ?? 'UNKNOWN'} is the sole active batch at GLOBAL_WIP ${standalone?.global_wip ?? 'UNKNOWN'} and ${standalone?.next_serial_batch ?? 'UNKNOWN'} remains ${standalone?.next_batch_state ?? 'UNKNOWN'}; ONLINE_GITHUB_REMOTE_PROVENANCE_V1 governance is closed and the current R1 implementation/lifecycle is evaluated by its own gate, and governance/public CI validation makes zero external GitHub or model/provider calls; qualification remains unexecuted`;
 const report = {
   schema: 'aipt.public.int001-closeout-authority-validator-run/v1',
   task_id: 'INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001',

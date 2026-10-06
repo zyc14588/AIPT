@@ -1,7 +1,6 @@
 package evidence
 
 import (
-	"context"
 	"encoding/json"
 )
 
@@ -68,12 +67,6 @@ type RemoteVerification struct {
 	Remote string `json:"remote"`
 	Commit string `json:"commit"`
 	Status string `json:"status"`
-}
-
-// SourceVerifier validates an immutable commit against a local, already
-// fetched source mirror. Implementations must not perform network access.
-type SourceVerifier interface {
-	Verify(context.Context, SourceIdentity) (RemoteVerification, error)
 }
 
 type AuditReadyManifest struct {
@@ -441,9 +434,12 @@ type BundleIndex struct {
 }
 
 type GenerateAuditReadyInput struct {
-	Destination         string
-	RawCapture          string
-	SourceVerifier      SourceVerifier
+	Destination        string
+	RawCapture         string
+	ExpectedRepository string
+	// MirrorPath is optional local consistency only, checked against held RAW source.
+	MirrorPath          string
+	MirrorRemoteName    string
 	Disclosure          Disclosure
 	CoreClassifications CoreEvidenceClassifications
 	Closure             RunEvidenceClosure
