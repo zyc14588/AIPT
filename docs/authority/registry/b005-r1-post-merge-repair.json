@@ -1,0 +1,53 @@
+{
+  "schema": "aipt.b005.r1-post-merge-repair-authority/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B005",
+  "decision_id": "B005-R6-POST-MERGE-REPAIR-Q001=A",
+  "authorization_source": "OWNER_EXPLICIT_CHAT_AUTHORIZATION",
+  "authorized_on": "2026-10-06",
+  "disposition": "AUTHORIZED",
+  "revision": "R6",
+  "governance_closeout_commit": "fdbf9637b38a773fbc7ea57a21e6f75dd89b235f",
+  "repair_base": {
+    "commit": "08f8b2ecf721759940f4e4fef862b1a4da9c1834",
+    "tree": "2551e27b50b1971bbdec82707d83f03d28a95b15",
+    "parents": [
+      "fdbf9637b38a773fbc7ea57a21e6f75dd89b235f",
+      "51bcebedb27e7e4aa31f76c50919f343fcd92bbc"
+    ]
+  },
+  "rejected_candidate": {
+    "commit": "51bcebedb27e7e4aa31f76c50919f343fcd92bbc",
+    "tree": "2551e27b50b1971bbdec82707d83f03d28a95b15"
+  },
+  "failed_post_merge": {
+    "commit": "08f8b2ecf721759940f4e4fef862b1a4da9c1834",
+    "independent_review_result": "FAIL",
+    "reviewer_source": "LOCAL_INDEPENDENT_CODEX_AGENT",
+    "review_report_sha256": "4edaa5956f8f2a0a77e60ab5ed1e1538a66b77f8e3a5c1ba95cdafe6b04f787f",
+    "reviewed_paths": 23,
+    "finding_id": "LOCAL-B005-R1-001",
+    "original_three_findings_locally_verified_fixed": true,
+    "public_ci_run_id": 37409519294,
+    "public_ci_jobs_success": 5,
+    "accepted_as_final_merge": false,
+    "lifecycle_records_created": false
+  },
+  "publication": "NEW_PUBLIC_R6_PULL_REQUEST",
+  "candidate_rule": "SINGLE_COMMIT_CHILD_OF_EXACT_REPAIR_BASE",
+  "merge_rule": "EXACT_REPAIR_BASE_AND_CANDIDATE_PARENTS_WITH_CANDIDATE_TREE",
+  "independent_review": "SAME_OWNER_AUTHORIZED_READ_ONLY_LOCAL_CODEX_AGENT_ON_FINAL_BYTES",
+  "closeout_requirements": [
+    "INDEPENDENT_LOCAL_REVIEW_PASS",
+    "EXACT_FINAL_MAIN_MERGE_COMMIT_AND_TREE",
+    "NEW_MAIN_PUSH_CI_ALL_FIVE_JOBS_SUCCESS",
+    "LOCAL_ONLINE_FINAL_SOURCE_PROOF_AND_FRESH_VERIFICATION",
+    "NEW_INDEPENDENT_IMMUTABLE_FINAL_CI_CATALOGUE",
+    "CANONICAL_APPEND_ONLY_LIFECYCLE_RECORDS"
+  ],
+  "history_rewrite_permitted": false,
+  "failed_merge_can_receive_closeout": false,
+  "governance_anchors_may_change": false,
+  "real_model_calls": 0,
+  "qualification_runs_executed": 0
+}
