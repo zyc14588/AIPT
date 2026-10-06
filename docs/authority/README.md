@@ -18,6 +18,7 @@ AIPT 的权威信息分两层：
    - [registry/unregistered-aipt-p1-b000-authority-amendment-003.json](registry/unregistered-aipt-p1-b000-authority-amendment-003.json)：lifecycle externalization Amendment candidate；把不可变 semantic snapshot 与 append-only lifecycle acceptance records 分离。
    - [registry/authority-lifecycle/registry.json](registry/authority-lifecycle/registry.json)：通用 Authority lifecycle registry、确定性顺序、历史 migration anchors 与 projection policy。
    - [registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json](registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json)：只读 fixed-pair integration 的 canonical closeout；明确 `repository_merge_performed = false`，不伪造 Candidate、merge parents 或 merge CI。
+   - [registry/remote-provenance-policy.json](registry/remote-provenance-policy.json)：`ONLINE_GITHUB_REMOTE_PROVENANCE_V1` 的版本化机器政策；只允许内建 `GITHUB_PUBLIC_HTTPS_API_V1` 对公开 GitHub 仓库执行在线 exact Commit/Tree 核验，local mirror 仅为非权威 cache/consistency check。
 2. **人类文档**——可读解释与施工合同。若与机器登记冲突，以机器登记为准；人类文档**不是**第二份独立权威。
 
 ## 冲突处理顺序
@@ -54,6 +55,9 @@ AIPT 的权威信息分两层：
 | [amendments/INT_AIPT_UNREGISTERED_MVP_001_CLOSEOUT_AUTHORITY_001.md](amendments/INT_AIPT_UNREGISTERED_MVP_001_CLOSEOUT_AUTHORITY_001.md) | read-only integration closeout governance gap、固定证据边界与 B005 predecessor contract |
 | [registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json](registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json) | `INT-AIPT-UNREGISTERED-MVP-001` canonical closeout record；仅含 Commit/Tree/SHA-256/stable IDs/result/counters/classification |
 | [registry/authority-lifecycle/records/int-aipt-unregistered-mvp-001-closeout-authority-001/003-closed.json](registry/authority-lifecycle/records/int-aipt-unregistered-mvp-001-closeout-authority-001/003-closed.json) | `INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001` canonical Authority closeout；前驱记录冻结 exact merge 与 post-merge CI |
+| [amendments/AIPT_MVP_B005_REMOTE_PROVENANCE_AUTHORITY_001.md](amendments/AIPT_MVP_B005_REMOTE_PROVENANCE_AUTHORITY_001.md) | B005 remote provenance 治理缺口、Owner 的 online GitHub resolution、reserved claim、deterministic receipt、R1 与停止边界 |
+| [registry/remote-provenance-policy.json](registry/remote-provenance-policy.json) | `aipt.remote-provenance-policy/v1` machine Authority；公开 GitHub/no-credential/fixed endpoint/fail-closed 闭集与 A01–A11 governance contract |
+| [../../schemas/remote-provenance/v1/aipt-remote-provenance-policy.schema.json](../../schemas/remote-provenance/v1/aipt-remote-provenance-policy.schema.json) | Remote provenance policy 的 strict Draft 2020-12 Schema；全部对象 `additionalProperties=false` 且关键值为 closed enum/const |
 
 ## Authority Amendment 解析规则
 
@@ -66,6 +70,8 @@ Amendment-002 已按批准 candidate/tree 合法 merge，且 merge CI 已通过�
 Amendment-003 candidate 定义唯一 canonical lifecycle chain：`MERGED → POST_MERGE_VERIFIED → CLOSED`。Record 通过 sequence、explicit predecessor digest 与 accepted Git commit ordinal 排序；mtime、文件枚举、lexical latest 与 main descendant 都不构成 acceptance。`project-status.json` 只能是可重建 projection。Amendment-003 尚未获得 merge/closeout 权限，Amendment-002 closeout 与 B000 implementation 也仍未授权。
 
 `INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001` 增加独立的 read-only integration lifecycle contract。它不扩展或改写 integration lifecycle；integration 的 `CLOSED` 由固定来源、冻结 evidence hashes、replay/security/model/qualification counters、Owner authorization 与 append-only record identity 共同解析。Project status 的 `MERGED_CLOSED` 仅是现有 batch-history 枚举投影，必须同时验证 `repository_merge_performed = false`。Authority Amendment 本身则复用既有通用 Git Authority lifecycle，并由唯一 append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。
+
+`AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001` 冻结 `B005-PROV-Q001=A`：`LOCAL_OBJECT_PRESENT` 不等于 `VERIFIED_IMMUTABLE_REMOTE_COMMIT`。Development MVP 的生产 provenance 只接受内建、固定 `api.github.com`、无凭据、禁止 redirect 的 `GITHUB_PUBLIC_HTTPS_API_V1`；生成与独立验证各自重新在线核验 exact Commit/Tree。该决定是 `R9-Q004` / `R10-Q005` 的 operational refinement，保留远端 Commit Authority。当前 B005 merge `c07e1aae94f681733ad73c1800423248bcc72376` 为 `MERGED_POST_MERGE_SECURITY_BLOCKED`：CI success，但 post-merge security 为 `FAIL`、没有 lifecycle records、不是 final accepted merge；offline provenance model 为 `NOT_ACCEPTED`，online policy 为 `AUTHORITY_DEFINED / IMPLEMENTATION_PENDING_R1`。
 
 领域文档：架构 [../architecture/README.md](../architecture/README.md) · 安全 [../security/README.md](../security/README.md) · 证据 [../evidence/README.md](../evidence/README.md) · 测试模型 [../test-model/README.md](../test-model/README.md) · 集成 [../integration/README.md](../integration/README.md) · 许可 [../licensing/README.md](../licensing/README.md) · 供应链 [../supply-chain/README.md](../supply-chain/README.md)
 
@@ -99,3 +105,5 @@ B001 建立公共 CI 与供应链基础后，以下工具登记随仓库同行�
 ## 返回
 
 - [仓库首页](../../README.md)
+
+Owner 决策 `B005-GOV-CI-Q001=A`（2026-10-06）：治理 closeout 采用本地在线 GitHub Actions 验收 + 独立不可变 CI catalogue。专用 validator 的 `--collect-post-merge-ci --run-id <id>` 模式固定只读查询 `api.github.com`，核对 exact main merge、workflow digest、run attempt 与 5/5 successful jobs，并生成 `registry/verified-ci-evidence/aipt-mvp-b005-remote-provenance-authority-001/post-merge-ci.json`。该目录独立于 lifecycle records；离线 gate 以 Owner 接受的 main 上的不可变 catalogue 为信任依据，不声称离线密码学证明或记录自我证明。公共 CI 不调用在线 collector。治理 closeout 自身必须保留 Candidate 的 B005 IN_PROGRESS / WIP 1 / B006 未启动机器快照；只有正式接受的 closeout 之后，后续 batch 才可回放冻结治理状态。
