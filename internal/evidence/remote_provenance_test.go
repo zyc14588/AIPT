@@ -654,3 +654,98 @@ func TestGenerationMirrorRawReplacementAfterHoldCannotPublish(t *testing.T) {
 		t.Fatal("replaced RAW pathname left a published bundle")
 	}
 }
+
+// Each required key is case-sensitive. Both replacement and additional
+// aliases must fail even when an otherwise valid bundle is fully resealed.
+func TestRemoteReceiptRequiresExactCanonicalFieldsAfterResealing(t *testing.T) {
+	keys := []string{"schema", "version", "policy_id", "provider", "repository", "commit", "tree", "status"}
+	for _, key := range keys {
+		for _, variant := range []string{"replaced", "additional"} {
+			t.Run(key+"/"+variant, func(t *testing.T) {
+				input, _ := fixtureAuditInput(t, fixtureExportProfile())
+				input.Destination = filepath.Join(privateTempDir(t), "audit")
+				source := fixtureRemoteSource()
+				calls := 0
+				verifier := fixtureOnlineVerifier{client: fixtureGitHubClient(t, source, 200, fixtureCommitBody(source), &calls)}
+				generated, err := generateAuditReady(context.Background(), input, verifier)
+				if err != nil || calls != 1 {
+					t.Fatalf("valid generation: %v, calls=%d", err, calls)
+				}
+				before := calls
+				control, err := verifyAuditReadyForRepository(context.Background(), input.Destination, source.Repository, verifier)
+				if err != nil || calls != before+1 || control.Root != generated.Root {
+					t.Fatalf("valid canonical control: %v, calls=%d", err, calls-before)
+				}
+				index := readJSONMap(t, filepath.Join(input.Destination, BundleIndexName))
+				physical := ""
+				for _, raw := range index["logical_assets"].([]any) {
+					asset := raw.(map[string]any)
+					if asset["path"] == RemoteProvenanceName {
+						physical = asset["storage"].(map[string]any)["path"].(string)
+					}
+				}
+				if physical == "" {
+					t.Fatal("missing physical receipt")
+				}
+				body := readJSONMap(t, filepath.Join(input.Destination, physical))
+				alias := strings.ToUpper(key)
+				if variant == "replaced" {
+					body[alias] = body[key]
+					delete(body, key)
+				} else {
+					body[alias] = "non-contract-metadata"
+				}
+				data, err := canonicalLine(body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(input.Destination, physical), data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				manifest := readJSONMap(t, filepath.Join(input.Destination, ManifestName))
+				for _, raw := range manifest["normalized_assets"].([]any) {
+					asset := raw.(map[string]any)
+					if asset["path"] == physical {
+						asset["bytes"], asset["sha256"] = len(data), digestText(data)
+					}
+				}
+				writeCanonicalManifestAndRoot(t, input.Destination, manifest)
+				rewriteBundleIndexAndRoot(t, input.Destination, func(index map[string]any) {
+					for _, raw := range index["logical_assets"].([]any) {
+						asset := raw.(map[string]any)
+						if asset["path"] == RemoteProvenanceName {
+							asset["bytes"], asset["sha256"] = len(data), digestText(data)
+						}
+					}
+				})
+				before = calls
+				rejected, err := verifyAuditReadyForRepository(context.Background(), input.Destination, source.Repository, verifier)
+				if !errors.Is(err, ErrSourceUnverified) || calls != before+1 || rejected.Root != "" {
+					t.Fatalf("non-contract receipt accepted or fresh-request contract changed: err=%v, calls=%d, root=%q", err, calls-before, rejected.Root)
+				}
+			})
+		}
+	}
+}
+
+func TestRemoteReceiptExactBytesSurviveChunkReassembly(t *testing.T) {
+	profile := fixtureExportProfile()
+	profile.InlineThreshold = 1
+	profile.ChunkSize = 64
+	input, _ := fixtureAuditInput(t, profile)
+	input.Destination = filepath.Join(privateTempDir(t), "audit")
+	source := fixtureRemoteSource()
+	calls := 0
+	verifier := fixtureOnlineVerifier{client: fixtureGitHubClient(t, source, 200, fixtureCommitBody(source), &calls)}
+	generated, err := generateAuditReady(context.Background(), input, verifier)
+	if err != nil || calls != 1 {
+		t.Fatalf("chunked generation: %v", err)
+	}
+	verified, err := verifyAuditReadyForRepository(context.Background(), input.Destination, source.Repository, verifier)
+	receipt, receiptErr := receiptForSource(source)
+	expected, encodeErr := canonicalLine(receipt)
+	if err != nil || receiptErr != nil || encodeErr != nil || calls != 2 ||
+		generated.Root != verified.Root || !bytes.Equal(expected, verified.LogicalAssets[RemoteProvenanceName]) {
+		t.Fatalf("chunked canonical receipt changed: %v, calls=%d", err, calls)
+	}
+}

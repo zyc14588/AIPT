@@ -211,7 +211,7 @@ function sourceProblems(repo) {
   const sources = Object.fromEntries(productionPaths.map((relative) => [relative, read(repo, relative)]));
   const all = Object.values(sources).join('\n');
   const requiredTokens = new Map([
-    ['internal/evidence/audit_ready.go', ['func GenerateAuditReady(', 'func VerifyAuditReady(', 'func VerifyAuditReadyForRepository(', 'MatchAuditReadyRepositoryIdentity(expectedRepository, manifest.Source.Repository)', 'operationReceiptVerifier', 'mirror.Verify(ctx, source)', 'MirrorPath: owned.MirrorPath, MirrorRemoteName: owned.MirrorRemoteName', 'renameat2NoReplace(', 'CONTENT_ADDRESSED_CHUNKS', 'validateContractEvidenceReferences(', 'validateCoreEvidenceClassifications(', 'validateCoreLogicalAssetDescriptors(', 'inputUnchanged()', 'ErrEncryptionRequired']],
+    ['internal/evidence/audit_ready.go', ['func GenerateAuditReady(', 'func VerifyAuditReady(', 'func VerifyAuditReadyForRepository(', 'MatchAuditReadyRepositoryIdentity(expectedRepository, manifest.Source.Repository)', 'operationReceiptVerifier', 'receiptForSource(manifest.Source)', 'bytes.Equal(logical[RemoteProvenanceName], expectedReceipt)', 'mirror.Verify(ctx, source)', 'MirrorPath: owned.MirrorPath, MirrorRemoteName: owned.MirrorRemoteName', 'renameat2NoReplace(', 'CONTENT_ADDRESSED_CHUNKS', 'validateContractEvidenceReferences(', 'validateCoreEvidenceClassifications(', 'validateCoreLogicalAssetDescriptors(', 'inputUnchanged()', 'ErrEncryptionRequired']],
     ['internal/evidence/raw_material.go', ['VerifyRawCapture(directory)', 'openHeldPrivateFile(', 'func (held *heldRawCapture) Stable() bool']],
     ['internal/evidence/source_verify.go', ['type GitMirrorVerifier struct', 'trustedGitExecutable = "/usr/bin/git"', '--no-replace-objects', '--git-dir=/proc/self/fd/3', 'command.ExtraFiles', 'exec.CommandContext(', 'GIT_NO_LAZY_FETCH=1', 'url.Parse(', 'ValidateAuditReadyRepositoryIdentity(', 'cat-file', 'rev-parse', '--verify', '^{tree}', 'log.showSignature=false', 'boundedGitOutput', 'Setpgid: true', 'command.WaitDelay']],
     ['internal/evidence/remote_provenance.go', ['type sourceVerifier interface', 'type githubSourceVerifier struct{}', 'https://api.github.com/repos/', 'http.MethodGet', 'Proxy:', 'http.ErrUseLastResponse', 'io.LimitReader(response.Body, maxRemoteResponseBytes+1)', 'trustedSystemCAFile', 'before.Uid != 0', 'validateRemoteJSON(', 'commit != source.Commit', 'tree != source.Tree']],
@@ -348,7 +348,7 @@ export function run(ctx) {
   for (const [id, matched] of mutationProbes) if (!matched) problems.push(`${id} validator mutation/control probe failed open`);
 
   const details = problems.length === 0 ? [
-    `ok: ${topology.phase} descends linearly from exact authorized Base ${BASE_COMMIT}/${BASE_TREE}`,
+    `ok: ${topology.phase} retains exact accepted governance Base ${BASE_COMMIT}/${BASE_TREE}`,
     `ok: canonical integration predecessor is byte-exact at ${PREDECESSOR_SHA256}`,
     'ok: legacy RAW_CAPTURE schema/golden remain byte-exact and additive B005 schemas are strict Draft 2020-12 documents',
     'ok: AUDIT_READY generator/verifier, immutable Git identity, replay, defects, report lifecycle, derivatives and content-addressed chunks are present',

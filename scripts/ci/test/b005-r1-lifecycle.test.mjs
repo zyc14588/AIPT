@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
   R1_BASE, R1_BASE_TREE, R1_BRANCH, R1_REQUIRED_CHANGED, STATUS_PATH,
+  R6_BASE, R6_BASE_TREE, R6_REJECTED_CANDIDATE, R6_AUTHORITY_PATH, R6_REQUIRED_CHANGED, expectedR6RepairAuthority,
   B005_TASK, B005_RECORD_PATHS, B005_RECORD_ROOT, B005_CI_PATH,
   facts, blob, digest, resolveB005R1Topology, b005R1StatusProblems,
   expectedR1ConstructionStatus, expectedB005CloseoutStatus, renderB005CloseoutHumanStatus,
@@ -27,21 +28,23 @@ function write(repo, relative, value) {
   const target = path.join(repo, relative); fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, typeof value === 'string' ? value : `${JSON.stringify(value, null, 2)}\n`);
 }
-function fixture(t, closed = false, accepted = false) {
+function fixture(t, closed = false, accepted = false, repair = false) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'aipt-b005-r1-lifecycle-test-'));
   t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const repo = path.join(temp, 'repo');
   git(temp, 'clone', '--quiet', '--no-local', '--no-checkout', source, repo);
-  git(repo, 'checkout', '--quiet', '-B', R1_BRANCH, R1_BASE);
-  assert.equal(git(repo, 'rev-parse', 'HEAD^{tree}'), R1_BASE_TREE);
-  git(repo, 'update-ref', 'refs/remotes/origin/main', R1_BASE);
+  const base = repair ? R6_BASE : R1_BASE;
+  git(repo, 'checkout', '--quiet', '-B', repair ? `${R1_BRANCH}-r6` : R1_BRANCH, base);
+  assert.equal(git(repo, 'rev-parse', 'HEAD^{tree}'), repair ? R6_BASE_TREE : R1_BASE_TREE);
+  git(repo, 'update-ref', 'refs/remotes/origin/main', base);
   for (const relative of R1_REQUIRED_CHANGED) write(repo, relative, fs.readFileSync(path.join(source, relative), 'utf8'));
+  if (repair) write(repo, R6_AUTHORITY_PATH, expectedR6RepairAuthority());
   write(repo, STATUS_PATH, expectedR1ConstructionStatus(repo));
-  git(repo, 'add', '--', ...R1_REQUIRED_CHANGED);
+  git(repo, 'add', '--', ...R1_REQUIRED_CHANGED, ...(repair ? [R6_AUTHORITY_PATH] : []));
   git(repo, 'commit', '--quiet', '-m', 'synthetic R1 candidate');
   const candidate = facts(repo, git(repo, 'rev-parse', 'HEAD'));
   if (!closed) return { repo, candidate };
-  git(repo, 'checkout', '--quiet', '-B', 'main', R1_BASE);
+  git(repo, 'checkout', '--quiet', '-B', 'main', base);
   git(repo, 'merge', '--quiet', '--no-ff', '--no-edit', candidate.commit);
   const merge = facts(repo, git(repo, 'rev-parse', 'HEAD'));
   git(repo, 'update-ref', 'refs/remotes/origin/main', merge.commit);
@@ -130,5 +133,68 @@ test('L10 closed B005 status cannot fabricate runtime readiness or reopen B005',
 });
 test('L11 post-closeout runtime rewrite cannot inherit old acceptance', (t) => {
   const { repo } = fixture(t, true, true); fs.appendFileSync(path.join(repo, 'internal/evidence/remote_provenance.go'), '\n// rewritten runtime fixture\n');
+  assert.equal(resolveB005R1Topology(repo).phase, 'REJECTED');
+});
+
+test('L12 explicit R6 repair is one exact scoped child of the failed merge', (t) => {
+  const { repo, candidate } = fixture(t, false, false, true);
+  const topology = resolveB005R1Topology(repo);
+  assert.equal(topology.phase, 'CANDIDATE', JSON.stringify(topology.problems));
+  assert.deepEqual(candidate.parents, [R6_BASE]);
+  assert.deepEqual(b005R1StatusProblems(repo, JSON.parse(fs.readFileSync(path.join(repo, STATUS_PATH))), topology), []);
+  assert.deepEqual(git(repo, 'diff', '--name-only', R6_BASE, candidate.commit).split('\n').sort(), [...R6_REQUIRED_CHANGED].sort());
+});
+test('L13 R6 final merge and direct closeout support accepted historical replay', (t) => {
+  const { repo, candidate, merge } = fixture(t, true, true, true);
+  const topology = resolveB005R1Topology(repo);
+  assert.equal(topology.phase, 'CLOSED_HISTORICAL_REPLAY', JSON.stringify(topology.problems));
+  assert.deepEqual(merge.parents, [R6_BASE, candidate.commit]);
+  const status = JSON.parse(fs.readFileSync(path.join(repo, STATUS_PATH)));
+  assert.equal(status.repositories.AIPT.mvp_b005.r1_recovery.failed_r5_post_merge.independent_review_result, 'FAIL');
+  assert.ok(status.repositories.AIPT.mvp_b005.r1_recovery.closed_findings.includes('LOCAL-B005-R1-001'));
+  assert.deepEqual(b005R1StatusProblems(repo, status, topology), []);
+});
+test('L14 known failed R5 candidate and merge cannot be accepted', (t) => {
+  const { repo } = fixture(t);
+  for (const rejected of [R6_REJECTED_CANDIDATE, R6_BASE]) {
+    git(repo, 'checkout', '--quiet', '--detach', rejected);
+    const topology = resolveB005R1Topology(repo);
+    assert.equal(topology.phase, 'REJECTED');
+    assert.ok(topology.problems.some((p) => p.includes('known failed R5')));
+  }
+});
+test('L15 missing or forged R6 Owner authorization is rejected', (t) => {
+  const { repo } = fixture(t, false, false, true);
+  const authority = fs.readFileSync(path.join(repo, R6_AUTHORITY_PATH), 'utf8');
+  fs.rmSync(path.join(repo, R6_AUTHORITY_PATH));
+  assert.equal(resolveB005R1Topology(repo).phase, 'REJECTED');
+  write(repo, R6_AUTHORITY_PATH, authority.replace('OWNER_EXPLICIT_CHAT_AUTHORIZATION', 'UNVERIFIED_CALLER'));
+  assert.equal(resolveB005R1Topology(repo).phase, 'REJECTED');
+});
+test('L16 R6 cannot use the candidate branch before the failed merge', (t) => {
+  const { repo } = fixture(t, false, false, true);
+  git(repo, 'checkout', '--quiet', '-B', `${R1_BRANCH}-r6`, R6_REJECTED_CANDIDATE);
+  for (const relative of R6_REQUIRED_CHANGED) write(repo, relative, fs.readFileSync(path.join(source, relative), 'utf8'));
+  git(repo, 'add', '--', ...R6_REQUIRED_CHANGED);
+  git(repo, 'commit', '--quiet', '-m', 'synthetic wrong repair base');
+  assert.equal(resolveB005R1Topology(repo).phase, 'REJECTED');
+});
+test('L17 changed repair merge tree cannot inherit a Candidate acceptance', (t) => {
+  const { repo, merge } = fixture(t, true, true, true);
+  git(repo, 'checkout', '--quiet', '-B', 'main', merge.commit);
+  fs.appendFileSync(path.join(repo, 'internal/evidence/audit_ready.go'), '\n// different merge tree\n');
+  git(repo, 'add', 'internal/evidence/audit_ready.go');
+  git(repo, 'commit', '--quiet', '-m', 'synthetic changed merge');
+  git(repo, 'update-ref', 'refs/remotes/origin/main', git(repo, 'rev-parse', 'HEAD'));
+  assert.equal(resolveB005R1Topology(repo).phase, 'REJECTED');
+});
+test('L18 accepted repair authority rewrite and restore in history rejects', (t) => {
+  const { repo } = fixture(t, true, true, true);
+  const frozen = fs.readFileSync(path.join(repo, R6_AUTHORITY_PATH), 'utf8');
+  write(repo, R6_AUTHORITY_PATH, frozen+'\n');
+  git(repo, 'add', R6_AUTHORITY_PATH); git(repo, 'commit', '--quiet', '-m', 'synthetic repair authority rewrite');
+  write(repo, R6_AUTHORITY_PATH, frozen);
+  git(repo, 'add', R6_AUTHORITY_PATH); git(repo, 'commit', '--quiet', '-m', 'synthetic repair authority restore');
+  git(repo, 'update-ref', 'refs/remotes/origin/main', git(repo, 'rev-parse', 'HEAD'));
   assert.equal(resolveB005R1Topology(repo).phase, 'REJECTED');
 });

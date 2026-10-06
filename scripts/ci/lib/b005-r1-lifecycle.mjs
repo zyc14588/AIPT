@@ -1,5 +1,6 @@
-// B005 R1 is rooted in the accepted governance closeout, never in its blocked
-// implementation merge. This module does no external IO or qualification run.
+// B005 R1 retains the accepted governance root. Explicit R6 authorization
+// admits the exact rejected R5 merge as repair base, never final acceptance.
+// This module does no external IO or qualification run.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -12,6 +13,72 @@ export const B005_TASK = 'AIPT-MVP-B005';
 export const R1_BRANCH = 'codex/aipt-mvp-b005-r1';
 export const R1_BASE = 'fdbf9637b38a773fbc7ea57a21e6f75dd89b235f';
 export const R1_BASE_TREE = 'a307008b48f78ab1b89d5ae5009669244318693f';
+export const R6_BASE = '08f8b2ecf721759940f4e4fef862b1a4da9c1834';
+export const R6_BASE_TREE = '2551e27b50b1971bbdec82707d83f03d28a95b15';
+export const R6_REJECTED_CANDIDATE = '51bcebedb27e7e4aa31f76c50919f343fcd92bbc';
+export const R6_AUTHORITY_PATH = 'docs/authority/registry/b005-r1-post-merge-repair.json';
+export const R6_RECEIPT_FINDING = 'LOCAL-B005-R1-001';
+export const R6_REQUIRED_CHANGED = [
+  'internal/evidence/audit_ready.go', 'internal/evidence/remote_provenance_test.go',
+  'scripts/ci/lib/b005-r1-lifecycle.mjs', 'scripts/ci/test/b005-r1-lifecycle.test.mjs',
+  'scripts/ci/validate/mvp-b005.mjs', 'docs/authority/registry/project-status.json',
+  'docs/authority/PROJECT_STATUS.md', 'docs/milestones/MVP.md', R6_AUTHORITY_PATH,
+];
+export function expectedR6RepairAuthority() {
+  return {
+    "schema": "aipt.b005.r1-post-merge-repair-authority/v1",
+    "version": "1.0.0",
+    "task_id": "AIPT-MVP-B005",
+    "decision_id": "B005-R6-POST-MERGE-REPAIR-Q001=A",
+    "authorization_source": "OWNER_EXPLICIT_CHAT_AUTHORIZATION",
+    "authorized_on": "2026-10-06",
+    "disposition": "AUTHORIZED",
+    "revision": "R6",
+    "governance_closeout_commit": "fdbf9637b38a773fbc7ea57a21e6f75dd89b235f",
+    "repair_base": {
+      "commit": "08f8b2ecf721759940f4e4fef862b1a4da9c1834",
+      "tree": "2551e27b50b1971bbdec82707d83f03d28a95b15",
+      "parents": [
+        "fdbf9637b38a773fbc7ea57a21e6f75dd89b235f",
+        "51bcebedb27e7e4aa31f76c50919f343fcd92bbc"
+      ]
+    },
+    "rejected_candidate": {
+      "commit": "51bcebedb27e7e4aa31f76c50919f343fcd92bbc",
+      "tree": "2551e27b50b1971bbdec82707d83f03d28a95b15"
+    },
+    "failed_post_merge": {
+      "commit": "08f8b2ecf721759940f4e4fef862b1a4da9c1834",
+      "independent_review_result": "FAIL",
+      "reviewer_source": "LOCAL_INDEPENDENT_CODEX_AGENT",
+      "review_report_sha256": "4edaa5956f8f2a0a77e60ab5ed1e1538a66b77f8e3a5c1ba95cdafe6b04f787f",
+      "reviewed_paths": 23,
+      "finding_id": "LOCAL-B005-R1-001",
+      "original_three_findings_locally_verified_fixed": true,
+      "public_ci_run_id": 37409519294,
+      "public_ci_jobs_success": 5,
+      "accepted_as_final_merge": false,
+      "lifecycle_records_created": false
+    },
+    "publication": "NEW_PUBLIC_R6_PULL_REQUEST",
+    "candidate_rule": "SINGLE_COMMIT_CHILD_OF_EXACT_REPAIR_BASE",
+    "merge_rule": "EXACT_REPAIR_BASE_AND_CANDIDATE_PARENTS_WITH_CANDIDATE_TREE",
+    "independent_review": "SAME_OWNER_AUTHORIZED_READ_ONLY_LOCAL_CODEX_AGENT_ON_FINAL_BYTES",
+    "closeout_requirements": [
+      "INDEPENDENT_LOCAL_REVIEW_PASS",
+      "EXACT_FINAL_MAIN_MERGE_COMMIT_AND_TREE",
+      "NEW_MAIN_PUSH_CI_ALL_FIVE_JOBS_SUCCESS",
+      "LOCAL_ONLINE_FINAL_SOURCE_PROOF_AND_FRESH_VERIFICATION",
+      "NEW_INDEPENDENT_IMMUTABLE_FINAL_CI_CATALOGUE",
+      "CANONICAL_APPEND_ONLY_LIFECYCLE_RECORDS"
+    ],
+    "history_rewrite_permitted": false,
+    "failed_merge_can_receive_closeout": false,
+    "governance_anchors_may_change": false,
+    "real_model_calls": 0,
+    "qualification_runs_executed": 0
+  };
+}
 const GOV_TASK = 'AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001';
 const GOV_CANDIDATE = '09bdd1c4787a283846356db6738b54db582342e8';
 const GOV_MERGE = '7cedc640f64052103162b4160ffae2f0f8a901df';
@@ -43,7 +110,7 @@ export const R1_REQUIRED_CHANGED = [
   'scripts/ci/validate/mvp-b005.mjs', 'scripts/ci/validate/int001-closeout-authority.mjs', 'scripts/ci/validate/evidence.mjs',
   'scripts/ci/run-checks.mjs', 'package.json',
 ];
-const R1_ALLOWED = new Set([...R1_REQUIRED_CHANGED, 'docs/authority/BATCH_DEPENDENCY_GRAPH.md', 'docs/authority/README.md']);
+const R1_ALLOWED = new Set([...R1_REQUIRED_CHANGED, R6_AUTHORITY_PATH, 'docs/authority/BATCH_DEPENDENCY_GRAPH.md', 'docs/authority/README.md']);
 const CLOSEOUT_ALLOWED = new Set([...B005_RECORD_PATHS, B005_CI_PATH, STATUS_PATH, 'docs/authority/PROJECT_STATUS.md']);
 const hex40 = /^[0-9a-f]{40}$/u;
 export function digest(value) { return createHash('sha256').update(value).digest('hex'); }
@@ -74,6 +141,44 @@ function linear(repo, commit) {
   for (const row of chain) { const [oid, ...parents] = row.split(/\s+/u); if (!equal(parents, [previous])) return false; previous = oid; }
   return chain.length > 0 && previous === commit;
 }
+function repairCandidate(repo, commit) { return equal(facts(repo, commit)?.parents, [R6_BASE]); }
+export function candidateBase(repo, commit) {
+  if (repairCandidate(repo, commit)) return R6_BASE;
+  return linear(repo, commit) ? R1_BASE : null;
+}
+function repairAuthorityProblems(repo, head, candidate = null) {
+  const problems = [];
+  const main = out(repo, ['rev-parse', 'refs/remotes/origin/main^{commit}']);
+  if (facts(repo, R6_BASE)?.tree !== R6_BASE_TREE ||
+      !equal(facts(repo, R6_BASE)?.parents, [R1_BASE, R6_REJECTED_CANDIDATE]) ||
+      facts(repo, R6_REJECTED_CANDIDATE)?.tree !== R6_BASE_TREE ||
+      !equal(facts(repo, R6_REJECTED_CANDIDATE)?.parents, [R1_BASE]) ||
+      !firstParentContains(repo, main, R6_BASE) || !firstParentContains(repo, head, R6_BASE)) {
+    problems.push('R6 repair does not preserve the exact failed R5 merge on accepted main');
+  }
+  const expected = `${JSON.stringify(expectedR6RepairAuthority(), null, 2)}\n`;
+  let current = null; try { current = read(repo, R6_AUTHORITY_PATH); } catch { /* fail closed */ }
+  if (current !== expected || (candidate && blob(repo, candidate, R6_AUTHORITY_PATH) !== expected)) {
+    problems.push('R6 lacks the exact Owner authorization and failed-review identity');
+  }
+  return problems;
+}
+function candidateScopeProblems(repo, commit) {
+  const paths = changed(repo, R1_BASE, commit);
+  const problems = [];
+  if (paths.some((p) => !R1_ALLOWED.has(p)) || R1_REQUIRED_CHANGED.some((p) => !paths.includes(p))) {
+    problems.push('R1 cumulative Candidate scope is incomplete or unauthorized');
+  }
+  if (candidateBase(repo, commit) === R6_BASE) {
+    const repairPaths = changed(repo, R6_BASE, commit);
+    if (repairPaths.some((p) => !R6_REQUIRED_CHANGED.includes(p)) ||
+        R6_REQUIRED_CHANGED.some((p) => !repairPaths.includes(p))) problems.push('R6 Candidate scope is not exact');
+    problems.push(...repairAuthorityProblems(repo, commit, commit));
+  } else if (paths.includes(R6_AUTHORITY_PATH)) {
+    problems.push('R6 authorization cannot be reused on another Candidate base');
+  }
+  return problems;
+}
 export function acceptedGovernanceProblems(repo, head = out(repo, ['rev-parse', 'HEAD^{commit}'])) {
   const problems = [];
   const main = out(repo, ['rev-parse', 'refs/remotes/origin/main^{commit}']);
@@ -94,7 +199,7 @@ export function acceptedGovernanceProblems(repo, head = out(repo, ['rev-parse', 
   }
   return problems;
 }
-export function expectedR1ConstructionStatus(repo) {
+export function expectedR1ConstructionStatus(repo, candidateCommit = null) {
   const text = blob(repo, R1_BASE, STATUS_PATH);
   if (text === null) throw new Error('accepted R1 base status unavailable');
   const expected = JSON.parse(text);
@@ -127,11 +232,30 @@ export function expectedR1ConstructionStatus(repo) {
     independent_security_acceptance: 'PENDING', open_findings: [...FINDINGS],
   };
   expected.runtime.status = 'AIPT-MVP-B005 R1 is the sole active construction batch at GLOBAL_WIP 1 after accepted remote-provenance governance closeout; fixed online GitHub Commit/Tree verification and bounded local consistency checks are implemented pending independent acceptance; runtime_ready remains false at IPC and real playtest/qualification Runs remain unexecuted';
+  const repair = candidateCommit ? candidateBase(repo, candidateCommit) === R6_BASE : fs.existsSync(path.join(repo, R6_AUTHORITY_PATH));
+  if (repair) {
+    expected.authority_snapshot_id = 'AIPT-MVP-B005-R1-R6-CONSTRUCTION-001';
+    b005.public_ci_status = 'R5_POST_MERGE_SECURITY_FAIL_R6_REPAIR_PENDING';
+    b005.open_findings = [...FINDINGS, R6_RECEIPT_FINDING];
+    b005.r1_recovery.revision = 'R6';
+    b005.r1_recovery.base = { commit: R6_BASE, tree: R6_BASE_TREE };
+    b005.r1_recovery.original_governance_base = { commit: R1_BASE, tree: R1_BASE_TREE };
+    b005.r1_recovery.failed_r5_post_merge = expectedR6RepairAuthority().failed_post_merge;
+    b005.r1_recovery.owner_authorization = { decision_id: 'B005-R6-POST-MERGE-REPAIR-Q001=A', path: R6_AUTHORITY_PATH,
+      sha256: digest(`${JSON.stringify(expectedR6RepairAuthority(), null, 2)}\n`) };
+    b005.r1_recovery.receipt_field_names_case_sensitive = true;
+    b005.r1_recovery.receipt_canonical_bytes_enforced = true;
+    b005.r1_recovery.receipt_field_alias_regression_cases = 16;
+    b005.r1_recovery.valid_chunked_receipt_control = true;
+    b005.r1_recovery.independent_review_source = 'LOCAL_INDEPENDENT_CODEX_AGENT';
+    b005.r1_recovery.open_findings = [...FINDINGS, R6_RECEIPT_FINDING];
+    expected.runtime.status = 'AIPT-MVP-B005 R6 is the sole active repair batch after R5 local independent review FAIL; exact canonical receipt bytes are enforced, final independent acceptance is pending; runtime_ready remains false at IPC and no real playtest or qualification Run has started';
+  }
   return expected;
 }
 export function expectedB005CloseoutStatus(repo, candidate, merge, catalogue) {
-  const expected = expectedR1ConstructionStatus(repo);
-  expected.authority_snapshot_id = 'AIPT-MVP-B005-R1-CLOSEOUT-001';
+  const expected = expectedR1ConstructionStatus(repo, candidate.commit);
+  expected.authority_snapshot_id = candidateBase(repo, candidate.commit) === R6_BASE ? 'AIPT-MVP-B005-R1-R6-CLOSEOUT-001' : 'AIPT-MVP-B005-R1-CLOSEOUT-001';
   const track = expected.tracks['AIPT-STANDALONE'];
   track.construction = 'IDLE_WAITING_NEXT_BATCH'; track.current_batch = 'NO_ACTIVE_BATCH'; track.global_wip = 0;
   track.batch_history[B005_TASK] = 'MERGED_CLOSED';
@@ -144,14 +268,15 @@ export function expectedB005CloseoutStatus(repo, candidate, merge, catalogue) {
   b005.r1_recovery.merge = { commit: merge.commit, tree: merge.tree, parents: merge.parents };
   b005.r1_recovery.post_merge_ci = { run_id: catalogue.run.id, head_sha: merge.commit, conclusion: 'success', jobs_passed: 5, jobs_failed: 0, jobs_skipped: 0,
     independent_catalogue_path: B005_CI_PATH, independent_catalogue_sha256: digest(`${JSON.stringify(catalogue, null, 2)}\n`) };
-  b005.r1_recovery.closed_findings = [...FINDINGS];
+  b005.r1_recovery.closed_findings = [...FINDINGS, ...(candidateBase(repo, candidate.commit) === R6_BASE ? [R6_RECEIPT_FINDING] : [])];
   expected.runtime.status = 'AIPT-MVP-B005 R1 evidence closure is MERGED_CLOSED after exact post-merge CI and independent security acceptance; runtime_ready remains false at IPC; no real playtest or qualification Run has started';
   return expected;
 }
 export function renderB005CloseoutHumanStatus(repo, candidate, merge, catalogue) {
   const frozen = blob(repo, candidate.commit, 'docs/authority/PROJECT_STATUS.md');
   if (frozen === null) throw new Error('B005 Candidate human status unavailable');
-  return frozen + `\nB005 R1 正式关闭（2026-10-06）：Candidate ${candidate.commit}（tree ${candidate.tree}）由合法 merge ${merge.commit} 集成；精确 post-merge CI ${catalogue.run.id} 的 5/5 jobs 为 success，独立安全验收 PASS，三项 R1 findings 已关闭。B005 = MERGED_CLOSED；M0 = 100%，MVP = 8/13（61.5%），按 22 项等权批次总体 = 17/22（77.3%）。关闭时 GLOBAL_WIP=0，B006 未启动；runtime_ready=false，首个阻塞 gate=IPC，真实桌测与资格 Run=0。依据为 canonical B005 append-only lifecycle records 与独立不可变 CI catalogue。原 failed merge c07e1aae94f681733ad73c1800423248bcc72376 保持 NOT_ACCEPTED。\n`;
+  const repairNote = candidateBase(repo, candidate.commit) === R6_BASE ? ` R6 独立验收来源为 LOCAL_INDEPENDENT_CODEX_AGENT；收据 finding ${R6_RECEIPT_FINDING} 已关闭。旧 R5 merge ${R6_BASE} 的独立审查 FAIL 与成功 CI 保留为失败历史，NOT_ACCEPTED。` : '';
+  return frozen + `\nB005 R1 正式关闭（2026-10-06）：Candidate ${candidate.commit}（tree ${candidate.tree}）由合法 merge ${merge.commit} 集成；精确 post-merge CI ${catalogue.run.id} 的 5/5 jobs 为 success，独立安全验收 PASS，三项 R1 findings 已关闭。B005 = MERGED_CLOSED；M0 = 100%，MVP = 8/13（61.5%），按 22 项等权批次总体 = 17/22（77.3%）。关闭时 GLOBAL_WIP=0，B006 未启动；runtime_ready=false，首个阻塞 gate=IPC，真实桌测与资格 Run=0。依据为 canonical B005 append-only lifecycle records 与独立不可变 CI catalogue。原 failed merge c07e1aae94f681733ad73c1800423248bcc72376 保持 NOT_ACCEPTED。${repairNote}\n`;
 }
 function exactKeys(value, keys) { return value !== null && typeof value === 'object' && !Array.isArray(value) && equal(Object.keys(value).sort(), [...keys].sort()); }
 function positiveID(value) { return Number.isSafeInteger(value) && value > 0; }
@@ -175,7 +300,11 @@ export function ciCatalogueProblems(catalogue, merge, workflowSha256) {
   return problems;
 }
 function postFacts(catalogue) { return { run_id: catalogue.run.id, head_sha: catalogue.run.head_sha, conclusion: 'success', jobs_passed: 5, jobs_failed: 0, jobs_skipped: 0 }; }
-function legalMerge(repo, candidate, head) { const merge = facts(repo, head); return merge?.tree === candidate?.tree && equal(merge?.parents, [R1_BASE, candidate?.commit]) ? merge : null; }
+function legalMerge(repo, candidate, head) {
+  const merge = facts(repo, head); const base = candidateBase(repo, candidate?.commit);
+  return base && candidate?.commit !== R6_REJECTED_CANDIDATE && merge?.tree === candidate?.tree &&
+    equal(merge?.parents, [base, candidate?.commit]) ? merge : null;
+}
 function lifecycle(repo, head, proposal = false) {
   const problems = [];
   const acceptedMain = proposal ? head : out(repo, ['rev-parse', 'refs/remotes/origin/main^{commit}']);
@@ -191,8 +320,11 @@ function lifecycle(repo, head, proposal = false) {
   const candidate = facts(repo, identity?.candidate_commit);
   const merge = facts(repo, records[0]?.event_evidence?.merge_identity?.commit);
   const paths = candidate ? changed(repo, R1_BASE, candidate.commit) : [];
-  if (!candidate || !linear(repo, candidate.commit) || paths.some((p) => !R1_ALLOWED.has(p)) || R1_REQUIRED_CHANGED.some((p) => !paths.includes(p)) ||
-      !legalMerge(repo, candidate, merge?.commit) || !equal(facts(repo, closeoutCommit)?.parents, [merge?.commit])) problems.push('B005 closeout does not bind an exact R1 Candidate/Base merge and direct governance successor');
+  if (!candidate || !candidateBase(repo, candidate.commit) || candidate.commit === R6_REJECTED_CANDIDATE ||
+      !legalMerge(repo, candidate, merge?.commit) || !equal(facts(repo, closeoutCommit)?.parents, [merge?.commit])) {
+    problems.push('B005 closeout does not bind an exact authorized Candidate/Base merge and direct successor');
+  }
+  if (candidate) problems.push(...candidateScopeProblems(repo, candidate.commit));
   const closeoutPaths = merge ? changed(repo, merge.commit, closeoutCommit) : [];
   if (closeoutPaths.some((p) => !CLOSEOUT_ALLOWED.has(p)) || [...B005_RECORD_PATHS, B005_CI_PATH, STATUS_PATH, 'docs/authority/PROJECT_STATUS.md'].some((p) => !closeoutPaths.includes(p))) problems.push('B005 closeout includes business changes or misses required projections/evidence');
   problems.push(...ciCatalogueProblems(catalogue, merge, digest(blob(repo, merge?.commit, '.github/workflows/ci.yml') ?? '')));
@@ -209,7 +341,7 @@ function lifecycle(repo, head, proposal = false) {
     if (introduced === null || current !== introduced || blob(repo, acceptedMain, relative) !== introduced) problems.push(`B005 immutable accepted evidence changed: ${relative}`);
     if (!equal(rows(repo, ['log', '--first-parent', '--format=%H', '--diff-filter=A', acceptedMain, '--', relative]), [closeoutCommit])) problems.push('B005 accepted evidence has an invalid introduction');
   }
-  for (const relative of paths.filter((p) => (p.startsWith('internal/evidence/') || p.startsWith('cmd/aipt-audit-ready/')) && p.endsWith('.go') && !p.endsWith('_test.go') || p === REMOTE_SCHEMA_PATH || p === REMOTE_MATRIX_PATH)) {
+  for (const relative of paths.filter((p) => (p.startsWith('internal/evidence/') || p.startsWith('cmd/aipt-audit-ready/')) && p.endsWith('.go') && !p.endsWith('_test.go') || p === REMOTE_SCHEMA_PATH || p === REMOTE_MATRIX_PATH || p === R6_AUTHORITY_PATH)) {
     let current = null; try { current = read(repo, relative); } catch { /* fail closed */ }
     if (current !== blob(repo, candidate?.commit, relative) || rows(repo, ['log', '--first-parent', '--full-history', '--format=%H', `${merge?.commit}..${head}`, '--', relative]).length > 0) problems.push(`accepted R1 runtime/schema/matrix changed: ${relative}`);
   }
@@ -246,7 +378,7 @@ function lifecycle(repo, head, proposal = false) {
   problems.push(...resolution.problems);
   try {
     if (blob(repo, closeoutCommit, 'docs/authority/PROJECT_STATUS.md') !== renderB005CloseoutHumanStatus(repo, candidate, merge, catalogue)) problems.push('B005 closeout human status is not canonical');
-    if (!equal(JSON.parse(blob(repo, candidate.commit, STATUS_PATH)), expectedR1ConstructionStatus(repo)) ||
+    if (!equal(JSON.parse(blob(repo, candidate.commit, STATUS_PATH)), expectedR1ConstructionStatus(repo, candidate.commit)) ||
         !equal(JSON.parse(blob(repo, closeoutCommit, STATUS_PATH)), expectedB005CloseoutStatus(repo, candidate, merge, catalogue))) problems.push('B005 Candidate/closeout status projection is not exact');
   } catch { problems.push('B005 historical status projection is unreadable'); }
   return { accepted: !proposal && problems.length === 0 && resolution.effective, proposal_valid: proposal && problems.length === 0 && resolution.effective,
@@ -266,15 +398,33 @@ export function resolveB005R1Topology(repo) {
     return { phase: 'REJECTED', head, headFacts, branch, candidate: null, paths, problems: [...problems, ...accepted.problems, ...(proposal?.problems ?? [])] };
   }
   const scopeValid = paths.every((p) => R1_ALLOWED.has(p));
-  if (dirty(repo) && /^codex\/aipt-mvp-b005-r1(?:-r[1-9][0-9]*)?$/u.test(branch) && (head === R1_BASE || linear(repo, head)) && scopeValid) return { phase: problems.length ? 'REJECTED' : 'CONSTRUCTION', head, headFacts, branch, candidate: null, paths, problems };
-  if (!dirty(repo) && /^codex\/aipt-mvp-b005-r1(?:-r[1-9][0-9]*)?$/u.test(branch) && linear(repo, head) && scopeValid) return { phase: problems.length ? 'REJECTED' : 'CANDIDATE', head, headFacts, branch, candidate: head, paths, problems };
+  const repairPresent = fs.existsSync(path.join(repo, R6_AUTHORITY_PATH));
+  if (repairPresent && branch === 'codex/aipt-mvp-b005-r1-r6' &&
+      (head === R6_BASE || repairCandidate(repo, head)) && scopeValid) {
+    const candidate = head === R6_BASE ? null : head;
+    const repairPaths = [...new Set([...changed(repo, R6_BASE, 'HEAD'),
+      ...rows(repo, ['diff', '--name-only', '--no-renames']),
+      ...rows(repo, ['diff', '--cached', '--name-only', '--no-renames']),
+      ...rows(repo, ['ls-files', '--others', '--exclude-standard'])])].filter((p) => !p.split('/').includes('node_modules'));
+    const repairProblems = [...problems, ...repairAuthorityProblems(repo, head, candidate)];
+    if (repairPaths.some((p) => !R6_REQUIRED_CHANGED.includes(p)) ||
+        R6_REQUIRED_CHANGED.some((p) => !repairPaths.includes(p))) repairProblems.push('R6 construction scope is not exact');
+    if (candidate) repairProblems.push(...candidateScopeProblems(repo, candidate));
+    return { phase: repairProblems.length ? 'REJECTED' : dirty(repo) ? 'CONSTRUCTION' : candidate ? 'CANDIDATE' : 'REJECTED',
+      revision: 'R6', base: R6_BASE, head, headFacts, branch, candidate, paths, problems: repairProblems };
+  }
+  if (head === R6_REJECTED_CANDIDATE || head === R6_BASE) return { phase: 'REJECTED', head, headFacts, branch, candidate: null, paths,
+    problems: [...problems, 'known failed R5 Candidate/merge cannot receive final acceptance'] };
+  if (dirty(repo) && /^codex\/aipt-mvp-b005-r1(?:-r[1-9][0-9]*)?$/u.test(branch) && (head === R1_BASE || linear(repo, head)) && scopeValid && !repairPresent) return { phase: problems.length ? 'REJECTED' : 'CONSTRUCTION', head, headFacts, branch, candidate: null, paths, problems };
+  if (!dirty(repo) && /^codex\/aipt-mvp-b005-r1(?:-r[1-9][0-9]*)?$/u.test(branch) && linear(repo, head) && scopeValid && !repairPresent) return { phase: problems.length ? 'REJECTED' : 'CANDIDATE', head, headFacts, branch, candidate: head, paths, problems };
   const merges = rows(repo, ['rev-list', '--first-parent', `${R1_BASE}..${head}`]).map((revision) => {
     const m = facts(repo, revision); const c = facts(repo, m?.parents[1]);
-    return c && linear(repo, c.commit) && legalMerge(repo, c, revision) ? { merge: m, candidate: c } : null;
+    return c && candidateBase(repo, c.commit) && legalMerge(repo, c, revision) ? { merge: m, candidate: c } : null;
   }).filter(Boolean);
   if (!dirty(repo) && merges.length === 1) {
     const { merge, candidate } = merges[0]; const candidatePaths = changed(repo, R1_BASE, candidate.commit);
-    const legal = candidatePaths.every((p) => R1_ALLOWED.has(p)) && R1_REQUIRED_CHANGED.every((p) => candidatePaths.includes(p)) && merge.commit === head;
+    const scopeProblems = candidateScopeProblems(repo, candidate.commit); problems.push(...scopeProblems);
+    const legal = scopeProblems.length === 0 && merge.commit === head;
     return { phase: legal && !problems.length ? 'LEGAL_MERGE' : 'REJECTED', head, headFacts, branch, candidate: candidate.commit, paths: candidatePaths, problems, merge };
   }
   return { phase: 'REJECTED', head, headFacts, branch, candidate: null, paths, problems: [...problems, 'B005 R1 branch/base/scope/merge topology is not authorized'] };

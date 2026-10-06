@@ -77,3 +77,5 @@ GPT 审计 PASS
 
 - [../authority/README.md](../authority/README.md) · [../authority/BATCH_DEPENDENCY_GRAPH.md](../authority/BATCH_DEPENDENCY_GRAPH.md) · [../test-model/README.md](../test-model/README.md) · [../evidence/README.md](../evidence/README.md) · [../integration/README.md](../integration/README.md) · [M0.md](M0.md)
 - [返回仓库首页](../../README.md)
+
+2026-10-06 R6 repair：PR #23 已由 Owner 合并，但本地独立 Codex 审查发现 LOCAL-B005-R1-001 收据字段缺口，总体 FAIL；CI 成功不覆盖此结论。Owner 授权在 exact failed merge 08f8b2ecf721759940f4e4fef862b1a4da9c1834 上追加公开 R6 PR，保留失败历史并复审。R6 enforce 完整 canonical receipt bytes；最终独立审查、精确 final merge 5/5 CI、online source verification 与 immutable catalogue 全部通过才关闭 B005。当前进度仍为 M0 9/9、MVP 7/13、总体 16/22；B006 未启动。

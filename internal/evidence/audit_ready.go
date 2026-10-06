@@ -1009,8 +1009,15 @@ func verifyCoreLogicalAssets(manifest AuditReadyManifest, logical map[string][]b
 		}
 		return strictDecode(body, destination)
 	}
-	var receipt RemoteProvenanceReceipt
-	if err := decodeCanonical(RemoteProvenanceName, &receipt); err != nil || validateRemoteProvenanceReceipt(receipt, manifest.Source) != nil {
+	// Compare the complete canonical contract, not Go's case-insensitive
+	// struct decoding: aliases can otherwise add fields or replace mandatory
+	// names while still decoding to the expected source facts.
+	receipt, err := receiptForSource(manifest.Source)
+	if err != nil {
+		return RunEvidenceClosure{}, RunReport{}, ErrSourceUnverified
+	}
+	expectedReceipt, err := canonicalLine(receipt)
+	if err != nil || !bytes.Equal(logical[RemoteProvenanceName], expectedReceipt) {
 		return RunEvidenceClosure{}, RunReport{}, ErrSourceUnverified
 	}
 	var closure RunEvidenceClosure
