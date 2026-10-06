@@ -211,7 +211,9 @@ func TestPostgresIntegrationEvidenceAuditReadyClosureDeterministic(t *testing.T)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	appendSyntheticEvents(t, ctx, pool, "synthetic-b005-closure-ledger", 3)
-	sourceIdentity, sourceVerifier := syntheticGitMirror(t)
+	sourceIdentity, _ := syntheticGitMirror(t)
+	sourceIdentity.Repository = "https://github.com/AIPT-Synthetic/fixture"
+	sourceVerifier := &staticSourceVerifier{expected: sourceIdentity}
 	parent := privateTempDir(t)
 	rawPath := filepath.Join(parent, "raw-capture")
 	raw, err := ExportRawCapture(ctx, NewPostgresSource(pool), ExportInput{
@@ -225,15 +227,13 @@ func TestPostgresIntegrationEvidenceAuditReadyClosureDeterministic(t *testing.T)
 	}
 	first, _ := fixtureAuditInputForRaw(t, rawPath, fixtureExportProfile())
 	second, _ := fixtureAuditInputForRaw(t, rawPath, fixtureExportProfile())
-	first.SourceVerifier = sourceVerifier
-	second.SourceVerifier = sourceVerifier
 	first.Destination = filepath.Join(parent, "audit-ready-a")
 	second.Destination = filepath.Join(parent, "audit-ready-b")
-	firstResult, err := GenerateAuditReady(ctx, first)
+	firstResult, err := generateAuditReady(ctx, first, sourceVerifier)
 	if err != nil {
 		t.Fatalf("GenerateAuditReady(first): %v", err)
 	}
-	secondResult, err := GenerateAuditReady(ctx, second)
+	secondResult, err := generateAuditReady(ctx, second, sourceVerifier)
 	if err != nil {
 		t.Fatalf("GenerateAuditReady(second): %v", err)
 	}
@@ -241,7 +241,7 @@ func TestPostgresIntegrationEvidenceAuditReadyClosureDeterministic(t *testing.T)
 		t.Fatalf("repeated AUDIT_READY roots differ: %s != %s", firstResult.Root, secondResult.Root)
 	}
 	compareFlatDirectories(t, first.Destination, second.Destination)
-	verified, err := VerifyAuditReady(ctx, first.Destination, sourceVerifier)
+	verified, err := verifyAuditReady(ctx, first.Destination, sourceVerifier)
 	if err != nil || verified.Root != firstResult.Root {
 		t.Fatalf("VerifyAuditReady = %+v, %v", verified, err)
 	}

@@ -3,17 +3,19 @@
 // This validator is standard-library-only and performs no model, provider,
 // source fetch, integration rerun, or qualification execution.
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { git, runAsMain } from '../lib/cli.mjs';
 import { checkSchemaDocument, validateInstance } from '../lib/json-schema.mjs';
 import { runPublicationHygiene } from '../lib/publication-hygiene.mjs';
+import { R1_BASE, R1_BASE_TREE, R1_REQUIRED_CHANGED, REMOTE_SCHEMA_PATH, REMOTE_MATRIX_PATH, resolveB005R1Topology, b005R1StatusProblems, expectedR1ConstructionStatus } from '../lib/b005-r1-lifecycle.mjs';
 
 const TASK_ID = 'AIPT-MVP-B005';
 const BRANCH = `task/${TASK_ID}`;
-const BASE_COMMIT = '176f33d8f20f94a77ab688f4869e944b6ffe97c6';
-const BASE_TREE = '210320957a35633bcf766a3d88ea50a3493bd0fc';
+const BASE_COMMIT = R1_BASE;
+const BASE_TREE = R1_BASE_TREE;
 const PREVIOUS_PUBLIC_CANDIDATE = '7ca1f9679c42c502e4b56103f66fff5e6798c184';
 const PREVIOUS_PUBLIC_TREE = '127b17486d66df0a21e3e4048a89eda2ce8e1e04';
 const PREVIOUS_PUBLIC_CI = 33738314143;
@@ -86,79 +88,7 @@ function commitFacts(repo, commit) {
 function changedPaths(repo, from, to) {
   return lines(gitResult(repo, ['diff', '--name-only', '--no-renames', from, to])).sort();
 }
-function candidateInventory(repo) {
-  const committed = changedPaths(repo, BASE_COMMIT, 'HEAD');
-  const tracked = lines(gitResult(repo, ['diff', '--name-only', '--no-renames']));
-  const staged = lines(gitResult(repo, ['diff', '--cached', '--name-only', '--no-renames']));
-  const untracked = lines(gitResult(repo, ['ls-files', '--others', '--exclude-standard']));
-  return [...new Set([...committed, ...tracked, ...staged, ...untracked]
-    .filter((relative) => relative && !relative.split('/').includes('node_modules')))].sort();
-}
-function dirty(repo) {
-  return lines(gitResult(repo, ['status', '--porcelain=v1', '--untracked-files=all']))
-    .some((line) => !line.includes('node_modules/'));
-}
-function allowedPath(relative) {
-  return relative.startsWith('internal/evidence/') || relative.startsWith('schemas/evidence/') ||
-    relative.startsWith('cmd/aipt-audit-ready/') || relative.startsWith('docs/evidence/') ||
-    relative === MATRIX_PATH || relative === STATUS_PATH || relative === 'docs/authority/PROJECT_STATUS.md' ||
-    relative === 'docs/authority/BATCH_DEPENDENCY_GRAPH.md' || relative === 'docs/authority/README.md' ||
-    relative === 'scripts/ci/validate/mvp-b005.mjs' || relative === 'scripts/ci/validate/evidence.mjs' ||
-    relative === 'scripts/ci/validate/int001-closeout-authority.mjs' || relative === 'scripts/ci/validate/mvp-b004.mjs' ||
-    relative === 'scripts/ci/run-checks.mjs' ||
-    relative === 'scripts/ci/validate/workflow.mjs' ||
-    relative === 'package.json' || relative === '.github/workflows/ci.yml';
-}
-function linearCandidate(repo, candidate) {
-  const rows = lines(gitResult(repo, ['rev-list', '--reverse', '--parents', `${BASE_COMMIT}..${candidate}`]));
-  let previous = BASE_COMMIT;
-  for (const row of rows) {
-    const [commit, ...parents] = row.split(/\s+/u);
-    if (parents.length !== 1 || parents[0] !== previous) return false;
-    previous = commit;
-  }
-  return rows.length > 0 && previous === candidate;
-}
-
-function resolveTopology(repo) {
-  const head = gitOut(repo, ['rev-parse', 'HEAD^{commit}']);
-  const headFacts = commitFacts(repo, head);
-  const branch = currentBranch(repo);
-  const baseExact = commitFacts(repo, BASE_COMMIT)?.tree === BASE_TREE;
-  const previousExact = commitFacts(repo, PREVIOUS_PUBLIC_CANDIDATE)?.tree === PREVIOUS_PUBLIC_TREE &&
-    linearCandidate(repo, PREVIOUS_PUBLIC_CANDIDATE);
-  if (!baseExact || !previousExact || !head || !isAncestor(repo, BASE_COMMIT, head)) {
-    return { phase: 'REJECTED', head, headFacts, branch, candidate: null, paths: candidateInventory(repo) };
-  }
-  if (dirty(repo)) {
-    const paths = candidateInventory(repo);
-    const repairHead = head === PREVIOUS_PUBLIC_CANDIDATE && headFacts?.tree === PREVIOUS_PUBLIC_TREE;
-    const valid = (head === BASE_COMMIT || repairHead) && branch === BRANCH && paths.every(allowedPath);
-    return { phase: valid ? 'CONSTRUCTION' : 'REJECTED', head, headFacts, branch, candidate: null, paths };
-  }
-  if (branch === BRANCH && head !== PREVIOUS_PUBLIC_CANDIDATE && headFacts?.parents.length === 1 &&
-      linearCandidate(repo, head) && isAncestor(repo, PREVIOUS_PUBLIC_CANDIDATE, head)) {
-    const paths = changedPaths(repo, BASE_COMMIT, head);
-    return { phase: paths.every(allowedPath) ? 'CANDIDATE' : 'REJECTED', head, headFacts, branch, candidate: head, paths };
-  }
-  const firstParent = lines(gitResult(repo, ['rev-list', '--first-parent', '--reverse', `${BASE_COMMIT}..${head}`]));
-  for (const commit of firstParent) {
-    const facts = commitFacts(repo, commit);
-    if (facts?.parents.length !== 2 || facts.parents[0] !== BASE_COMMIT || !linearCandidate(repo, facts.parents[1])) continue;
-    const candidateFacts = commitFacts(repo, facts.parents[1]);
-    const paths = changedPaths(repo, BASE_COMMIT, facts.parents[1]);
-    const immutable = paths.every((relative) => {
-      if (!relative.startsWith('internal/evidence/') && !relative.startsWith('schemas/evidence/') && !relative.startsWith('cmd/aipt-audit-ready/')) return true;
-      const accepted = gitResult(repo, ['show', `${facts.parents[1]}:${relative}`]);
-      const current = gitResult(repo, ['show', `${head}:${relative}`]);
-      return accepted.status === 0 && current.status === 0 && accepted.stdout === current.stdout;
-    });
-    if (candidateFacts?.tree === facts.tree && paths.every(allowedPath) && immutable && isAncestor(repo, commit, head)) {
-      return { phase: commit === head ? 'LEGAL_MERGE' : 'POST_MERGE_SUCCESSOR', head, headFacts, branch, candidate: facts.parents[1], paths };
-    }
-  }
-  return { phase: 'REJECTED', head, headFacts, branch, candidate: null, paths: [] };
-}
+function resolveTopology(repo) { return resolveB005R1Topology(repo); }
 
 function schemaStrictObjectProblems(schema) {
   const problems = [];
@@ -241,6 +171,9 @@ function schemaProblems(repo) {
     if (!meta.valid) problems.push(`${name} schema meta-check: ${meta.errors.join('; ')}`);
     problems.push(...schemaStrictObjectProblems(schema).map((problem) => `${name} schema ${problem}`));
   }
+  const remote = readJSON(repo, REMOTE_SCHEMA_PATH);
+  const remoteExample = { schema: 'aipt.remote-provenance/v1', version: '1.0.0', policy_id: 'ONLINE_GITHUB_REMOTE_PROVENANCE_V1', provider: 'GITHUB_PUBLIC_HTTPS_API_V1', repository: 'https://github.com/AIPT-Synthetic/fixture', commit: '1'.repeat(40), tree: '2'.repeat(40), status: 'VERIFIED_IMMUTABLE_REMOTE_COMMIT' };
+  if (!checkSchemaDocument(remote).valid || schemaStrictObjectProblems(remote).length || !validateInstance(remote, remoteExample).valid || validateInstance(remote, { ...remoteExample, verification_timestamp: 'forbidden' }).valid) problems.push('strict eight-field remote receipt schema is invalid');
   const fixture = examples();
   for (const [name, value] of Object.entries(fixture)) {
     const schema = name === 'closure' ? documents.closure : name === 'report' ? documents.report : name === 'index' ? documents.index : documents.defects;
@@ -273,24 +206,25 @@ function sourceProblems(repo) {
   const productionPaths = [
     'internal/evidence/audit_ready.go', 'internal/evidence/closure_types.go', 'internal/evidence/closure_validate.go',
     'internal/evidence/raw_material.go', 'internal/evidence/report_render.go', 'internal/evidence/source_verify.go',
-    'cmd/aipt-audit-ready/main.go',
+    'cmd/aipt-audit-ready/main.go', 'internal/evidence/remote_provenance.go',
   ];
   const sources = Object.fromEntries(productionPaths.map((relative) => [relative, read(repo, relative)]));
   const all = Object.values(sources).join('\n');
   const requiredTokens = new Map([
-    ['internal/evidence/audit_ready.go', ['func GenerateAuditReady(', 'func VerifyAuditReady(', 'renameat2NoReplace(', 'CONTENT_ADDRESSED_CHUNKS', 'validateContractEvidenceReferences(', 'validateCoreEvidenceClassifications(', 'validateCoreLogicalAssetDescriptors(', 'inputUnchanged()', 'ErrEncryptionRequired']],
+    ['internal/evidence/audit_ready.go', ['func GenerateAuditReady(', 'func VerifyAuditReady(', 'func VerifyAuditReadyForRepository(', 'MatchAuditReadyRepositoryIdentity(expectedRepository, manifest.Source.Repository)', 'operationReceiptVerifier', 'renameat2NoReplace(', 'CONTENT_ADDRESSED_CHUNKS', 'validateContractEvidenceReferences(', 'validateCoreEvidenceClassifications(', 'validateCoreLogicalAssetDescriptors(', 'inputUnchanged()', 'ErrEncryptionRequired']],
     ['internal/evidence/raw_material.go', ['VerifyRawCapture(directory)', 'openHeldPrivateFile(', 'func (held *heldRawCapture) Stable() bool']],
-    ['internal/evidence/source_verify.go', ['type GitMirrorVerifier struct', 'trustedGitExecutable = "/usr/bin/git"', '--no-replace-objects', '--git-dir=/proc/self/fd/3', 'command.ExtraFiles', 'exec.CommandContext(', 'GIT_NO_LAZY_FETCH=1', 'url.Parse(', 'ValidateAuditReadyRepositoryIdentity(', 'cat-file', '--format=%T']],
+    ['internal/evidence/source_verify.go', ['type GitMirrorVerifier struct', 'trustedGitExecutable = "/usr/bin/git"', '--no-replace-objects', '--git-dir=/proc/self/fd/3', 'command.ExtraFiles', 'exec.CommandContext(', 'GIT_NO_LAZY_FETCH=1', 'url.Parse(', 'ValidateAuditReadyRepositoryIdentity(', 'cat-file', 'rev-parse', '--verify', '^{tree}', 'log.showSignature=false', 'boundedGitOutput', 'Setpgid: true', 'command.WaitDelay']],
+    ['internal/evidence/remote_provenance.go', ['type sourceVerifier interface', 'type githubSourceVerifier struct{}', 'https://api.github.com/repos/', 'http.MethodGet', 'Proxy:', 'http.ErrUseLastResponse', 'io.LimitReader(response.Body, maxRemoteResponseBytes+1)', 'trustedSystemCAFile', 'before.Uid != 0', 'validateRemoteJSON(', 'commit != source.Commit', 'tree != source.Tree']],
     ['internal/evidence/closure_validate.go', ['func DefectFingerprint(', 'SEMANTIC_DUPLICATE_CANDIDATE', 'func ResolveDefectDecisionChain(', 'func ValidateReportTransition(', 'previous.Lifecycle == ReportSealed', 'func ValidateReportAddendumChain(']],
     ['internal/evidence/report_render.go', ['func RenderRunReport(', 'renderReportMarkdown(', 'renderReportCSV(', 'renderReportJUnit(', 'renderReportHTML(']],
-    ['cmd/aipt-audit-ready/main.go', ['case "generate":', 'case "verify":', 'base64.StdEncoding.Strict()', 'ValidateAuditReadyRepositoryIdentity(', 'stableErrorCode(']],
+    ['cmd/aipt-audit-ready/main.go', ['case "generate":', 'case "verify":', 'base64.StdEncoding.Strict()', 'ValidateAuditReadyRepositoryIdentity(', 'stableErrorCode(', 'evidence.VerifyAuditReadyForRepository(ctx, *bundle, *repository)']],
   ]);
   for (const [relative, tokens] of requiredTokens) {
     for (const token of tokens) if (!sources[relative].includes(token)) problems.push(`${relative} misses required token ${token}`);
   }
   const forbidden = [
     ['wall clock', /time\s*\.\s*Now\s*\(/u], ['hostname', /os\s*\.\s*Hostname\s*\(/u], ['PID', /os\s*\.\s*Getpid\s*\(/u],
-    ['network package', /["']net\/http["']|http\s*\.\s*(?:Get|Post|Do)\s*\(/u],
+
     ['shell execution', /exec\s*\.\s*Command(?:Context)?\s*\([^,]+,\s*["'](?:-c|\/c)["']/u],
     ['model runtime import', /internal\/(?:modelgateway|orchestrator|runcore)|codex-harness|HarnessBackend/u],
     ['database mutation', /\b(?:INSERT|UPDATE|DELETE|ALTER|TRUNCATE|CREATE|DROP)\b/u],
@@ -300,108 +234,15 @@ function sourceProblems(repo) {
   if ((all.match(/os\.Getenv\s*\(/gu) ?? []).length > 1 || (all.includes('os.Getenv(') && !all.includes('os.Getenv("PATH")'))) {
     problems.push('B005 production reads ambient environment beyond the executable search path');
   }
+  const offline = productionPaths.filter((relative) => relative !== 'internal/evidence/remote_provenance.go').map((relative) => sources[relative]).join('\n');
+  if (/["']net\/http["']|http\s*\.\s*(?:Get|Post|Do)\s*\(/u.test(offline)) problems.push('network path escaped the fixed provenance module');
+  if (/type\s+SourceVerifier\s+interface|SourceVerifier\s+SourceVerifier/u.test(all) ||
+      !sources['internal/evidence/audit_ready.go'].includes('generateAuditReady(ctx, input, githubSourceVerifier{})') ||
+      !sources['internal/evidence/audit_ready.go'].includes('verifyAuditReady(ctx, directory, githubSourceVerifier{})') ||
+      sources['internal/evidence/source_verify.go'].includes('Status: remoteVerificationStatus')) problems.push('caller verifier/local mirror can mint reserved provenance');
+  const remote = sources['internal/evidence/remote_provenance.go'];
+  if (/http\.(?:DefaultClient|DefaultTransport)|x509\.SystemCertPool\(|ProxyFromEnvironment|InsecureSkipVerify:\s*true|os\.Getenv\(/u.test(remote)) problems.push('remote proof uses ambient transport/CA/proxy trust');
   return problems;
-}
-
-function statusProblems(status, phase) {
-  const problems = [];
-  const standalone = status?.tracks?.['AIPT-STANDALONE'];
-  const active = standalone?.construction === 'IN_PROGRESS' && standalone?.current_batch === TASK_ID &&
-    standalone?.next_serial_batch === 'AIPT-MVP-B006' && standalone?.next_batch_state === 'NOT_AUTHORIZED' &&
-    standalone?.next_batch_authorized === false && standalone?.next_batch_started === false &&
-    standalone?.batch_history?.[PREDECESSOR] === 'MERGED_CLOSED' && standalone?.batch_history?.[TASK_ID] === 'IN_PROGRESS' &&
-    standalone?.batch_history?.['AIPT-MVP-B006'] === 'NOT_STARTED' && standalone?.global_wip === 1;
-  const closed = standalone?.batch_history?.[TASK_ID] === 'MERGED_CLOSED' && standalone?.next_serial_batch === 'AIPT-MVP-B006' &&
-    standalone?.next_batch_state === 'NOT_AUTHORIZED' && standalone?.next_batch_authorized === false &&
-    standalone?.next_batch_started === false && standalone?.construction === 'IDLE_WAITING_NEXT_BATCH' &&
-    standalone?.current_batch === 'NO_ACTIVE_BATCH' && standalone?.batch_history?.['AIPT-MVP-B006'] === 'NOT_STARTED' &&
-    standalone?.global_wip === 0;
-  if ((phase === 'CONSTRUCTION' || phase === 'CANDIDATE') ? !active : !(active || closed)) {
-    problems.push('project-status does not carry the lifecycle-appropriate B005 WIP1/next-B006 tuple');
-  }
-  const b005 = status?.repositories?.AIPT?.mvp_b005;
-  const stateValid = (phase === 'CONSTRUCTION' || phase === 'CANDIDATE' || phase === 'LEGAL_MERGE')
-    ? b005?.state === 'IN_PROGRESS' : (b005?.state === 'IN_PROGRESS' || b005?.state === 'MERGED_CLOSED');
-  if (!b005 || !stateValid || b005.task_id !== TASK_ID ||
-      b005.start_authority !== 'OWNER_DIRECTIVE_AIPT-MVP-B005' || b005.risk !== 'evidence-integrity' ||
-      b005.base?.commit !== BASE_COMMIT || b005.base?.tree !== BASE_TREE ||
-      b005.predecessor?.task_id !== PREDECESSOR || b005.predecessor?.canonical_closeout_sha256 !== PREDECESSOR_SHA256 ||
-      b005.predecessor?.integration_manifest_sha256 !== 'de553465a6bd79e0c0ccb89af678721f132d9fe98ec39a41136402a5386ca164' ||
-      b005.predecessor?.final_evidence_root_sha256 !== '7ce5014d1951f21d88ca838ef1f7e14fb802b2d8c8c03db6aa3cc902f75cb777' ||
-      b005.predecessor?.rerun_performed !== false || b005.scope !== 'RUN_EVIDENCE_CLOSURE_AUDIT_READY_ONLY' ||
-      b005.raw_capture_backward_compatible !== true || b005.audit_ready_generator_implemented !== true ||
-      b005.audit_ready_verifier_implemented !== true || b005.run_evidence_closure_implemented !== true ||
-      b005.replay_contract_implemented !== true || b005.defect_family_occurrence_contracts_implemented !== true ||
-      b005.report_contract_and_lifecycle_implemented !== true || b005.deterministic_export_implemented !== true ||
-      b005.content_addressed_chunking_implemented !== true || b005.encryption_implemented !== false ||
-      b005.signing_implemented !== false || b005.audit_result_generator_implemented !== false ||
-      b005.synthetic_public_postgresql_18_4_gate !== 'PASS' || b005.negative_probe_count !== NEGATIVE_PROBE_COUNT ||
-      b005.unexpected_acceptances !== 0 || b005.real_model_calls !== 0 ||
-      b005.provider_network_calls !== 0 || b005.real_playtest_executed !== false || b005.qualification_runs_executed !== 0 ||
-      b005.new_migration !== 'NONE' || b005.runtime_ready !== false || b005.first_blocking_gate !== 'IPC' ||
-      b005.publicly_pushed !== false || b005.public_ci_status !== 'NOT_STARTED_AWAITING_OWNER_DISCLOSURE_AUTHORIZATION' ||
-      !Array.isArray(b005.open_findings) || b005.open_findings.length !== 0) {
-    problems.push('project-status B005 projection is missing or semantically invalid');
-  }
-  return problems;
-}
-
-function expectedConstructionStatus(baseline) {
-  const expected = structuredClone(baseline);
-  expected.as_of = '2026-09-03';
-  expected.authority_snapshot_id = 'AIPT-MVP-B005-CONSTRUCTION-001';
-  const standalone = expected.tracks['AIPT-STANDALONE'];
-  standalone.construction = 'IN_PROGRESS';
-  standalone.current_batch = TASK_ID;
-  standalone.next_serial_batch = 'AIPT-MVP-B006';
-  standalone.next_batch_state = 'NOT_AUTHORIZED';
-  standalone.next_batch_authorized = false;
-  standalone.next_batch_started = false;
-  standalone.batch_history[TASK_ID] = 'IN_PROGRESS';
-  standalone.global_wip = 1;
-  expected.repositories.AIPT.mvp_b005 = {
-    task_id: TASK_ID,
-    state: 'IN_PROGRESS',
-    start_authority: 'OWNER_DIRECTIVE_AIPT-MVP-B005',
-    base: { commit: BASE_COMMIT, tree: BASE_TREE },
-    predecessor: {
-      task_id: PREDECESSOR,
-      state: 'CLOSED',
-      canonical_closeout_sha256: PREDECESSOR_SHA256,
-      integration_manifest_sha256: 'de553465a6bd79e0c0ccb89af678721f132d9fe98ec39a41136402a5386ca164',
-      final_evidence_root_sha256: '7ce5014d1951f21d88ca838ef1f7e14fb802b2d8c8c03db6aa3cc902f75cb777',
-      rerun_performed: false,
-    },
-    scope: 'RUN_EVIDENCE_CLOSURE_AUDIT_READY_ONLY',
-    risk: 'evidence-integrity',
-    raw_capture_backward_compatible: true,
-    audit_ready_generator_implemented: true,
-    audit_ready_verifier_implemented: true,
-    run_evidence_closure_implemented: true,
-    replay_contract_implemented: true,
-    defect_family_occurrence_contracts_implemented: true,
-    report_contract_and_lifecycle_implemented: true,
-    deterministic_export_implemented: true,
-    content_addressed_chunking_implemented: true,
-    encryption_implemented: false,
-    signing_implemented: false,
-    audit_result_generator_implemented: false,
-    synthetic_public_postgresql_18_4_gate: 'PASS',
-    negative_probe_count: NEGATIVE_PROBE_COUNT,
-    unexpected_acceptances: 0,
-    real_model_calls: 0,
-    provider_network_calls: 0,
-    real_playtest_executed: false,
-    qualification_runs_executed: 0,
-    new_migration: 'NONE',
-    runtime_ready: false,
-    first_blocking_gate: 'IPC',
-    publicly_pushed: false,
-    public_ci_status: 'NOT_STARTED_AWAITING_OWNER_DISCLOSURE_AUTHORIZATION',
-    open_findings: [],
-  };
-  expected.runtime.status = 'AIPT-MVP-B005 is the sole active construction batch at GLOBAL_WIP 1; it adds offline AUDIT_READY evidence closure only, does not change Launcher gates, and runtime_ready remains false at IPC with no playtest or qualification Run started';
-  return expected;
 }
 
 function matrixProblems(matrix) {
@@ -436,7 +277,8 @@ export function run(ctx) {
   const topology = resolveTopology(ctx.repo);
   if (topology.phase === 'REJECTED') problems.push('Git topology/base/branch/scope is not an authorized B005 lifecycle phase');
   for (const relative of REQUIRED_PATHS) if (!fs.existsSync(path.join(ctx.repo, relative))) problems.push(`required B005 artifact missing: ${relative}`);
-  const requiredChanged = REQUIRED_PATHS.filter((relative) => !topology.paths.includes(relative) && relative !== 'internal/evidence/postgres_integration_test.go');
+  problems.push(...(topology.problems ?? []));
+  const requiredChanged = R1_REQUIRED_CHANGED.filter((relative) => !topology.paths.includes(relative));
   if (requiredChanged.length > 0) problems.push(`B005 Candidate scope misses required changed artifacts: ${requiredChanged.join(', ')}`);
   problems.push(...protectedHistoryProblems(ctx.repo, topology.paths));
 
@@ -448,19 +290,27 @@ export function run(ctx) {
   let matrix = null;
   let status = null;
   try { schemas = schemaProblems(ctx.repo); problems.push(...schemas.problems); } catch (error) { problems.push(`schema validation failed closed: ${error.message}`); }
+  try {
+    const remoteMatrix = readJSON(ctx.repo, REMOTE_MATRIX_PATH);
+    const remoteTests = read(ctx.repo, 'internal/evidence/remote_provenance_test.go');
+    const expected = ['PASS', 'REJECT', 'REJECT', 'REJECT', 'REJECT', 'REJECT_BOUNDED', 'REJECT', 'REMOTE_PROVENANCE_REJECT', 'NO_PRODUCTION_INJECTION', 'REJECT', 'UNSUPPORTED', 'BLOCKED_WITHOUT_FALLBACK'];
+    if (remoteMatrix.schema !== 'aipt.b005.r1-remote-provenance-matrix/v1' || remoteMatrix.task_id !== TASK_ID || remoteMatrix.policy_id !== 'ONLINE_GITHUB_REMOTE_PROVENANCE_V1' || remoteMatrix.actual_github_requests !== 0 || remoteMatrix.model_calls !== 0 || remoteMatrix.probes?.length !== 12) problems.push('R1 remote-provenance matrix identity is invalid');
+    for (let index = 0; index < 12; index += 1) {
+      const probe = remoteMatrix.probes?.[index];
+      if (probe?.id !== `P${String(index + 1).padStart(2, '0')}` || probe.expected !== expected[index] || !remoteTests.includes(`func ${probe.covered_by}(`)) problems.push(`R1 P${index + 1} matrix lacks its executable test`);
+    }
+    if (sha256(read(ctx.repo, MATRIX_PATH)) !== 'c2b4287b9694c30779611152e348294801a5252fed2e22fc5027e5e79de9a0b1') problems.push('historical N01-N50 negative matrix changed');
+  } catch (error) { problems.push(`R1 remote matrix failed closed: ${error.message}`); }
   try { matrix = readJSON(ctx.repo, MATRIX_PATH); problems.push(...matrixProblems(matrix)); } catch (error) { problems.push(`negative matrix failed closed: ${error.message}`); }
   try {
     status = readJSON(ctx.repo, STATUS_PATH);
     if (read(ctx.repo, STATUS_PATH) !== `${JSON.stringify(status, null, 2)}\n`) problems.push('project-status is not canonical pretty JSON');
-    problems.push(...statusProblems(status, topology.phase));
+    problems.push(...b005R1StatusProblems(ctx.repo, status, topology));
   } catch (error) { problems.push(`project-status failed closed: ${error.message}`); }
   try { problems.push(...sourceProblems(ctx.repo)); } catch (error) { problems.push(`source validation failed closed: ${error.message}`); }
 
   const baselineStatus = JSON.parse(gitResult(ctx.repo, ['show', `${BASE_COMMIT}:${STATUS_PATH}`]).stdout);
-  if (['CONSTRUCTION', 'CANDIDATE', 'LEGAL_MERGE'].includes(topology.phase) &&
-      !isDeepStrictEqual(status, expectedConstructionStatus(baselineStatus))) {
-    problems.push('project-status differs from the exact additive B005 construction projection');
-  }
+
   for (const key of ['mvp_b001', 'mvp_b002', 'mvp_b003', 'mvp_b004']) {
     if (!isDeepStrictEqual(status?.repositories?.AIPT?.[key], baselineStatus?.repositories?.AIPT?.[key])) problems.push(`frozen ${key} projection changed`);
   }
@@ -476,6 +326,10 @@ export function run(ctx) {
     problems.push('publication hygiene did not complete with exact zero-finding coverage');
   }
 
+  const lifecycleTests = spawnSync(process.execPath, ['--test', 'scripts/ci/test/b005-r1-lifecycle.test.mjs'], {
+    cwd: ctx.repo, env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GITHUB_'))), encoding: 'utf8', timeout: 60000, maxBuffer: 1024 * 1024,
+  });
+  if (lifecycleTests.status !== 0 || lifecycleTests.error || lifecycleTests.signal) problems.push(`R1 lifecycle executable regressions failed: ${lifecycleTests.stdout.slice(-6000)} ${lifecycleTests.stderr.slice(-1000)}`);
   const indexWithoutCoreClassifications = structuredClone(examples().index);
   delete indexWithoutCoreClassifications.core_evidence_classifications;
   const mutationProbes = [
@@ -498,7 +352,7 @@ export function run(ctx) {
     `ok: canonical integration predecessor is byte-exact at ${PREDECESSOR_SHA256}`,
     'ok: legacy RAW_CAPTURE schema/golden remain byte-exact and additive B005 schemas are strict Draft 2020-12 documents',
     'ok: AUDIT_READY generator/verifier, immutable Git identity, replay, defects, report lifecycle, derivatives and content-addressed chunks are present',
-    'ok: offline boundary excludes model/provider calls, predecessor semantics, migrations, Web UI, decompression and database mutation',
+    'ok: production online source proof is fixed and anonymous; CI/probes remain offline with zero GitHub/model calls; predecessor semantics and RAW_CAPTURE remain immutable',
     `ok: exact N01-N${NEGATIVE_PROBE_COUNT} executable negative matrix is registered; all ${mutationProbes.length} validator control probes matched`,
     `ok: publication hygiene scanned ${publication.files_scanned} Candidate payload files with complete zero-finding coverage`,
   ] : problems.map((problem) => `FAIL: ${problem}`);
@@ -512,14 +366,15 @@ export function run(ctx) {
     head_commit: topology.head, head_tree: topology.headFacts?.tree ?? null, branch: topology.branch,
     changed_paths: topology.paths, predecessor: { task_id: PREDECESSOR, canonical_closeout_sha256: PREDECESSOR_SHA256 },
     negative_probe_count: matrix?.probes?.length ?? 0,
-    validator_control_probe_count: mutationProbes.length,
+    validator_control_probe_count: mutationProbes.length, r1_lifecycle_regression_tests: lifecycleTests.status === 0 ? 'PASS' : 'FAIL', remote_probe_count: 12,
     unexpected_acceptances: problems.some((problem) => problem.includes('failed open')) ? 1 : 0,
     publication_hygiene: publication,
     integration_rerun_performed: false,
     remote_deepseek_real_calls: 0, local_llamacpp_real_calls: 0, provider_model_network_calls: 0,
     real_playtest_executed: false, qualification_runs_executed: 0,
     runtime_ready: false, first_blocking_gate: 'IPC',
-    public_disclosure_reauthorization_required: true, publicly_pushed: false,
+    revision: 'R1', remote_provenance_policy: 'ONLINE_GITHUB_REMOTE_PROVENANCE_V1', ci_github_requests: 0,
+    public_disclosure_reauthorization_required: false, lifecycle: topology.lifecycle ?? null,
     next_batch: 'AIPT-MVP-B006', next_batch_authorized: false, next_batch_started: false,
   };
 }

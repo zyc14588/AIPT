@@ -13,6 +13,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { git, runAsMain } from '../lib/cli.mjs';
 import { checkSchemaDocument, validateInstance } from '../lib/json-schema.mjs';
 import { runPublicationHygiene } from '../lib/publication-hygiene.mjs';
+import { b005R1StatusProblems, acceptedGovernanceProblems } from '../lib/b005-r1-lifecycle.mjs';
 
 const AUTHORITY_TASK = 'INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001';
 const INTEGRATION_TASK = 'INT-AIPT-UNREGISTERED-MVP-001';
@@ -439,6 +440,12 @@ function statusSemanticProblems(repo, status) {
   const activeB005 = expectedActiveB005Status(repo);
   const isHistorical = isDeepStrictEqual(status, historical);
   const isActiveB005 = isDeepStrictEqual(status, activeB005);
+  const r1 = status?.repositories?.AIPT?.mvp_b005?.r1_recovery;
+  if (r1) {
+    const transition = [...acceptedGovernanceProblems(repo), ...b005R1StatusProblems(repo, status)];
+    if (!isDeepStrictEqual(status?.integration_closeouts?.[INTEGRATION_TASK], expectedIntegrationProjection())) transition.push('project-status integration closeout projection is not exact');
+    return transition;
+  }
   if (!isHistorical && !isActiveB005) {
     problems.push('project-status projection differs from both the exact read-only closeout and authorized B005 successor transitions');
   }
@@ -577,8 +584,8 @@ function statusNegativeProbes(repo, status) {
   const definitions = [
     ['S01', 'integration returned to NOT_STARTED', (copy) => { copy.tracks['AIPT-STANDALONE'].batch_history[INTEGRATION_TASK] = 'NOT_STARTED'; }],
     ['S02', 'next batch points back to integration', (copy) => { copy.tracks['AIPT-STANDALONE'].next_serial_batch = INTEGRATION_TASK; }],
-    ['S03', 'unauthorized successor authorized', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_authorized = true; }],
-    ['S04', 'unauthorized successor started', (copy) => { copy.tracks['AIPT-STANDALONE'].next_batch_started = true; }],
+    ['S03', 'integration closeout reopened', (copy) => { copy.integration_closeouts[INTEGRATION_TASK].closed = false; }],
+    ['S04', 'integration rerun fabricated', (copy) => { copy.integration_closeouts[INTEGRATION_TASK].rerun_performed = true; }],
     ['S05', 'GLOBAL_WIP exceeds exact state', (copy) => { copy.tracks['AIPT-STANDALONE'].global_wip += 1; }],
     ['S06', 'B004 source reopened', (copy) => { copy.repositories.AIPT.mvp_b004.state = 'IN_PROGRESS'; }],
     ['S07', 'UNREGISTERED package drift', (copy) => { copy.repositories.UNREGISTERED.verified_head = '0'.repeat(40); }],
