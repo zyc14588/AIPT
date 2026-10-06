@@ -1,0 +1,94 @@
+{
+  "schema": "aipt.public.b006-predecessor-gates-successor/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B006",
+  "decision_id": "B006-PREDECESSOR-GATES-SUCCESSOR-Q001=A",
+  "state": "AUTHORIZED_PENDING_EXACT_INDEPENDENT_AND_POST_MERGE_ACCEPTANCE",
+  "owner_decision": "批准该后继例外并继续（推荐）",
+  "accepted_base": {
+    "commit": "08a5aa175edae712cdaacc7a84ff94673fa13552",
+    "tree": "31bdfac01b3810f49e7099ca86e8270a4bdd65ae"
+  },
+  "reviewed_proposal": {
+    "context_candidate_commit": "e3a3e5084123345a1c9a838d73fd9309632a783d",
+    "context_candidate_tree": "d214c246ddf3b7eb656b1af3035f2e3fa62e392d",
+    "patch_sha256": "567eb8975269e81948e3a78a37dd71ba79ea273179cc6c8c8d96a04c8e5e298c",
+    "changed_paths": [
+      "docs/run-control/OPERATIONAL_CONTROLS_V1.md",
+      "package.json",
+      "scripts/ci/lib/b006-successor.mjs",
+      "scripts/ci/run-checks.mjs"
+    ],
+    "private_technical_aggregate_passed": 25,
+    "independent_security_acceptance_granted": false
+  },
+  "scope": {
+    "additional_gate_entrypoints": [
+      "check:mvp-b005",
+      "check:int001-closeout-authority"
+    ],
+    "historical_replay_at_exact_accepted_base": true,
+    "unchanged_validators": [
+      {
+        "gate": "mvp-b002",
+        "path": "scripts/ci/validate/mvp-b002.mjs",
+        "accepted_sha256": "f1f2a8d9969d1c14fde0646c57f837c2a72f9e23aa72912a9c34c5bd8de68996"
+      },
+      {
+        "gate": "mvp-b003",
+        "path": "scripts/ci/validate/mvp-b003.mjs",
+        "accepted_sha256": "68a28a50c601fcc3395069223681ab07b2f40b79fbe4ae662e20ddbd0aad54a7"
+      },
+      {
+        "gate": "mvp-b004",
+        "path": "scripts/ci/validate/mvp-b004.mjs",
+        "accepted_sha256": "287f176e17c7c701beda5a1c7d73fd2ee7006a65117c5e023889974cced7c38b"
+      },
+      {
+        "gate": "mvp-b005",
+        "path": "scripts/ci/validate/mvp-b005.mjs",
+        "accepted_sha256": "8d7ae808875af742efe850129af3819db30025f512b1df1829912b9da3bd6610"
+      },
+      {
+        "gate": "int001-closeout-authority",
+        "path": "scripts/ci/validate/int001-closeout-authority.mjs",
+        "accepted_sha256": "2355a2d58c0c62987623a574be791cced75fa79a05601773f7e7bfe8d3a7b8f2"
+      }
+    ],
+    "unchanged_b005_test": {
+      "path": "scripts/ci/test/b005-r1-lifecycle.test.mjs",
+      "accepted_sha256": "f97e6b6c38c1d11355c43cae868b4075e460edc0f8e432bf2bce949383095e4c"
+    },
+    "current_checkout_accepted_main_and_full_first_parent_history_required": true,
+    "each_status_version_preserves_frozen_predecessor_projection": true,
+    "original_b005_current_governance_runtime_lifecycle_resolution_required": true,
+    "base_exception_bytes_allowed_only_before_exact_b006_merge": true,
+    "post_merge_exception_bytes_frozen_to_exact_candidate": true,
+    "original_b002_b005_and_integration_closeouts_immutable": true,
+    "legacy_validator_or_test_byte_changes_permitted": false
+  },
+  "previous_repair_authority": {
+    "path": "docs/authority/registry/b006-b002-successor-repair.json",
+    "sha256": "3b6520b34b2e602bdbaf5a14f405968439174a693c4f19d436cd610a5a8305f5"
+  },
+  "acceptance": {
+    "same_independent_read_only_codex_agent": true,
+    "all_known_findings_must_be_verified_fixed": [
+      "LOCAL-B006-B002-ZERO-RNG-REPLAY-001",
+      "LOCAL-B006-CONFIG-SELF-DEPENDENCY-001",
+      "LOCAL-B006-WORKER-CANCELLED-COMPLETION-001",
+      "LOCAL-B006-SUCCESSOR-EXCEPTION-HISTORY-001",
+      "LOCAL-B006-LIFECYCLE-CI-BYTE-BINDING-001",
+      "LOCAL-B006-PREDECESSOR-STATUS-HISTORY-001"
+    ],
+    "public_pr": true,
+    "exact_candidate_ci_jobs_required": 5,
+    "exact_post_merge_ci_jobs_required": 5,
+    "full_local_postgresql_18_4_race_required": true,
+    "immutable_actual_byte_bound_ci_review_and_lifecycle_records_required": true,
+    "local_online_acceptance_with_owner_accepted_main_trust_basis": true
+  },
+  "public_ci_github_requests": 0,
+  "real_model_calls": 0,
+  "qualification_runs": 0
+}

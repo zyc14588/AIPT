@@ -1,5 +1,14 @@
 # 项目状态（PROJECT STATUS）
 
+2026-10-06 最新状态：Owner 另行批准 `B006-PREDECESSOR-GATES-SUCCESSOR-Q001=A`，将 B005/INT001 门禁按固定已验收版本完整重放，并严格核验当前工作树、main 及每个历史状态投影；原验证代码、历史测试及关闭依据不改写。已登记独立授权 `registry/b006-predecessor-gates-successor.json`。B006 本地审查发现的配置、自停止完成、例外历史、CI 字节绑定和前序状态历史缺口均已修复，仍待同一只读代理对最终精确候选复审、公开 PR 与精确 CI 验收。M0=100%，MVP=8/13（61.5%），总体=17/22（77.3%）；真实模型和 qualification=0，runtime_ready=false。
+
+
+2026-10-06 当前状态：B002 空 RNG 数组的最小后继修复已获 Owner 批准并应用；B006 是唯一 GLOBAL_WIP=1 批次，正在完成后继规则、当前测试、公开 PR 与同一独立只读复审。原 B002 关闭快照及失败证据保留。M0 100%，MVP 8/13（61.5%），总体 17/22（77.3%）；真实资格 Run 0/8，runtime_ready=false。
+
+
+2026-10-06 B006 验收阻塞：共用控制/Web/stdio 的 87 项 Go unit/race 与 TypeScript 契约测试通过；真实 PostgreSQL 18.4 集成确认前序 B002 在 rng_requests=[] 时提交成功但回放失败。最小修复仅在隔离副本中通过 Run Core 全套 race 与 2 项 PostgreSQL race 集成，活动 B002 字节未改动；需 Owner 批准明确的 post-closeout 后继修复例外后继续。MVP 仍为 8/13，真实 qualification 为 0/8。
+2026-10-06 最新施工状态：B005 R6 已由 accepted main closeout `08a5aa175edae712cdaacc7a84ff94673fa13552` 正式关闭，最终 merge `71e1400db3cb66f2376695a12bb678d1daa2a9c3` CI run `37412411487` attempt 2 为 5/5 success，独立本地安全审查 PASS、5 findings locally VERIFIED_FIXED，在线来源证明 PASS。原 CI attempt 1 FAIL 和 PR23/24 的失败历史保留。当前唯一施工批次为 `AIPT-MVP-B006`，GLOBAL_WIP=1；按 Owner 持续授权增加共用权威服务的 Queue/Run/Status-Table/Reports 与 stdio IPC。M0=9/9（100%），MVP=8/13（61.5%），总体=17/22（77.3%）；真实桌测和资格 Run 均为 0，MVP Development Pass 尚未授予。下文较早记录为历史快照。
+
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
 > 状态日期：**2026-10-06**；机器施工状态快照 ID 仍为 `AIPT-MVP-B005-CONSTRUCTION-001`。
 
@@ -89,3 +98,5 @@ B005 R6 追加修复授权（2026-10-06，B005-R6-POST-MERGE-REPAIR-Q001=A）：
 R6 后续候选（同一 Owner 授权范围）：995fdfe71899476bace918868b69feefa4e902d9（tree 1818e971ab0e1a1d213324be7e28f11539c4083a）与公开 PR #24 保留为 CLOSED_UNMERGED_REJECTED_INDEPENDENT_REVIEW；CI 37410936811=5/5 success，receipt 字段修复及原三项问题 VERIFIED_FIXED，但 LOCAL-B005-R6-001 使独立复审总体 FAIL。该问题是在 accepted main 改写 repair authority 后检出旧 closeout 仍获接受，恢复字节也未被拒绝。后续修复对当前检出和 accepted main 同时核对冻结 runtime/schema/matrix/repair-authority 的字节及 first-parent full history；一旦 main 已引入 B005 records，失败不得回退为未接受 proposal。八项改写/恢复 + 旧 checkout 回归覆盖四类冻结资产。新候选仍是 exact failed merge 08f8b2e 的单一直接 child；不 force push，不重写任何失败历史，不关闭 B005、不启动 B006，等待最终独立复审与新 CI。
 
 B005 R1 正式关闭（2026-10-06）：Candidate 7a3096bc1fc15c3e1ab7ec5a53c36b6823f4ca49（tree da4718788216fd55cf0e0821b0a8e8d3c0ce2963）由合法 merge 71e1400db3cb66f2376695a12bb678d1daa2a9c3 集成；精确 post-merge CI 37412411487 的 5/5 jobs 为 success，独立安全验收 PASS，三项 R1 findings 已关闭。B005 = MERGED_CLOSED；M0 = 100%，MVP = 8/13（61.5%），按 22 项等权批次总体 = 17/22（77.3%）。关闭时 GLOBAL_WIP=0，B006 未启动；runtime_ready=false，首个阻塞 gate=IPC，真实桌测与资格 Run=0。依据为 canonical B005 append-only lifecycle records 与独立不可变 CI catalogue。原 failed merge c07e1aae94f681733ad73c1800423248bcc72376 保持 NOT_ACCEPTED。 R6 独立验收来源为 LOCAL_INDEPENDENT_CODEX_AGENT；收据 finding LOCAL-B005-R1-001 与历史校验 finding LOCAL-B005-R6-001 已关闭。旧 R5 merge 08f8b2ecf721759940f4e4fef862b1a4da9c1834 的独立审查 FAIL 与成功 CI 保留为失败历史，NOT_ACCEPTED。
+
+B006 后继修复授权已接受（2026-10-06）：Owner 批准 `B006-B002-ZERO-RNG-REPAIR-Q001=A`，仅修复 `cloneProposal` 将合法 `rng_requests=[]` 复制为 `null` 的问题，增加 nil/empty 回放回归与明确的后继验收规则。原 B002 关闭快照及失败证据保留；公开 PR、同一独立只读 Codex 子代理复审、精确合并 SHA 的 5/5 CI 与不可变证据目录通过前不关闭 B006。当前补丁已应用；M0 100%，MVP 8/13（61.5%），总体 17/22（77.3%），真实模型和资格 Run 仍为 0。

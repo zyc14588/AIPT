@@ -1,5 +1,14 @@
 # 里程碑 MVP（MILESTONE MVP）
 
+2026-10-06 最新状态：Owner 另行批准 `B006-PREDECESSOR-GATES-SUCCESSOR-Q001=A`，将 B005/INT001 门禁按固定已验收版本完整重放，并严格核验当前工作树、main 及每个历史状态投影；原验证代码、历史测试及关闭依据不改写。已登记独立授权 `registry/b006-predecessor-gates-successor.json`。B006 本地审查发现的配置、自停止完成、例外历史、CI 字节绑定和前序状态历史缺口均已修复，仍待同一只读代理对最终精确候选复审、公开 PR 与精确 CI 验收。M0=100%，MVP=8/13（61.5%），总体=17/22（77.3%）；真实模型和 qualification=0，runtime_ready=false。
+
+
+2026-10-06 当前状态：B002 空 RNG 数组的最小后继修复已获 Owner 批准并应用；B006 是唯一 GLOBAL_WIP=1 批次，正在完成后继规则、当前测试、公开 PR 与同一独立只读复审。原 B002 关闭快照及失败证据保留。M0 100%，MVP 8/13（61.5%），总体 17/22（77.3%）；真实资格 Run 0/8，runtime_ready=false。
+
+
+2026-10-06 B006 验收阻塞：共用控制/Web/stdio 的 87 项 Go unit/race 与 TypeScript 契约测试通过；真实 PostgreSQL 18.4 集成确认前序 B002 在 rng_requests=[] 时提交成功但回放失败。最小修复仅在隔离副本中通过 Run Core 全套 race 与 2 项 PostgreSQL race 集成，活动 B002 字节未改动；需 Owner 批准明确的 post-closeout 后继修复例外后继续。MVP 仍为 8/13，真实 qualification 为 0/8。
+2026-10-06 最新状态：B005 已正式 MERGED_CLOSED；B006 共用权威运行控制/Web/stdio IPC 已启动，GLOBAL_WIP=1。M0=100%，MVP=8/13（61.5%），总体=17/22（77.3%）；0/8 真实 qualification Runs，MVP Development Pass=NOT_GRANTED。以下前序状态记录按历史快照保留。
+
 > 开发 MVP 资格合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)；
 > 延期参数见 [../authority/registry/deferred-parameters.json](../authority/registry/deferred-parameters.json)。
 
@@ -81,3 +90,5 @@ GPT 审计 PASS
 2026-10-06 R6 repair：PR #23 已由 Owner 合并，但本地独立 Codex 审查发现 LOCAL-B005-R1-001 收据字段缺口，总体 FAIL；CI 成功不覆盖此结论。Owner 授权在 exact failed merge 08f8b2ecf721759940f4e4fef862b1a4da9c1834 上追加公开 R6 PR，保留失败历史并复审。R6 enforce 完整 canonical receipt bytes；最终独立审查、精确 final merge 5/5 CI、online source verification 与 immutable catalogue 全部通过才关闭 B005。当前进度仍为 M0 9/9、MVP 7/13、总体 16/22；B006 未启动。
 
 R6 第一个候选与 PR #24 未合并，保留 independent review FAIL（LOCAL-B005-R6-001）及 successful 5/5 CI。后续候选继续同一 R6 授权和 exact 08f8 repair base，补全 accepted main/checkout 两侧的 frozen artifact 与 rewrite/restore history 校验，并禁止已接受记录的失败被降级为 proposal。B005 仍 IN_PROGRESS，B006 未启动，工程进度保持 7/13 MVP。
+
+B006 后继修复授权已接受（2026-10-06）：Owner 批准 `B006-B002-ZERO-RNG-REPAIR-Q001=A`，仅修复 `cloneProposal` 将合法 `rng_requests=[]` 复制为 `null` 的问题，增加 nil/empty 回放回归与明确的后继验收规则。原 B002 关闭快照及失败证据保留；公开 PR、同一独立只读 Codex 子代理复审、精确合并 SHA 的 5/5 CI 与不可变证据目录通过前不关闭 B006。当前补丁已应用；M0 100%，MVP 8/13（61.5%），总体 17/22（77.3%），真实模型和资格 Run 仍为 0。

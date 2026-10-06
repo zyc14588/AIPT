@@ -1,13 +1,13 @@
 {
   "schema": "aipt.public.project-status/v1",
   "as_of": "2026-10-06",
-  "authority_snapshot_id": "AIPT-MVP-B005-R1-R6-CLOSEOUT-001",
+  "authority_snapshot_id": "AIPT-MVP-B006-START-001",
   "tracks": {
     "AIPT-STANDALONE": {
       "design": "FROZEN_R0_R16_DCA_BOOTSTRAP",
-      "construction": "IDLE_WAITING_NEXT_BATCH",
-      "current_batch": "NO_ACTIVE_BATCH",
-      "next_serial_batch": "AIPT-MVP-B006",
+      "construction": "IN_PROGRESS",
+      "current_batch": "AIPT-MVP-B006",
+      "next_serial_batch": "AIPT-MVP-B007",
       "next_batch_state": "NOT_AUTHORIZED",
       "next_batch_authorized": false,
       "next_batch_started": false,
@@ -29,7 +29,7 @@
         "AIPT-MVP-B004": "MERGED_CLOSED",
         "INT-AIPT-UNREGISTERED-MVP-001": "MERGED_CLOSED",
         "AIPT-MVP-B005": "MERGED_CLOSED",
-        "AIPT-MVP-B006": "NOT_STARTED",
+        "AIPT-MVP-B006": "IN_PROGRESS",
         "AIPT-MVP-B007": "NOT_STARTED",
         "AIPT-MVP-B008": "NOT_STARTED",
         "AIPT-MVP-B009": "NOT_STARTED",
@@ -77,7 +77,7 @@
           "closeout_ci_conclusion": "success"
         }
       ],
-      "global_wip": 0
+      "global_wip": 1
     },
     "AIPT-PLATFORM-INTEGRATION": {
       "status": "FROZEN_WAITING_M1_ENGINE",
@@ -775,6 +775,79 @@
         "serial_graph_items": 13,
         "runtime_implementation_changed": false,
         "real_model_runtime_calls": 0
+      },
+      "mvp_b006": {
+        "state": "IN_PROGRESS",
+        "authorized_by_task": "AIPT-MVP-B006",
+        "authority_path": "docs/authority/registry/b006-start.json",
+        "base_commit": "08a5aa175edae712cdaacc7a84ff94673fa13552",
+        "base_tree": "31bdfac01b3810f49e7099ca86e8270a4bdd65ae",
+        "scope": "OPERATIONAL_LOOPBACK_RUN_CONTROL_AND_STDIO_IPC",
+        "queue_authority": "POSTGRESQL_B001_QUEUESTORE",
+        "gameplay_state_authority": "B002_RUNCORE_APPEND_ONLY_POSTGRESQL_LEDGER",
+        "web_and_ipc_share_same_service": true,
+        "implementation_status": "AUTHORIZED_B002_REPAIR_AND_PREDECESSOR_GATE_SUCCESSORS_PENDING_ACCEPTANCE",
+        "predecessor_business_semantics_changed": true,
+        "public_ci_real_model_calls": 0,
+        "model_calls": 0,
+        "real_playtest_executed": false,
+        "qualification_runs_executed": 0,
+        "runtime_ready": false,
+        "first_blocking_gate": "B006_INDEPENDENT_AND_POST_MERGE_ACCEPTANCE",
+        "public_candidate_status": "NOT_CREATED",
+        "public_ci_status": "NOT_STARTED",
+        "open_findings": [
+          {
+            "finding_id": "LOCAL-B006-B002-ZERO-RNG-REPLAY-001",
+            "state": "REPAIRED_PENDING_INDEPENDENT_ACCEPTANCE",
+            "affected_predecessor": "AIPT-MVP-B002",
+            "reason": "accepted empty-array RNG requests become null after proposal hashing and fail replay",
+            "owner_decision": "AUTHORIZED_MINIMAL_SUCCESSOR_REPAIR",
+            "production_patch_applied": true
+          },
+          {
+            "finding_id": "LOCAL-B006-CONFIG-SELF-DEPENDENCY-001",
+            "state": "REPAIRED_PENDING_EXACT_INDEPENDENT_ACCEPTANCE",
+            "affected_predecessor": "AIPT-MVP-B006",
+            "production_patch_applied": true
+          },
+          {
+            "finding_id": "LOCAL-B006-WORKER-CANCELLED-COMPLETION-001",
+            "state": "REPAIRED_PENDING_EXACT_INDEPENDENT_ACCEPTANCE",
+            "affected_predecessor": "AIPT-MVP-B006",
+            "production_patch_applied": true
+          },
+          {
+            "finding_id": "LOCAL-B006-SUCCESSOR-EXCEPTION-HISTORY-001",
+            "state": "REPAIRED_PENDING_EXACT_INDEPENDENT_ACCEPTANCE",
+            "affected_predecessor": "AIPT-MVP-B006",
+            "production_patch_applied": true
+          },
+          {
+            "finding_id": "LOCAL-B006-LIFECYCLE-CI-BYTE-BINDING-001",
+            "state": "REPAIRED_PENDING_EXACT_INDEPENDENT_ACCEPTANCE",
+            "affected_predecessor": "AIPT-MVP-B006",
+            "production_patch_applied": true
+          },
+          {
+            "finding_id": "LOCAL-B006-PREDECESSOR-STATUS-HISTORY-001",
+            "state": "REPAIRED_PENDING_EXACT_INDEPENDENT_ACCEPTANCE",
+            "affected_predecessor": "AIPT-MVP-B006",
+            "production_patch_applied": true
+          }
+        ],
+        "predecessor_repair_authority": {
+          "decision_id": "B006-B002-ZERO-RNG-REPAIR-Q001=A",
+          "path": "docs/authority/registry/b006-b002-successor-repair.json",
+          "sha256": "3b6520b34b2e602bdbaf5a14f405968439174a693c4f19d436cd610a5a8305f5",
+          "scope": "PRESERVE_NIL_EMPTY_AND_NONEMPTY_RNG_SLICE_DURING_CLONE_ONLY"
+        },
+        "predecessor_gate_authority": {
+          "decision_id": "B006-PREDECESSOR-GATES-SUCCESSOR-Q001=A",
+          "path": "docs/authority/registry/b006-predecessor-gates-successor.json",
+          "sha256": "8f1f8566a498a24def6e62b74505d2a4aadb4cac420cbca4587a70c78499fde8",
+          "scope": "UNCHANGED_HISTORICAL_VALIDATORS_PLUS_STRICT_CURRENT_MAIN_AND_STATUS_HISTORY"
+        }
       }
     },
     "UNREGISTERED": {
@@ -841,7 +914,7 @@
     }
   },
   "runtime": {
-    "status": "AIPT-MVP-B005 R1 evidence closure is MERGED_CLOSED after exact post-merge CI and independent security acceptance; runtime_ready remains false at IPC; no real playtest or qualification Run has started",
+    "status": "B005 remains MERGED_CLOSED. B006 is the sole GLOBAL_WIP1 batch. Two distinct Owner decisions authorize the exact B002 nil/empty clone successor and bounded B005/INT001 predecessor gate replay at accepted 08a5aa17 with strict current checkout, main and complete status/file history validation. Six local independent findings are repaired pending exact Candidate review and CI acceptance. Original closeouts and all failed review evidence remain immutable. Real driver/pilot/qualification remain pending; runtime_ready=false.",
     "deepseek_harness_commit": "141eb6fef83422698aef7a981029e843e8161534",
     "deepseek_harness_previous_commit": "47f943859bef60e4160492346772ded9b24f765a",
     "deepseek_harness_release": "dsh-v0.1.0-rc.8",

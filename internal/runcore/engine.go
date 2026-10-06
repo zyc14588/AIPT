@@ -339,7 +339,8 @@ func (c *Core) appendError(operation, runID, actionID string, err error) error {
 func cloneProposal(proposal ActionProposal) ActionProposal {
 	copy := proposal
 	copy.Payload = append(json.RawMessage(nil), proposal.Payload...)
-	copy.RNGRequests = append([]RNGRequest(nil), proposal.RNGRequests...)
+	// Preserve nil versus empty: the canonical proposal digest distinguishes them.
+	copy.RNGRequests = append(proposal.RNGRequests[:0:0], proposal.RNGRequests...)
 	if proposal.TemporaryRuling != nil {
 		ruling := *proposal.TemporaryRuling
 		copy.TemporaryRuling = &ruling

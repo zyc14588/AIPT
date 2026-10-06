@@ -1,0 +1,94 @@
+{
+  "schema": "aipt.public.b006-security-matrix/v1",
+  "task_id": "AIPT-MVP-B006",
+  "cases": [
+    {
+      "id": "C01",
+      "requirement": "strict fields and no client execution knobs",
+      "test_path": "internal/runcontrol/service_test.go",
+      "test_name": "TestStrictRequestMutationsAndNoCallerExecutionKnobs"
+    },
+    {
+      "id": "C02",
+      "requirement": "public projections omit manifests and leases",
+      "test_path": "internal/runcontrol/service_test.go",
+      "test_name": "TestSharedCommandsDoNotExposeManifestOrLease"
+    },
+    {
+      "id": "C03",
+      "requirement": "completion binds verified report and current ownership",
+      "test_path": "internal/runcontrol/service_test.go",
+      "test_name": "TestWorkerCompletionRequiresVerifiedReportAndCurrentLease"
+    },
+    {
+      "id": "C04",
+      "requirement": "shutdown joins canceled work and WIP stays one",
+      "test_path": "internal/runcontrol/service_test.go",
+      "test_name": "TestWorkerCancellationAndSingleProcessWIP"
+    },
+    {
+      "id": "C05",
+      "requirement": "formal qualification is denied",
+      "test_path": "internal/runcontrol/service_test.go",
+      "test_name": "TestQualificationIsNeverExecutedOrEnqueuedByB006"
+    },
+    {
+      "id": "C06",
+      "requirement": "canonical registered manifest bytes are immutable",
+      "test_path": "internal/runcontrol/service_test.go",
+      "test_name": "TestServiceCopiesRegistrationAndRejectsManifestCasingAlias"
+    },
+    {
+      "id": "C07",
+      "requirement": "ambiguous oversized framing rejects",
+      "test_path": "internal/runcontrol/rpc_test.go",
+      "test_name": "TestRPCFramingRejectsUnboundedAndAmbiguousHeaders"
+    },
+    {
+      "id": "C08",
+      "requirement": "shared stdio owns and joins idle blocked streams",
+      "test_path": "internal/runcontrol/rpc_test.go",
+      "test_name": "TestRPCSharesServiceAndJoinsIdleOrBlockedStreams"
+    },
+    {
+      "id": "C09",
+      "requirement": "duplicate deep trailing JSON rejects",
+      "test_path": "internal/runcontrol/rpc_test.go",
+      "test_name": "TestStrictJSONDuplicateDeepAndTrailingRejections"
+    },
+    {
+      "id": "C10",
+      "requirement": "private causes are redacted",
+      "test_path": "internal/runcontrol/rpc_test.go",
+      "test_name": "TestRPCResponseRedactsPrivateCauses"
+    },
+    {
+      "id": "C11",
+      "requirement": "reports bind frozen Run source and PUBLIC classification",
+      "test_path": "internal/runcontrol/reports_test.go",
+      "test_name": "TestReportBindingAndPublicClassificationFailClosed"
+    },
+    {
+      "id": "C12",
+      "requirement": "held export bytes reject hidden tampered assets",
+      "test_path": "internal/runcontrol/reports_test.go",
+      "test_name": "TestExportUsesHeldBytesAndDeniesHiddenOrTamperedAssets"
+    },
+    {
+      "id": "C13",
+      "requirement": "Run identity cannot choose a private filesystem path",
+      "test_path": "internal/runcontrol/reports_test.go",
+      "test_name": "TestReportDirectoryCannotEscapeRootAndNoOnlineFallback"
+    },
+    {
+      "id": "C14",
+      "requirement": "private CONFIG rejects invalid registrations before runtime starts",
+      "test_path": "internal/runcontrol/catalog_test.go",
+      "test_name": "TestPrivateConfigRejectsBadManifestAndQueueRegistrationBeforeStartup"
+    }
+  ],
+  "actual_go_tests_required": true,
+  "public_ci_external_github_requests": 0,
+  "public_ci_real_model_calls": 0,
+  "qualification_runs": 0
+}

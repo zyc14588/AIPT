@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AIPT · 运行台</title><link rel="stylesheet" href="/assets/controls.css"></head>
+<body>
+<header><div><span class="eyebrow">AIPT</span><h1>运行台</h1><p>队列、运行记录与报告</p></div><div id="connection" class="badge" role="status">正在连接</div></header>
+<main>
+<div id="notice" role="status" aria-live="polite"></div>
+<section class="panel" aria-labelledby="queue-title"><div class="section-title"><h2 id="queue-title">队列</h2><button id="refresh" type="button">刷新</button></div>
+<div class="actions"><label for="registration">已登记 Run</label><select id="registration"><option value="">暂无登记</option></select><button id="enqueue" type="button" disabled>加入队列</button><button id="pause" type="button" disabled>暂停新领取</button><button id="recover" type="button" disabled>恢复过期租约</button><button id="run-next" type="button" disabled>运行下一场</button></div>
+<p id="queue-note" class="muted">正在读取数据库队列。</p><div class="scroll"><table><thead><tr><th>Run</th><th>类别</th><th>优先级</th><th>状态</th><th>操作</th></tr></thead><tbody id="queue-items"></tbody></table></div></section>
+<div class="grid"><section class="panel" aria-labelledby="run-title"><h2 id="run-title">Run 记录</h2><p id="run-summary" class="muted">选择队列中的 Run 查看记录。</p><ol id="attempts"></ol></section><section class="panel" aria-labelledby="seat-title"><h2 id="seat-title">Status / Table</h2><p class="muted">显示登记的席位分配，不推断角色的思考或行动状态。</p><ul id="seats"></ul></section></div>
+<section class="panel" aria-labelledby="reports-title"><div class="section-title"><h2 id="reports-title">报告</h2><button id="inspect-report" type="button" disabled>验证报告</button></div><p id="report-summary" class="muted">选择 Run 后可核验已有报告。只导出允许公开的内容。</p><div id="report-formats" class="actions"></div></section>
+<div class="grid"><section class="panel" aria-labelledby="config-title"><h2 id="config-title">配置</h2><dl id="config"></dl></section><section class="panel" aria-labelledby="health-title"><h2 id="health-title">Health</h2><dl id="health"></dl></section></div>
+</main><footer>暂停作用于新领取；排队取消保留记录。报告验证与桌测资格分别判定。</footer>
+<script type="module" src="/assets/controls.js"></script></body></html>
