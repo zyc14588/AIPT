@@ -1,7 +1,7 @@
 # 项目状态（PROJECT STATUS）
 
 > 人类可读状态页。机器快照见 [registry/project-status.json](registry/project-status.json)。
-> 状态日期：**2026-09-03**；施工状态快照 ID：`AIPT-MVP-B005-CONSTRUCTION-001`。
+> 状态日期：**2026-09-04**；机器施工状态快照 ID 仍为 `AIPT-MVP-B005-CONSTRUCTION-001`。
 
 ## 工作轨
 
@@ -14,7 +14,7 @@
 
 - `INT-AIPT-UNREGISTERED-MVP-001` = **CLOSED**，其 batch-history 投影为 `MERGED_CLOSED`，但没有也不声称存在 integration Candidate、repository merge、merge parents 或 merge CI。专用记录明确 `closeout_kind = READ_ONLY_INTEGRATION`、`repository_merge_performed = false`，固定 AIPT source `c65075691e0b9503a8e3bd9da1220bf319354a26` / `bd2fa7d7374f1bbff44c1f5aa4746a86f68d41eb` 与 UNREGISTERED package `fe0965977447caf8cd7b6e58252bc1b991b7cc6f` / `34597e79c586fb034256daa32d67640692ec589d`。Stage、local closeout、frozen evidence byte/hash revalidation 与 replay 均 PASS；integration rerun 为 false，real model/provider calls、qualification Runs 与 leak counts 均为 0。机器记录见 [integration closeout](registry/integration-closeouts/int-aipt-unregistered-mvp-001-closeout.json)，合同见 [Authority Amendment](amendments/INT_AIPT_UNREGISTERED_MVP_001_CLOSEOUT_AUTHORITY_001.md)。
 - `INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001` = **MERGED / POST_MERGE_VERIFIED / CLOSED / ACCEPTED**。Accepted governance-only Candidate `ee815ab50db04a4ef18a941a68e9e8ecae5c8aa2`（tree `f2a5c84809df57f2ae7c858f025f6b8b7abfd334`，Candidate CI `33650186392` success）由显式 no-ff merge `f0a8c3e5db88e2ca33089e8db9cabb74b4cecfdb` 集成；merge parents 精确为 `c65075691e0b9503a8e3bd9da1220bf319354a26` 与 Candidate，merge tree 与 Candidate tree 相同。Merge CI `33652562283` 的 5 个 jobs 全部 success。Authority 复用 accepted append-only lifecycle model 关闭；business code、UNREGISTERED、fixed pair 与 integration evidence identities 均未改变，integration rerun、real model/provider calls 与 qualification Runs 均为 0。Canonical closeout 见 [Authority lifecycle CLOSED record](registry/authority-lifecycle/records/int-aipt-unregistered-mvp-001-closeout-authority-001/003-closed.json)。
-- `AIPT-MVP-B005` = **IN_PROGRESS / PRIVATE_PRE_DISCLOSURE**：Owner 已明确授权在精确 Base `176f33d8f20f94a77ab688f4869e944b6ffe97c6`（tree `210320957a35633bcf766a3d88ea50a3493bd0fc`）上施工 Run evidence closure。范围只包括离线 `AUDIT_READY` generator/verifier、Run/replay/defect/report 合同与 lifecycle、deterministic export、content-addressed chunking、负向门禁和 synthetic PUBLIC PostgreSQL 18.4 E2E；不实现 `AUDIT_RESULT` judgment、encryption、signing、IPC/Web、真实模型 pilot 或 qualification Run。`AIPT-MVP-B006` 保持 `NOT_STARTED` / `NOT_AUTHORIZED`。
+- `AIPT-MVP-B005` = **IN_PROGRESS / MERGED_POST_MERGE_SECURITY_BLOCKED**：merge `c07e1aae94f681733ad73c1800423248bcc72376`（tree `828defa8ea85a757b43d1a04ce05016ebeea9020`）的 CI `33767358596` 为 `success`，但 post-merge security 为 `FAIL`；没有 lifecycle records，且该 merge 不作为 final accepted merge。离线 local-mirror provenance model 为 `NOT_ACCEPTED`。Owner 已通过 governance work item `AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001` 冻结 `ONLINE_GITHUB_REMOTE_PROVENANCE_V1`（`AUTHORITY_DEFINED / IMPLEMENTATION_PENDING_R1`）：生成与独立验证必须分别对公开 GitHub authoritative API 在线核验 exact Commit/Tree，local mirror 只能作为非权威 cache/consistency check。该 work item 只形成 private governance Candidate，不修复 B005 runtime；`AIPT-MVP-B006` 保持 `NOT_STARTED` / `NOT_AUTHORIZED`。
 - 当前里程碑：**MVP / AIPT-MVP-B004 MERGED_CLOSED**。唯一 accepted Candidate `af717770f22d1e3e65c52f912f8ddebf5cc0e4b8`（tree `df25e8389872fc03eceb9dc1bccfe31330b47738`，Candidate CI `33567885453` success）由显式 no-ff merge `01f11271da6548593df6a559da7be574e5007ebb` 集成；merge parents 精确为 B003 closeout `98591311c4872cdc5f091e23fba1acb500ad4599` 与 accepted Candidate，merge tree 与 Candidate tree 完全相同。新 merge CI `33571035127` 的 5 个 jobs 全部 success，并由唯一 canonical append-only `MERGED → POST_MERGE_VERIFIED → CLOSED` record chain 关闭。
 - B004 历史保持完整：`abd684a4d858376866766d67653f212c26ca4215` / `0141bb24f7c46cfcc3d0ce0a50b17a0adf631d93` 为 `REJECTED_PRE_PUSH_SECURITY_RESCAN` 且从未公开推送；`41cb2a940909e151c82f55aff48d6c39eda5fba6` / `b35c1777d60626ca328a0f0ed4763aee627f9d3c` 为 `REJECTED_PUBLIC_CI_FAIL`，失败 CI `33525113421` 未 rerun。两者均未冒充 accepted identity。
 - B004 关闭交付包含版本化 Model/Sampling Profile、完整 execution tuple、per-role immutable binding、受治理 DeepSeek Harness ACP gateway、write-only credential、双层 egress、确定性 context budget，以及受管 IPv4-loopback `llama.cpp` 进程；backend 闭集为 `REMOTE_DEEPSEEK` / `LOCAL_LLAMACPP`。Agent orchestration、persistent Agent sessions、MODEL/HARNESS launcher gates 与 real model gateway 已实现，但 `runtime_ready = false`，首个阻塞 gate 仍为 `IPC`。
@@ -48,14 +48,14 @@
 - 主远端模型：`deepseek-v4-pro`（`ENV-F003`），完整 Campaign 使用该模型（`R14-Q023`）。
 - 本地模型：`GGUF-04` 身份与 SHA-256 已由 Owner 解析并冻结，登记见 [gguf-04-registration.json](../model-certification/gguf-04-registration.json)；locator 已按批准 root、canonical target、完整 SHA-256 与 metadata 验证且未公开导出。`LLAMACPP-01` binary 登记见 [llamacpp-01-registration.json](../model-certification/llamacpp-01-registration.json)，compatibility、受管启动、Harness role invocation 与有界关闭/失败探针均 PASS；性能阈值 `DEFER-003` 仍延期。
 - 2026-08-26 的 DeepSeek Models & Pricing 查询是 B001 施工前的历史快照，不作为本次认证的 identity 或调用证据。B004 只接受 `HARNESS-01` 的精确 package/source/protocol/runtime-closure fingerprint；当前受控 remote 与 local minimum re-certification 均已 PASS，最终证据见 [remote-deepseek-controlled-real-02.json](../model-certification/remote-deepseek-controlled-real-02.json) 与 [local-llamacpp-controlled-real-02.json](../model-certification/local-llamacpp-controlled-real-02.json)。
-- 以上是**设计与施工边界**：B004 MODEL/HARNESS 实现及双 backend minimum PASS 不等于 runtime ready；Launcher 仍在 IPC fail-closed。B005 的离线 `AUDIT_READY` generator 不接入 Launcher；完整桌测、运行控制 UI、qualification 与 `AUDIT_RESULT` judgment 不在本批范围。
+- 以上是**设计与施工边界**：B004 MODEL/HARNESS 实现及双 backend minimum PASS 不等于 runtime ready；Launcher 仍在 IPC fail-closed。当前 merged B005 `AUDIT_READY` implementation 因 offline remote provenance 不获接受，R1 在线修复尚未启动；完整桌测、运行控制 UI、qualification 与 `AUDIT_RESULT` judgment 不在本治理子任务范围。
 
 ## 审计状态
 
 | 项 | 状态 |
 |---|---|
 | 主审计 | GPT（`R10-F003`）：M0 development audit `PASS`，open findings `[]` |
-| 包准备 | 本地 Codex CLI，产出 `AUDIT_READY`（`R9-F001`） |
+| 包准备 | `ONLINE_GITHUB_REMOTE_PROVENANCE_V1` Authority 已定义、实现待 B005 R1；当前 offline-only B005 路径不得铸造正式 `AUDIT_READY` remote provenance claim（`R9-Q004`、`R10-Q005`） |
 | 第二审计 | Anthropic Claude Web；本批次不要求 |
 | 第二审计 Profile | `Fable 5`、`Opus 5`、`Opus 4.8`（`DCA-Q003`） |
 | 第二审计生产资格 | `ADMIN_APPROVAL_AND_PRIVACY_PROFILE_PENDING`：**尚不具备生产资格**；Model Improvement 状态 `UNKNOWN`（`DEFER-011`） |
@@ -70,6 +70,7 @@
 - `AIPT-M0-B000` 至 `AIPT-M0-B008`、`AIPT-MVP-B000` 至 `AIPT-MVP-B004` 与 `UNREGISTERED-AIPT-P1-B000` 均保持 `MERGED_CLOSED`；`INT-AIPT-UNREGISTERED-MVP-001` 以不声称 Git merge 的 read-only closeout contract 投影为 `MERGED_CLOSED`；其 closeout Authority Amendment 已由独立 Git lifecycle 关闭；`construction = IN_PROGRESS`，`current_batch = AIPT-MVP-B005`，`GLOBAL_WIP = 1`。
 - B008 verified implementation identity 固定为 merge `8927a2779f3f123dabd472623d76d8e910152133` 与 tree `9ad4341317e977d455e98ced20f3880d9e50c691`；`M0 Development Pass = GRANTED`。
 - `batch_history[AIPT-MVP-B005] = IN_PROGRESS`；`next_serial_batch = AIPT-MVP-B006`、`next_batch_state = NOT_AUTHORIZED`、`batch_history[AIPT-MVP-B006] = NOT_STARTED`、`next_batch_authorized = false`、`next_batch_started = false`；本 B005 授权不授权或启动 B006。
+- `AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001` 停止于 `PRIVATE_GOVERNANCE_CANDIDATE_FROZEN`；公开披露需要重新授权，且在 Authority Candidate disclosure、public CI、merge、closeout 完成前不得启动 B005 R1 recovery。
 - `AIPT-PLATFORM-INTEGRATION` 保持 `FROZEN_WAITING_M1_ENGINE`；解冻未获授权（`unfreeze_authorized = false`）。
 
 ## 相邻文档
