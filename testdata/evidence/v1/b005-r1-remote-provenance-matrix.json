@@ -1,0 +1,69 @@
+{
+  "schema": "aipt.b005.r1-remote-provenance-matrix/v1",
+  "task_id": "AIPT-MVP-B005",
+  "policy_id": "ONLINE_GITHUB_REMOTE_PROVENANCE_V1",
+  "actual_github_requests": 0,
+  "model_calls": 0,
+  "probes": [
+    {
+      "id": "P01",
+      "expected": "PASS",
+      "covered_by": "TestRemoteProvenanceP01ExactCommitTreeAndBoundDeterministicReceipt"
+    },
+    {
+      "id": "P02",
+      "expected": "REJECT",
+      "covered_by": "TestRemoteProvenanceP02Remote404Fails"
+    },
+    {
+      "id": "P03",
+      "expected": "REJECT",
+      "covered_by": "TestRemoteProvenanceP03CommitMismatchFails"
+    },
+    {
+      "id": "P04",
+      "expected": "REJECT",
+      "covered_by": "TestRemoteProvenanceP04TreeMismatchFails"
+    },
+    {
+      "id": "P05",
+      "expected": "REJECT",
+      "covered_by": "TestRemoteProvenanceP05RedirectNeverFollowed"
+    },
+    {
+      "id": "P06",
+      "expected": "REJECT_BOUNDED",
+      "covered_by": "TestRemoteProvenanceP06OversizedResponseStopsBeforeUnboundedBuffering"
+    },
+    {
+      "id": "P07",
+      "expected": "REJECT",
+      "covered_by": "TestRemoteProvenanceP07RateLimitFailsClosed"
+    },
+    {
+      "id": "P08",
+      "expected": "REMOTE_PROVENANCE_REJECT",
+      "covered_by": "TestRemoteProvenanceP08FakeMirrorAndUnpushedCommitCannotMintRemoteProof"
+    },
+    {
+      "id": "P09",
+      "expected": "NO_PRODUCTION_INJECTION",
+      "covered_by": "TestRemoteProvenanceP09PublicCallerCannotInjectFakeVerifier"
+    },
+    {
+      "id": "P10",
+      "expected": "REJECT",
+      "covered_by": "TestRemoteProvenanceP10CredentialQueryFragmentURLsRejectedBeforeRequest"
+    },
+    {
+      "id": "P11",
+      "expected": "UNSUPPORTED",
+      "covered_by": "TestRemoteProvenanceP11NonGitHubProviderIsUnsupported"
+    },
+    {
+      "id": "P12",
+      "expected": "BLOCKED_WITHOUT_FALLBACK",
+      "covered_by": "TestRemoteProvenanceP12NetworkUnavailableBlocksWithoutMirrorFallback"
+    }
+  ]
+}

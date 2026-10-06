@@ -1,7 +1,7 @@
 # 证据与审计（EVIDENCE）
 
 > 公开证据流水线设计合同。机器权威见 [../authority/registry/decisions.json](../authority/registry/decisions.json)。
-> M0-B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema。当前 merged B005 implementation 为 `MERGED_POST_MERGE_SECURITY_BLOCKED`：其 offline remote-provenance model 为 `NOT_ACCEPTED`。`ONLINE_GITHUB_REMOTE_PROVENANCE_V1` 已 `AUTHORITY_DEFINED`，production implementation 为 `IMPLEMENTATION_PENDING_R1`。B000 使用简化的 Bootstrap 证据路径（见文末）。
+> M0-B006 已实现最小 `RAW_CAPTURE` exporter/verifier 与三阶段公开 Schema。当前 merged B005 implementation 为 `MERGED_POST_MERGE_SECURITY_BLOCKED`：其 offline remote-provenance model 为 `NOT_ACCEPTED`。`ONLINE_GITHUB_REMOTE_PROVENANCE_V1` 已 `AUTHORITY_DEFINED`，治理 lifecycle 已 `CLOSED`；R1 production implementation 为 `IMPLEMENTED_PENDING_INDEPENDENT_ACCEPTANCE`。B000 使用简化的 Bootstrap 证据路径（见文末）。
 > `B006 = MERGED_CLOSED`：Candidate `3987b8d4c26ac079d01c214ba90e113eeffd5713`（tree `4271a3fb71236a8b003b4d9ddc84727c6fec8d46`，CI `32577246851` success）；implementation merge `35acba9fb629f50087def3b720df304fadfd2158`（相同 tree），post-merge CI `32578143923` success。
 
 ## 当前能力矩阵
@@ -46,7 +46,7 @@ RAW_CAPTURE 是本地原生证据，M0-B006 不自动外传，不调用网络、
 
 Merge `c07e1aae94f681733ad73c1800423248bcc72376`（tree `828defa8ea85a757b43d1a04ce05016ebeea9020`）的 CI `33767358596` 为 success，但 post-merge security 为 `FAIL`；没有 lifecycle records，且该 merge 不是 final accepted merge。以下描述仅记录当前 blocked implementation，不表示其 remote provenance 已满足 Authority。
 
-当前 [`GenerateAuditReady`](../../internal/evidence/audit_ready.go) 首先调用独立 `VerifyRawCapture`，随后持有已验证目录与成员描述符；它使用只读本地 bare mirror 检查 HTTPS repository、40-hex commit object 与该 commit 的 tree。该 mirror 检查只能产生 local consistency fact，不能证明 Commit 曾存在于权威远端，也不能铸造 `VERIFIED_IMMUTABLE_REMOTE_COMMIT`。因此此 offline 路径为 `NOT_ACCEPTED`。规范化、owner-controlled private sibling、fsync、自验证、输入稳定性复验与 no-replace publish 等其他描述不改变这一 provenance blocker。
+R1 [`GenerateAuditReady`](../../internal/evidence/audit_ready.go) 首先验证并持有 RAW_CAPTURE 描述符，再由内建固定 HTTPS 核验器向 `api.github.com` 匿名 GET 精确 Git commit object，逐字核对 Commit 与 Tree。公开生成与独立验证接口不接受 verifier/client/endpoint/proxy/CA 注入；测试替身只存在于 package-private seam。8 字段 canonical `remote-provenance.json` 作为强制 PUBLIC/CONTRACT logical asset 进入 bundle index 与 root；时间、HTTP metadata、凭据和本机 locator 不进入 receipt。预期仓库、RAW source 与可选镜像的 GitHub `.git`/无后缀地址统一按规范化 owner/repo 比较；不同仓库和非法 URL 仍拒绝，RAW 身份字节不被重写。每次生成只执行一次新的在线核验；staging 与发布后的文件自检复用该操作内存中的不可变 receipt。每次独立验证另做一次新的在线核验，没有跨操作 cache 或网络失败兜底。规范化、private sibling、fsync、自验证、输入稳定性复验与 no-replace publish 继续有效。旧 c07e1aa merge 的离线 remote claim 保持 NOT_ACCEPTED；R1 尚待独立验收。
 
 新增的 additive schemas 为：
 
@@ -55,7 +55,7 @@ Merge `c07e1aae94f681733ad73c1800423248bcc72376`（tree `828defa8ea85a757b43d1a0
 - [Run Report](../../schemas/evidence/v1/aipt-run-report.schema.json)：Canonical JSON 为权威，Markdown/CSV/JUnit/静态 HTML 均可逐字节再生；生命周期严格为 `PROVISIONAL → FINALIZING → SEALED`，SEALED 后只能新增 addendum，不能隐式 unseal。
 - [Bundle Index](../../schemas/evidence/v1/aipt-audit-ready-bundle-index.schema.json)：内含版本化 `aipt.core-evidence-classification/v1` 权威，显式覆盖 `RAW_CAPTURE`、Run closure、Replay、Defect family/occurrence、Run Report 与 derivatives；RAW 三件套确定性继承 `RAW_CAPTURE`，四种 report derivatives 必须继承 canonical Run Report classification。缺失/未知 classification 失败关闭，声明与每个 core descriptor 一并进入确定性 bundle/root 身份。部署 `ExportProfile` 提供 inline/chunk/size/count 参数；大资产按 exact bytes SHA-256 分块、跨逻辑资产安全去重并逐字节重组，从无成功截断模式。
 
-命令 `go run ./cmd/aipt-audit-ready generate --spec <request>` 与 `verify --bundle <directory> --mirror <bare-mirror> --repository <https-identity>` 是当前 blocked offline workflow surface，不是合格的 production remote-provenance verifier。其 credential-free URL validation、`GIT_NO_LAZY_FETCH=1`、stable error codes、explicit PUBLIC classification、encryption refusal 与其他已修复边界必须在 R1 保留，但这些边界不能把 local mirror 提升为 remote Authority。
+命令 `go run ./cmd/aipt-audit-ready generate --spec <request>` 与 `verify --bundle <directory> --repository <https-identity>` 使用固定在线核验入口。`mirror_path` / `--mirror <bare-mirror>` 可选，且只能返回 `LOCAL_OBJECT_MATCH` 辅助一致性事实；网络不可用、限流、404 或不支持 provider 时均不可使用镜像兜底。Git 子进程固定 executable/argv，无签名显示、hooks、fsmonitor、lazy fetch；每个 stdout/stderr 在捕获前上限 4096 bytes，整体 deadline 5 秒，取消时终止其进程组。
 
 Owner Authority [AIPT-MVP-B005 Remote Provenance Authority 001](../authority/amendments/AIPT_MVP_B005_REMOTE_PROVENANCE_AUTHORITY_001.md) 与 machine policy [remote-provenance-policy.json](../authority/registry/remote-provenance-policy.json) 现冻结：Development MVP 仅支持 `PUBLIC_GITHUB_REPOSITORY`；内建 `GITHUB_PUBLIC_HTTPS_API_V1` 必须对固定 `api.github.com` endpoint 执行无凭据、禁止 redirect、bounded、fail-closed 的 online exact Commit/Tree verification。AUDIT_READY generation 与 independent verification 各自重新执行一次，不信任 bundle 内既有 claim、旧 cache 或 mirror fallback。Private GitHub 与 non-GitHub remotes 当前均为 unsupported。
 
@@ -118,3 +118,5 @@ Canonical JSON 为机器权威（`R8-Q021`）；审计包以版本化 JSON Manif
 
 - [../authority/README.md](../authority/README.md) · [../authority/DECISION_MATRIX.md](../authority/DECISION_MATRIX.md) · [../security/README.md](../security/README.md) · [../milestones/MVP.md](../milestones/MVP.md)
 - [返回仓库首页](../../README.md)
+
+R1 验证：历史 N01–N50 matrix 字节不变，新增 [P01–P12](../../testdata/evidence/v1/b005-r1-remote-provenance-matrix.json) 与真实 Git helper/output 安全夹具。所有公共 CI 测试使用内部合成响应，实际 GitHub 请求与模型调用均为 0；这些夹具不代表真实桌测或 qualification。在线验收仅在 Owner 本地执行，独立 CI catalogue 以接受的 main 为信任依据。
