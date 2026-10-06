@@ -25,9 +25,9 @@ const EXPECTED_DEFS = [
 const EXPECTED_LEGACY_PRODUCTION_FILES = ['export.go', 'postgres.go', 'types.go', 'verify.go'];
 const EXPECTED_B005_PRODUCTION_FILES = [
   'audit_ready.go', 'closure_types.go', 'closure_validate.go', 'raw_material.go',
-  'report_render.go', 'source_verify.go',
+  'report_render.go', 'source_verify.go', 'remote_provenance.go',
 ];
-const EXPECTED_TEST_FILES = ['audit_ready_test.go', 'export_test.go', 'postgres_integration_test.go', 'postgres_test.go'];
+const EXPECTED_TEST_FILES = ['audit_ready_test.go', 'export_test.go', 'postgres_integration_test.go', 'postgres_test.go', 'remote_provenance_test.go'];
 const BOUNDED_VERIFY_PATH = 'internal/storage/postgres/verify_bounded.go';
 const EXPECTED_EVENTS_SHA = 'fb45425367a0f0d56efd983c31dc0c6f6b21b426202b6858757d764d6a0ad5c0';
 const EXPECTED_MANIFEST_SHA = '106ba6686d0f47304921266824c5832916867931869c45424d894410eed241a2';

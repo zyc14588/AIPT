@@ -42,12 +42,17 @@ type physicalAsset struct {
 	mediaType string
 }
 
-// GenerateAuditReady builds an offline deterministic AUDIT_READY directory.
-// It verifies RAW_CAPTURE and source Git identity before normalization, writes
-// only a private sibling staging directory, self-verifies, and publishes with
-// RENAME_NOREPLACE. It never calls a model, network, ledger, or source writer.
+// GenerateAuditReady builds a deterministic AUDIT_READY directory, using only
+// the fixed anonymous GitHub verifier for fresh source proof. It writes a
+// private staging sibling, self-verifies, and publishes with RENAME_NOREPLACE.
+// It never calls a model or changes source/ledger state.
 func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (AuditReadyVerification, error) {
-	if ctx == nil || input.SourceVerifier == nil {
+	return generateAuditReady(ctx, input, githubSourceVerifier{})
+}
+
+// Package-private seam for offline tests; production always supplies the fixed verifier above.
+func generateAuditReady(ctx context.Context, input GenerateAuditReadyInput, verifier sourceVerifier) (AuditReadyVerification, error) {
+	if ctx == nil || verifier == nil {
 		return AuditReadyVerification{}, fmt.Errorf("%w: generator dependencies", ErrAuditReadyInvalid)
 	}
 	if err := validateDisclosure(input.Disclosure); err != nil {
@@ -102,11 +107,14 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	}
 	defer raw.Close()
 	source := raw.material.Verification.Manifest.Source
+	if input.ExpectedRepository != "" && input.ExpectedRepository != source.Repository {
+		return AuditReadyVerification{}, ErrSourceUnverified
+	}
 	if err := validateAuditReadySourceIdentity(source); err != nil {
 		return AuditReadyVerification{}, classifyError(ErrSourceUnverified, "verify source identity before normalization", err)
 	}
-	remote, err := input.SourceVerifier.Verify(ctx, source)
-	if err != nil || validateRemoteVerification(remote, source) != nil {
+	remote, err := verifier.Verify(ctx, source)
+	if err != nil || validateRemoteProvenanceReceipt(remote, source) != nil {
 		return AuditReadyVerification{}, classifyError(ErrSourceUnverified, "verify source before normalization", errOrFixed(err))
 	}
 	if !inputUnchanged() {
@@ -123,7 +131,7 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
-	logical, err := buildCoreLogicalAssets(raw.material, closure, families, occurrences, report, input.CoreClassifications)
+	logical, err := buildCoreLogicalAssets(raw.material, closure, families, occurrences, report, input.CoreClassifications, remote)
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
@@ -147,7 +155,7 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	manifest := AuditReadyManifest{
 		Schema: SchemaID, Version: SchemaVersion, Stage: AuditReadyStage,
 		RawCaptureRoot: raw.material.Verification.Root, Source: source,
-		RemoteVerification: remote, Disclosure: input.Disclosure,
+		RemoteVerification: remoteVerificationFromReceipt(remote, source), Disclosure: input.Disclosure,
 		NormalizationVersion: AuditReadyNormalizationVersion,
 		NormalizedAssets:     describePhysicalAssets(physical),
 	}
@@ -186,14 +194,14 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	if err := syscall.Fstat(int(tempDirectory.Fd()), &tempState); err != nil {
 		return AuditReadyVerification{}, fmt.Errorf("%w: retain audit staging identity", ErrWriteFailed)
 	}
-	verification, err := verifyHeldAuditReady(ctx, tempDirectory, tempState, input.SourceVerifier)
+	verification, err := verifyHeldAuditReady(ctx, tempDirectory, tempState, verifier)
 	if err != nil {
 		return AuditReadyVerification{}, err
 	}
 	if !raw.Stable() || !inputUnchanged() {
 		return AuditReadyVerification{}, fmt.Errorf("%w: input changed during generation", ErrStreamChanged)
 	}
-	remoteAfter, err := input.SourceVerifier.Verify(ctx, source)
+	remoteAfter, err := verifier.Verify(ctx, source)
 	if err != nil || !canonicalEqual(remoteAfter, remote) {
 		return AuditReadyVerification{}, classifyError(ErrSourceUnverified, "verify source after normalization", errOrFixed(err))
 	}
@@ -230,8 +238,11 @@ func GenerateAuditReady(ctx context.Context, input GenerateAuditReadyInput) (Aud
 	if !samePrivateBundleDirectory(tempState, finalState) {
 		return rollback(fmt.Errorf("%w: published audit object identity mismatch", ErrWriteFailed))
 	}
-	published, err := verifyHeldAuditReady(ctx, finalDirectory, finalState, input.SourceVerifier)
-	if err != nil || published.Root != verification.Root {
+	published, err := verifyHeldAuditReady(ctx, finalDirectory, finalState, verifier)
+	if err != nil {
+		return rollback(err)
+	}
+	if published.Root != verification.Root {
 		return rollback(fmt.Errorf("%w: published audit bundle verification", ErrWriteFailed))
 	}
 	if !raw.Stable() || !inputUnchanged() || !directoryPathMatchesNoSymlinks(parent, parentState, false) {
@@ -266,8 +277,12 @@ func removePrivateAuditStaging(parent *os.File, name string) {
 }
 
 // VerifyAuditReady independently verifies a B005 AUDIT_READY directory and
-// revalidates its immutable source commit/tree against the supplied mirror.
-func VerifyAuditReady(ctx context.Context, directory string, verifier SourceVerifier) (AuditReadyVerification, error) {
+// revalidates its immutable source commit/tree with a fresh fixed GitHub check.
+func VerifyAuditReady(ctx context.Context, directory string) (AuditReadyVerification, error) {
+	return verifyAuditReady(ctx, directory, githubSourceVerifier{})
+}
+
+func verifyAuditReady(ctx context.Context, directory string, verifier sourceVerifier) (AuditReadyVerification, error) {
 	if ctx == nil || verifier == nil {
 		return AuditReadyVerification{}, fmt.Errorf("%w: verifier dependencies", ErrAuditReadyInvalid)
 	}
@@ -279,7 +294,7 @@ func VerifyAuditReady(ctx context.Context, directory string, verifier SourceVeri
 	return verifyHeldAuditReady(ctx, directoryFile, directoryState, verifier)
 }
 
-func verifyHeldAuditReady(ctx context.Context, directory *os.File, directoryState syscall.Stat_t, verifier SourceVerifier) (AuditReadyVerification, error) {
+func verifyHeldAuditReady(ctx context.Context, directory *os.File, directoryState syscall.Stat_t, verifier sourceVerifier) (AuditReadyVerification, error) {
 	fail := func(operation string) (AuditReadyVerification, error) {
 		return AuditReadyVerification{}, fmt.Errorf("%w: %s", ErrAuditReadyInvalid, operation)
 	}
@@ -329,7 +344,7 @@ func verifyHeldAuditReady(ctx context.Context, directory *os.File, directoryStat
 		return fail("root digest mismatch")
 	}
 	remote, err := verifier.Verify(ctx, manifest.Source)
-	if err != nil || validateRemoteVerification(remote, manifest.Source) != nil || !canonicalEqual(remote, manifest.RemoteVerification) {
+	if err != nil || validateRemoteProvenanceReceipt(remote, manifest.Source) != nil || !canonicalEqual(remoteVerificationFromReceipt(remote, manifest.Source), manifest.RemoteVerification) {
 		return AuditReadyVerification{}, classifyError(ErrSourceUnverified, "verify audit bundle source", errOrFixed(err))
 	}
 
@@ -493,10 +508,14 @@ func normalizeAuditContracts(raw Verification, eventHashes map[int64]string, clo
 	return normalizedClosure, normalizedFamilies, normalizedOccurrences, normalizedReport, nil
 }
 
-func buildCoreLogicalAssets(raw rawCaptureMaterial, closure RunEvidenceClosure, families []DefectFamily, occurrences []DefectOccurrence, report RunReport, classifications CoreEvidenceClassifications) ([]LogicalAssetInput, error) {
+func buildCoreLogicalAssets(raw rawCaptureMaterial, closure RunEvidenceClosure, families []DefectFamily, occurrences []DefectOccurrence, report RunReport, classifications CoreEvidenceClassifications, remote RemoteProvenanceReceipt) ([]LogicalAssetInput, error) {
 	encode := func(path string, classification ContentClassification, value any) (LogicalAssetInput, error) {
 		line, err := canonicalLine(value)
 		return LogicalAssetInput{Path: path, MediaType: "application/json", Classification: classification, ContentKind: ContentKindContract, Data: line}, err
+	}
+	remoteAsset, err := encode(RemoteProvenanceName, ContentPublic, remote)
+	if err != nil {
+		return nil, err
 	}
 	closureAsset, err := encode(RunClosureName, classifications.RunEvidenceClosure, closure)
 	if err != nil {
@@ -526,7 +545,7 @@ func buildCoreLogicalAssets(raw rawCaptureMaterial, closure RunEvidenceClosure, 
 		{Path: RawManifestAssetName, MediaType: "application/json", Classification: classifications.RawCapture, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.ManifestBytes...)},
 		{Path: RawEventsAssetName, MediaType: "application/x-ndjson", Classification: classifications.RawCapture, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.EventsBytes...)},
 		{Path: RawRootAssetName, MediaType: "text/plain", Classification: classifications.RawCapture, ContentKind: ContentKindRawCapture, Data: append([]byte(nil), raw.RootBytes...)},
-		closureAsset, replayAsset, familyAsset, occurrenceAsset, reportAsset,
+		closureAsset, replayAsset, familyAsset, occurrenceAsset, reportAsset, remoteAsset,
 		{Path: RunReportMarkdownName, MediaType: "text/markdown", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.Markdown},
 		{Path: RunReportCSVName, MediaType: "text/csv", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.CSV},
 		{Path: RunReportJUnitName, MediaType: "application/xml", Classification: classifications.ReportDerivatives, ContentKind: ContentKindReportDerivative, Data: derivatives.JUnit},
@@ -564,6 +583,7 @@ func validateCoreLogicalAssetDescriptors(descriptors []LogicalAsset, classificat
 		kind           ContentKind
 	}
 	expected := map[string]expectedDescriptor{
+		RemoteProvenanceName:  {ContentPublic, ContentKindContract},
 		RawManifestAssetName:  {classifications.RawCapture, ContentKindRawCapture},
 		RawEventsAssetName:    {classifications.RawCapture, ContentKindRawCapture},
 		RawRootAssetName:      {classifications.RawCapture, ContentKindRawCapture},
@@ -887,7 +907,7 @@ func verifyCoreLogicalAssets(manifest AuditReadyManifest, logical map[string][]b
 	required := []string{
 		RawManifestAssetName, RawEventsAssetName, RawRootAssetName, RunClosureName, ReplayEvidenceName,
 		DefectFamiliesName, DefectOccurrencesName, RunReportName, RunReportMarkdownName, RunReportCSVName,
-		RunReportJUnitName, RunReportHTMLName,
+		RunReportJUnitName, RunReportHTMLName, RemoteProvenanceName,
 	}
 	for _, name := range required {
 		if _, exists := logical[name]; !exists {
@@ -908,6 +928,10 @@ func verifyCoreLogicalAssets(manifest AuditReadyManifest, logical map[string][]b
 			return decodeErr
 		}
 		return strictDecode(body, destination)
+	}
+	var receipt RemoteProvenanceReceipt
+	if err := decodeCanonical(RemoteProvenanceName, &receipt); err != nil || validateRemoteProvenanceReceipt(receipt, manifest.Source) != nil {
+		return RunEvidenceClosure{}, RunReport{}, ErrSourceUnverified
 	}
 	var closure RunEvidenceClosure
 	if err := decodeCanonical(RunClosureName, &closure); err != nil {
@@ -1040,6 +1064,7 @@ type supplementalInputSnapshot struct {
 
 type semanticGenerateInput struct {
 	Destination         string                      `json:"destination"`
+	ExpectedRepository  string                      `json:"expected_repository"`
 	RawCapture          string                      `json:"raw_capture"`
 	Disclosure          Disclosure                  `json:"disclosure"`
 	CoreClassifications CoreEvidenceClassifications `json:"core_evidence_classifications"`
@@ -1079,7 +1104,7 @@ func semanticInput(input GenerateAuditReadyInput) semanticGenerateInput {
 		}
 	}
 	return semanticGenerateInput{
-		Destination: input.Destination, RawCapture: input.RawCapture, Disclosure: input.Disclosure,
+		Destination: input.Destination, RawCapture: input.RawCapture, ExpectedRepository: input.ExpectedRepository, Disclosure: input.Disclosure,
 		CoreClassifications: input.CoreClassifications,
 		Closure:             input.Closure, DefectFamilies: input.DefectFamilies, DefectOccurrences: input.DefectOccurrences,
 		Report: input.Report, Supplemental: supplemental, ExportProfile: input.ExportProfile,
@@ -1113,7 +1138,7 @@ func snapshotGenerateInput(input GenerateAuditReadyInput) (GenerateAuditReadyInp
 		}
 	}
 	copy := GenerateAuditReadyInput{
-		Destination: owned.Destination, RawCapture: owned.RawCapture, SourceVerifier: input.SourceVerifier,
+		Destination: owned.Destination, RawCapture: owned.RawCapture, ExpectedRepository: owned.ExpectedRepository,
 		Disclosure: owned.Disclosure, CoreClassifications: owned.CoreClassifications,
 		Closure: owned.Closure, DefectFamilies: owned.DefectFamilies,
 		DefectOccurrences: owned.DefectOccurrences, Report: owned.Report, Supplemental: supplemental,

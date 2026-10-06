@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,16 +10,19 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
 
 const remoteVerificationStatus = "VERIFIED_IMMUTABLE_REMOTE_COMMIT"
+const localObjectMatchStatus = "LOCAL_OBJECT_MATCH"
+const maxGitVerificationBytes = 4096
 
 const trustedGitExecutable = "/usr/bin/git"
 
-// GitMirrorVerifier verifies an immutable source object in a local bare Git
-// mirror. It never fetches, resolves a branch/tag, invokes a shell, or writes
+// GitMirrorVerifier checks local object consistency in a local bare Git
+// mirror. It can return only LOCAL_OBJECT_MATCH and is never remote proof. It never fetches, resolves a branch/tag, invokes a shell, or writes
 // the mirror. The directory is passed to Git by an already-open descriptor so
 // a pathname swap cannot redirect verification to another repository.
 type GitMirrorVerifier struct {
@@ -57,14 +61,29 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 	}
 	defer mirror.Close()
 	fd := int(mirror.Fd())
+	bounded, cancelVerification := context.WithTimeout(ctx, 5*time.Second)
+	defer cancelVerification()
 
 	run := func(arguments ...string) (string, error) {
 		gitInfo, inspectErr := os.Lstat(trustedGitExecutable)
 		if inspectErr != nil || !gitInfo.Mode().IsRegular() || gitInfo.Mode().Perm()&0o022 != 0 {
 			return "", errors.New("trusted Git executable is unavailable or writable")
 		}
-		base := []string{"--no-replace-objects", "--git-dir=/proc/self/fd/3"}
-		command := exec.CommandContext(ctx, trustedGitExecutable, append(base, arguments...)...)
+		base := []string{"--no-replace-objects", "--git-dir=/proc/self/fd/3",
+			"-c", "log.showSignature=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.pager=cat"}
+		command := exec.CommandContext(bounded, trustedGitExecutable, append(base, arguments...)...)
+		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		command.Cancel = func() error {
+			if command.Process == nil {
+				return os.ErrProcessDone
+			}
+			err := syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
+			if errors.Is(err, syscall.ESRCH) {
+				return os.ErrProcessDone
+			}
+			return err
+		}
+		command.WaitDelay = 250 * time.Millisecond
 		command.ExtraFiles = []*os.File{mirror}
 		command.Env = []string{
 			"GIT_CONFIG_NOSYSTEM=1",
@@ -74,14 +93,13 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 			"GIT_TERMINAL_PROMPT=0",
 			"LC_ALL=C",
 		}
-		output, runErr := command.Output()
-		if runErr != nil {
-			return "", runErr
+		stdout := &boundedGitOutput{maximum: maxGitVerificationBytes, cancel: cancelVerification}
+		stderr := &boundedGitOutput{maximum: maxGitVerificationBytes, cancel: cancelVerification}
+		command.Stdout, command.Stderr = stdout, stderr
+		if runErr := command.Run(); runErr != nil || stdout.exceeded || stderr.exceeded {
+			return "", errors.New("bounded local Git verification failed")
 		}
-		if len(output) > 4096 {
-			return "", errors.New("git verification output exceeds bound")
-		}
-		return strings.TrimSuffix(string(output), "\n"), nil
+		return strings.TrimSuffix(stdout.buffer.String(), "\n"), nil
 	}
 
 	bare, err := run("rev-parse", "--is-bare-repository")
@@ -99,12 +117,12 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 	if err != nil || objectType != "commit" {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify source commit", errors.New("commit object is absent or invalid"))
 	}
-	tree, err := run("show", "-s", "--format=%T", source.Commit)
+	tree, err := run("rev-parse", "--verify", source.Commit+"^{tree}")
 	if err != nil || tree != source.Tree {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify source tree", errors.New("commit tree mismatch"))
 	}
 	objectTypeAfter, typeErr := run("cat-file", "-t", source.Commit)
-	treeAfter, treeErr := run("show", "-s", "--format=%T", source.Commit)
+	treeAfter, treeErr := run("rev-parse", "--verify", source.Commit+"^{tree}")
 	remoteAfter, remoteErr := readRemote()
 	var after syscall.Stat_t
 	statErr := syscall.Fstat(fd, &after)
@@ -113,7 +131,7 @@ func (verifier GitMirrorVerifier) Verify(ctx context.Context, source SourceIdent
 		!directoryPathMatchesNoSymlinks(verifier.MirrorPath, before, false) {
 		return RemoteVerification{}, classifyError(ErrSourceUnverified, "verify stable source identity", errors.New("source mirror changed during verification"))
 	}
-	return RemoteVerification{Remote: remoteBefore, Commit: source.Commit, Status: remoteVerificationStatus}, nil
+	return RemoteVerification{Remote: remoteBefore, Commit: source.Commit, Status: localObjectMatchStatus}, nil
 }
 
 func validateRemoteVerification(verification RemoteVerification, source SourceIdentity) error {
@@ -154,4 +172,23 @@ func validateAuditReadySourceIdentity(source SourceIdentity) error {
 
 func containsControl(value string) bool {
 	return strings.IndexFunc(value, unicode.IsControl) >= 0
+}
+
+// A child can never cause unbounded stdout/stderr buffering. Exceeding either
+// bound cancels the owned process group before any further capture.
+type boundedGitOutput struct {
+	buffer   bytes.Buffer
+	maximum  int
+	exceeded bool
+	cancel   context.CancelFunc
+}
+
+func (output *boundedGitOutput) Write(data []byte) (int, error) {
+	remaining := output.maximum - output.buffer.Len()
+	if output.exceeded || len(data) > remaining {
+		output.exceeded = true
+		output.cancel()
+		return 0, errors.New("local Git output exceeds bound")
+	}
+	return output.buffer.Write(data)
 }

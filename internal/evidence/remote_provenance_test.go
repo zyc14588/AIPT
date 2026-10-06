@@ -1,0 +1,441 @@
+package evidence
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+)
+
+type fixtureGitHubRoundTripper func(*http.Request) (*http.Response, error)
+
+func (transport fixtureGitHubRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	return transport(request)
+}
+
+type fixtureOnlineVerifier struct{ client *http.Client }
+
+func (verifier fixtureOnlineVerifier) Verify(ctx context.Context, source SourceIdentity) (RemoteProvenanceReceipt, error) {
+	return verifyGitHubSource(ctx, source, verifier.client)
+}
+
+func fixtureRemoteSource() SourceIdentity {
+	return SourceIdentity{Repository: "https://github.com/AIPT-Synthetic/fixture", Commit: strings.Repeat("1", 40), Tree: strings.Repeat("2", 40)}
+}
+func fixtureCommitBody(source SourceIdentity) string {
+	return `{"sha":"` + source.Commit + `","tree":{"sha":"` + source.Tree + `","url":"https://api.github.com/omitted"},"message":"ignored metadata"}`
+}
+func fixtureGitHubClient(t *testing.T, source SourceIdentity, status int, body string, calls *int) *http.Client {
+	t.Helper()
+	return &http.Client{Transport: fixtureGitHubRoundTripper(func(request *http.Request) (*http.Response, error) {
+		*calls++
+		_, owner, name, err := canonicalGitHubRepository(source.Repository)
+		if err != nil || request.Method != http.MethodGet || request.URL.Scheme != "https" || request.URL.Host != "api.github.com" ||
+			request.URL.Path != "/repos/"+owner+"/"+name+"/git/commits/"+source.Commit || request.URL.RawQuery != "" || request.URL.User != nil ||
+			request.Header.Get("Authorization") != "" || request.Header.Get("Proxy-Authorization") != "" {
+			t.Errorf("request escaped fixed anonymous exact-object policy")
+		}
+		if deadline, ok := request.Context().Deadline(); !ok || time.Until(deadline) > remoteRequestTimeout {
+			t.Error("request lacks bounded deadline")
+		}
+		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), ContentLength: -1}, nil
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+}
+
+func TestRemoteProvenanceP01ExactCommitTreeAndBoundDeterministicReceipt(t *testing.T) {
+	source := fixtureRemoteSource()
+	calls := 0
+	client := fixtureGitHubClient(t, source, 200, fixtureCommitBody(source), &calls)
+	first, err := verifyGitHubSource(context.Background(), source, client)
+	if err != nil || validateRemoteProvenanceReceipt(first, source) != nil {
+		t.Fatalf("exact proof failed: %v", err)
+	}
+	second, err := verifyGitHubSource(context.Background(), source, client)
+	a, _ := canonicalLine(first)
+	b, _ := canonicalLine(second)
+	var fields map[string]any
+	if err != nil || !bytes.Equal(a, b) || json.Unmarshal(a, &fields) != nil || len(fields) != 8 || a[len(a)-1] != '\n' {
+		t.Fatal("receipt is not exactly eight deterministic canonical fields")
+	}
+	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input.Destination = filepath.Join(privateTempDir(t), "audit")
+	verifier := fixtureOnlineVerifier{client: client}
+	before := calls
+	generated, err := generateAuditReady(context.Background(), input, verifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt, exists := generated.LogicalAssets[RemoteProvenanceName]
+	if !exists || !bytes.Equal(receipt, a) || calls-before != 6 {
+		t.Fatal("generation did not bind a fresh proof into its root")
+	}
+	before = calls
+	verified, err := verifyAuditReady(context.Background(), input.Destination, verifier)
+	if err != nil || verified.Root != generated.Root || calls != before+2 {
+		t.Fatal("independent verification did not perform its own fresh request")
+	}
+	bad := first
+	bad.Tree = strings.Repeat("3", 40)
+	if validateRemoteProvenanceReceipt(bad, source) == nil {
+		t.Fatal("tree-confused receipt accepted")
+	}
+}
+
+func TestRemoteProvenanceP02Remote404Fails(t *testing.T) {
+	source := fixtureRemoteSource()
+	calls := 0
+	receipt, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, source, 404, `{"message":"not found"}`, &calls))
+	if !errors.Is(err, ErrSourceUnverified) || receipt != (RemoteProvenanceReceipt{}) || calls != 1 {
+		t.Fatal("404 minted a proof")
+	}
+}
+func TestRemoteProvenanceP03CommitMismatchFails(t *testing.T) {
+	source := fixtureRemoteSource()
+	other := source
+	other.Commit = strings.Repeat("3", 40)
+	calls := 0
+	if _, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, source, 200, fixtureCommitBody(other), &calls)); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatal("commit mismatch accepted")
+	}
+}
+func TestRemoteProvenanceP04TreeMismatchFails(t *testing.T) {
+	source := fixtureRemoteSource()
+	other := source
+	other.Tree = strings.Repeat("3", 40)
+	calls := 0
+	if _, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, source, 200, fixtureCommitBody(other), &calls)); !errors.Is(err, ErrSourceUnverified) {
+		t.Fatal("tree mismatch accepted")
+	}
+}
+func TestRemoteProvenanceP05RedirectNeverFollowed(t *testing.T) {
+	source := fixtureRemoteSource()
+	calls := 0
+	client, err := newGitHubHTTPClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Transport = fixtureGitHubRoundTripper(func(*http.Request) (*http.Response, error) {
+		calls++
+		return &http.Response{
+			StatusCode: 302, Header: http.Header{"Location": []string{"https://attacker.invalid/"}}, Body: io.NopCloser(strings.NewReader("")), ContentLength: 0,
+		}, nil
+	})
+	receipt, err := verifyGitHubSource(context.Background(), source, client)
+	if !errors.Is(err, ErrSourceUnverified) || calls != 1 || receipt != (RemoteProvenanceReceipt{}) {
+		t.Fatal("redirect reached another endpoint or minted a proof")
+	}
+}
+
+type unlimitedFixtureBody struct {
+	read   int64
+	closed bool
+}
+
+func (body *unlimitedFixtureBody) Read(buffer []byte) (int, error) {
+	for index := range buffer {
+		buffer[index] = 'x'
+	}
+	body.read += int64(len(buffer))
+	return len(buffer), nil
+}
+func (body *unlimitedFixtureBody) Close() error { body.closed = true; return nil }
+func TestRemoteProvenanceP06OversizedResponseStopsBeforeUnboundedBuffering(t *testing.T) {
+	body := &unlimitedFixtureBody{}
+	client := &http.Client{Transport: fixtureGitHubRoundTripper(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: body, ContentLength: -1}, nil
+	})}
+	receipt, err := verifyGitHubSource(context.Background(), fixtureRemoteSource(), client)
+	if !errors.Is(err, ErrSourceUnverified) || receipt != (RemoteProvenanceReceipt{}) || body.read != maxRemoteResponseBytes+1 || !body.closed {
+		t.Fatalf("unbounded capture: bytes=%d closed=%v", body.read, body.closed)
+	}
+}
+func TestRemoteProvenanceP07RateLimitFailsClosed(t *testing.T) {
+	source := fixtureRemoteSource()
+	calls := 0
+	receipt, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, source, 429, `{"message":"rate limit"}`, &calls))
+	if !errors.Is(err, ErrRemoteProvenanceUnavailable) || !errors.Is(err, ErrSourceUnverified) || receipt != (RemoteProvenanceReceipt{}) {
+		t.Fatal("rate limit became success or fallback")
+	}
+}
+func TestRemoteProvenanceP08FakeMirrorAndUnpushedCommitCannotMintRemoteProof(t *testing.T) {
+	source, cache := syntheticGitMirror(t)
+	source.Repository = fixtureRemoteSource().Repository
+	cache.ExpectedRepository = source.Repository
+	runGitTest(t, "--git-dir", cache.MirrorPath, "remote", "set-url", "origin", source.Repository)
+	local, err := cache.Verify(context.Background(), source)
+	if err != nil || local.Status != localObjectMatchStatus || local.Status == remoteVerificationStatus {
+		t.Fatal("local object minted remote authority")
+	}
+	calls := 0
+	receipt, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, source, 404, `{}`, &calls))
+	if !errors.Is(err, ErrSourceUnverified) || receipt != (RemoteProvenanceReceipt{}) {
+		t.Fatal("unpublished local object became remote proof")
+	}
+}
+func TestRemoteProvenanceP09PublicCallerCannotInjectFakeVerifier(t *testing.T) {
+	if _, exists := reflect.TypeOf(GenerateAuditReadyInput{}).FieldByName("SourceVerifier"); exists {
+		t.Fatal("production input still exposes a verifier")
+	}
+	if reflect.TypeOf(VerifyAuditReady).NumIn() != 2 {
+		t.Fatal("public independent verifier accepts a caller verifier")
+	}
+	// A caller-supplied cancellation cannot turn a rejected request into a claim.
+	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input.Destination = filepath.Join(privateTempDir(t), "audit")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	result, err := GenerateAuditReady(ctx, input)
+	if err == nil || result.Root != "" {
+		t.Fatal("cancelled public operation minted proof")
+	}
+	if _, err := os.Lstat(input.Destination); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("rejected public operation left a bundle")
+	}
+}
+func TestRemoteProvenanceP10CredentialQueryFragmentURLsRejectedBeforeRequest(t *testing.T) {
+	for _, repository := range []string{"https://injected-user:injected-value@github.com/AIPT-Synthetic/fixture", "https://github.com/AIPT-Synthetic/fixture?injected-value=1", "https://github.com/AIPT-Synthetic/fixture#injected-value"} {
+		source := fixtureRemoteSource()
+		source.Repository = repository
+		calls := 0
+		receipt, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, fixtureRemoteSource(), 200, fixtureCommitBody(source), &calls))
+		if !errors.Is(err, ErrSourceUnverified) || calls != 0 || receipt != (RemoteProvenanceReceipt{}) || strings.Contains(err.Error(), "injected-value") {
+			t.Fatal("credential-bearing source reached transport or output")
+		}
+	}
+}
+func TestRemoteProvenanceP11NonGitHubProviderIsUnsupported(t *testing.T) {
+	source := fixtureRemoteSource()
+	source.Repository = "https://example.invalid/fixture"
+	calls := 0
+	_, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, fixtureRemoteSource(), 200, fixtureCommitBody(source), &calls))
+	if !errors.Is(err, ErrRemoteProviderUnsupported) || calls != 0 {
+		t.Fatal("non-GitHub source accepted or requested")
+	}
+}
+func TestRemoteProvenanceP12NetworkUnavailableBlocksWithoutMirrorFallback(t *testing.T) {
+	source := fixtureRemoteSource()
+	calls := 0
+	client := &http.Client{Transport: fixtureGitHubRoundTripper(func(request *http.Request) (*http.Response, error) {
+		calls++
+		<-request.Context().Done()
+		return nil, errors.New("untrusted network detail")
+	})}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	receipt, err := verifyGitHubSource(ctx, source, client)
+	if !errors.Is(err, ErrRemoteProvenanceUnavailable) || receipt != (RemoteProvenanceReceipt{}) || calls != 1 || strings.Contains(err.Error(), "untrusted") {
+		t.Fatal("unavailable endpoint minted proof or leaked cause")
+	}
+	input, verifier := fixtureAuditInput(t, fixtureExportProfile())
+	input.Destination = filepath.Join(privateTempDir(t), "audit")
+	generated, err := generateAuditReady(context.Background(), input, verifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	verified, err := verifyAuditReady(ctx, input.Destination, fixtureOnlineVerifier{client: client})
+	if !errors.Is(err, ErrRemoteProvenanceUnavailable) || verified.Root != "" || generated.Root == "" {
+		t.Fatal("old bound receipt was used as a fresh proof cache")
+	}
+}
+
+func TestRemoteProvenanceTransportIgnoresProxyCAAndHTTPGlobals(t *testing.T) {
+	invalidCA := filepath.Join(t.TempDir(), "untrusted-ca.pem")
+	if err := os.WriteFile(invalidCA, []byte("not a certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:1")
+	t.Setenv("SSL_CERT_FILE", invalidCA)
+	t.Setenv("SSL_CERT_DIR", t.TempDir())
+	original := http.DefaultTransport
+	defer func() { http.DefaultTransport = original }()
+	http.DefaultTransport = fixtureGitHubRoundTripper(func(*http.Request) (*http.Response, error) {
+		t.Error("production used global transport")
+		return nil, ErrSourceUnverified
+	})
+	client, err := newGitHubHTTPClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok || transport.Proxy != nil || transport.TLSClientConfig.InsecureSkipVerify || transport.TLSClientConfig.RootCAs == nil || len(transport.TLSClientConfig.RootCAs.Subjects()) == 0 ||
+		transport.TLSClientConfig.ServerName != "api.github.com" || client.Timeout != remoteRequestTimeout || transport.TLSHandshakeTimeout <= 0 || transport.ResponseHeaderTimeout <= 0 || transport.MaxResponseHeaderBytes <= 0 || !transport.DisableCompression {
+		t.Fatal("production transport trusts ambient proxy/CA/global state or lacks bounds")
+	}
+}
+func TestRemoteProvenanceMalformedDuplicateDeepAndUnknownReceiptFieldsFail(t *testing.T) {
+	source := fixtureRemoteSource()
+	bodies := []string{`{`, fixtureCommitBody(source) + `{}`, `{"sha":"` + source.Commit + `","sha":"` + source.Commit + `","tree":{"sha":"` + source.Tree + `"}}`, strings.Repeat("[", 40) + "0" + strings.Repeat("]", 40), "{\"sha\":\"\xff\"}"}
+	for _, body := range bodies {
+		calls := 0
+		if _, err := verifyGitHubSource(context.Background(), source, fixtureGitHubClient(t, source, 200, body, &calls)); !errors.Is(err, ErrSourceUnverified) {
+			t.Fatal("malformed/ambiguous response accepted")
+		}
+	}
+	receipt, _ := receiptForSource(source)
+	raw, _ := canonicalLine(receipt)
+	var unknown RemoteProvenanceReceipt
+	body := bytes.TrimSuffix(raw, []byte("\n"))
+	body = append(body[:len(body)-1], []byte(`,"verification_timestamp":"forbidden"}`)...)
+	if strictDecode(body, &unknown) == nil {
+		t.Fatal("receipt accepted network metadata")
+	}
+}
+func TestGitMirrorSignatureHelperCannotExecute(t *testing.T) {
+	source, cache := syntheticGitMirror(t)
+	marker := filepath.Join(t.TempDir(), "signature-helper-ran")
+	helper := filepath.Join(t.TempDir(), "untrusted-signature-helper")
+	if err := os.WriteFile(helper, []byte("#!/bin/sh\n: > \""+marker+"\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runGitTest(t, "--git-dir", cache.MirrorPath, "config", "log.showSignature", "true")
+	runGitTest(t, "--git-dir", cache.MirrorPath, "config", "gpg.program", helper)
+	// A commit with a signature header makes the original git-show path run
+	// the configured helper. Prove the exploit fixture before testing the fix.
+	commitFile := filepath.Join(privateTempDir(t), "signed-commit")
+	commitBytes := "tree " + source.Tree + "\nauthor AIPT Synthetic <synthetic@example.invalid> 1767225600 +0000\ncommitter AIPT Synthetic <synthetic@example.invalid> 1767225600 +0000\ngpgsig -----BEGIN PGP SIGNATURE-----\n fixture-signature\n -----END PGP SIGNATURE-----\n\nsynthetic signed fixture\n"
+	if err := os.WriteFile(commitFile, []byte(commitBytes), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	source.Commit = strings.TrimSpace(runGitTest(t, "--git-dir", cache.MirrorPath, "hash-object", "-t", "commit", "-w", commitFile))
+	_ = exec.Command(trustedGitExecutable, "--git-dir", cache.MirrorPath, "show", "--no-patch", "--format=%T", source.Commit).Run()
+	if _, err := os.Lstat(marker); err != nil {
+		t.Fatal("original vulnerable path did not execute fixture helper")
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	result, err := cache.Verify(context.Background(), source)
+	if err != nil || result.Status != localObjectMatchStatus {
+		t.Fatal("local consistency check failed")
+	}
+	if _, err := os.Lstat(marker); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("signature helper ran")
+	}
+}
+func TestGitMirrorOversizedOutputIsBoundedBeforeCapture(t *testing.T) {
+	source, cache := syntheticGitMirror(t)
+	// A syntactically valid large config produces a stdout stream well beyond
+	// the bound. The real child must fail promptly and never mint any claim.
+	config, err := os.OpenFile(filepath.Join(cache.MirrorPath, "config"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = config.WriteString("\n[remote \"origin\"]\nurl = https://example.invalid/" + strings.Repeat("x", 1<<20) + "\n")
+	config.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	result, err := cache.Verify(context.Background(), source)
+	if !errors.Is(err, ErrSourceUnverified) || result != (RemoteVerification{}) || time.Since(started) > 6*time.Second {
+		t.Fatal("oversized Git output escaped byte/time bounds")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	output := &boundedGitOutput{maximum: 4, cancel: cancel}
+	if _, err := output.Write([]byte("12345")); err == nil || output.buffer.Len() != 0 || ctx.Err() == nil {
+		t.Fatal("Git writer buffered an oversized chunk before rejecting")
+	}
+}
+
+func TestRemoteReceiptTamperingCannotBeResealedIntoValidBundle(t *testing.T) {
+	for _, attack := range []string{"missing", "non-public", "wrong-kind", "tree", "metadata"} {
+		t.Run(attack, func(t *testing.T) {
+			input, verifier := fixtureAuditInput(t, fixtureExportProfile())
+			input.Destination = filepath.Join(privateTempDir(t), "audit")
+			if _, err := generateAuditReady(context.Background(), input, verifier); err != nil {
+				t.Fatal(err)
+			}
+			if attack == "tree" || attack == "metadata" {
+				physicalName := ""
+				index := readJSONMap(t, filepath.Join(input.Destination, BundleIndexName))
+				for _, raw := range index["logical_assets"].([]any) {
+					asset := raw.(map[string]any)
+					if asset["path"] == RemoteProvenanceName {
+						physicalName = asset["storage"].(map[string]any)["path"].(string)
+					}
+				}
+				if physicalName == "" {
+					t.Fatal("fixture lacks physical receipt")
+				}
+				body := readJSONMap(t, filepath.Join(input.Destination, physicalName))
+				if attack == "tree" {
+					body["tree"] = strings.Repeat("3", 40)
+				} else {
+					body["verification_timestamp"] = "forbidden"
+				}
+				data, err := canonicalLine(body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(input.Destination, physicalName), data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				manifest := readJSONMap(t, filepath.Join(input.Destination, ManifestName))
+				for _, raw := range manifest["normalized_assets"].([]any) {
+					asset := raw.(map[string]any)
+					if asset["path"] == physicalName {
+						asset["bytes"], asset["sha256"] = len(data), digestText(data)
+					}
+				}
+				writeCanonicalManifestAndRoot(t, input.Destination, manifest)
+				rewriteBundleIndexAndRoot(t, input.Destination, func(index map[string]any) {
+					for _, raw := range index["logical_assets"].([]any) {
+						asset := raw.(map[string]any)
+						if asset["path"] == RemoteProvenanceName {
+							asset["bytes"], asset["sha256"] = len(data), digestText(data)
+						}
+					}
+				})
+			} else {
+				rewriteBundleIndexAndRoot(t, input.Destination, func(index map[string]any) {
+					assets := index["logical_assets"].([]any)
+					for position, raw := range assets {
+						asset := raw.(map[string]any)
+						if asset["path"] != RemoteProvenanceName {
+							continue
+						}
+						switch attack {
+						case "missing":
+							index["logical_assets"] = append(assets[:position], assets[position+1:]...)
+						case "non-public":
+							asset["classification"] = string(ContentUnreleasedRemote)
+						case "wrong-kind":
+							asset["content_kind"] = string(ContentKindSupplemental)
+						}
+						return
+					}
+					t.Fatal("fixture lacks receipt descriptor")
+				})
+			}
+			if _, err := verifyAuditReady(context.Background(), input.Destination, verifier); err == nil {
+				t.Fatal("resealed remote receipt attack accepted")
+			}
+		})
+	}
+}
+
+func TestRemoteRepositoryIdentityHasOneCanonicalForm(t *testing.T) {
+	for _, repository := range []string{"https://github.com/AIPT-Synthetic/fixture", "https://github.com/AIPT-Synthetic/fixture.git"} {
+		canonical, owner, name, err := canonicalGitHubRepository(repository)
+		if err != nil || canonical != fixtureRemoteSource().Repository || owner != "AIPT-Synthetic" || name != "fixture" {
+			t.Fatal("accepted repository form is not canonical")
+		}
+	}
+	for _, repository := range []string{"https://github.com/AIPT-Synthetic/fixture.git.git", "https://github.com:443/AIPT-Synthetic/fixture", "https://github.com/AIPT-Synthetic/fixture/", "https://github.com/AIPT-Synthetic/%66ixture", "https://github.com/AIPT-Synthetic/..", "https://github.com/AIPT-Synthetic/.git"} {
+		if _, _, _, err := canonicalGitHubRepository(repository); err == nil {
+			t.Fatal("ambiguous repository form accepted")
+		}
+	}
+}

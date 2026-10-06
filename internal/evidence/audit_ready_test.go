@@ -26,20 +26,18 @@ type staticSourceVerifier struct {
 	calls    int
 }
 
-func (verifier *staticSourceVerifier) Verify(_ context.Context, source SourceIdentity) (RemoteVerification, error) {
+func (verifier *staticSourceVerifier) Verify(_ context.Context, source SourceIdentity) (RemoteProvenanceReceipt, error) {
 	verifier.calls++
 	if verifier.hook != nil {
 		verifier.hook(verifier.calls)
 	}
 	if verifier.err != nil {
-		return RemoteVerification{}, verifier.err
+		return RemoteProvenanceReceipt{}, verifier.err
 	}
 	if source != verifier.expected {
-		return RemoteVerification{}, ErrSourceUnverified
+		return RemoteProvenanceReceipt{}, ErrSourceUnverified
 	}
-	return RemoteVerification{
-		Remote: source.Repository, Commit: source.Commit, Status: remoteVerificationStatus,
-	}, nil
+	return receiptForSource(source)
 }
 
 func digestText(value []byte) string {
@@ -79,7 +77,7 @@ func fixtureActionReceipts(t *testing.T, rawPath string, reference EvidenceRefer
 
 func fixtureAuditInput(t *testing.T, profile ExportProfile) (GenerateAuditReadyInput, *staticSourceVerifier) {
 	t.Helper()
-	rawPath := exportFixture(t)
+	rawPath := exportAuditFixture(t)
 	return fixtureAuditInputForRaw(t, rawPath, profile)
 }
 
@@ -165,7 +163,7 @@ func fixtureAuditInputForRaw(t *testing.T, rawPath string, profile ExportProfile
 	}
 	verifier := &staticSourceVerifier{expected: raw.Manifest.Source}
 	input := GenerateAuditReadyInput{
-		RawCapture: rawPath, SourceVerifier: verifier,
+		RawCapture: rawPath, ExpectedRepository: raw.Manifest.Source.Repository,
 		Disclosure:          Disclosure{Profile: DisclosurePublic, Encryption: Encryption{Status: EncryptionUnencrypted}},
 		CoreClassifications: publicCoreEvidenceClassifications(),
 		Closure:             closure, DefectFamilies: []DefectFamily{family}, DefectOccurrences: []DefectOccurrence{occurrence}, Report: report,
@@ -232,11 +230,11 @@ func TestAuditReadyDeterministicRoundTrip(t *testing.T) {
 	second.Supplemental[0], second.Supplemental[3] = second.Supplemental[3], second.Supplemental[0]
 	second.Closure.RuleCitations = append([]RuleCitation(nil), second.Closure.RuleCitations...)
 
-	firstResult, err := GenerateAuditReady(context.Background(), first)
+	firstResult, err := generateAuditReady(context.Background(), first, firstVerifier)
 	if err != nil {
 		t.Fatalf("first GenerateAuditReady: %v", err)
 	}
-	secondResult, err := GenerateAuditReady(context.Background(), second)
+	secondResult, err := generateAuditReady(context.Background(), second, secondVerifier)
 	if err != nil {
 		t.Fatalf("second GenerateAuditReady: %v", err)
 	}
@@ -244,7 +242,7 @@ func TestAuditReadyDeterministicRoundTrip(t *testing.T) {
 		t.Fatalf("roots differ: %s != %s", firstResult.Root, secondResult.Root)
 	}
 	compareFlatDirectories(t, first.Destination, second.Destination)
-	verified, err := VerifyAuditReady(context.Background(), first.Destination, firstVerifier)
+	verified, err := verifyAuditReady(context.Background(), first.Destination, firstVerifier)
 	if err != nil {
 		t.Fatalf("VerifyAuditReady: %v", err)
 	}
@@ -258,10 +256,10 @@ func TestAuditReadyDeterministicRoundTrip(t *testing.T) {
 
 func assertCoreClassificationRejected(t *testing.T, mutate func(*GenerateAuditReadyInput), wanted error) {
 	t.Helper()
-	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 	input.Destination = filepath.Join(privateTempDir(t), "rejected-classification")
 	mutate(&input)
-	if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, wanted) {
+	if _, err := generateAuditReady(context.Background(), input, verifier); !errors.Is(err, wanted) {
 		t.Fatalf("classification error = %v, want %v", err, wanted)
 	}
 	if _, err := os.Lstat(input.Destination); !errors.Is(err, os.ErrNotExist) {
@@ -306,7 +304,7 @@ func TestF1N04ReportDerivativeCannotBypassParentClassification(t *testing.T) {
 }
 
 func TestF1N05MarkerFreeNonPublicCorePayloadRejected(t *testing.T) {
-	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 	events, err := os.ReadFile(filepath.Join(input.RawCapture, EventsName))
 	if err != nil {
 		t.Fatal(err)
@@ -316,15 +314,15 @@ func TestF1N05MarkerFreeNonPublicCorePayloadRejected(t *testing.T) {
 	}
 	input.CoreClassifications.RawCapture = ContentUnreleasedRemote
 	input.Destination = filepath.Join(privateTempDir(t), "marker-free-rejected")
-	if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, ErrDisclosureViolation) {
+	if _, err := generateAuditReady(context.Background(), input, verifier); !errors.Is(err, ErrDisclosureViolation) {
 		t.Fatalf("marker-free non-PUBLIC RAW_CAPTURE error = %v", err)
 	}
 }
 
 func TestF1N06ClassificationMutationChangesDeterministicRoot(t *testing.T) {
-	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 	input.Destination = filepath.Join(privateTempDir(t), "classification-root")
-	result, err := GenerateAuditReady(context.Background(), input)
+	result, err := generateAuditReady(context.Background(), input, verifier)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +378,7 @@ func TestAuditReadyContentAddressedChunksDeduplicateAndReassemble(t *testing.T) 
 		LogicalAssetInput{Path: "supplemental/duplicate-b.bin", MediaType: "application/octet-stream", Classification: ContentPublic, ContentKind: ContentKindSupplemental, Data: shared},
 	)
 	input.Destination = filepath.Join(privateTempDir(t), "audit-ready-chunked")
-	result, err := GenerateAuditReady(context.Background(), input)
+	result, err := generateAuditReady(context.Background(), input, verifier)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +398,7 @@ func TestAuditReadyContentAddressedChunksDeduplicateAndReassemble(t *testing.T) 
 	if len(firstChunks) == 0 || !canonicalEqual(firstChunks, secondChunks) {
 		t.Fatalf("identical logical assets were not safely deduplicated: %v / %v", firstChunks, secondChunks)
 	}
-	if _, err := VerifyAuditReady(context.Background(), input.Destination, verifier); err != nil {
+	if _, err := verifyAuditReady(context.Background(), input.Destination, verifier); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -533,14 +531,14 @@ func TestAuditReadyDisclosureAndEncryptionFailClosed(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			input, _ := fixtureAuditInput(t, fixtureExportProfile())
+			input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 			input.Destination = filepath.Join(privateTempDir(t), "rejected")
 			input.Disclosure.Profile = test.profile
 			input.Disclosure.ContainsUnpublishedContent = test.unpublished
 			input.Supplemental = append(input.Supplemental, LogicalAssetInput{
 				Path: "supplemental/policy-probe.txt", MediaType: "text/plain", Classification: test.classification, ContentKind: test.kind, Data: test.data,
 			})
-			_, err := GenerateAuditReady(context.Background(), input)
+			_, err := generateAuditReady(context.Background(), input, verifier)
 			if !errors.Is(err, test.wanted) {
 				t.Fatalf("error = %v, want %v", err, test.wanted)
 			}
@@ -550,13 +548,13 @@ func TestAuditReadyDisclosureAndEncryptionFailClosed(t *testing.T) {
 		})
 	}
 	t.Run("public private metadata path", func(t *testing.T) {
-		input, _ := fixtureAuditInput(t, fixtureExportProfile())
+		input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 		input.Destination = filepath.Join(privateTempDir(t), "rejected")
 		input.Supplemental = append(input.Supplemental, LogicalAssetInput{
 			Path: "private_prompt/synthetic.txt", MediaType: "text/plain", Classification: ContentPublic,
 			ContentKind: ContentKindSupplemental, Data: []byte("synthetic"),
 		})
-		if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, ErrDisclosureViolation) {
+		if _, err := generateAuditReady(context.Background(), input, verifier); !errors.Is(err, ErrDisclosureViolation) {
 			t.Fatalf("metadata path error = %v, want %v", err, ErrDisclosureViolation)
 		}
 	})
@@ -608,10 +606,10 @@ func TestAuditReadyCrossContractClaimsFailClosed(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			input, _ := fixtureAuditInput(t, fixtureExportProfile())
+			input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 			input.Destination = filepath.Join(privateTempDir(t), "rejected")
 			test.mutate(t, &input)
-			if _, err := GenerateAuditReady(context.Background(), input); err == nil {
+			if _, err := generateAuditReady(context.Background(), input, verifier); err == nil {
 				t.Fatal("cross-contract mutation was accepted")
 			}
 			if _, statErr := os.Lstat(input.Destination); !errors.Is(statErr, os.ErrNotExist) {
@@ -641,7 +639,7 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := GenerateAuditReady(context.Background(), input)
+			_, err := generateAuditReady(context.Background(), input, verifier)
 			if !errors.Is(err, ErrTargetExists) || verifier.calls != 0 {
 				t.Fatalf("existing target error/calls = %v/%d", err, verifier.calls)
 			}
@@ -659,7 +657,7 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 			t.Fatal(err)
 		}
 		input.Destination = filepath.Join(linked, "audit")
-		_, err := GenerateAuditReady(context.Background(), input)
+		_, err := generateAuditReady(context.Background(), input, verifier)
 		if !errors.Is(err, ErrUnsafePath) || verifier.calls != 0 {
 			t.Fatalf("symlink parent error/calls = %v/%d", err, verifier.calls)
 		}
@@ -676,13 +674,13 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 			t.Fatal(err)
 		}
 		input.Destination = filepath.Join(linked, "nested", "audit")
-		_, err := GenerateAuditReady(context.Background(), input)
+		_, err := generateAuditReady(context.Background(), input, verifier)
 		if !errors.Is(err, ErrUnsafePath) || verifier.calls != 0 {
 			t.Fatalf("symlink ancestor error/calls = %v/%d", err, verifier.calls)
 		}
 	})
 	t.Run("RAW_CAPTURE symlink ancestor", func(t *testing.T) {
-		input, _ := fixtureAuditInput(t, fixtureExportProfile())
+		input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 		root := privateTempDir(t)
 		linked := filepath.Join(root, "linked")
 		if err := os.Symlink(filepath.Dir(input.RawCapture), linked); err != nil {
@@ -690,7 +688,7 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 		}
 		input.RawCapture = filepath.Join(linked, filepath.Base(input.RawCapture))
 		input.Destination = filepath.Join(privateTempDir(t), "rejected")
-		if _, err := GenerateAuditReady(context.Background(), input); err == nil {
+		if _, err := generateAuditReady(context.Background(), input, verifier); err == nil {
 			t.Fatal("RAW_CAPTURE symlink ancestor was accepted")
 		}
 	})
@@ -711,7 +709,7 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		_, err := GenerateAuditReady(context.Background(), input)
+		_, err := generateAuditReady(context.Background(), input, verifier)
 		if !errors.Is(err, ErrStreamChanged) {
 			t.Fatalf("input race error = %v, want ErrStreamChanged", err)
 		}
@@ -727,7 +725,7 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 				input.Supplemental[0].Data[0] ^= 1
 			}
 		}
-		_, err := GenerateAuditReady(context.Background(), input)
+		_, err := generateAuditReady(context.Background(), input, verifier)
 		if !errors.Is(err, ErrStreamChanged) {
 			t.Fatalf("normalized input race error = %v, want ErrStreamChanged", err)
 		}
@@ -745,7 +743,7 @@ func TestAuditReadyOutputSafetyAndInputRace(t *testing.T) {
 				input.Supplemental[0].Data[0] ^= 1
 			}
 		}
-		_, err := GenerateAuditReady(context.Background(), input)
+		_, err := generateAuditReady(context.Background(), input, verifier)
 		if !errors.Is(err, ErrStreamChanged) {
 			t.Fatalf("post-rename input race error = %v, want ErrStreamChanged", err)
 		}
@@ -843,11 +841,11 @@ func TestAuditReadyVerifierRejectsTamperingAndContractConfusion(t *testing.T) {
 			profile.InlineThreshold = 8
 			input, verifier := fixtureAuditInput(t, profile)
 			input.Destination = filepath.Join(privateTempDir(t), "audit")
-			if _, err := GenerateAuditReady(context.Background(), input); err != nil {
+			if _, err := generateAuditReady(context.Background(), input, verifier); err != nil {
 				t.Fatal(err)
 			}
 			test.mutate(t, input.Destination)
-			if _, err := VerifyAuditReady(context.Background(), input.Destination, verifier); err == nil {
+			if _, err := verifyAuditReady(context.Background(), input.Destination, verifier); err == nil {
 				t.Fatal("tampered/confused bundle was accepted")
 			}
 		})
@@ -924,7 +922,7 @@ func writeCanonicalManifestAndRoot(t *testing.T, directory string, manifest map[
 }
 
 func TestReplayMismatchFingerprintMutationAndContractConflationReject(t *testing.T) {
-	input, _ := fixtureAuditInput(t, fixtureExportProfile())
+	input, verifier := fixtureAuditInput(t, fixtureExportProfile())
 	badReplay := input.Closure
 	badReplay.Replay.ReplayedFinalStateHash = repeatSHA("8")
 	if _, err := NormalizeRunEvidenceClosure(badReplay); !errors.Is(err, ErrReplayMismatch) {
@@ -944,7 +942,7 @@ func TestReplayMismatchFingerprintMutationAndContractConflationReject(t *testing
 	wrongSource.Source.Commit = strings.Repeat("8", 40)
 	input.Closure = wrongSource
 	input.Destination = filepath.Join(privateTempDir(t), "wrong-source")
-	if _, err := GenerateAuditReady(context.Background(), input); err == nil {
+	if _, err := generateAuditReady(context.Background(), input, verifier); err == nil {
 		t.Fatal("wrong source binding accepted")
 	}
 }
@@ -952,7 +950,7 @@ func TestReplayMismatchFingerprintMutationAndContractConflationReject(t *testing
 func TestGitMirrorVerifierBindsRemoteCommitAndTree(t *testing.T) {
 	source, verifier := syntheticGitMirror(t)
 	result, err := verifier.Verify(context.Background(), source)
-	if err != nil || result.Commit != source.Commit || result.Remote != source.Repository {
+	if err != nil || result.Commit != source.Commit || result.Remote != source.Repository || result.Status != localObjectMatchStatus {
 		t.Fatalf("valid mirror verification = %+v, %v", result, err)
 	}
 	wrongCommit := source
@@ -1050,9 +1048,8 @@ func TestF2N07CredentialBearingRawCaptureCannotEnterAuditReadyBundleOrErrors(t *
 	input, _ := fixtureAuditInput(t, fixtureExportProfile())
 	verifier := &staticSourceVerifier{expected: source}
 	input.RawCapture = rawPath
-	input.SourceVerifier = verifier
 	input.Destination = filepath.Join(privateTempDir(t), "must-not-exist")
-	if _, err := GenerateAuditReady(context.Background(), input); !errors.Is(err, ErrSourceUnverified) {
+	if _, err := generateAuditReady(context.Background(), input, verifier); !errors.Is(err, ErrSourceUnverified) {
 		t.Fatalf("credential-bearing RAW_CAPTURE source error = %v", err)
 	} else if strings.Contains(err.Error(), sentinel) {
 		t.Fatalf("AUDIT_READY error disclosed repository credential material: %v", err)
@@ -1320,4 +1317,20 @@ func TestB005NegativeMatrixIsExactAndBackedByExecutableTests(t *testing.T) {
 			t.Fatalf("%s cites missing executable test %s", item.ID, selector)
 		}
 	}
+}
+
+// This independent synthetic RAW input allows online-contract tests without
+// changing the byte-frozen RAW_CAPTURE golden or contacting GitHub.
+func exportAuditFixture(t *testing.T) string {
+	t.Helper()
+	destination := filepath.Join(privateTempDir(t), "synthetic-online-raw-capture")
+	source := fixtureSourceIdentity()
+	source.Repository = "https://github.com/AIPT-Synthetic/fixture"
+	_, err := ExportRawCapture(context.Background(), &staticSource{snapshot: fixtureSnapshot()}, ExportInput{
+		Destination: destination, Source: source, StreamID: "synthetic-ledger",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return destination
 }
