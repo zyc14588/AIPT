@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT — deterministic AI-seated TRPG table-testing system. AIPT-MVP-B005 remains in progress after post-merge security blocked its offline remote-provenance model; ONLINE_GITHUB_REMOTE_PROVENANCE_V1 is Authority-defined with implementation pending R1.",
+  "description": "AIPT deterministic AI-seated TRPG table-testing system. M0 is complete; B005 R1 implements fixed online GitHub source proof after accepted governance closeout, pending independent implementation acceptance.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -53,6 +53,7 @@
     "check:supply-chain": "node scripts/ci/validate/supply-chain.mjs",
     "check:sbom": "node scripts/ci/validate/sbom.mjs",
     "sbom": "node scripts/ci/sbom/generate-sbom.mjs",
-    "provenance": "node scripts/ci/provenance.mjs"
+    "provenance": "node scripts/ci/provenance.mjs",
+    "test:b005-r1-lifecycle": "node --test scripts/ci/test/b005-r1-lifecycle.test.mjs"
   }
 }
