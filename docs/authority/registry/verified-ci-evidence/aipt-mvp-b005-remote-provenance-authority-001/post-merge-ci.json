@@ -1,0 +1,60 @@
+{
+  "schema": "aipt.public.verified-ci-evidence/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+  "repository": "zyc14588/AIPT",
+  "workflow_path": ".github/workflows/ci.yml",
+  "workflow_sha256": "37841fbcc728c7f82b214c222f725e979bf74c24ea8d19ba311cf76b97b83f72",
+  "acceptance": {
+    "decision_id": "B005-GOV-CI-Q001=A",
+    "mode": "LOCAL_ONLINE_GITHUB_ACTIONS_VERIFICATION",
+    "offline_trust_basis": "OWNER_ACCEPTED_IMMUTABLE_MAIN_CI_CATALOGUE",
+    "verified_at": "2026-10-06T01:58:58.904Z"
+  },
+  "run": {
+    "id": 37401494586,
+    "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+    "head_branch": "main",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1
+  },
+  "jobs": [
+    {
+      "id": 112069459346,
+      "name": "b000-retro (fixed B000 commit, read-only expansion)",
+      "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112069459558,
+      "name": "storage-postgres (ephemeral PostgreSQL 18.4 integration)",
+      "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112069459504,
+      "name": "supply-chain (R4-Q023 gates)",
+      "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112069459598,
+      "name": "toolchain (ubuntu-24.04)",
+      "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 112069459468,
+      "name": "toolchain (ubuntu-26.04)",
+      "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

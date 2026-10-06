@@ -1,0 +1,53 @@
+{
+  "schema": "aipt.public.authority-lifecycle-record/v1",
+  "record_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001-LIFECYCLE-002-POST-MERGE-VERIFIED",
+  "task_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+  "semantic_artifact_identity": {
+    "task_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "artifact_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "artifact_path": "docs/authority/registry/remote-provenance-policy.json",
+    "artifact_sha256": "fb0cfe0f253c468bc00816d7f1d499e6945898e807db36207a8dd04752a82649",
+    "candidate_commit": "09bdd1c4787a283846356db6738b54db582342e8",
+    "candidate_tree": "66f05aa436a8e6d7bb87040f093c999dd987e48a",
+    "semantic_snapshot_state": "PRIVATE_GOVERNANCE_CANDIDATE_FROZEN",
+    "semantic_snapshot_accepted": false
+  },
+  "event": "POST_MERGE_VERIFIED",
+  "event_sequence": 2,
+  "predecessor_lifecycle_record": {
+    "record_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001-LIFECYCLE-001-MERGED",
+    "record_sha256": "6859c1e73a9fe6dd234e50f6e7c62dce8941913a2a9048039ace0c8d8e9891fc"
+  },
+  "authority_basis": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "authorized_by_task": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "authorization_kind": "ACCEPTED_LIFECYCLE_MODEL"
+  },
+  "event_evidence": {
+    "kind": "POST_MERGE_CI",
+    "post_merge_evidence": {
+      "run_id": 37401494586,
+      "head_sha": "7cedc640f64052103162b4160ffae2f0f8a901df",
+      "conclusion": "success",
+      "jobs_passed": 5,
+      "jobs_failed": 0,
+      "jobs_skipped": 0
+    }
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/authority-lifecycle/records/aipt-mvp-b005-remote-provenance-authority-001/002-post-merge-verified.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "created_by_task": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+  "provenance": {
+    "source_task": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "source_commit": "7cedc640f64052103162b4160ffae2f0f8a901df",
+    "source_tree": "66f05aa436a8e6d7bb87040f093c999dd987e48a",
+    "record_creation_authority": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "record_creator_task": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "effective": false
+}
