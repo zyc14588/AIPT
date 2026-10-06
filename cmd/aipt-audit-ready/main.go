@@ -1,7 +1,6 @@
-// Command aipt-audit-ready is the deliberately offline B005 audit-bundle
-// surface. It reads an explicit local request, verifies a local bare Git
-// mirror, and never fetches source, calls a model, or changes authoritative
-// run state.
+// Command aipt-audit-ready uses fixed anonymous online GitHub provenance.
+// Optional local mirrors provide consistency only; they never mint remote proof.
+// The command never calls a model or changes authoritative run/source state.
 package main
 
 import (
@@ -88,11 +87,18 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 				ContentKind: item.ContentKind, Data: data,
 			}
 		}
-		verifier := evidence.GitMirrorVerifier{
-			MirrorPath: spec.MirrorPath, ExpectedRepository: spec.ExpectedRepository, RemoteName: spec.RemoteName,
+		if spec.MirrorPath != "" {
+			raw, err := evidence.VerifyRawCapture(spec.RawCapture)
+			if err != nil {
+				return err
+			}
+			cache := evidence.GitMirrorVerifier{MirrorPath: spec.MirrorPath, ExpectedRepository: spec.ExpectedRepository, RemoteName: spec.RemoteName}
+			if _, err := cache.Verify(ctx, raw.Manifest.Source); err != nil {
+				return err
+			}
 		}
 		result, err := evidence.GenerateAuditReady(ctx, evidence.GenerateAuditReadyInput{
-			Destination: spec.Destination, RawCapture: spec.RawCapture, SourceVerifier: verifier,
+			Destination: spec.Destination, RawCapture: spec.RawCapture, ExpectedRepository: spec.ExpectedRepository,
 			Disclosure: spec.Disclosure, CoreClassifications: spec.CoreClassifications,
 			Closure: spec.Closure, DefectFamilies: spec.DefectFamilies,
 			DefectOccurrences: spec.DefectOccurrences, Report: spec.Report, Supplemental: supplemental,
@@ -106,20 +112,27 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		flags := flag.NewFlagSet("verify", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		bundle := flags.String("bundle", "", "AUDIT_READY directory")
-		mirror := flags.String("mirror", "", "local bare Git mirror")
+		mirror := flags.String("mirror", "", "optional local consistency cache")
 		repository := flags.String("repository", "", "expected repository identity")
 		remote := flags.String("remote", "origin", "mirror remote name")
-		if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 || *bundle == "" || *mirror == "" || *repository == "" {
+		if err := flags.Parse(arguments[1:]); err != nil || flags.NArg() != 0 || *bundle == "" || *repository == "" {
 			return errors.New("usage")
 		}
 		if err := evidence.ValidateAuditReadyRepositoryIdentity(*repository); err != nil {
 			return err
 		}
-		result, err := evidence.VerifyAuditReady(ctx, *bundle, evidence.GitMirrorVerifier{
-			MirrorPath: *mirror, ExpectedRepository: *repository, RemoteName: *remote,
-		})
+		result, err := evidence.VerifyAuditReady(ctx, *bundle)
 		if err != nil {
 			return err
+		}
+		if result.Manifest.Source.Repository != *repository {
+			return evidence.ErrSourceUnverified
+		}
+		if *mirror != "" {
+			cache := evidence.GitMirrorVerifier{MirrorPath: *mirror, ExpectedRepository: *repository, RemoteName: *remote}
+			if _, err := cache.Verify(ctx, result.Manifest.Source); err != nil {
+				return err
+			}
 		}
 		return writeResult(output, result)
 	default:
@@ -161,6 +174,10 @@ func writeResult(output io.Writer, result evidence.AuditReadyVerification) error
 
 func stableErrorCode(err error) string {
 	switch {
+	case errors.Is(err, evidence.ErrRemoteProvenanceUnavailable):
+		return evidence.ErrRemoteProvenanceUnavailable.Error()
+	case errors.Is(err, evidence.ErrRemoteProviderUnsupported):
+		return evidence.ErrRemoteProviderUnsupported.Error()
 	case errors.Is(err, evidence.ErrEncryptionRequired):
 		return evidence.ErrEncryptionRequired.Error()
 	case errors.Is(err, evidence.ErrDisclosureViolation):

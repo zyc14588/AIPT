@@ -69,3 +69,30 @@ func TestF2N08CredentialRepositoryNeverReachesCLIStdoutOrStderr(t *testing.T) {
 		t.Fatalf("writeResult accepted credential-bearing source: error=%v stdout=%q", err, stdout.String())
 	}
 }
+
+func TestR1StableRemoteBlockerCodesAndFixedVerifierCLI(t *testing.T) {
+	for _, test := range []struct {
+		err    error
+		wanted string
+	}{
+		{errors.Join(evidence.ErrSourceUnverified, evidence.ErrRemoteProvenanceUnavailable, errors.New("never-echo-network-detail")), "BLOCKED_REMOTE_PROVENANCE_UNAVAILABLE"},
+		{errors.Join(evidence.ErrSourceUnverified, evidence.ErrRemoteProviderUnsupported), "REMOTE_PROVENANCE_PROVIDER_UNSUPPORTED"},
+	} {
+		if got := stableErrorCode(test.err); got != test.wanted {
+			t.Fatalf("code %q != %q", got, test.wanted)
+		}
+	}
+	directory := t.TempDir()
+	stdout := &bytes.Buffer{}
+	// Mirror is optional; the public verifier itself rejects the absent bundle
+	// before any transport call. Endpoint/client/proxy injection flags do not exist.
+	err := run(context.Background(), []string{"verify", "--bundle", filepath.Join(directory, "absent"), "--repository", "https://github.com/AIPT-Synthetic/fixture"}, stdout)
+	if !errors.Is(err, evidence.ErrAuditReadyInvalid) || stdout.Len() != 0 {
+		t.Fatal("fixed independent verifier surface did not fail closed")
+	}
+	for _, flag := range []string{"--endpoint", "--proxy", "--ca-file", "--source-verifier"} {
+		if run(context.Background(), []string{"verify", flag, "fixture"}, &bytes.Buffer{}) == nil {
+			t.Fatal("CLI exposes injection option")
+		}
+	}
+}
