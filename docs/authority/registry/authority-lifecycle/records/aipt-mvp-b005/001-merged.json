@@ -1,0 +1,50 @@
+{
+  "schema": "aipt.public.authority-lifecycle-record/v1",
+  "record_id": "AIPT-MVP-B005-LIFECYCLE-001-MERGED",
+  "task_id": "AIPT-MVP-B005",
+  "semantic_artifact_identity": {
+    "task_id": "AIPT-MVP-B005",
+    "artifact_id": "AIPT-MVP-B005",
+    "artifact_path": "internal/evidence/remote_provenance.go",
+    "artifact_sha256": "6fb2c23f02f21ec18b1c4f203f5820b9fd15304f6cbced9e08552f1d7da0ee29",
+    "candidate_commit": "7a3096bc1fc15c3e1ab7ec5a53c36b6823f4ca49",
+    "candidate_tree": "da4718788216fd55cf0e0821b0a8e8d3c0ce2963",
+    "semantic_snapshot_state": "CANDIDATE_FROZEN",
+    "semantic_snapshot_accepted": false
+  },
+  "event": "MERGED",
+  "event_sequence": 1,
+  "predecessor_lifecycle_record": null,
+  "authority_basis": {
+    "model_id": "IMMUTABLE_SEMANTICS_APPEND_ONLY_LIFECYCLE_V1",
+    "authorized_by_task": "AIPT-MVP-B005",
+    "authorization_kind": "ACCEPTED_LIFECYCLE_MODEL"
+  },
+  "event_evidence": {
+    "kind": "GIT_MERGE",
+    "merge_identity": {
+      "commit": "71e1400db3cb66f2376695a12bb678d1daa2a9c3",
+      "tree": "da4718788216fd55cf0e0821b0a8e8d3c0ce2963",
+      "parents": [
+        "08f8b2ecf721759940f4e4fef862b1a4da9c1834",
+        "7a3096bc1fc15c3e1ab7ec5a53c36b6823f4ca49"
+      ]
+    }
+  },
+  "record_identity": {
+    "identity_scheme": "IMMUTABLE_GIT_BLOB_AT_ACCEPTED_COMMIT",
+    "path": "docs/authority/registry/authority-lifecycle/records/aipt-mvp-b005/001-merged.json",
+    "accepted_commit_source": "CONTAINING_GIT_COMMIT",
+    "append_only": true
+  },
+  "created_by_task": "AIPT-MVP-B005",
+  "provenance": {
+    "source_task": "AIPT-MVP-B005",
+    "source_commit": "7a3096bc1fc15c3e1ab7ec5a53c36b6823f4ca49",
+    "source_tree": "da4718788216fd55cf0e0821b0a8e8d3c0ce2963",
+    "record_creation_authority": "MERGE_AND_CLOSEOUT_AIPT_MVP_B005_R1",
+    "record_creator_task": "AIPT-MVP-B005",
+    "historical_evidence_claimed_only_if_proven": true
+  },
+  "effective": false
+}
