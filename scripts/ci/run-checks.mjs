@@ -28,12 +28,9 @@ import { run as runHarnessAdapter } from './validate/harness-adapter.mjs';
 import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
-import { run as runMvpB002 } from './validate/mvp-b002.mjs';
-import { run as runMvpB003 } from './validate/mvp-b003.mjs';
-import { run as runMvpB004 } from './validate/mvp-b004.mjs';
-import { run as runMvpB005 } from './validate/mvp-b005.mjs';
+import { runApprovedPredecessor, cleanupSnapshots } from './lib/b006-successor.mjs';
+import { run as runMvpB006 } from './validate/mvp-b006.mjs';
 import { run as runB005RemoteProvenanceAuthority } from './validate/b005-remote-provenance-authority.mjs';
-import { run as runInt001CloseoutAuthority } from './validate/int001-closeout-authority.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
 import { run as runP1B000AuthorityCloseout } from './validate/p1-b000-authority-closeout.mjs';
@@ -172,23 +169,25 @@ const checks = await Promise.all([
   runEvidence(ctx),
   runHistoricalWeb(ctx),
   runMvpB001(ctx),
-  runMvpB002(ctx),
-  runMvpB003(ctx),
-  runMvpB004(ctx),
-  runMvpB005(ctx),
+  runApprovedPredecessor(ctx, { gate: 'mvp-b002' }),
+  runApprovedPredecessor(ctx, { gate: 'mvp-b003' }),
+  runApprovedPredecessor(ctx, { gate: 'mvp-b004' }),
+  runApprovedPredecessor(ctx, { gate: 'mvp-b005' }),
+  runMvpB006(ctx),
   runB005RemoteProvenanceAuthority(ctx),
-  runInt001CloseoutAuthority(ctx),
+  runApprovedPredecessor(ctx, { gate: 'int001-closeout-authority' }),
   repairCheck,
   closeoutCheck,
 ]);
 closedGovernance.cleanup();
+cleanupSnapshots();
 
 const result = checks.every((c) => c.result === 'PASS') ? 'PASS' : 'FAIL';
 const status = JSON.parse(fs.readFileSync(
   path.join(ctx.repo, 'docs/authority/registry/project-status.json'), 'utf8',
 ));
 const standalone = status.tracks?.['AIPT-STANDALONE'];
-const note = `INT-AIPT-UNREGISTERED-MVP-001 remains immutably closed without rerun; B001-B004 semantics remain immutable; ${standalone?.current_batch ?? 'UNKNOWN'} is the sole active batch at GLOBAL_WIP ${standalone?.global_wip ?? 'UNKNOWN'} and ${standalone?.next_serial_batch ?? 'UNKNOWN'} remains ${standalone?.next_batch_state ?? 'UNKNOWN'}; ONLINE_GITHUB_REMOTE_PROVENANCE_V1 governance is closed and the current R1 implementation/lifecycle is evaluated by its own gate, and governance/public CI validation makes zero external GitHub or model/provider calls; qualification remains unexecuted`;
+const note = `INT-AIPT-UNREGISTERED-MVP-001 remains immutably closed without rerun; B001/B003/B004 semantics and original B002 snapshots remain immutable; the exact Owner-approved B002 empty-RNG clone successor is evaluated by a separate current checkout/main/history guard; ${standalone?.current_batch ?? 'UNKNOWN'} is the sole active batch at GLOBAL_WIP ${standalone?.global_wip ?? 'UNKNOWN'} and ${standalone?.next_serial_batch ?? 'UNKNOWN'} remains ${standalone?.next_batch_state ?? 'UNKNOWN'}; ONLINE_GITHUB_REMOTE_PROVENANCE_V1 governance is closed and the current R1 implementation/lifecycle is evaluated by its own gate, and governance/public CI validation makes zero external GitHub or model/provider calls; qualification remains unexecuted`;
 const report = {
   schema: 'aipt.public.int001-closeout-authority-validator-run/v1',
   task_id: 'INT-AIPT-UNREGISTERED-MVP-001-CLOSEOUT-AUTHORITY-001',

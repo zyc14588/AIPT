@@ -1,0 +1,45 @@
+{
+  "schema": "aipt.public.b006-b002-successor-repair/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B006",
+  "decision_id": "B006-B002-ZERO-RNG-REPAIR-Q001=A",
+  "state": "AUTHORIZED_PENDING_INDEPENDENT_AND_POST_MERGE_ACCEPTANCE",
+  "owner_decision": "批准最小后继修复、公开 PR 与独立复审，通过后继续（推荐）",
+  "accepted_base": {
+    "commit": "08a5aa175edae712cdaacc7a84ff94673fa13552",
+    "tree": "31bdfac01b3810f49e7099ca86e8270a4bdd65ae"
+  },
+  "finding": {
+    "id": "LOCAL-B006-B002-ZERO-RNG-REPLAY-001",
+    "original_result": "FAIL",
+    "trigger": "An accepted action with rng_requests=[] commits a proposal with rng_requests=null after its canonical digest was computed, then replay rejects the digest.",
+    "original_failure_preserved": true
+  },
+  "production_repair": {
+    "path": "internal/runcore/engine.go",
+    "accepted_sha256": "297f32b8a18ae69bd5d38c81cb0a014c2ae5918f84588b4a68ea178db3d9bfbb",
+    "successor_sha256": "3bf7974874969664b6940bc7ac1ee013f2a7a5c945382a19ace962921377f9c3",
+    "patch_sha256": "347850d9eb10142b34c8aa78aedcd71b35ea72234c3a6453bff62858f7df3115",
+    "scope": "PRESERVE_NIL_EMPTY_AND_NONEMPTY_RNG_SLICE_DURING_CLONE_ONLY"
+  },
+  "regression": {
+    "path": "internal/runcore/b006_zero_rng_replay_test.go",
+    "sha256": "f768f372b1c64faced7d237476a356fbacb64b1052669a5a5986c336ea8b06b5",
+    "nil_requests": "ACCEPT_AND_REPLAY",
+    "empty_array_requests": "ACCEPT_AND_REPLAY",
+    "historical_events_rewritten": false,
+    "replay_digest_check_weakened": false
+  },
+  "acceptance": {
+    "same_independent_read_only_codex_agent": true,
+    "public_pr": true,
+    "exact_post_merge_sha_required": true,
+    "successful_ci_jobs_required": 5,
+    "local_postgresql_18_4_race_required": true,
+    "immutable_ci_catalogue_required": true,
+    "original_b002_closeout_and_authority_preserved": true,
+    "all_other_predecessor_business_bytes_frozen": true
+  },
+  "real_model_calls": 0,
+  "qualification_runs": 0
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "aipt.public.mvp-b006-start/v1",
+  "task_id": "AIPT-MVP-B006",
+  "state": "AUTHORIZED_IN_PROGRESS",
+  "authority_basis": {
+    "kind": "OWNER_EXPLICIT_CONTINUATION_AFTER_ACCEPTED_B005",
+    "owner_instruction": "继续推进任务至M0与MVP完成，有需要决策的就停下起来问我",
+    "independent_b005_review_and_r6_continuation_authorized": true
+  },
+  "base_commit": "08a5aa175edae712cdaacc7a84ff94673fa13552",
+  "base_tree": "31bdfac01b3810f49e7099ca86e8270a4bdd65ae",
+  "predecessor": {
+    "task_id": "AIPT-MVP-B005",
+    "state": "MERGED_CLOSED",
+    "candidate_commit": "7a3096bc1fc15c3e1ab7ec5a53c36b6823f4ca49",
+    "merge_commit": "71e1400db3cb66f2376695a12bb678d1daa2a9c3",
+    "post_merge_ci_run": 37412411487,
+    "post_merge_ci_attempt": 2,
+    "successful_jobs": 5,
+    "accepted_closeout": "08a5aa175edae712cdaacc7a84ff94673fa13552"
+  },
+  "scope": [
+    "ADDITIVE_AUTHORITATIVE_RUN_CONTROL_SERVICE",
+    "OPERATIONAL_LOOPBACK_WEB_QUEUE_RUN_STATUS_TABLE_REPORTS",
+    "VERSIONED_STDIO_JSON_RPC_SAME_SERVICE",
+    "ADDITIVE_PRODUCTION_LAUNCHER_WIRING",
+    "TEST_ONLY_SYNCHRONIZED_ACP_TAIL_FIXTURE"
+  ],
+  "frozen": [
+    "B001_QUEUE_AND_MANIFEST_BUSINESS_AND_MIGRATIONS",
+    "B002_RUN_CORE_BUSINESS",
+    "B003_ORCHESTRATOR_BUSINESS",
+    "B004_MODEL_HARNESS_BUSINESS_AND_REGISTRATIONS",
+    "B005_ACCEPTED_RUNTIME_SCHEMA_MATRIX_AUTHORITY_AND_CI_LIFECYCLE_EVIDENCE",
+    "ACCEPTED_REMOTE_PROVENANCE_GOVERNANCE_ANCHORS",
+    "INT001_FIXED_PAIR_AND_GAME_CANON"
+  ],
+  "global_wip": 1,
+  "public_ci_real_model_calls": 0,
+  "new_qualification_runs_authorized": 0,
+  "B007": "NOT_STARTED",
+  "B008": "NOT_STARTED",
+  "B009": "NOT_STARTED",
+  "B010": "NOT_STARTED"
+}

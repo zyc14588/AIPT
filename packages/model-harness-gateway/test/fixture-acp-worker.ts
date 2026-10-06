@@ -29,7 +29,7 @@ function write(value: unknown): void {
   process.stdout.write(frame);
 }
 
-function emitTrailingOutput(): void {
+function emitTrailingOutput(done: () => void): void {
   const count = Number(process.env.AIPT_FIXTURE_TRAILING_NOISE_COUNT ?? '0');
   const contentBytes = Number(process.env.AIPT_FIXTURE_TRAILING_NOISE_BYTES ?? '0');
   if (Number.isSafeInteger(count) && count > 0 &&
@@ -49,8 +49,10 @@ function emitTrailingOutput(): void {
   }
   const stderrBytes = Number(process.env.AIPT_FIXTURE_TRAILING_STDERR_BYTES ?? '0');
   if (Number.isSafeInteger(stderrBytes) && stderrBytes > 0) {
-    process.stderr.write('e'.repeat(stderrBytes));
+    process.stderr.write('e'.repeat(stderrBytes), done);
+    return;
   }
+  done();
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -194,8 +196,11 @@ lines.on('line', (line) => {
         update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: response } },
       },
     });
+    // Hold the terminal frame until trailing stderr is actually flushed.
+    // The parent may retire this fixture as soon as it receives that frame.
+    process.stdout.cork();
     write({ jsonrpc: '2.0', id: frame.id, result: { stopReason: 'end_turn' } });
-    emitTrailingOutput();
+    emitTrailingOutput(() => process.stdout.uncork());
     prompts.delete(sessionId);
     return;
   }
