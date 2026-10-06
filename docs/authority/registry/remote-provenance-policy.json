@@ -1,0 +1,219 @@
+{
+  "schema": "aipt.remote-provenance-policy/v1",
+  "version": "1.0.0",
+  "policy_id": "ONLINE_GITHUB_REMOTE_PROVENANCE_V1",
+  "authority": {
+    "task_id": "AIPT-MVP-B005-REMOTE-PROVENANCE-AUTHORITY-001",
+    "parent_batch": "AIPT-MVP-B005",
+    "owner_decision": "B005-PROV-Q001=A",
+    "authority_gap": "REMOTE_PROVENANCE_VERIFICATION_UNDERSPECIFIED",
+    "candidate_state": "PRIVATE_GOVERNANCE_CANDIDATE_FROZEN",
+    "implementation_state": "AUTHORITY_DEFINED_IMPLEMENTATION_PENDING_R1",
+    "operational_refinement_of": [
+      "R9-Q004",
+      "R10-Q005"
+    ],
+    "preserved_decisions": [
+      "R0-Q004",
+      "R0-Q012",
+      "R9-Q004",
+      "R10-Q005",
+      "R11-Q003",
+      "R11-Q004"
+    ],
+    "remote_commit_authority_weakened": false
+  },
+  "blocked_b005_merge": {
+    "commit": "c07e1aae94f681733ad73c1800423248bcc72376",
+    "tree": "828defa8ea85a757b43d1a04ce05016ebeea9020",
+    "ci_run": 33767358596,
+    "ci_conclusion": "success",
+    "post_merge_security": "FAIL",
+    "lifecycle_records_created": false,
+    "accepted_as_final_merge": false
+  },
+  "supported_provider": "GITHUB_PUBLIC_HTTPS_API_V1",
+  "supported_repository_class": "PUBLIC_GITHUB_REPOSITORY",
+  "repository_identity": {
+    "canonical_origin": "https://github.com",
+    "accepted_forms": [
+      "https://github.com/<owner>/<repo>",
+      "https://github.com/<owner>/<repo>.git"
+    ],
+    "parsed_identity": "EXACT_OWNER_AND_REPO",
+    "forbidden_components": [
+      "USERINFO",
+      "PASSWORD",
+      "TOKEN",
+      "QUERY",
+      "FRAGMENT",
+      "CONTROL_CHARACTER",
+      "NON_HTTPS_SCHEME",
+      "NON_GITHUB_COM_HOST",
+      "EXTRA_PATH_SEGMENT"
+    ],
+    "invalid_identity_policy": "FAIL_CLOSED"
+  },
+  "verification_mode": "ONLINE_AUTHORITATIVE_EXACT_COMMIT_AND_TREE_ON_GENERATE_AND_INDEPENDENT_VERIFY",
+  "remote_verification": {
+    "api_scheme": "HTTPS_ONLY",
+    "api_host": "api.github.com",
+    "method": "GET",
+    "path_template": "/repos/{owner}/{repo}/git/commits/{commit}",
+    "endpoint_source": "BUILT_IN_FIXED",
+    "caller_configurable_endpoint": false,
+    "caller_configurable_base_url": false,
+    "caller_configurable_proxy_endpoint": false,
+    "branch_lookup": "FORBIDDEN",
+    "tag_lookup": "FORBIDDEN",
+    "local_mirror_lookup_as_remote_proof": "FORBIDDEN",
+    "exact_commit_sha_required": true,
+    "exact_tree_sha_required": true,
+    "successful_response_policy": "EXACT_OBJECT_SUCCESS_ONLY",
+    "tls_policy": "STANDARD_VALIDATED_TLS",
+    "user_controlled_ca": "FORBIDDEN",
+    "environment_http_proxy": "FORBIDDEN",
+    "timeout_policy": "BOUNDED_CONNECTION_AND_READ",
+    "response_body_policy": "BOUNDED",
+    "json_decoding_policy": "BOUNDED"
+  },
+  "authentication_mode": "NO_CREDENTIAL",
+  "redirect_policy": "FAIL_CLOSED_NO_FOLLOW",
+  "reserved_claim": {
+    "value": "VERIFIED_IMMUTABLE_REMOTE_COMMIT",
+    "classification": "RESERVED_PROVENANCE_CLAIM",
+    "minting_authority": "BUILT_IN_AUTHORITY_APPROVED_GITHUB_PUBLIC_HTTPS_API_V1_PRODUCTION_VERIFIER_ONLY",
+    "production_caller_injected_verifier": "FORBIDDEN",
+    "test_seam": "UNEXPORTED_PACKAGE_INTERNAL_ONLY"
+  },
+  "local_mirror_role": {
+    "role": "SOURCE_CONTENT_CACHE_AND_LOCAL_OBJECT_CONSISTENCY_CHECK",
+    "maximum_claim": "LOCAL_OBJECT_MATCH",
+    "remote_provenance_authority": false,
+    "origin_url_equality_is_remote_proof": false,
+    "object_presence_is_remote_proof": false,
+    "uid_ownership_is_remote_proof": false,
+    "fallback_on_remote_failure": "FORBIDDEN"
+  },
+  "failure_policy": {
+    "default": "FAIL_CLOSED",
+    "remote_unavailable": "BLOCKED_REMOTE_PROVENANCE_UNAVAILABLE",
+    "unsupported_provider": "REMOTE_PROVENANCE_PROVIDER_UNSUPPORTED",
+    "mirror_fallback": "FORBIDDEN",
+    "fail_closed_conditions": [
+      "DNS_FAILURE",
+      "TLS_FAILURE",
+      "TIMEOUT",
+      "HTTP_403",
+      "HTTP_404",
+      "HTTP_429",
+      "HTTP_5XX",
+      "OVERSIZED_RESPONSE",
+      "MALFORMED_RESPONSE",
+      "COMMIT_MISMATCH",
+      "TREE_MISMATCH",
+      "REDIRECT"
+    ]
+  },
+  "receipt_contract": {
+    "schema": "aipt.remote-provenance/v1",
+    "version": "1.0.0",
+    "required_fields": [
+      "schema",
+      "version",
+      "policy_id",
+      "provider",
+      "repository",
+      "commit",
+      "tree",
+      "status"
+    ],
+    "additional_properties": false,
+    "policy_id": "ONLINE_GITHUB_REMOTE_PROVENANCE_V1",
+    "provider": "GITHUB_PUBLIC_HTTPS_API_V1",
+    "status": "VERIFIED_IMMUTABLE_REMOTE_COMMIT",
+    "repository_field": "CANONICAL_HTTPS_GITHUB_REPOSITORY",
+    "canonical_bytes": "DETERMINISTIC_CANONICAL_JSON_PLUS_LF",
+    "same_fact_tuple_same_bytes": true,
+    "forbidden_fields": [
+      "verification_timestamp",
+      "http_headers",
+      "github_request_id",
+      "etag",
+      "rate_limit_state",
+      "ip",
+      "hostname",
+      "local_path",
+      "credential",
+      "github_response_body",
+      "temporary_endpoint"
+    ]
+  },
+  "audit_ready_binding": {
+    "generation_remote_verification": "REQUIRED_FRESH_ONLINE",
+    "independent_verification_remote_verification": "REQUIRED_FRESH_ONLINE",
+    "cached_claim_only": "FORBIDDEN",
+    "receipt_binding": "REQUIRED_IN_DETERMINISTIC_BUNDLE_AND_ROOT",
+    "manifest_remote_verification_consistency": "REQUIRED",
+    "legacy_raw_capture_v1_changed": false
+  },
+  "private_repo_support": "NOT_SUPPORTED_BY_THIS_MVP_POLICY",
+  "non_github_support": "NOT_SUPPORTED_BY_THIS_MVP_POLICY",
+  "ci_testing": {
+    "external_github_requests": 0,
+    "model_provider_requests": 0,
+    "remote_test_transport": "UNEXPORTED_FAKE_TRANSPORT_OR_LOOPBACK_SYNTHETIC_ENDPOINT",
+    "production_endpoint_modifiable_by_caller": false
+  },
+  "required_r1_security_probes": [
+    "P01",
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P08",
+    "P09",
+    "P10",
+    "P11",
+    "P12"
+  ],
+  "finding_disposition": {
+    "open_r1_findings": [
+      {
+        "id": "csf_a1972a15d20bffccad42fbdb",
+        "severity": "HIGH",
+        "state": "OPEN_REQUIRES_R1"
+      },
+      {
+        "id": "csf_4c0f54541fae325dd26494b0",
+        "severity": "MEDIUM",
+        "state": "OPEN_REQUIRES_R1"
+      },
+      {
+        "id": "csf_b28e7fb44b3e754d93704fa2",
+        "severity": "MEDIUM",
+        "state": "OPEN_REQUIRES_R1"
+      }
+    ],
+    "fixed_findings_preserved": [
+      "csf_79ae442f21f33ad95cc698f3",
+      "csf_2e89d096e9e5fc0fb26494b0",
+      "csf_1b9288ef93ab4e203b070db6"
+    ],
+    "authority_marks_open_findings_fixed": false
+  },
+  "scope": {
+    "governance_only": true,
+    "runtime_implementation_change": "FORBIDDEN",
+    "int001_validator_change": "FORBIDDEN",
+    "b005_r1_recovery_started": false,
+    "parent_batch_state": "IN_PROGRESS",
+    "global_wip": 1,
+    "next_batch": "AIPT-MVP-B006",
+    "next_batch_state": "NOT_STARTED_NOT_AUTHORIZED",
+    "public_disclosure": "REAUTHORIZATION_REQUIRED",
+    "publicly_pushed": false
+  }
+}
