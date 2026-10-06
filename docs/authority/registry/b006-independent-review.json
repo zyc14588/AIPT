@@ -1,0 +1,21 @@
+{
+  "schema": "aipt.public.independent-security-review/v1",
+  "task_id": "AIPT-MVP-B006",
+  "source": "LOCAL_INDEPENDENT_CODEX_AGENT",
+  "agent": "b005_independent_security_review",
+  "access": "READ_ONLY",
+  "candidate_commit": "6e04f9f86ff10af05e61f3be60880a96b09d7295",
+  "candidate_tree": "65dfcf8e5d21fd4dcf6ff1c1b10d0b28e23d6237",
+  "result": "PASS",
+  "open_findings": [],
+  "closed_findings": [
+    "LOCAL-B006-B002-ZERO-RNG-REPLAY-001",
+    "LOCAL-B006-CONFIG-SELF-DEPENDENCY-001",
+    "LOCAL-B006-WORKER-CANCELLED-COMPLETION-001",
+    "LOCAL-B006-SUCCESSOR-EXCEPTION-HISTORY-001",
+    "LOCAL-B006-LIFECYCLE-CI-BYTE-BINDING-001",
+    "LOCAL-B006-PREDECESSOR-STATUS-HISTORY-001"
+  ],
+  "independent_probe_count": 24,
+  "report_sha256": "ebf4a4f43e677c3c8a52194dfd13406965039e9ee9153644b4067622bf9daefb"
+}

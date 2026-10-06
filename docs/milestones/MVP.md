@@ -1,5 +1,10 @@
 # 里程碑 MVP（MILESTONE MVP）
 
+2026-10-06 最新关闭状态：`AIPT-MVP-B006` 已具备精确 Candidate `6e04f9f86ff10af05e61f3be60880a96b09d7295` / tree `65dfcf8e5d21fd4dcf6ff1c1b10d0b28e23d6237`、合法 merge `11653c8fa8cf42a15b481e29b33df68eeef10c7a`、候选 CI `37420245124` 及合并 CI `37420903891`（attempt 1）全部 5/5 success、同一独立只读 Codex 审查 PASS（24 probes，六项 finding 全部 VERIFIED_FIXED）与真实 PostgreSQL 18.4 39 项 race 集成 PASS。治理-only direct closeout 以独立不可变 CI catalogue、review 和 canonical append-only lifecycle records 生效。B006=MERGED_CLOSED，GLOBAL_WIP=0，下一批 B007 尚未开始；M0=9/9（100%），MVP=9/13（69.2%），总体=18/22（81.8%）。B006 新增真实模型/桌测/qualification=0，qualification=0/8，runtime_ready=false，MVP Development Pass 仍未授予；首个阻塞为 B007 实际驱动和非资格真实诊断 pilot。
+
+> 以下较早的状态、失败审查和授权说明作为历史快照保留；当前机器状态以 `registry/project-status.json` 和上述不可变关闭依据为准。
+
+
 2026-10-06 最新状态：Owner 另行批准 `B006-PREDECESSOR-GATES-SUCCESSOR-Q001=A`，将 B005/INT001 门禁按固定已验收版本完整重放，并严格核验当前工作树、main 及每个历史状态投影；原验证代码、历史测试及关闭依据不改写。已登记独立授权 `registry/b006-predecessor-gates-successor.json`。B006 本地审查发现的配置、自停止完成、例外历史、CI 字节绑定和前序状态历史缺口均已修复，仍待同一只读代理对最终精确候选复审、公开 PR 与精确 CI 验收。M0=100%，MVP=8/13（61.5%），总体=17/22（77.3%）；真实模型和 qualification=0，runtime_ready=false。
 
 
