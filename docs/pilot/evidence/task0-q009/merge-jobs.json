@@ -1,0 +1,36 @@
+{
+  "schema": "aipt.public.b007-local-online-ci-job-control/v1",
+  "local_online_observation": true,
+  "observed_at_utc": "2026-10-07T21:04:52.107562+00:00",
+  "private_raw_return": {
+    "bytes": 5296,
+    "sha256": "ff728ba03380d5a1b3e1fada35ad65fa82f3004d9facd2ea9d1b7ad50d1f1c18"
+  },
+  "total_count": 2,
+  "jobs": [
+    {
+      "id": 113016383856,
+      "run_id": 37686735678,
+      "run_attempt": 1,
+      "head_sha": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+      "head_branch": "main",
+      "workflow_name": "AIPT Content Gate",
+      "name": "aipt-content-gate",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/zyc14588/UNREGISTERED/actions/runs/37686735678/job/113016383856"
+    },
+    {
+      "id": 113016383205,
+      "run_id": 37686735678,
+      "run_attempt": 1,
+      "head_sha": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+      "head_branch": "main",
+      "workflow_name": "AIPT Content Gate",
+      "name": "task0-prototype-check",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/zyc14588/UNREGISTERED/actions/runs/37686735678/job/113016383205"
+    }
+  ]
+}

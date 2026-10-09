@@ -2,7 +2,7 @@
   "name": "aipt",
   "version": "0.0.0",
   "private": true,
-  "description": "AIPT deterministic AI-seated TRPG table testing system. M0 and B001-B005 are closed; B006 adds shared PostgreSQL-authoritative Web/stdio controls and an explicitly Owner-approved B002 empty-RNG replay successor, pending independent and post-merge acceptance.",
+  "description": "AIPT deterministic AI-seated TRPG table testing system. M0 and B001-B006 are closed; B007 is the sole authorized diagnostic pilot, with strict USD5/attempt/token/time caps; qualification remains unexecuted.",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
@@ -20,12 +20,12 @@
     "check:m0-development-pass": "node scripts/ci/validate/historical-governance.mjs --gate m0-development-pass",
     "check:mvp-bootstrap": "node scripts/ci/validate/historical-governance.mjs --gate mvp-bootstrap",
     "check:mvp-b001": "node scripts/ci/validate/mvp-b001-regression.mjs",
-    "check:mvp-b002": "node scripts/ci/validate/b006-approved-predecessors.mjs --gate mvp-b002",
-    "check:mvp-b003": "node scripts/ci/validate/b006-approved-predecessors.mjs --gate mvp-b003",
-    "check:mvp-b004": "node scripts/ci/validate/b006-approved-predecessors.mjs --gate mvp-b004",
-    "check:mvp-b005": "node scripts/ci/validate/b006-approved-predecessors.mjs --gate mvp-b005",
+    "check:mvp-b002": "node scripts/ci/validate/b007-approved-predecessors.mjs --gate mvp-b002",
+    "check:mvp-b003": "node scripts/ci/validate/b007-approved-predecessors.mjs --gate mvp-b003",
+    "check:mvp-b004": "node scripts/ci/validate/b007-approved-predecessors.mjs --gate mvp-b004",
+    "check:mvp-b005": "node scripts/ci/validate/b007-approved-predecessors.mjs --gate mvp-b005",
     "check:b005-remote-provenance-authority": "node scripts/ci/validate/b005-remote-provenance-authority.mjs",
-    "check:int001-closeout-authority": "node scripts/ci/validate/b006-approved-predecessors.mjs --gate int001-closeout-authority",
+    "check:int001-closeout-authority": "node scripts/ci/validate/b007-approved-predecessors.mjs --gate int001-closeout-authority",
     "check:p1-b000-authority": "node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority",
     "check:p1-b000-authority-amendment": "node scripts/ci/validate/historical-governance.mjs --gate p1-b000-authority-amendment",
     "check:p1-b000-authority-amendment-002": "node scripts/ci/validate/p1-b000-authority-amendment-002.mjs",
@@ -55,9 +55,12 @@
     "sbom": "node scripts/ci/sbom/generate-sbom.mjs",
     "provenance": "node scripts/ci/provenance.mjs",
     "test:b005-r1-lifecycle": "node --test scripts/ci/test/b005-r1-lifecycle.test.mjs",
-    "check:mvp-b006": "node scripts/ci/validate/mvp-b006.mjs",
+    "check:mvp-b006": "node scripts/ci/validate/b007-approved-predecessors.mjs --gate mvp-b006",
     "test:b006-lifecycle": "node --test scripts/ci/test/b006-lifecycle.test.mjs",
     "test:run-control": "go test ./internal/runcontrol ./internal/web ./internal/operational ./cmd/aipt-control -count=1",
-    "check:operational-ui-artifact": "node packages/web-ui/scripts/build-control.mjs --check"
+    "check:operational-ui-artifact": "node packages/web-ui/scripts/build-control.mjs --check",
+    "check:mvp-b007": "node scripts/ci/validate/mvp-b007.mjs",
+    "test:b007-lifecycle": "node --test scripts/ci/test/b007-lifecycle.test.mjs",
+    "test:pilot": "go test ./internal/pilot -count=1"
   }
 }

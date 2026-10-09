@@ -1,0 +1,146 @@
+{
+  "schema": "aipt.public.b007-budget-preflight/v1",
+  "task_id": "AIPT-MVP-B007",
+  "as_of": "2026-10-06",
+  "authority_decision": "B007-PREDECESSOR-GATES-AND-DIAGNOSTIC-PILOT-Q001=A",
+  "state": "Q002_SCOPED_INDEPENDENT_PASS_Q003_OWNER_APPROVED_SOURCE_PROJECTION_AND_DRIVER_PENDING",
+  "frozen_harness_source": "141eb6fef83422698aef7a981029e843e8161534",
+  "finding": {
+    "id": "LOCAL-B007-HTTP-ATTEMPT-BOUND-001",
+    "basis": "FIXED_SOURCE_OFFLINE_SYNTHETIC_FETCH_REPRODUCTION",
+    "one_followup_observed_fetch_attempts": 33,
+    "retry_max": 0,
+    "upstream_max_tokens": 1024,
+    "thinking": "disabled",
+    "real_network_requests": 0
+  },
+  "remediation_proposal": {
+    "decision_id": "B007-WIRE-BUDGET-CLOSURE-SUCCESSOR-Q002=A",
+    "state": "OWNER_AUTHORIZED_EXACT_SOURCE_BUILT_NOT_PAID_CERTIFIED",
+    "new_source_sha256": "1dedde689c31337dc0a29102239a828a9873003f80945d5c456eef5614d8512f",
+    "patch_sha256": "1430c0a2cd7f9ccc6aee6e542656c1866d05365e65b7883e649f0dfdcbbf7043",
+    "preserve_b004_closure_and_certifications": true,
+    "new_closure_has_distinct_identity_and_needs_exact_independent_certification": true,
+    "per_process_actual_fetch_cap": 1,
+    "automatic_redirects_allowed": false,
+    "complete_raw_input_byte_bound": 8192,
+    "raw_byte_bound_is_provider_tokenizer_proof": false,
+    "authority_path": "docs/pilot/authorities/wire-budget-closure-successor.json",
+    "authority_sha256": "214d271c85245bac4f009e524e841f59411291d1ea6c09cc068066b131f6ca7b",
+    "new_bundle_sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70"
+  },
+  "local_checks": {
+    "actual_git_guard": {
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Q001_AND_Q002_IMMUTABLE_AUTHORITY_SOURCE_CURRENT_WORKTREE_AND_ALL_ACCEPTED_HISTORY"
+    },
+    "durable_budget_race": {
+      "top_level_tests": 16,
+      "subtests": 8,
+      "all_passed": true,
+      "postgres_version": "18.4",
+      "postgres_top_level_tests": 7,
+      "scope": "SYNTHETIC_NON_CANON_ISOLATED_DATABASES_AND_FILESYSTEM_NO_MODEL_CALLS",
+      "independent_acceptance": "PASS_IN_REVIEWED_Q002_SCOPE"
+    },
+    "predecessor_gates": {
+      "base": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+      "pass": [
+        "mvp-b002",
+        "mvp-b003",
+        "mvp-b004",
+        "mvp-b005",
+        "mvp-b006",
+        "int001-closeout-authority"
+      ]
+    },
+    "go_vet": "PASS",
+    "q002_frozen_b004_replay": {
+      "base": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+      "result": "PASS",
+      "real_model_calls": 0,
+      "application_github_requests": 0
+    },
+    "exact_closure_reproducibility": {
+      "result": "PASS",
+      "sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70",
+      "bytes": 591429
+    },
+    "publication_hygiene": {
+      "result": "PASS",
+      "files": 22
+    }
+  },
+  "preserved_local_failure": "DURABLE_RESERVATION_ORIGINAL_TWO_FILE_LOSS_AND_DIRECTORY_REPLACEMENT_RESET_FAIL_PRESERVED_REPAIRED_LOCALLY",
+  "paid_execution_remaining_requirements": [
+    "EXACT_NEW_BUNDLE_INDEPENDENT_WIRE_GATE_AND_ROLE_CONTROLLED_CERTIFICATIONS",
+    "FIXED_COMPOSITION_COMPLETE_INPUT_PROOF_ACCEPTANCE_WITH_UNICODE_DOMAIN_BINDING",
+    "LOCAL_GGUF_COMPLETE_INPUT_TOKEN_PROOF",
+    "FRESH_OFFICIAL_PRICE_AT_ACTUAL_ENROLLMENT_AND_DURABLE_GLOBAL_WORST_CASE_RESERVATIONS",
+    "PRODUCTION_UNIQUE_DIAGNOSTIC_CLAIM_PRIVATE_DATABASE_AND_HELD_ROOT_BINDING",
+    "Q003_AUTHORIZED_ACTUAL_TASK0_DRIVER_VISIBILITY_AND_COMPLETION_BINDINGS"
+  ],
+  "scope_limits": {
+    "offline_probe_is_production_certification": false,
+    "real_model_calls": 0,
+    "diagnostic_runs_executed": 0,
+    "qualification_runs_executed": 0,
+    "qualification_runs_authorized": 0,
+    "runtime_ready": false,
+    "budget_usd": "5.00",
+    "budget_increase_requested": false,
+    "remote_attempt_ceiling": 32
+  },
+  "public_ci_application_github_requests": 0,
+  "public_ci_real_model_calls": 0,
+  "historical_preflight": {
+    "source": "LOCAL_INDEPENDENT_READ_ONLY_CODEX_AGENT",
+    "agent": "b005_independent_security_review",
+    "result": "FAIL",
+    "paid_call_readiness": "BLOCKED",
+    "active_probe_count": 29,
+    "report_sha256": "85ab152555b38f65aa7a2b64bfc0ad56e6a3c110ca8aa82dedcf74114ba3da08",
+    "candidate_acceptance": false,
+    "proposal_support": "SCOPED_V2_OFFLINE_RESULTS_SUPPORT_NEW_IDENTITY_OWNER_DECISION"
+  },
+  "input_price_preflight": {
+    "source": "LOCAL_INDEPENDENT_READ_ONLY_CODEX_AGENT",
+    "report_sha256": "840074a4ff5cc07da3f9577c17463c434d26849311340b18d616b61611e22ae3",
+    "published_full_input_proof_sha256": "8018c438e808e7d350114b3df887bab247d35004410ff1551bf5d3d52ccdd097",
+    "official_price_receipt_sha256": "56e8ad396629d829757a5681229b2ab9dfca9da7ee0b124594b1421181191309",
+    "offline_unique_scenarios": 3344,
+    "paid_callable": "NOT_VERIFIED",
+    "literal_lone_surrogate_gate_domain": "NOT_CLOSED_GENERAL_GATE_FIXED_FORMATTER_ESCAPES_NON_WELL_FORMED_VALUES",
+    "local_gguf_token_proof": "NOT_CLOSED"
+  },
+  "q002_scoped_independent_review": {
+    "schema": "aipt.public.b007-independent-q002-scoped-review/v1",
+    "task_id": "AIPT-MVP-B007",
+    "reviewer": "OWNER_AUTHORIZED_LOCAL_INDEPENDENT_READ_ONLY_CODEX_AGENT",
+    "agent": "b005_independent_security_review",
+    "report_sha256": "12ca994649e7d54bd6839a706f57c7def776513095356b1e416ac38b5786b478",
+    "result": "PASS_IN_REVIEWED_Q002_SCOPE",
+    "exact_bundle_sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70",
+    "probe_count": 16,
+    "scopes": [
+      "NINE_HELD_EXACT_BUNDLE_OFFLINE_ACP_PROBES",
+      "SEVEN_ISOLATED_POSTGRESQL_GLOBAL_BUDGET_PROBES"
+    ],
+    "preserved_initial_node_client_startup_probe": "FAIL_CLEAN_EARLY_EXIT_DIAGNOSIS_UNCONFIRMED_EXACT_UNMODIFIED_BUNDLE_PYTHON_ACP_PROBES_PASS",
+    "production_node_go_worker_integration": "NOT_VERIFIED",
+    "actual_task0_driver": "NOT_VERIFIED",
+    "local_full_input_token_accounting": "NOT_VERIFIED",
+    "paid_callable": false,
+    "candidate_acceptance": false,
+    "batch_closeout": false,
+    "real_model_calls": 0
+  },
+  "q003_authority": {
+    "decision_id": "B007-TASK0-SUPPLEMENTAL-INPUT-ANNEX-Q003=A",
+    "path": "docs/pilot/authorities/task0-supplemental-input-annex.json",
+    "sha256": "ee801db456897f11429238c3ffdbc08cca2a7d40009ea3ad1adee658eafc63e5",
+    "annex_sha256": "5f4ecf19c84a384245071c3f23f491a8c1fe4c8dcae0326a7123a3d6000566f5"
+  }
+}
