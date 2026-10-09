@@ -1,0 +1,36 @@
+{
+  "schema": "aipt.public.b007-local-online-ci-job-control/v1",
+  "local_online_observation": true,
+  "observed_at_utc": "2026-10-07T21:02:44.522199+00:00",
+  "private_raw_return": {
+    "bytes": 5386,
+    "sha256": "88ee9ca3ed27c70f23ded1ed325ed87ae10c5ebed3deec7d750773c6233b6233"
+  },
+  "total_count": 2,
+  "jobs": [
+    {
+      "id": 113015191958,
+      "run_id": 37686394237,
+      "run_attempt": 1,
+      "head_sha": "76e79aa7536b42406f1cb77baa5844073b5d7fe7",
+      "head_branch": "codex/unregistered-task0-retry-catastrophe-repair",
+      "workflow_name": "AIPT Content Gate",
+      "name": "aipt-content-gate",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/zyc14588/UNREGISTERED/actions/runs/37686394237/job/113015191958"
+    },
+    {
+      "id": 113015192465,
+      "run_id": 37686394237,
+      "run_attempt": 1,
+      "head_sha": "76e79aa7536b42406f1cb77baa5844073b5d7fe7",
+      "head_branch": "codex/unregistered-task0-retry-catastrophe-repair",
+      "workflow_name": "AIPT Content Gate",
+      "name": "task0-prototype-check",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/zyc14588/UNREGISTERED/actions/runs/37686394237/job/113015192465"
+    }
+  ]
+}

@@ -28,8 +28,8 @@ import { run as runHarnessAdapter } from './validate/harness-adapter.mjs';
 import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
-import { runApprovedPredecessor, cleanupSnapshots } from './lib/b006-successor.mjs';
-import { run as runMvpB006 } from './validate/mvp-b006.mjs';
+import { runApprovedPredecessor, cleanupSnapshots } from './lib/b007-successor.mjs';
+import { run as runMvpB007 } from './validate/mvp-b007.mjs';
 import { run as runB005RemoteProvenanceAuthority } from './validate/b005-remote-provenance-authority.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
@@ -173,7 +173,8 @@ const checks = await Promise.all([
   runApprovedPredecessor(ctx, { gate: 'mvp-b003' }),
   runApprovedPredecessor(ctx, { gate: 'mvp-b004' }),
   runApprovedPredecessor(ctx, { gate: 'mvp-b005' }),
-  runMvpB006(ctx),
+  runApprovedPredecessor(ctx, { gate: 'mvp-b006' }),
+  runMvpB007(ctx),
   runB005RemoteProvenanceAuthority(ctx),
   runApprovedPredecessor(ctx, { gate: 'int001-closeout-authority' }),
   repairCheck,

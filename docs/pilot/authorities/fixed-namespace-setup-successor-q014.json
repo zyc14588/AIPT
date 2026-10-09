@@ -1,0 +1,118 @@
+{
+  "schema": "aipt.public.b007-cap0-preparation-fixed-namespace-setup-successor-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q014",
+  "task_id": "AIPT-MVP-B007",
+  "state": "OWNER_AUTHORIZED_PENDING_FIRST_FEASIBILITY_IMPLEMENTATION_AND_ACCEPTANCE",
+  "policy_version": "B007_CAP0_PREP_FIXED_SETUP_NAMESPACE_SUCCESSOR_V1",
+  "retained_q013_authority_sha256": "7227316d4d2a4efcbf61d957853cd5fb73c66757df765d08de1cf8dd2a497425",
+  "retained_q012_authority_sha256": "f0d82ca89af129aec85bbcb1a00282516dd060308b209e21f4af2434be9c74cf",
+  "retained_q011_authority_sha256": "57edcd5470a8be49f5089040df4165243a1de6e893299cf510241529c61e878d",
+  "retained_source_verifier_sha256": "6fb2c23f02f21ec18b1c4f203f5820b9fd15304f6cbced9e08552f1d7da0ee29",
+  "blocked_path": {
+    "original_untraced_q013_results": "0PASS_3FAIL_PRESERVED",
+    "byte_identical_instrumented_005_static_binary_sha256": "d94148249cbbd49bcb2198c5ffd68ca62926564d97c3cc48b725d4d3608195a6",
+    "instrumented_receipt_sha256": "8e3b4f2b7bcfe26791f55934efb692c1d719bc2bccaf56a09d4bc9776ee6f9d7",
+    "trace_sha256": "42dcdc7f26d81912b8644f5bc15e9b0a6a59295f6560a875eaf29d6e01118a00",
+    "clone_succeeded": true,
+    "nested_uid_map_write": "0 0 1",
+    "observed_errno": "EPERM",
+    "canonical_q013_full_feasibility_accepted": false
+  },
+  "bounded_exception": {
+    "new_trusted_role": "EXACT_OWNER_BOUND_STATIC_SETUP_IN_OWN_SEPARATE_USER_PID_MNT_NAMESPACES",
+    "creation": "PREP_CREATES_AND_ADMITS_ONE_OWNED_SETUP_BEFORE_IRREVERSIBLE_PREP_CAP0_CONVERGENCE_AND_BEFORE_ANY_EVIDENCE_VERIFIER_OR_MODEL_CALL",
+    "active_PREP": "ALL_EXISTING_AND_FUTURE_THREADS_CAPINH_CAPPRM_CAPEFF_CAPBND_CAPAMB_ZERO_NO_NEW_PRIVS_ONE_UNCHANGED",
+    "active_SETUP": {
+      "cap_eff_prm_bnd": "CAP_SETFCAP_ONLY_BIT31",
+      "cap_inh_amb": "ZERO",
+      "no_new_privs": 1,
+      "locked_securebits_and_no_other_capability_restoration": true,
+      "capability_domain": "SETUP_OWN_USER_NAMESPACE_ONLY_NOT_PREP_OR_HOST"
+    },
+    "SETUP_purpose": [
+      "CREATE_EXACT_EXISTING_OWNER_BOUND_GAME_REMOTE_LOCAL_EXECUTION_CHILDREN",
+      "WRITE_ONLY_FIXED_SINGLE_UID_GID_MAPPING_WITH_DENIED_SETGROUPS",
+      "TERMINATE_AND_WAIT_ONLY_DIRECTLY_OWNED_CHILDREN"
+    ],
+    "role_allowlist": [
+      "GAME",
+      "GM",
+      "PLAYER_1",
+      "PLAYER_2",
+      "PLAYER_3",
+      "PLAYER_4",
+      "LOCAL"
+    ],
+    "maximum_role_child_creations": 34,
+    "maximum_role_child_creations_derivation": "GAME_1_PLUS_EXISTING_REMOTE_ATTEMPTS_AT_MOST_32_PLUS_LOCAL_1",
+    "no_additional_model_attempt_budget": true,
+    "no_role_namespace_mapping_executable_argv_environment_or_path_selection_outside_existing_frozen_binding": true,
+    "SETUP_application_network_model_source_verifier_or_evidence_report_calls": 0,
+    "CA_source_snapshot_original_and_control_fds_not_inherited_by_SETUP_or_execution_children": true,
+    "PREP_CA_mounts_and_original_source_contracts_unchanged": true,
+    "generic_followon_permission": false
+  },
+  "implementation_scope": [
+    "NEW_B007_PARENT_PREP_BINDING_AND_FIXED_SETUP_ADMISSION",
+    "NEW_B007_OWNED_EXECUTION_DELEGATION_AND_JOIN_ADAPTER_ONLY",
+    "CORRESPONDING_B007_NEGATIVE_RACE_LIFETIME_AND_PRIVILEGE_TESTS",
+    "SEPARATE_Q014_AUTHORITY_AND_ALLOWED_CONTROL_METADATA"
+  ],
+  "frozen_scope": [
+    "OLD_B005_B006_BUSINESS_AND_VALIDATION_BYTES",
+    "Q011_Q012_Q013_AUTHORITY_BYTES_AND_ALL_ORIGINAL_FAILURE_HISTORY",
+    "ORIGINAL_FIXED_SOURCE_HTTPS_TLS_NO_PROXY_NO_CACHE_VERIFIER_BYTES",
+    "ACCEPTED_UNREGISTERED45_SOURCE_RULES_PARAMETERS_MODEL_TEMPLATES_AND_SAMPLING",
+    "EXISTING_RUNTIME_PROFILES_BUDGET_AND_ONE_NON_QUAL_DIAG_ONLY"
+  ],
+  "lifetime": "JOIN_ALL_SETUP_OWNED_CHILDREN_THEN_JOIN_SETUP_THEN_PREP_EXIT_AND_OUTSIDE_PARENT_JOIN_THEN_CLOSE_CA_INPUTS_AND_CLEAN_OWNED_EMPTY_DIRECTORIES_NO_CAPABILITY_RESTORATION",
+  "first_feasibility": [
+    "OWNED_CLOSED_NETWORK_NO_MODEL_NO_DATABASE_ONLY",
+    "EXACT_SEALED_STATIC_SETUP_AND_FRESH_OWNER_PIDFD_UIDMAP_NAMESPACE_NONCE_GENERATION_BINDING",
+    "ALL_CURRENT_AND_ACTUAL_FUTURE_PREP_THREADS_CAP0_NNP1",
+    "ALL_CURRENT_AND_ACTUAL_FUTURE_SETUP_THREADS_EXACT_CAP_SETFCAP_ONLY_NNP1_NO_RESTORATION",
+    "FIXED_ROOT_UID_MAP_CREATE_CHILD_EXEC_AND_DIRECT_WAIT_JOIN",
+    "WRONG_OR_REPLAYED_ROLE_BINDING_NONCE_GENERATION_EXE_FD_PIDFD_SOURCE_AND_ROLE_BUDGET_REJECTED",
+    "NO_CA_CONTROL_OR_OTHER_ROLE_DESCRIPTOR_LEAK",
+    "SETUP_AND_DESCENDANT_CANNOT_MUTATE_OR_REMOUNT_PREP_CA_FIXED_TARGET_OR_FILESYSTEM",
+    "DEADLINE_PARTIAL_FAILURE_STOP_AND_ALL_OWNED_CHILDREN_JOIN_WITH_RAW_RESULTS_PRESERVED"
+  ],
+  "first_fixture_failure_action": "STOP_PRESERVE_RAW_RESULT_NO_PERMISSIVE_SUBSTITUTE",
+  "acceptance": {
+    "same_readonly_agent_exact_full_implementation_review": true,
+    "full_runtime_privacy_HIGH_required": true,
+    "original_source_admission_and_B005_negative_race_and_predecessor_gates_retained": true,
+    "actual_fresh_source_pg_core_raw_exact_replay_private_crypto_b006_completion_all_five_safe_exports_tamper_and_lifetime_required": true,
+    "public_PR_authorized_only_for_this_bounded_successor_after_validated_first_feasibility_and_independent_review": true,
+    "candidate_and_exact_merge_CI_jobs_each": 5,
+    "independent_local_online_immutable_CI_catalogue_required": true,
+    "actual_models_only_after_all_acceptance": true,
+    "public_CI_application_GitHub_and_model_calls": 0
+  },
+  "budget_and_scope": {
+    "budget_usd": "5.00",
+    "official_diagnostic_runs_max": 1,
+    "qualification_runs_authorized": 0,
+    "remote_attempt_ceiling": 32,
+    "aggregate_input_ceiling": 262144,
+    "aggregate_output_ceiling": 32768,
+    "local_minimum_and_maximum_calls": 1,
+    "elapsed_seconds": 1800,
+    "forced_model_actions_or_seed_authorized": false,
+    "model_start_before_and_after_directed_registered_model_cache_release_and_memory_observation_required": true
+  },
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_calls": 0,
+  "diag_runs": 0,
+  "qual_runs": 0,
+  "approval_granted_by_proposal_itself": false,
+  "recorded_owner_approval": {
+    "recorded_at_utc": "2026-10-08T11:43:32.642566+00:00",
+    "owner_answer": "批准受限 SETUP 后继，按原全部验收条件继续（推荐）",
+    "approval_material_sha256": "5e44d8f41653a37ffa3be3930f193e32db6a621667453d31ebf34ba1e8ab1663",
+    "proposed_authority_sha256": "a2827c1958fed4c34dca40e18c16bf77dc9c207b92a4e6df1c279723b70beaeb",
+    "proposal_sha256": "732dd6b326f2aaa85b45fb6e70ce153a4b12f741f717d8fc4736cf3cd639d404",
+    "human_question_item_id": "[\"request_user_input_async\",\"call_2e558cad32da4d22acef72b8e6ebb77b\",0]"
+  }
+}
