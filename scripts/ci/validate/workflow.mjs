@@ -110,7 +110,7 @@ import {
   B000,
   CI_ACTION_PINS,
   PG_MULTI_ARCH_DIGEST,
-  TOOLCHAIN,
+  CURRENT_TOOLCHAIN as TOOLCHAIN,
   GOVULNCHECK,
 } from '../lib/constants.mjs';
 import { runAsMain } from '../lib/cli.mjs';
@@ -147,8 +147,8 @@ const STORAGE_RUN_CORE_FULL_TEST = "go test ./internal/runcore -run '^TestPostgr
 const STORAGE_RUN_CORE_RACE_TEST = "go test -race ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v";
 const STORAGE_MODEL_GATEWAY_FULL_TEST = "go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v";
 const STORAGE_MODEL_GATEWAY_RACE_TEST = "go test -race ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v";
-const STORAGE_LAUNCHER_FULL_TEST = 'node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration';
-const STORAGE_LAUNCHER_RACE_TEST = 'node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration --race';
+const STORAGE_LAUNCHER_FULL_TEST = 'node scripts/ci/lib/b007-toolchain-security-q018.mjs --b001-launcher';
+const STORAGE_LAUNCHER_RACE_TEST = 'node scripts/ci/lib/b007-toolchain-security-q018.mjs --b001-launcher-race';
 const STORAGE_EVIDENCE_FULL_TEST = "go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
 const STORAGE_EVIDENCE_RACE_TEST = "go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v";
 const STORAGE_FULL_CONTRACT_REASON = /must keep the full B003 ledger \+ MVP-B001 queue\/lease \+ MVP-B002 Run Core \+ B004 model gateway \+ B004 runtime-shell \+ B006 RAW_CAPTURE \+ MVP-B005 AUDIT_READY PostgreSQL integration commands/;
@@ -162,7 +162,7 @@ const STORAGE_RACE_CONTRACT_REASON = /must keep the B003 ledger concurrency \+ M
 const STORAGE_POSTGRES_STEPS = [
   'Record runner environment (evidence)',
   'Checkout candidate (full history for integration sources)',
-  'Setup exact Go 1.26.6',
+  'Setup exact Go 1.26.9',
   'Setup exact Node.js 24.19.0',
   'Verify exact Go version',
   'Verify exact Node.js version',
@@ -444,7 +444,7 @@ const BLOCK_GATES = {
     {
       label: 'the gofmt check',
       anchor: 'test -z "$(gofmt -l .)"',
-      lines: ['test -z "$(gofmt -l .)"', 'echo "gofmt clean"'],
+      lines: ['node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains', 'node scripts/ci/lib/b007-toolchain-security-q018.mjs --q015-full23', 'node --test scripts/ci/test/b007-toolchain-security-q018.test.mjs', 'test -z "$(gofmt -l .)"', 'echo "gofmt clean"'],
     },
     {
       label: 'the PostgreSQL digest pull / version / repository-digest checks',
@@ -473,6 +473,7 @@ const BLOCK_GATES = {
       lines: [
         `npm install --global --no-audit --no-fund pnpm@${TOOLCHAIN.pnpm}`,
         `test "$(pnpm --version)" = "${TOOLCHAIN.pnpm}"`,
+        'node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains',
       ],
     },
     {
@@ -519,7 +520,7 @@ const BLOCK_GATES = {
     {
       label: 'the exact Node.js version verification',
       anchor: `test "$(node --version)" = "v${TOOLCHAIN.node}"`,
-      lines: [`test "$(node --version)" = "v${TOOLCHAIN.node}"`, 'node --version'],
+      lines: [`test "$(node --version)" = "v${TOOLCHAIN.node}"`, 'node --version', 'node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains'],
     },
     {
       label: 'the ephemeral PostgreSQL 18.4 container start (digest-pinned, loopback-only)',
@@ -989,7 +990,7 @@ function checkWorkflowText(text, lock) {
   }
   const rootCounts = {};
   for (const e of rootKeys) rootCounts[e.key] = (rootCounts[e.key] ?? 0) + 1;
-  const expectedRoot = ['name', 'on', 'permissions', 'concurrency', 'jobs'];
+  const expectedRoot = ['name', 'on', 'permissions', 'env', 'concurrency', 'jobs'];
   const rootClosed =
     rootKeys.length === expectedRoot.length &&
     expectedRoot.every((k) => rootCounts[k] === 1);
@@ -998,8 +999,21 @@ function checkWorkflowText(text, lock) {
   } else {
     const unexpected = Object.keys(rootCounts).filter((k) => !expectedRoot.includes(k));
     const wrongCounts = expectedRoot.filter((k) => rootCounts[k] !== 1);
-    fail(`closed-world root mapping must contain exactly one each of name, on, permissions, concurrency and jobs (normalized indent-0 keys, no extras/duplicates/missing/quoted shadows); parsed ${JSON.stringify(rootKeys.map((e) => e.key))}${unexpected.length ? `; unexpected top-level key(s): ${unexpected.join(', ')}` : ''}${wrongCounts.length ? `; wrong count(s): ${wrongCounts.map((k) => `${k}=${rootCounts[k] ?? 0}`).join(', ')}` : ''}`);
+    fail(`closed-world root mapping must contain exactly one each of name, on, permissions, env, concurrency and jobs (normalized indent-0 keys, no extras/duplicates/missing/quoted shadows); parsed ${JSON.stringify(rootKeys.map((e) => e.key))}${unexpected.length ? `; unexpected top-level key(s): ${unexpected.join(', ')}` : ''}${wrongCounts.length ? `; wrong count(s): ${wrongCounts.map((k) => `${k}=${rootCounts[k] ?? 0}`).join(', ')}` : ''}`);
   }
+
+  // Q018 current compiler selection is a closed two-key root environment.
+  // No GOROOT/PATH, injected SDK, overrides, duplicate or nested shadows.
+  const envIdx = findKeyLineIn(lines, 'env', 0, 0, lines.length);
+  const envBlock = envIdx >= 0 ? blockAt(lines, envIdx, 0) : null;
+  const envLines = (envBlock?.lines ?? []).filter(l => !isBlankOrComment(l));
+  const envEntries = envLines.map(l => mappingEntry(l, 2));
+  if (envLines.length !== 2 || envEntries.some(e => e === null) ||
+      envEntries.map(e => e?.key).sort().join(',') !== 'GOENV,GOTOOLCHAIN' ||
+      envEntries.some(e => scalarValue(e.rawValue) !== ({GOENV:'off',GOTOOLCHAIN:'local'})[e.key]) ||
+      scalarValue(mappingEntry(lines[envIdx] ?? '', 0)?.rawValue ?? 'not-mapping') !== '') {
+    fail('Q018 root env must be exactly GOENV=off and GOTOOLCHAIN=local, no duplicate/nested/injected compiler keys');
+  } else ok('Q018 current compiler environment is exact GOENV=off/GOTOOLCHAIN=local');
 
   // ---- concurrency: exactly the real top-level block ----
   // The top-level `concurrency:` mapping must carry exactly two real indent-2
@@ -1778,6 +1792,13 @@ export function run(ctx) {
   const fullTestStepName =
     '      - name: PostgreSQL integration tests (B003 ledger + MVP-B001 queue/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure, test-only DSN)';
   const probes = [
+    {label:'Q018 current compiler environment absent',reason:/Q018 root env|closed-world root/,run:()=>checkWorkflowText(text.replace('env:\n  GOENV: "off"\n  GOTOOLCHAIN: "local"\n',''),lock)},
+    {label:'Q018 automatic toolchain injection',reason:/Q018 root env/,run:()=>checkWorkflowText(text.replace('GOTOOLCHAIN: "local"','GOTOOLCHAIN: "auto"'),lock)},
+    {label:'Q018 extra root GOROOT injection',reason:/Q018 root env/,run:()=>checkWorkflowText(text.replace('  GOENV: "off"','  GOENV: "off"\n  GOROOT: /tmp/unapproved'),lock)},
+    {label:'Q018 fixed historical SDK preparation removed',reason:/exact ordered command lines/,run:()=>checkWorkflowText(text.replace('          node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains\n',''),lock)},
+    {label:'Q018 full oldQ015 suite removed',reason:/exact ordered command lines/,run:()=>checkWorkflowText(text.replace('          node scripts/ci/lib/b007-toolchain-security-q018.mjs --q015-full23\n',''),lock)},
+    {label:'Q018 new current rejection suite removed',reason:/exact ordered command lines/,run:()=>checkWorkflowText(text.replace('          node --test scripts/ci/test/b007-toolchain-security-q018.test.mjs\n',''),lock)},
+
     {
       label: 'storage-postgres job removed',
       reason: /required job missing: storage-postgres/,
@@ -2363,8 +2384,8 @@ export function run(ctx) {
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
             t.replace(
-              '          go-version: 1.26.6\n          cache: false',
-              '          go-version: 1.26.6\n          cache: false\n          go-version-file: go.mod',
+              '          go-version: 1.26.9\n          cache: false',
+              '          go-version: 1.26.9\n          cache: false\n          go-version-file: go.mod',
             ),
           ),
           lock,
@@ -2521,7 +2542,7 @@ export function run(ctx) {
       run: () =>
         checkWorkflowText(
           mutateJobText(text, 'storage-postgres', (t) =>
-            `${t}\n      - "name": Verify exact Go version\n        run: |\n          test "$(go version)" = "go version go1.26.6 linux/amd64"\n          go version`,
+            `${t}\n      - "name": Verify exact Go version\n        run: |\n          test "$(go version)" = "go version go1.26.9 linux/amd64"\n          go version`,
           ),
           lock,
         ),

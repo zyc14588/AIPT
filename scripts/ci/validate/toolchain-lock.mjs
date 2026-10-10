@@ -1,3 +1,4 @@
+import { currentQualificationProblems, historicalLockProjection, historicalLicenseInventory } from '../lib/b007-toolchain-security-q018.mjs';
 // B001 exact-toolchain lock validator, evolved by AIPT-M0-B003-SCOPE-
 // EXPANSION-001 for iteration 6a and by the AIPT-M0-B003 security
 // requalification for the current Go identity.
@@ -77,6 +78,7 @@ import {
   PNPM_REGISTRY_INTEGRITY,
   SUPPLY_CHAIN_BASELINE_BATCH,
   TOOLCHAIN,
+  CURRENT_TOOLCHAIN,
 } from '../lib/constants.mjs';
 import { runAsMain } from '../lib/cli.mjs';
 
@@ -91,8 +93,8 @@ const GO_RUNTIME_MODULES = [
   { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
   { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
   { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
-  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
-  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
+  { module: 'golang.org/x/sync', version: 'v0.22.0', direct: false, h1hex: '4998e96de2e6ac2938c614526453595b980551e09e1608de92f23ffa07d271e9', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.41.0', direct: false, h1hex: 'bf3fec780d259d7f3b3ad86ed9fff42f6e11720ad70fdfd81534ae1a38f7ac7f', gomodhex: '8ef7f53bc6a337366a852ad004f6eeb51fc407cdc2734085adeccd408c1b6f93' },
 ];
 
 // Parse the require directives of a go.mod text into {module, version,
@@ -534,8 +536,8 @@ function checkRepoPins({ goVersion, nodeVersion, goMod, goSum, pkgJson, pnpmLock
     details.push(`FAIL: ${msg}`);
   };
 
-  if (goVersion !== TOOLCHAIN.go) fail(`.go-version must be ${TOOLCHAIN.go}`);
-  else ok(`.go-version = ${TOOLCHAIN.go}`);
+  if (goVersion !== CURRENT_TOOLCHAIN.go) fail(`.go-version must be ${CURRENT_TOOLCHAIN.go}`);
+  else ok(`.go-version = ${CURRENT_TOOLCHAIN.go}`);
   if (nodeVersion !== TOOLCHAIN.node) fail(`.node-version must be ${TOOLCHAIN.node}`);
   else ok(`.node-version = ${TOOLCHAIN.node}`);
 
@@ -563,16 +565,16 @@ function checkRepoPins({ goVersion, nodeVersion, goMod, goSum, pkgJson, pnpmLock
     ok('go.mod pins the go directive to 1.26.x (exactly one anchored go directive)');
   }
   // go.mod must carry EXACTLY ONE anchored `toolchain` directive, and it must
-  // be exactly `toolchain go1.26.6`. EVERY anchored toolchain directive line
+  // be exactly `toolchain go1.26.9`. EVERY anchored toolchain directive line
   // is collected and counted regardless of its value, so a second/different
   // toolchain directive (or a removed one) is rejected.
   const toolchainDirectives = (goMod.match(/^[ \t]*toolchain\b[^\n]*$/gm) ?? []).map((line) => line.trim());
   if (toolchainDirectives.length !== 1) {
     fail(`go.mod must carry exactly one anchored toolchain directive, got ${toolchainDirectives.length}: ${toolchainDirectives.join(' | ') || 'none'}`);
-  } else if (toolchainDirectives[0] !== 'toolchain go1.26.6') {
-    fail(`go.mod toolchain directive must be exactly "toolchain go1.26.6", got ${JSON.stringify(toolchainDirectives[0])}`);
+  } else if (toolchainDirectives[0] !== 'toolchain go1.26.9') {
+    fail(`go.mod toolchain directive must be exactly "toolchain go1.26.9", got ${JSON.stringify(toolchainDirectives[0])}`);
   } else {
-    ok('go.mod pins toolchain go1.26.6 (exactly one anchored toolchain directive)');
+    ok('go.mod pins toolchain go1.26.9 (exactly one anchored toolchain directive)');
   }
   const closure = checkGoClosure({ goMod, goSum });
   details.push(...closure.details);
@@ -612,6 +614,9 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
   const read = (rel) => fs.readFileSync(path.join(ctx.repo, rel), 'utf8');
+  const q018Problems = currentQualificationProblems(ctx.repo);
+  if (q018Problems.length) return { name: 'toolchain-lock', result: 'FAIL', details: q018Problems.map(p => 'FAIL: ' + p) };
+  ok('Q018 actual current Go1.26.9/archive/full22 licenses and exact current pins match independent prerequisites; old qualifier below is historical only');
 
   const depRequal = B004_DEPENDENCY_SECURITY_REQUALIFICATION;
   const expectedMvsTransitions = [
@@ -642,14 +647,16 @@ export function run(ctx) {
 
   let lock;
   try {
-    lock = JSON.parse(read('tools/toolchain.lock.json'));
+    lock = historicalLockProjection(ctx.repo, JSON.parse(read('tools/toolchain.lock.json')));
   } catch (err) {
     fail(`tools/toolchain.lock.json unparseable: ${err.message}`);
     return { name: 'toolchain-lock', result: 'FAIL', details };
   }
 
+  // This complete pure-check suite validates the immutable pre-Q018 lock.
+  // Current lock/pins are separately required by currentQualificationProblems.
   const toolchainCheck = checkToolchainObject(lock);
-  details.push(...toolchainCheck.details);
+  details.push(...toolchainCheck.details.map(d => 'historical pre-Q018 lock: ' + d));
   if (toolchainCheck.result !== 'PASS') fail('tools/toolchain.lock.json does not match the frozen B001 baseline / B003 security requalification');
   else ok('tools/toolchain.lock.json matches the frozen B001 baseline and the B003 Go 1.26.6 security requalification (versions, official release/archive/hash evidence, dual provenance, advisory set, digests, govulncheck identity, B001 selection)');
 
@@ -678,7 +685,7 @@ export function run(ctx) {
   };
   const regressions = [
     {
-      label: 'exact B004-requalified pgx v5.10.0 / x/text v0.39.0 closure PASS',
+      label: 'exact Q018-qualified pgx v5.10.0 / x/text v0.41.0 closure PASS',
       expect: 'PASS',
       reason: null,
       run: () => checkGoClosure({ goMod: goModText, goSum: goSumText }),
@@ -686,46 +693,46 @@ export function run(ctx) {
     {
       label: 'x/text vulnerable v0.29.0 in go.mod FAIL',
       expect: 'FAIL',
-      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
+      reason: /golang\.org\/x\/text version must be v0\.41\.0/,
       run: () => checkGoClosure({
-        goMod: goModText.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0'),
+        goMod: goModText.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.29.0'),
         goSum: goSumText,
       }),
     },
     {
       label: 'x/text below-fixed v0.38.0 in go.mod FAIL',
       expect: 'FAIL',
-      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
+      reason: /golang\.org\/x\/text version must be v0\.41\.0/,
       run: () => checkGoClosure({
-        goMod: goModText.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.38.0'),
+        goMod: goModText.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.38.0'),
         goSum: goSumText,
       }),
     },
     {
-      label: 'x/text unapproved newer v0.40.0 in go.mod FAIL',
+      label: 'x/text unapproved newer v0.42.0 in go.mod FAIL',
       expect: 'FAIL',
-      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
+      reason: /golang\.org\/x\/text version must be v0\.41\.0/,
       run: () => checkGoClosure({
-        goMod: goModText.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0'),
+        goMod: goModText.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.42.0'),
         goSum: goSumText,
       }),
     },
     {
       label: 'x/sync pre-MVS v0.17.0 in go.mod FAIL',
       expect: 'FAIL',
-      reason: /golang\.org\/x\/sync version must be v0\.21\.0/,
+      reason: /golang\.org\/x\/sync version must be v0\.22\.0/,
       run: () => checkGoClosure({
-        goMod: goModText.replace('golang.org/x/sync v0.21.0', 'golang.org/x/sync v0.17.0'),
+        goMod: goModText.replace('golang.org/x/sync v0.22.0', 'golang.org/x/sync v0.17.0'),
         goSum: goSumText,
       }),
     },
     {
       label: 'go.sum x/text zip h1 missing FAIL',
       expect: 'FAIL',
-      reason: /missing zip h1 for golang\.org\/x\/text v0\.39\.0/,
+      reason: /missing zip h1 for golang\.org\/x\/text v0\.41\.0/,
       run: () => checkGoClosure({
         goMod: goModText,
-        goSum: goSumText.replace(/^golang\.org\/x\/text v0\.39\.0 h1:[^\n]+\n/m, ''),
+        goSum: goSumText.replace(/^golang\.org\/x\/text v0\.41\.0 h1:[^\n]+\n/m, ''),
       }),
     },
     {
@@ -1068,7 +1075,7 @@ export function run(ctx) {
     {
       label: '.go-version drifted back to Go 1.26.5 FAIL',
       expect: 'FAIL',
-      reason: /\.go-version must be 1\.26\.6/,
+      reason: /\.go-version must be 1\.26\.9/,
       run: () => checkRepoPins({
         goVersion: '1.26.5',
         nodeVersion: read('.node-version').trim(),
@@ -1081,7 +1088,7 @@ export function run(ctx) {
     {
       label: '.go-version drifted to arbitrary Go 1.26.7 FAIL',
       expect: 'FAIL',
-      reason: /\.go-version must be 1\.26\.6/,
+      reason: /\.go-version must be 1\.26\.9/,
       run: () => checkRepoPins({
         goVersion: '1.26.7',
         nodeVersion: read('.node-version').trim(),
@@ -1098,7 +1105,7 @@ export function run(ctx) {
       run: () => checkRepoPins({
         goVersion: read('.go-version').trim(),
         nodeVersion: read('.node-version').trim(),
-        goMod: goModText.replace('toolchain go1.26.6', 'toolchain go1.26.5'),
+        goMod: goModText.replace('toolchain go1.26.9', 'toolchain go1.26.5'),
         goSum: goSumText,
         pkgJson: JSON.parse(read('package.json')),
         pnpmLockText: read('pnpm-lock.yaml'),
