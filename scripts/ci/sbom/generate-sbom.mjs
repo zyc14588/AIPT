@@ -69,16 +69,16 @@ const GO_RUNTIME_MODULES = [
   { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
   { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
   { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', copyright: 'Copyright (c) Jack Christensen', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
-  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
-  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
+  { module: 'golang.org/x/sync', version: 'v0.22.0', direct: false, license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: '4998e96de2e6ac2938c614526453595b980551e09e1608de92f23ffa07d271e9', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.41.0', direct: false, license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: 'bf3fec780d259d7f3b3ad86ed9fff42f6e11720ad70fdfd81534ae1a38f7ac7f', gomodhex: '8ef7f53bc6a337366a852ad004f6eeb51fc407cdc2734085adeccd408c1b6f93' },
 ];
 
 // x/text v0.39.0 also deterministically selects these two module-graph-only
 // tooling modules under Go 1.26.6. They are represented in the SBOM but are
 // never counted or modeled as AIPT application runtime dependencies.
 const GO_MODULE_GRAPH_TOOLING = [
-  { module: 'golang.org/x/mod', previousVersion: 'v0.27.0', version: 'v0.37.0', license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: 'bc5d438e9544b21708aa811a6aeb8779b68b9353b57e8af18f105a567f3ce094', gomodhex: '9bc4bc55e33daf87730f08eb28ed1ad6c64fdd88de31a9914650fe7e647643fd' },
-  { module: 'golang.org/x/tools', previousVersion: 'v0.36.0', version: 'v0.47.0', license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: 'eca9f9c7f775b2fc7f3f3af24eca9ea193784d9c2a787e691968de7e12e2ff54', gomodhex: '7451e7c93bc5598db5d86fa1ed963856ca7f2b7538ffb5bd4f255a02e97cb820' },
+  { module: 'golang.org/x/mod', previousVersion: 'v0.37.0', version: 'v0.38.0', license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: '3040818ee6ed5c3ef28f81eb84851ccb035a19e35551d7d59f198f6a33a4e329', gomodhex: '57a5f3d29abc4d0ddd1aa550d45547b9e959a402f4b8d852924f688183f7738d' },
+  { module: 'golang.org/x/tools', previousVersion: 'v0.47.0', version: 'v0.48.0', license: 'BSD-3-Clause', copyright: 'Copyright 2009 The Go Authors', h1hex: 'dfe84294cd5a2cbe668cc2a6e68be8930f5ea604573eebb6b482e08ac98ce911', gomodhex: 'd3cc57d28ae775bfc5ee327118389cc74eb5b72779a5c32da3be583005ebea59' },
 ];
 
 function goModuleSpdxId(module) {
@@ -318,14 +318,14 @@ export function buildSbom(repoRoot) {
       filesAnalyzed: false,
       comment:
         'AIPT-MVP-B004 governed model profiles and Harness gateway; no new third-party dependency identity was introduced. ' +
-        'Go module github.com/zyc14588/AIPT (go 1.26.x, toolchain go1.26.6 — B003 security requalification), private npm root package aipt@0.0.0, ' +
+        'Go module github.com/zyc14588/AIPT (go 1.26.0, toolchain go1.26.9 — Q018 security requalification; historical B003 Go1.26.6 retained), private npm root package aipt@0.0.0, ' +
         `and first-party workspace packages @aipt/adapter-sdk@1.0.0, @aipt/harness-adapter@0.1.0, @aipt/model-harness-gateway@0.1.0 and @aipt/web-ui@0.1.0 (all PACKAGE_OF AIPT). ` +
         `B004 security-requalifies the B003 runtime closure: go=${goModules.length}, selected-module-graph tooling=${goGraphTooling.length}, pnpm=${pnpmPackages.length} ` +
         `(six approved Go runtime modules: pgx v5.10.0 direct + five transitive, recorded in ` +
         `tools/supply-chain/licenses.json with exact versions/licenses/directness; x/text v0.29.0 -> v0.39.0 resolves GO-2026-5970, ` +
         `and MVS selects x/sync v0.21.0 plus graph-only x/mod v0.37.0 and x/tools v0.47.0). ` +
         `SPDXRef-AIPT DEPENDS_ON ${goModuleSpdxId('github.com/jackc/pgx/v5')} — the pgx closure is an application ` +
-        'runtime dependency, never a DEV_TOOL_OF package.',
+        'runtime dependency, never a DEV_TOOL_OF package. Q018 current qualification selects Go1.26.9, x/text v0.41.0, x/sync v0.22.0, x/mod v0.38.0 and x/tools v0.48.0; the B003/B004 statements above are preserved historical provenance.',
       externalRefs: [
         purl('golang', 'github.com/zyc14588/AIPT'),
         purl('npm', 'aipt@0.0.0'),
@@ -551,11 +551,11 @@ export function buildSbom(repoRoot) {
       checksums: [{ algorithm: 'SHA256', checksumValue: m.h1hex }],
       externalRefs: [purl('golang', `${m.module}@${m.version}`)],
       sourceInfo:
-        `Go 1.26.6 selected-module graph; deterministic x/text v0.39.0 consequence; ` +
+        `Q018 Go1.26.9 selected-module graph; deterministic x/text v0.41.0 consequence; ` +
         `sumdb zip h1 SHA-256 ${m.h1hex}; go.mod h1 SHA-256 ${m.gomodhex}`,
       comment:
         `third-party Go selected module-graph tooling (module-graph-tooling; indirect; not an AIPT runtime dependency); ` +
-        `${m.module} ${m.previousVersion} -> ${m.version} under AIPT-M0-B004-DEPENDENCY-SECURITY-REQUAL-001; ` +
+        `${m.module} ${m.previousVersion} -> ${m.version} under AIPT-MVP-B007-OWNER-Q018; old B004 qualification retained historically; ` +
         `SPDX license ${m.license}; ${goModuleSpdxId('golang.org/x/text')} DEPENDS_ON ${spdxId}; ` +
         `${spdxId} BUILD_TOOL_OF SPDXRef-AIPT; never classified as an application runtime dependency or DEV_TOOL_OF.`,
     });
@@ -703,7 +703,7 @@ export function buildSbom(repoRoot) {
         'The first-party workspace packages @aipt/adapter-sdk, @aipt/harness-adapter, @aipt/model-harness-gateway and @aipt/web-ui are modeled as PACKAGE_OF AIPT (never DEV_TOOL_OF); Harness Adapter DEPENDS_ON Adapter SDK and Model Harness Gateway DEPENDS_ON Harness Adapter. ' +
         'The six approved pgx v5.10.0 Go runtime modules are modeled as application runtime dependencies: ' +
         'AIPT DEPENDS_ON github.com/jackc/pgx/v5 and pgx DEPENDS_ON the five indirect modules (never DEV_TOOL_OF). ' +
-        'x/text v0.39.0 DEPENDS_ON x/sync v0.21.0 plus graph-only x/mod v0.37.0 and x/tools v0.47.0; the two graph-only modules are BUILD_TOOL_OF AIPT, never runtime dependencies. ' +
+        'Q018 x/text v0.41.0 DEPENDS_ON x/sync v0.22.0 plus graph-only x/mod v0.38.0 and x/tools v0.48.0; the two graph-only modules are BUILD_TOOL_OF AIPT, never runtime dependencies. ' +
         'Go module checksumValues are the SPDX 2.3 lowercase-hex decodes of the go.sum zip h1 base64 payloads. ' +
         'Dynamic source provenance is attached separately via scripts/ci/provenance.mjs.',
     },

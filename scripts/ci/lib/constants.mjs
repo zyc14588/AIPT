@@ -1020,3 +1020,7 @@ export function pathMatchesStatusTransition(p) {
 export function pathMatchesMvpB000Allowed(p) {
   return MVP_B000_ALLOWED_PATHS.includes(p);
 }
+
+// Q018 current security qualification; TOOLCHAIN above remains the exact
+// historical B001/B003/B004 domain used by unchanged closed validators.
+export const CURRENT_TOOLCHAIN = Object.freeze({ ...TOOLCHAIN, go: '1.26.9' });

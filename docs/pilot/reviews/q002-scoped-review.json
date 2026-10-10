@@ -1,0 +1,22 @@
+{
+  "schema": "aipt.public.b007-independent-q002-scoped-review/v1",
+  "task_id": "AIPT-MVP-B007",
+  "reviewer": "OWNER_AUTHORIZED_LOCAL_INDEPENDENT_READ_ONLY_CODEX_AGENT",
+  "agent": "b005_independent_security_review",
+  "report_sha256": "12ca994649e7d54bd6839a706f57c7def776513095356b1e416ac38b5786b478",
+  "result": "PASS_IN_REVIEWED_Q002_SCOPE",
+  "exact_bundle_sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70",
+  "probe_count": 16,
+  "scopes": [
+    "NINE_HELD_EXACT_BUNDLE_OFFLINE_ACP_PROBES",
+    "SEVEN_ISOLATED_POSTGRESQL_GLOBAL_BUDGET_PROBES"
+  ],
+  "preserved_initial_node_client_startup_probe": "FAIL_CLEAN_EARLY_EXIT_DIAGNOSIS_UNCONFIRMED_EXACT_UNMODIFIED_BUNDLE_PYTHON_ACP_PROBES_PASS",
+  "production_node_go_worker_integration": "NOT_VERIFIED",
+  "actual_task0_driver": "NOT_VERIFIED",
+  "local_full_input_token_accounting": "NOT_VERIFIED",
+  "paid_callable": false,
+  "candidate_acceptance": false,
+  "batch_closeout": false,
+  "real_model_calls": 0
+}
