@@ -1,0 +1,58 @@
+{
+  "schema": "aipt.public.b007-supplemental-task0-input-authority/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B007",
+  "decision_id": "B007-TASK0-SUPPLEMENTAL-INPUT-ANNEX-Q003=A",
+  "state": "OWNER_AUTHORIZED_PENDING_SOURCE_PROJECTION_DRIVER_REVIEW_AND_ACCEPTANCE",
+  "owner_instruction": "批准",
+  "owner_approval_document_id": "86427",
+  "reviewed_proposal_sha256": "67a1fa11c8e714f2b8f11cbad4aeb25bf8efbe04163073a7fcdd86c2df765755",
+  "predecessor_start_authority_sha256": "605fd163c5c2245ae7088c849b82d35de6d04783b37639f48001a7b22de35d06",
+  "existing_authority": {
+    "path": "docs/authority/registry/unregistered-aipt-p1-b000-authority.json",
+    "sha256": "a9845bb74dac409ee243b7024e23aae271ab13c75e18116ae2513853cc02eed6",
+    "rule": "UNREFERENCED_REPOSITORY_FILES_ARE_OUT_OF_SCOPE; REFERENCED_UNLISTED_OR_LISTED_UNREFERENCED_FILES_REJECT"
+  },
+  "scope_exception": "B007_ONLY_SEPARATE_ADDITIVE_RUN_MANIFEST_INPUT_ANNEX_RETAIN_ORIGINAL_FIVE_FILE_PACKAGE_AND_ALL_ACCEPTED_INT001_HISTORY",
+  "binding": {
+    "repository": "zyc14588/UNREGISTERED",
+    "package_commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+    "package_tree": "34597e79c586fb034256daa32d67640692ec589d",
+    "nested_source_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+    "nested_source_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+    "old_package_manifest_sha256": "99683081677f5ac098dc94ee1221b4ae1fd5a75b416da7094276dbf694bb23bd",
+    "old_package_digest": "605b4a72dda8348fc51245f0d0947d69cc47b174346bb9f14b378fb703ff594d",
+    "old_package_rewrite": false
+  },
+  "annex": {
+    "path": "docs/pilot/inputs/task0-input-annex-v1.json",
+    "sha256": "5f4ecf19c84a384245071c3f23f491a8c1fe4c8dcae0326a7123a3d6000566f5",
+    "supplemental_input_count": 12
+  },
+  "required_projection_controls": [
+    "FAIL_CLOSED_FOR_UNLISTED_MISSING_CHANGED_NONREGULAR_OR_UNCLASSIFIED_SOURCE",
+    "STRICT_GM_PLAYER_PUBLIC_OWN_CHARACTER_PROJECTION_FROM_PINNED_VISIBILITY_REGISTRY",
+    "PLAYER_NEVER_RECEIVES_GM_ONLY_OR_OTHER_PLAYER_PRIVATE_CONTENT",
+    "SYSTEM_INTERNAL_REGISTRIES_USED_FOR_VALIDATION_NOT_RAW_MODEL_CONTEXT",
+    "EXPLICIT_VERSIONED_GM_AND_PLAYER_TABLE_HIDDEN_REMOTE_ALLOWED_CERTIFICATIONS_INSIDE_ORIGINAL_BUDGET",
+    "NO_LOCAL_ONLY_HUMAN_PRIVATE_OR_CREDENTIAL_DATA_TO_REMOTE_MODEL",
+    "PUBLIC_PR_RECORDS_CONTROL_CODE_AND_DIGESTS_ONLY_PRIVATE_CHARACTER_AND_GM_INPUT_BODIES_STAY_PRIVATE",
+    "PRESERVE_SOURCE_LIFECYCLE_NO_NEW_GAME_CANON_OR_INVENTED_CHARACTER_MECHANICS",
+    "NO_USE_OF_NON_CANON_TEST_FIXTURE_AS_REAL_TASK0_RUN"
+  ],
+  "unchanged_limits": {
+    "remote_max_usd": "5.00",
+    "remote_attempt_ceiling": 32,
+    "aggregate_input_tokens": 262144,
+    "aggregate_output_tokens": 32768,
+    "elapsed_seconds": 1800,
+    "local_minimum_role_calls": 1,
+    "diagnostic_runs": 1,
+    "retries_and_certifications_included": true,
+    "qualification_runs_authorized": 0,
+    "automatic_increase": false
+  },
+  "acceptance": "SAME_OWNER_AUTHORIZED_READONLY_REVIEWER_PUBLIC_PR_EXACT_CANDIDATE_MAIN_CI_FIVE_OF_FIVE_INDEPENDENT_IMMUTABLE_EVIDENCE",
+  "public_ci_application_github_requests": 0,
+  "public_ci_real_model_calls": 0
+}

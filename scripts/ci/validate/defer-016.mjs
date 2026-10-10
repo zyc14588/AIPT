@@ -1,3 +1,4 @@
+import { currentQualificationProblems } from '../lib/b007-toolchain-security-q018.mjs';
 // Deferred-parameter freeze validator, evolved by the AIPT-M0-B003 security
 // requalification and retained as immutable history by AIPT-M0-B004.
 //
@@ -143,6 +144,8 @@ export function defer016Problems(base, current) {
 }
 
 export function run(ctx) {
+  const q018Problems = currentQualificationProblems(ctx.repo);
+  if (q018Problems.length) return { name: 'defer-016', result: 'FAIL', details: q018Problems.map(p => 'FAIL: ' + p) };
   const details = [];
   let pass = true;
   const ok = (msg) => details.push(`ok: ${msg}`);

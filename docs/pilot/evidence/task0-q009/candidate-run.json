@@ -1,0 +1,32 @@
+{
+  "schema": "aipt.public.b007-local-online-ci-run-control/v1",
+  "local_online_observation": true,
+  "observed_at_utc": "2026-10-07T21:02:44.016270+00:00",
+  "private_raw_return": {
+    "bytes": 13817,
+    "sha256": "cf506937dc27e25c9419a290ca3e12a76977702fe681946625b733bef0ed5bd0"
+  },
+  "run": {
+    "id": 37686394237,
+    "name": "AIPT Content Gate",
+    "head_branch": "codex/unregistered-task0-retry-catastrophe-repair",
+    "head_sha": "76e79aa7536b42406f1cb77baa5844073b5d7fe7",
+    "path": ".github/workflows/aipt-content-gate.yml",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "workflow_id": 336437725,
+    "run_attempt": 1,
+    "html_url": "https://github.com/zyc14588/UNREGISTERED/actions/runs/37686394237",
+    "repository": {
+      "id": 1334368477,
+      "full_name": "zyc14588/UNREGISTERED",
+      "private": false
+    },
+    "head_repository": {
+      "id": 1334368477,
+      "full_name": "zyc14588/UNREGISTERED",
+      "private": false
+    }
+  }
+}
