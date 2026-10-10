@@ -66,6 +66,7 @@ import {
   TOOLCHAIN,
 } from '../lib/constants.mjs';
 import { scanTreeForHazards } from '../lib/scan.mjs';
+import { inspectFixedOriginPolicy } from '../lib/b007-fixed-origin-policy-q015.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
@@ -2180,13 +2181,17 @@ export function run(ctx) {
   // scripts (no blanket scripts/ci skip; the scanner sources are self-safe
   // because every hazard literal is assembled from fragments) ----
   const hazards = scanTreeForHazards(ctx.repo);
-  if (hazards.length > 0) {
-    for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}`);
+  const hazardPolicy = inspectFixedOriginPolicy(ctx.repo, hazards);
+  for (const problem of hazardPolicy.problems) fail('Q015 fixed-origin policy: ' + problem);
+  if (hazardPolicy.blocking_findings.length > 0) {
+    for (const h of hazardPolicy.blocking_findings.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}`);
+  } else if (hazardPolicy.accepted_findings.length === 1) {
+    ok('Q015: one exact Owner-approved public non-secret origin finding retained; all other findings remain blocking');
   } else ok('no secrets, private paths, model endpoints or prompt bodies in tracked config or executable scripts');
   if (workflow.includes('secrets.')) fail('workflow references secrets.*');
   else ok('workflow secret-free');
 
-  return { name: 'supply-chain', result: pass ? 'PASS' : 'FAIL', details };
+  return { name: 'supply-chain', result: pass ? 'PASS' : 'FAIL', details, hazard_policy: hazardPolicy };
 }
 
 runAsMain(import.meta.url, 'supply-chain', run);

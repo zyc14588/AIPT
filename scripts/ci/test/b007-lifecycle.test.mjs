@@ -1,0 +1,141 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { BASE,Q015_GATE,Q016_AUTHORITY,Q017_AUTHORITY,Q017_FIXTURE,runApprovedPredecessor,cleanupSnapshots,START,AUTHORITY,Q002_AUTHORITY,Q002_SOURCE,Q003_AUTHORITY,Q003_ANNEX,Q004_AUTHORITY,Q004_PROPOSAL,Q005_AUTHORITY,Q009_AUTHORITY,Q009_ANNEX,Q009_REVIEW,Q009_CI,Q009_ADAPTER,Q009_GATEWAY,Q011_AUTHORITY,STATUS,MUTABLE,allowedNew,successorProblems,rows } from '../lib/b007-successor.mjs';
+import { resolveB007 } from '../lib/b007-lifecycle.mjs';
+import { inspectConstruction } from '../validate/mvp-b007.mjs';
+const source=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+function git(repo,args){const r=spawnSync('git',['-C',repo,...args],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);assert.equal(r.error,undefined);return r.stdout.trim();}
+function fixture(t){
+ const repo=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-b007-guard-probe-'));
+ t.after(()=>fs.rmSync(repo,{recursive:true,force:true}));
+ const r=spawnSync('git',['clone','--no-local','--no-checkout',source,repo],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);
+ git(repo,['checkout','--detach',BASE]);git(repo,['update-ref','refs/remotes/origin/main',BASE]);
+ git(repo,['config','user.name','Synthetic B007 Probe']);git(repo,['config','user.email','probe@example.invalid']);
+ for(const p of rows(source,['ls-files','--cached','--others','--exclude-standard']))if(MUTABLE.has(p)||allowedNew(p)||p===Q015_GATE){
+  fs.mkdirSync(path.dirname(path.join(repo,p)),{recursive:true});fs.copyFileSync(path.join(source,p),path.join(repo,p));
+ }
+ return repo;
+}
+function commit(repo,message){git(repo,['add','-A']);git(repo,['commit','-m',message]);return git(repo,['rev-parse','HEAD']);}
+function write(repo,p,v){fs.writeFileSync(path.join(repo,p),JSON.stringify(v,null,2)+'\n');}
+function rejected(repo,pattern){const p=successorProblems(repo);assert.ok(p.some(x=>pattern.test(x)),JSON.stringify(p));}
+test('authorized B007 draft preserves actual fixed predecessors and reports construction only',t=>{const r=fixture(t);assert.deepEqual(successorProblems(r),[]);assert.equal(resolveB007(r).phase,'AUTHORIZED_CONSTRUCTION');});
+test('B007 public construction inspection preserves incomplete runtime and one unused diagnostic',t=>{const r=fixture(t);const v=inspectConstruction(r);assert.deepEqual(v.problems,[]);assert.equal(v.lifecycle.runtime_ready,false);assert.equal(v.publication.result,'PASS');});
+test('B007 public construction inspection rejects a missing parent entry test',t=>{const r=fixture(t);const p=path.join(r,'internal/pilot/task0_preparation_test.go');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('func TestTask0ParentControlNeverAcceptsQualificationOrLocators(', 'func RemovedNONCANONRequiredCoverage('));assert.ok(inspectConstruction(r).problems.some(x=>x.includes('required executable rejection coverage')));});
+test('B007 public construction inspection rejects diagnostic metadata promoted without actual acceptance',t=>{const r=fixture(t);const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.diagnostic_runs_executed=1;write(r,STATUS,s);assert.ok(inspectConstruction(r).problems.some(x=>x.includes('zero actual model/DIAG/QUAL')));});
+test('Q011 permits exactly five additive predecessor-module files',()=>{
+ for(const p of ['internal/evidence/private_audit_ready.go','internal/evidence/private_audit_types.go','internal/evidence/private_audit_ready_test.go','internal/evidence/private_audit_postgres_integration_test.go','schemas/evidence/private/v1/aipt-private-audit-ready.schema.json'])assert.equal(allowedNew(p),true,p);
+ for(const p of ['internal/evidence/private_other.go','internal/evidence/private_audit_ready_extra.go','schemas/evidence/private/v1/extra.schema.json','internal/runcontrol/private_reports.go'])assert.equal(allowedNew(p),false,p);
+});
+for(const [name,mutate,pattern]of[
+ ['Q015 protected supply-chain successor bytes changed',r=>fs.appendFileSync(path.join(r,Q015_GATE),'\n// corruption\n'),/protected predecessor working/],
+ ['old operational entry mutation',r=>fs.appendFileSync(path.join(r,'internal/operational/runtime.go'),'\n// corruption\n'),/protected predecessor working/],
+ ['frozen migration mutation',r=>fs.appendFileSync(path.join(r,'internal/storage/postgres/migrations/000001_ledger.sql'),'\n-- corruption\n'),/protected predecessor working/],
+ ['original B004 closure mutation',r=>fs.appendFileSync(path.join(r,'scripts/ci/harness-runtime-closure.ts'),'\n// corruption\n'),/protected predecessor working/],
+ ['Owner authority whitespace rewrite',r=>fs.appendFileSync(path.join(r,AUTHORITY),' '),/exact B007 Owner authority/],
+ ['Q002 authority whitespace rewrite',r=>fs.appendFileSync(path.join(r,Q002_AUTHORITY),' '),/exact B007 Owner authority/],
+ ['Q005 authority byte rewrite',r=>fs.appendFileSync(path.join(r,Q005_AUTHORITY),' '),/exact B007 Owner authority/],
+ ['Q011 approved private evidence authority rewrite',r=>fs.appendFileSync(path.join(r,Q011_AUTHORITY),' '),/exact B007 Owner authority/],
+ ['Q011 status authority unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.private_evidence_successor_authority_sha256='0'.repeat(64);write(r,STATUS,s);},/Q011 private evidence authority/],
+ ['Q011 component construction falsely promoted to full acceptance',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.private_evidence_full_acceptance=true;write(r,STATUS,s);},/Q011 private evidence authority/],
+ ['Q009 accepted source authority byte rewrite',r=>fs.appendFileSync(path.join(r,Q009_AUTHORITY),' '),/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 accepted 45-source annex rewrite',r=>fs.appendFileSync(path.join(r,Q009_ANNEX),' '),/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 source-only review rewritten as runtime acceptance',r=>{const v=JSON.parse(fs.readFileSync(path.join(r,Q009_REVIEW)));v.runtime_ready=true;write(r,Q009_REVIEW,v);},/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 candidate CI hash substituted in the evidence index',r=>{const v=JSON.parse(fs.readFileSync(path.join(r,Q009_CI)));v.candidate_commit='0'.repeat(40);write(r,Q009_CI,v);},/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 exact merge job replaced by a pending job',r=>{const p='docs/pilot/evidence/task0-q009/merge-jobs.json';const v=JSON.parse(fs.readFileSync(path.join(r,p)));v.jobs[0].status='queued';write(r,p,v);},/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 source status binding changed',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.task0_prototype_source_package.commit='0'.repeat(40);write(r,STATUS,s);},/Q009 exact source authority/],
+ ['Q009 old 17-source annex silently replaced by new source annex',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.task0_input_annex_sha256=s.repositories.AIPT.mvp_b007.task0_prototype_input_annex_sha256;write(r,STATUS,s);},/authority\/budget/],
+ ['Q009 source adapter identity rewrite',r=>fs.appendFileSync(path.join(r,Q009_ADAPTER),' '),/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 executable gateway rewrite',r=>fs.appendFileSync(path.join(r,Q009_GATEWAY),'\n// substitution\n'),/Q009 frozen source control|exact B007 Owner authority/],
+ ['Q009 Go source binding replacement',r=>{const p=path.join(r,'internal/pilot/task0_source.go');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('d37ae9b38bce84f8bfc164306fee2bebf73178b7','0'.repeat(40)));},/Go containing source binding changed/],
+ ['Q009 Go gateway binding replacement',r=>{const p=path.join(r,'internal/pilot/task0_core.go');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('805e82a71d16f974e209ab0d3b8d8ae3d5f273239b1f96e3f31bc6d4cfb648a2','0'.repeat(64)));},/Go driver control identity changed/],
+ ['Q005 authority status unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.independent_reviewer_continuity_authority_sha256='0'.repeat(64);write(r,STATUS,s);},/authority\/budget/],
+ ['Q005 decision status unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.independent_reviewer_continuity_decision_id='unapproved';write(r,STATUS,s);},/authority\/budget/],
+ ['Q004 authority byte rewrite',r=>fs.appendFileSync(path.join(r,Q004_AUTHORITY),' '),/exact B007 Owner authority/],
+ ['Q004 approved proposal byte rewrite',r=>fs.appendFileSync(path.join(r,Q004_PROPOSAL),' '),/exact B007 Owner authority/],
+ ['Q004 authority status unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.local_runtime_closure_authority_sha256='0'.repeat(64);write(r,STATUS,s);},/authority\/budget/],
+ ['Q004 decision status unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.local_runtime_closure_decision_id='unapproved';write(r,STATUS,s);},/authority\/budget/],
+ ['Q003 authority whitespace rewrite',r=>fs.appendFileSync(path.join(r,Q003_AUTHORITY),' '),/exact B007 Owner authority/],
+ ['Q003 annex byte mutation',r=>fs.appendFileSync(path.join(r,Q003_ANNEX),' '),/exact B007 Owner authority/],
+ ['Q003 authority status unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.task0_supplemental_input_authority_sha256='0'.repeat(64);write(r,STATUS,s);},/authority\/budget/],
+ ['Q002 approved source byte mutation',r=>fs.appendFileSync(path.join(r,Q002_SOURCE),'\n// corruption\n'),/exact B007 Owner authority/],
+ ['Q002 authority status unbinding',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.closure_successor_authority_sha256='0'.repeat(64);write(r,STATUS,s);},/authority\/budget/],
+ ['Owner start removal',r=>fs.unlinkSync(path.join(r,START)),/failed closed/],
+ ['B006 reopened',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b006.state='IN_PROGRESS';write(r,STATUS,s);},/frozen predecessor status/],
+ ['integration reopened',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.tracks['AIPT-STANDALONE'].batch_history['INT-AIPT-UNREGISTERED-MVP-001']='NOT_STARTED';write(r,STATUS,s);},/frozen predecessor status/],
+ ['future batch activated',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.tracks['AIPT-STANDALONE'].next_batch_started=true;write(r,STATUS,s);},/sole-WIP1/],
+ ['qualification metadata promotion',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.qualification_runs_executed=1;write(r,STATUS,s);},/nonqualification/],
+ ['unauthorized budget increase',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,STATUS)));s.repositories.AIPT.mvp_b007.diagnostic_budget_usd='6.00';write(r,STATUS,s);},/budget/],
+ ['new dependency',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,'package.json')));s.dependencies={evil:'1'};write(r,'package.json',s);},/bounded B007 package/],
+ ['old required test removal',r=>{const s=JSON.parse(fs.readFileSync(path.join(r,'package.json')));delete s.scripts['test:run-core'];write(r,'package.json',s);},/bounded B007 package/],
+ ['old milestone rewrite',r=>fs.appendFileSync(path.join(r,'docs/milestones/MVP.md'),'historical corruption\n'),/historical status\/milestone prose/],
+ ['symlinked new pilot source',r=>{const p=path.join(r,'internal/pilot/budget.go');fs.unlinkSync(p);fs.symlinkSync('/dev/null',p);},/nonregular/],
+ ['absent accepted main',r=>git(r,['update-ref','-d','refs/remotes/origin/main']),/checkout\/main/],
+])test('current guard rejects '+name,t=>{const r=fixture(t);mutate(r);rejected(r,pattern);});
+for(const p of [Q015_GATE,Q016_AUTHORITY,Q017_AUTHORITY,Q017_FIXTURE,'scripts/ci/validate/evidence.mjs','scripts/ci/run-checks.mjs','internal/evidence/remote_provenance.go','package.json',STATUS,AUTHORITY,Q002_AUTHORITY,Q002_SOURCE,Q003_AUTHORITY,Q003_ANNEX,Q004_AUTHORITY,Q004_PROPOSAL,Q005_AUTHORITY,Q009_AUTHORITY,Q009_ANNEX,Q009_REVIEW,Q009_CI,Q009_ADAPTER,Q009_GATEWAY,Q011_AUTHORITY,'docs/pilot/evidence/task0-q009/merge-jobs.json'])test('clean older checkout cannot hide main rewrite/restore: '+p,t=>{
+ const r=fixture(t);const candidate=commit(r,'Synthetic B007 Candidate');assert.deepEqual(successorProblems(r),[]);
+ git(r,['switch','-c','synthetic-main',BASE]);git(r,['merge','--no-ff','--no-edit',candidate]);const merge=git(r,['rev-parse','HEAD']);git(r,['update-ref','refs/remotes/origin/main',merge]);assert.deepEqual(successorProblems(r),[]);
+ const original=fs.readFileSync(path.join(r,p));
+ if(p===STATUS){const v=JSON.parse(original);v.repositories.AIPT.mvp_b006.state='IN_PROGRESS';write(r,p,v);}else fs.appendFileSync(path.join(r,p),'\n// synthetic corruption\n');
+ commit(r,'Synthetic corrupt main');fs.writeFileSync(path.join(r,p),original);const restored=commit(r,'Synthetic restore');git(r,['update-ref','refs/remotes/origin/main',restored]);git(r,['checkout','--detach',candidate]);
+ rejected(r,/history changed|projection\/history/);
+});
+test('B007 committed Candidate implementation cannot mutate in a clean older checkout/main successor',t=>{
+ const r=fixture(t);const candidate=commit(r,'Synthetic Candidate');
+ git(r,['switch','-c','synthetic-main',BASE]);git(r,['merge','--no-ff','--no-edit',candidate]);fs.appendFileSync(path.join(r,'internal/pilot/budget.go'),'\n// unauthorized post-Candidate mutation\n');const changed=commit(r,'Synthetic changed implementation');git(r,['update-ref','refs/remotes/origin/main',changed]);git(r,['checkout','--detach',candidate]);
+ rejected(r,/committed implementation changed/);
+});
+
+test('Q016 evidence wrapper replays the complete frozen gate at exact accepted BASE',t=>{
+ const r=fixture(t);t.after(cleanupSnapshots);commit(r,'Synthetic Q016 exact Candidate');
+ const v=runApprovedPredecessor({repo:r},{gate:'evidence'});
+ assert.equal(v.result,'PASS',JSON.stringify(v));assert.equal(v.historical_gate.result,'PASS');
+ assert.equal(v.validation_target.commit,BASE);assert.equal(v.validation_target.mode,'EXACT_ACCEPTED_B006_WITH_OWNER_AUTHORIZED_B007_EVIDENCE_Q016_GUARD');
+ assert.equal(v.predecessor_gate_authority.path,Q016_AUTHORITY);assert.equal(v.external_github_requests,0);assert.equal(v.real_model_calls,0);
+});
+for(const [name,mutate]of[
+ ['Owner authority removed',r=>fs.unlinkSync(path.join(r,Q016_AUTHORITY))],
+ ['Owner decision still proposal',r=>{const a=JSON.parse(fs.readFileSync(path.join(r,Q016_AUTHORITY)));a.state='PROPOSAL_ONLY_NO_OWNER_DECISION';a.owner_instruction=null;write(r,Q016_AUTHORITY,a);}],
+ ['Owner authority byte rewrite',r=>fs.appendFileSync(path.join(r,Q016_AUTHORITY),' ')],
+ ['package restored to unapproved direct gate',r=>{const a=JSON.parse(fs.readFileSync(path.join(r,'package.json')));a.scripts['check:evidence']='node scripts/ci/validate/evidence.mjs';write(r,'package.json',a);}],
+ ['aggregate restored to unapproved direct gate',r=>{const p=path.join(r,'scripts/ci/run-checks.mjs');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace("  runApprovedPredecessor(ctx, { gate: 'evidence' }),",'  runEvidence(ctx),'));}],
+ ['current frozen evidence bytes altered',r=>fs.appendFileSync(path.join(r,'scripts/ci/validate/evidence.mjs'),'\n// unapproved inventory change\n')],
+ ['accepted main removed',r=>git(r,['update-ref','-d','refs/remotes/origin/main'])],
+])test('Q016 evidence replay is blocked before running historical gate: '+name,t=>{
+ const r=fixture(t);t.after(cleanupSnapshots);mutate(r);const v=runApprovedPredecessor({repo:r},{gate:'evidence'});
+ assert.equal(v.result,'FAIL');assert.equal(v.historical_gate,null);
+});
+test('Q016 bounded routing cannot authorize any other predecessor gate',t=>{
+ const r=fixture(t);const v=runApprovedPredecessor({repo:r},{gate:'evidence-other'});assert.equal(v.result,'FAIL');assert.equal(v.historical_gate,null);
+});
+test('Q016 replacement still rejects changed Q011 implementation after synthetic commit',t=>{
+ const r=fixture(t);fs.appendFileSync(path.join(r,'internal/evidence/private_audit_ready.go'),'\n// unapproved replacement\n');commit(r,'Synthetic forbidden private implementation change');
+ rejected(r,/Q015 unapproved replacement changed original implementation/);
+});
+test('Q016 replacement still rejects an unrelated new file after synthetic commit',t=>{
+ const r=fixture(t);fs.writeFileSync(path.join(r,'unapproved-evidence-skip.txt'),'not approved\n');commit(r,'Synthetic unrelated addition');
+ rejected(r,/Q015 unapproved replacement addition/);
+});
+
+for(const [name,mutate]of[
+ ['Owner authority removed',r=>fs.unlinkSync(path.join(r,Q017_AUTHORITY))],
+ ['Owner decision still proposal',r=>{const a=JSON.parse(fs.readFileSync(path.join(r,Q017_AUTHORITY)));a.state='PROPOSAL_ONLY_NO_OWNER_DECISION';a.owner_instruction=null;write(r,Q017_AUTHORITY,a);}],
+ ['Owner authority byte rewrite',r=>fs.appendFileSync(path.join(r,Q017_AUTHORITY),' ')],
+ ['exact fixture allocator setting changed',r=>{const p=path.join(r,Q017_FIXTURE);fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('MALLOC_ARENA_MAX=1','MALLOC_ARENA_MAX=2'));}],
+])test('Q017 fixture proposal is blocked before historical replay: '+name,t=>{
+ const r=fixture(t);t.after(cleanupSnapshots);mutate(r);const v=runApprovedPredecessor({repo:r},{gate:'evidence'});
+ assert.equal(v.result,'FAIL');assert.equal(v.historical_gate,null);
+});
+test('Q017 replacement rejects committed fixture bytes beyond the exact child-only repair',t=>{
+ const r=fixture(t);fs.appendFileSync(path.join(r,Q017_FIXTURE),'\n// unapproved assertion change\n');commit(r,'Synthetic forbidden fixture repair');
+ rejected(r,/Q017 replacement differs from exact test-child-only fixture bytes|exact B007 Owner authority changed/);
+});
+test('Q017 test fixture permission cannot authorize production namespace changes',t=>{
+ const r=fixture(t);fs.appendFileSync(path.join(r,'internal/pilot/runtime_namespace.go'),'\n// unapproved production change\n');commit(r,'Synthetic forbidden runtime repair');
+ rejected(r,/Q015 unapproved replacement changed original implementation/);
+});
