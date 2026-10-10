@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+env:
+  GOENV: "off"
+  GOTOOLCHAIN: "local"
+
 concurrency:
   group: aipt-m0-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -82,14 +86,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Setup exact Go 1.26.6
+      - name: Setup exact Go 1.26.9
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.6
+          go-version: 1.26.9
           cache: false
       - name: Verify exact Go version
         run: |
-          test "$(go version)" = "go version go1.26.6 linux/amd64"
+          test "$(go version)" = "go version go1.26.9 linux/amd64"
           go version
       - name: Setup exact Node.js 24.19.0
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -106,6 +110,9 @@ jobs:
           pnpm --version
       - name: gofmt check
         run: |
+          node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains
+          node scripts/ci/lib/b007-toolchain-security-q018.mjs --q015-full23
+          node --test scripts/ci/test/b007-toolchain-security-q018.test.mjs
           test -z "$(gofmt -l .)"
           echo "gofmt clean"
       - name: go vet
@@ -217,7 +224,7 @@ jobs:
         run: pnpm run check
       - name: Exact Base Authority candidate-stage post-merge reverification
         if: steps.authority_amendment_classify.outputs.applicable != 'true'
-        run: pnpm run check:p1-b000-post-merge-reverification
+        run: node scripts/ci/lib/b007-toolchain-security-q018.mjs --p1-reverification
       - name: PostgreSQL Official Image digest pull/run (exact 18.4)
         run: |
           docker pull "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
@@ -254,10 +261,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Setup exact Go 1.26.6
+      - name: Setup exact Go 1.26.9
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.6
+          go-version: 1.26.9
           cache: false
       - name: Setup exact Node.js 24.19.0
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -267,6 +274,7 @@ jobs:
         run: |
           npm install --global --no-audit --no-fund pnpm@11.4.0
           test "$(pnpm --version)" = "11.4.0"
+          node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains
       - name: Frozen install (lock integrity)
         run: pnpm install --frozen-lockfile
       - name: Supply-chain policy / pins / license coverage / secret-free scan
@@ -316,10 +324,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Setup exact Go 1.26.6
+      - name: Setup exact Go 1.26.9
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.6
+          go-version: 1.26.9
           cache: false
       - name: Setup exact Node.js 24.19.0
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -327,12 +335,13 @@ jobs:
           node-version: 24.19.0
       - name: Verify exact Go version
         run: |
-          test "$(go version)" = "go version go1.26.6 linux/amd64"
+          test "$(go version)" = "go version go1.26.9 linux/amd64"
           go version
       - name: Verify exact Node.js version
         run: |
           test "$(node --version)" = "v24.19.0"
           node --version
+          node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains
       - name: Start ephemeral PostgreSQL 18.4 container (digest-pinned, loopback-only)
         run: |
           docker pull "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
@@ -365,7 +374,7 @@ jobs:
           go test ./internal/storage/postgres -run '^TestPostgresIntegration' -count=1 -v
           go test ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v
           go test ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v
-          node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration
+          node scripts/ci/lib/b007-toolchain-security-q018.mjs --b001-launcher
           go test ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
       - name: PostgreSQL integration race coverage (B003 ledger + MVP-B001 WIP1/lease + MVP-B002 Run Core + B004 model gateway + frozen-Base B004 runtime shell + B006 RAW_CAPTURE + MVP-B005 AUDIT_READY closure)
         run: |
@@ -374,7 +383,7 @@ jobs:
           go test -race ./internal/storage/postgres -run '^TestPostgresIntegration(MigrationConcurrentRunners|LedgerConcurrentSameStreamAppends|QueueConcurrentFormalClaimsWIP1|QueueLeaseHeartbeatExpiryRecoveryAndStaleHolder)$' -count=1 -v
           go test -race ./internal/runcore -run '^TestPostgresIntegrationRunCoreAtomicConcurrencyReplay$' -count=1 -v
           go test -race ./internal/modelgateway -run '^TestPostgresIntegrationBreakGlassAtomicReplayAndRestart$' -count=1 -v
-          node scripts/ci/validate/mvp-b001.mjs --historical-launcher-integration --race
+          node scripts/ci/lib/b007-toolchain-security-q018.mjs --b001-launcher-race
           go test -race ./internal/evidence -run '^TestPostgresIntegrationEvidence' -count=1 -v
       - name: Remove ephemeral PostgreSQL container (CI-only cleanup, never production)
         run: |

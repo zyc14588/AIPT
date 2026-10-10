@@ -1,0 +1,99 @@
+{
+  "CI_counts": {
+    "FAIL": 3,
+    "PASS": 2
+  },
+  "DIAG_QUAL_executions": 0,
+  "PR": {
+    "merged": false,
+    "number": 28,
+    "url": "https://github.com/zyc14588/AIPT/pull/28"
+  },
+  "candidate_CI_accepted": false,
+  "candidate_commit": "f7c3736acd3524240ec178dc81e0a1c72a690930",
+  "candidate_tree": "bd09b4e24b8cb2c7db15bdb43cbd3d3fc8c9bcea",
+  "jobs": [
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/zyc14588/AIPT/actions/runs/38018808491/job/114115011257",
+      "id": 114115011257,
+      "name": "supply-chain (R4-Q023 gates)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/zyc14588/AIPT/actions/runs/38018808491/job/114115011410",
+      "id": 114115011410,
+      "name": "toolchain (ubuntu-26.04)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "html_url": "https://github.com/zyc14588/AIPT/actions/runs/38018808491/job/114115011422",
+      "id": 114115011422,
+      "name": "b000-retro (fixed B000 commit, read-only expansion)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/zyc14588/AIPT/actions/runs/38018808491/job/114115011424",
+      "id": 114115011424,
+      "name": "toolchain (ubuntu-24.04)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "html_url": "https://github.com/zyc14588/AIPT/actions/runs/38018808491/job/114115011478",
+      "id": 114115011478,
+      "name": "storage-postgres (ephemeral PostgreSQL 18.4 integration)",
+      "status": "completed"
+    }
+  ],
+  "local_primary_required26": "PASS_26_OF_26_NOT_PUBLIC_CI_ACCEPTANCE",
+  "merge_CI_accepted": false,
+  "namespace_CI_failure_stage": "INITIAL_OWNERSHIP_CHECK_BEFORE_STDIO_CLOSURE_AND_64_LOW_DESCRIPTOR_ITERATIONS",
+  "namespace_original_refusal_guard_and_errno": "UNOBSERVED",
+  "original_failed_log_digests": [
+    {
+      "job_id": 114115011257,
+      "original_log_bytes": 161125,
+      "original_log_sha256": "4ef49eaa0d861197970c342ab4b5a4f59345bec4356452c9d66153b70e055e7b"
+    },
+    {
+      "job_id": 114115011410,
+      "original_log_bytes": 34170,
+      "original_log_sha256": "77b79a2ad079d07b74583fa4e05da534f6ee0cd5424cbb4138a1506041549dd8"
+    },
+    {
+      "job_id": 114115011424,
+      "original_log_bytes": 34211,
+      "original_log_sha256": "97e95f95d51943ff61ef55a339542f9d452a67b6d83db74ffbaf4a4bfa86b379"
+    }
+  ],
+  "paid_callable": false,
+  "qualification_runs_authorized": 0,
+  "repository": "zyc14588/AIPT",
+  "run": {
+    "conclusion": "failure",
+    "event": "pull_request",
+    "head_sha": "f7c3736acd3524240ec178dc81e0a1c72a690930",
+    "html_url": "https://github.com/zyc14588/AIPT/actions/runs/38018808491",
+    "id": 38018808491,
+    "path": ".github/workflows/ci.yml",
+    "run_attempt": 1,
+    "status": "completed"
+  },
+  "runtime_ready": false,
+  "same_one_USD5_nonqual_diagnostic_cap": true,
+  "schema": "aipt.public.b007-Q018-original-PR28-CI-failure/v1",
+  "scope": "ORIGINAL_Q017_FAILED_CANDIDATE_RETENTION_ONLY_NOT_Q018_IMPLEMENTATION_OR_NEW_CI_ACCEPTANCE",
+  "single_parent": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+  "state": "OWNER_AUTHORIZED_Q018_ORIGINAL_FAILURE_RETAINED_NO_CI_ACCEPTANCE",
+  "unchanged_local_no_race_namespace_counts": {
+    "FAIL": 0,
+    "PASS": 5,
+    "SKIP": 0
+  },
+  "vulnerability_scan_symbol_results": 10,
+  "Owner_Q018_approval": true
+}
