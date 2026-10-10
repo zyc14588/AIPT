@@ -1,0 +1,69 @@
+{
+  "schema": "aipt.public.b007-exact-task0-prototype-source-authority/v1",
+  "task_id": "AIPT-MVP-B007",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q009",
+  "state": "OWNER_AUTHORIZED_SOURCE_ACCEPTED_PENDING_AIPT_PRODUCTION_BINDING_AND_ACCEPTANCE",
+  "owner_instruction": "批准",
+  "owner_approval_source": "DIRECT_HUMAN_USER_IN_CURRENT_ROOT_CONVERSATION",
+  "private_owner_authority_sha256": "8022dd119627ccc5f6df4dfe55125c62b9a1decc74e00cf43dc88687e1879aa6",
+  "reviewed_proposal_sha256": "f184acf7ab0716ceaecb2e562961f664558b415a00584aba5497e71cc01dcaec",
+  "reviewed_approval_material_sha256": "c383213dc7ae07d4ff631cee37a09600453d2b9624ff8d819d13807c158ae9dc",
+  "retained_Q007_owner_authority_sha256": "326e90dab028427cd362f4c1de38d894962e5b8c039d8edf2d46c1d1ed6d08f9",
+  "original_Q007_43_canonical_sha256": "05c1164a2c2b7a04aaa555a7646cf5fd520b14ef92364a1093be8a953c91f7cc",
+  "scope_exception": "THIS_EXACT_45_ENTRY_Q009_SOURCE_ONLY_REPLACES_Q007_FIXED_43_IDENTITY_RETAIN_Q007_PUBLICATION_REVIEW_CI_AUTHORIZATION_AND_ALL_PRIOR_FAILURE_HISTORY",
+  "source_package": {
+    "package_id": "UNREGISTERED-TASK0-PROTOTYPE-V2",
+    "schema": "unregistered.task0-prototype-package/v2",
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+    "tree": "d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9",
+    "canonical_sha256": "f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d"
+  },
+  "package_entries": 45,
+  "canonical": false,
+  "lifecycle": "PROTOTYPE",
+  "source_review": {
+    "path": "docs/pilot/reviews/q009-exact-source-adoption.json",
+    "bytes": 1593,
+    "sha256": "4732a423d5235780eb8e560c7d523f3846f4c4b59a4f8548caca0b6c5fd93024"
+  },
+  "ci_evidence": {
+    "path": "docs/pilot/evidence/task0-q009/evidence-index.json",
+    "bytes": 2510,
+    "sha256": "508d65a46b8ff87dc9edb3153bc4f635147d391dfed20e48e80842f39158c1c2"
+  },
+  "retained_q003_authority_sha256": "ee801db456897f11429238c3ffdbc08cca2a7d40009ea3ad1adee658eafc63e5",
+  "retained_q003_annex_sha256": "5f4ecf19c84a384245071c3f23f491a8c1fe4c8dcae0326a7123a3d6000566f5",
+  "input_annex_path": "docs/pilot/inputs/task0-prototype-input-annex-v2.json",
+  "old_Q003_17_bytes_and_projection_permissions_unchanged": true,
+  "old_INT001_package_and_all_predecessor_business_bytes_unchanged": true,
+  "public_scope": "CONTROL_CODE_POLICIES_DIGESTS_STATUS_ONLY_NO_RAW_GM_CHARACTER_INPUTS_PRIVATE_LOCATORS_OR_MODEL_TRANSCRIPTS",
+  "future_generic_repair_policy_authorized": false,
+  "deferred_Q006_approved_or_applied": false,
+  "unchanged_limits": {
+    "remote_max_usd": "5.00",
+    "remote_attempt_ceiling": 32,
+    "aggregate_input_tokens": 262144,
+    "aggregate_output_tokens": 32768,
+    "elapsed_seconds": 1800,
+    "local_minimum_role_calls": 1,
+    "diagnostic_runs": 1,
+    "qualification_runs_authorized": 0,
+    "no_budget_reset_or_automatic_increase": true
+  },
+  "memory_policy": "BEFORE_AND_AFTER_LOCAL_MODEL_START_DETECT_MEMORY_RELEASE_ONLY_REGISTERED_MODEL_FILE_CACHE_AND_RECORD_CHANGES",
+  "remaining_AIPT_acceptance": [
+    "SOURCE_ANNEX_AND_RUN_MANIFEST_BINDING_AFTER_EXACT_ACCEPTANCE",
+    "ROLE_AUTHENTICATION_PROJECTION_AND_PRODUCTION_DRIVER",
+    "FULL_INDEPENDENT_RUNTIME_AND_PRIVACY_REVIEW",
+    "EXACT_AIPT_PUBLIC_CANDIDATE_AND_MERGE_CI_FIVE_OF_FIVE",
+    "EXISTING_ONE_DIAG_ONLY_AFTER_ALL_PRIOR_GATES"
+  ],
+  "runtime_ready": false,
+  "paid_callable": false,
+  "full_runtime_HIGH": "OPEN",
+  "privacy_HIGH": "OPEN",
+  "model_calls": 0,
+  "diagnostic_runs": 0,
+  "qualification_runs": 0
+}

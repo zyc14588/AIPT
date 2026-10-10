@@ -1,5 +1,57 @@
 # 项目状态（PROJECT STATUS）
 
+2026-10-09 当前 B007：REMOTE004 和 LOCAL 启动前001已分别由同一代理082、083独立限定验收。新的 current010 真实游戏构造检查一次通过：生产 Table 接受委派 GAME，45项来源、15个 Core 事件精确回放、私有审计、B006 once/Inspect、5项导出及篡改拒绝成立，自有进程和数据库已回收；这项新实际结果仍待完整复审。组件测试1125 PASS、25条件SKIP，六项强制拒绝全PASS。REMOTE观察到5个 Node Worker Probe 后代；旧失败的隐藏计数仍未观察。LOCAL核对真实GGUF摘要与seals15，模型文件页已释放，原生入口17.9KB仍驻留，RSS未测量，未取得实际启动后三阶段缓存验收。本快照完整运行/隐私HIGH、生产来源绑定、公开PR及候选/精确合并各5/5 CI仍OPEN；native/真实模型/正式DIAG/QUAL均0。M0=100%、MVP=69.2%、总体=81.8%，B007唯一WIP1，runtime_ready=false、paid_callable=false。公开限定事实与摘要见 docs/pilot/reviews/q014-current010-pre-model-scoped-facts.json；下文为历史快照。
+
+
+2026-10-09 当前 B007（Q014 私有链限定通过，生产入口修复候选待验收）：同一只读代理074已核对无模型实际链1 PASS、0 FAIL、0 SKIP，15个真实 Core 事件精确回放、原始 fresh 匿名 HTTPS 来源、AES-256 私有审计、原 B006 once/Inspect、5项安全导出、篡改拒绝和实际 Owner join 均成立；审计测试目录及自有数据库在直接 join 后退休，原始证据保留。完整实现因 Q005-074-F1 未通过：生产表桌仍拒绝委派 GAME，此前私有链未覆盖该构造入口。现在已在 Q014 原授权内补齐委派 GAME 同一 SETUP 所有权适配，隔离候选131项 race 检查通过；真实生产构造回归与 REMOTE/LOCAL 启动前无模型边界仍待验收。完整运行/隐私 HIGH、公开 PR、候选及精确合并各5/5 CI和本地在线不可变目录仍 OPEN。实际 native 启动、生成/计数及三阶段缓存事实留在全部前置门禁后、原 USD5 一次非 QUAL DIAG 内取得。本轮模型/native/Worker/正式DIAG/QUAL均0，runtime_ready=false、paid_callable=false，M0=100%、MVP=69.2%、总体=81.8%，B007唯一WIP1。下文保留历史快照。
+
+2026-10-08 当前 B007（Q014 首次隔离可行性已限定验收）：精确静态夹具退出0，同一只读代理061核对原始证据，主方再核对46项文件一致。PREP现有及实际新增线程保持五组Cap0/NNP1，SETUP严格仅bit31/NNP1；34个静态哨兵全部直接wait，其中32个正常退出、2个预期负例，SETUP及PREP均由直接Owner join。已清理123,425,447字节Q014阶段自有可重建文件。现在推进生产CA交接与固定角色启动/回收适配；生产角色、真实整链、完整运行/隐私HIGH及候选和精确合并各5/5 CI仍待验收。旧FAIL和冻结来源保持，原USD5/一次非QUAL DIAG条件不变；模型/正式DIAG/QUAL均0，runtime_ready=false、paid_callable=false，M0=100%、MVP=69.2%、总体=81.8%，B007唯一WIP1。下文保留历史快照。
+
+2026-10-08 当前 B007（Q014 Owner 已批准）：已单独登记固定静态SETUP受限后继授权，active PREP仍全线程Cap0；先验证SETUP仅own USER域CAP_SETFCAP的隔离可行性，目前首夹具未执行，完整运行/隐私HIGH尚未通过。旧Q013三次FAIL与全部历史、来源verifier和已接受UNREGISTERED规则/输入、旧B005/B006冻结。原USD5/一次非QUAL DIAG、完整同一代理复审、真实整链和候选及合并各5/5 CI验收均保留；模型/正式DIAG/QUAL均0，M0=100%、MVP=69.2%、总体=81.8%，B007唯一WIP1，runtime_ready=false、paid_callable=false。下文保留历史快照。
+
+2026-10-08 当前 B007（Q014 待 Owner 决策）：同一只读代理057已完成UID映射EPERM定位事实与Q014文字材料的限定静态审查，主方递归核对18项文件一致；未发现材料阻断，但不代表架构、可行性或完整运行/隐私HIGH通过。Q014拟新增一个仅在自身用户命名空间保留CAP_SETFCAP的固定静态SETUP，处理已有冻结角色的创建和直接回收，active PREP继续全线程Cap0；这是新信任角色，现有Q013授权不覆盖，尚未授权、实现或执行。原003/004/005全部FAIL，追踪诊断不改判；USD5、一次非QUAL DIAG、原来源/完整独立与候选及合并各5/5 CI验收均保留。B007唯一WIP1，M0=100%、MVP=69.2%、总体=81.8%，runtime_ready=false、paid_callable=false，模型/正式DIAG/QUAL均0。自有245,266,637字节阶段临时编译文件已清理，原失败和审计材料保留。下文保留历史快照。
+
+当前进展（2026-10-08，Q013失败已定位，Q014提案尚未授权）：只读strace诊断重建并核对了005相同静态程序字节；现场clone嵌套命名空间成功，但PREP写入子进程uid_map的0→0映射返回EPERM，失败子进程退出253并被直接wait4回收。外层完整权限/CA入场和拒绝变更检查通过，仅属限定观察事实；原003/004/005全部FAIL，不被追踪改记可行性或HIGH通过。拟以单独的受限静态SETUP角色处理固定执行子进程映射/生命周期，维持active PREP Cap0；这是新信任角色，需要Owner决定，目前只有待复审文字材料，SETUP未实现或执行。Q013四个已完成夹具/诊断的245,266,637字节自有临时编译文件已清理，宿主固定CA核验不变，模型/正式DIAG/QUAL均0；M0=100%、MVP=69.2%、总体=81.8%，B007唯一WIP1、runtime_ready=false。下文保留历史快照。
+
+当前进展（2026-10-08，Q013 更正版005实际验证未通过）：固定封存来源、私有只读CA物化、两端全部33个当前线程的稳定Cap0/NoNewPrivs=1核验及外层新鲜CA入场通过；两别名和整个文件系统的13项变更拒绝控制通过，恢复能力的四项检查通过。实际程序仍在创建自有嵌套USER/MNT子进程时退出2，日志未记录cmd.Run的具体errno，不能把可能原因写成已实测结论。003/004/005原始FAIL全部保留，完整可行性及HIGH未通过，生产实施与模型调用停止，仅开展同一代理的只读失败诊断。自有PREP已退出join，005的61,330,173字节临时编译文件已清理；模型/正式DIAG/QUAL均0，B007仍唯一WIP1。下文保留历史快照。
+
+当前进展（2026-10-08，Q013 更正版004实际验证未通过）：私有 CA 物化正控制通过；PREP 对12及25个线程的完整稳定清单均核实五组能力为0、NoNewPrivs=1，包含13个实际新增线程。外部 Parent 对33个线程的独立完整稳定权限检查也通过，但未满足与 PREP 较早25个线程样本数量一致的门禁，故 fresh CA_ADMIT、嵌套子进程和整体验收未完成。003及004原始 FAIL 保留，不作为完整权限或可行性通过证据；生产实施停止，仅交同一代理只读诊断更正范围。直接自有子进程已退出并 join，004的61,307,484字节临时编译文件已清理。实际模型/正式 DIAG/QUAL均0，完整运行/隐私 HIGH、精确候选与合并 CI、B007关闭均待验收。下文保留历史快照。
+
+当前进展（2026-10-08，Q013 首个实际可行性验证未通过）：固定 CA 快照及私有 tmpfs 三对象/UID0/mode0400/精确字节/全部只读别名/无写描述符的限定正控制成功；完整线程核验在 stable-thread-inventory-before-after 阶段停止，不能据此宣称全部线程/未来线程、外层第二次入场或嵌套子进程验收通过。原实际 FAIL 与 stdout 完整保留；后续生产实施和再运行停止，仅进行同一代理的只读诊断。直接自有 PREP 已 join，61,298,807 字节临时程序/缓存已清理，宿主 CA 未变。实际模型调用/正式 DIAG/QUAL 均 0；完整运行/隐私 HIGH、候选/合并 CI 与 B007 关闭仍未通过。Q012/Q011及旧业务历史保持原字节。
+
+当前进展（2026-10-08，Q013 Owner 已批准）：已登记固定封存来源 → PREP 私有只读 tmpfs 的受限后继授权；仅授权先进行无网络、无模型的可行性验证，随后实现与完整独立/CI 验收。Q012 原封存 memfd 挂载失败（EINVAL/22）及历史保持原字节；新方案尚未验证，runtime_ready=false、paid_callable=false，完整运行/隐私 HIGH 仍 OPEN。实际模型调用、正式 DIAG、QUAL 均为 0；原 USD5 预算及所有前序验收要求不变。
+
+2026-10-08 当前 B007：Owner 已批准 Q012 固定系统 CA 封存桥接并单独登记。最终闭网、无模型夹具确认快照 UID0/mode0400/全 seals 和精确字节通过，同固定目标的普通文件只读挂载对照通过；封存 CA memfd 的绑定挂载返回 EINVAL(22)。已按 Q012 的失败停止条件保留原始结果，生产桥接未实施。两次夹具更正经同一代理限定静态复核，均未授予完整运行/隐私 HIGH。Q013 私有只读 tmpfs 与 PREP 全线程能力清空后继仅为待 Owner 决策提案，尚未批准或验证可行。旧 B005/B006/Q011/Q012 与历史字节保留；实际模型、正式 DIAG、QUAL 均0，公开候选与精确合并 CI 5/5 尚待完成。M0=9/9（100%），MVP=9/13（69.2%），总体=18/22（81.8%），B007唯一WIP1，runtime_ready=false。三次夹具的183192905字节自有临时程序与缓存已清理。下文保留历史快照。
+
+
+Q011 私有加密证据后继（Owner 已批准）
+
+仅允许新增 PRIVATE_FULL AES-256-GCM 证据入口与 B007 Reports 适配器；旧 B005/B006 业务、验证与历史字节保持精确。游戏来源仍为 Q009 接受的 45 项 PROTOTYPE，canonical=false。加密、报告与单次队列执行器组件已实现。独立 037 复审保留上下文组合容量及私有终结元数据两项阻断（Q005-037-F1/F2）和原 036 失败历史。后续兼容修复保留完整状态、源正文与当前可核实的 SEEN 源事实，采用逐次精确往返的可读 GM 表示；13 个合法参考状态、65 条离线完整 Worker 请求通过，最大 8049B，214 项定向 race 检查及六项实际隔离 PostgreSQL 检查通过（含四项矛盾元数据反例），均仅为 NON_CANON 组件验证。独立 038 复审限定通过原 F1/F2 的指定反例及组件修复，原失败与审查器输入错误记录均保留；新增 Parent/PREP 入口已构建，35 项定向 race 和一项真实隔离 PostgreSQL 单次排队检查通过，均未启动模型；完整 Parent/PREP、发布链与 runtime/privacy HIGH 尚待验收，公开候选 PR 与候选/合并 CI 5/5 尚待完成。真实模型调用、DIAG、QUAL 均为 0；USD 5 及原调用/输入/输出/1800 秒上限保持不变。M0 9/9、MVP 9/13、总体 18/22；B007 为唯一 WIP1。
+
+
+Q009 source adoption update (2026-10-08): Owner accepted the exact 45-entry UNREGISTERED Task0 PROTOTYPE; public PR5 merged `d37ae9b38bce84f8bfc164306fee2bebf73178b7` with tree `d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9` and canonical package SHA-256 `f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d`. Candidate and merge public push CI each passed 2/2; the same Owner-authorized read-only reviewer accepted only exact source/origin/CI scope. Separate Q009 authority, input annex and immutable offline CI control catalogue preserve the old Q003 seventeen-source closure and permissions, every historical failure, and the accepted INT001 pair. Actual AIPT source loading/RunManifest binding, role authentication, Task0 driver and full runtime/privacy acceptance remain pending. B007 stays WIP1; M0=9/9, MVP=9/13, overall=18/22; model/DIAG calls=0, QUAL=0/8. [Source authority](../pilot/authorities/task0-prototype-source-successor-q009.json) and [CI evidence](../pilot/evidence/task0-q009/evidence-index.json) contain control metadata only.
+
+2026-10-07 当前 B007：Owner 已同意 Q005 仅更换独立只读审查代理实例，原代理三次自动内容筛查中止记录保留。新代理先复核固定源码与证据，完整运行及隐私复审、原USD5预算、精确CI 5/5和三阶段定向模型缓存检查继续生效。已完成模块的限定测试与构建输入已持久保存，完整启动器、Task0执行器和实际运行验收尚未完成。B007新增真实模型/诊断/资格运行仍为0，M0=100%，MVP=69.2%，总体=81.8%，runtime_ready=false。下文保留历史状态。
+
+
+2026-10-07 当前 B007：Owner 已批准 Q004 完整本地运行闭包后继，允许新增独立运行/隔离启动器身份，以同一固定源码、模型、模板和原USD5预算推进。Q004已单独登记，原候选、关闭历史、模型登记和认证字节保留；实现、完整输入核验、受控认证与独立验收尚未完成。B007新增真实模型/诊断/资格运行仍为0，M0=100%，MVP=69.2%，总体=81.8%，runtime_ready=false。下文较早的待审批状态作为历史保留。
+
+
+2026-10-07 当前 B007：Q003 角色投影模块范围独立审查通过；数字规则和缓存模块的五项局部缺口已独立验证修复，第010次 PID/ready 复审为21项独立探针及5项仓库用例通过，完整运行身份尚未通过。Owner 已选择模型文件缓存定向释放，真实已登记文件缓存检查的驻留量为27.05 GiB→0；服务器尚未启动，实际启动后与退出后检查尚未执行。现有入口摘要未固定传递共享库，新增完整本地运行闭包身份 Q004 提案待Owner决策，维持同一固定源码、模型、模板和USD5预算。B007新增真实模型、诊断和资格运行均为0；M0=100%，MVP=9/13（69.2%），总体=18/22（81.8%），runtime_ready=false。下文保留历史记录。
+
+
+2026-10-06 当前 B007：Owner 已批准 Q003 独立输入附件，12 份固定源及原五文件的字节身份已核验；源正文保存在私人输入目录。Q002 精确新闭包和 PostgreSQL 全局预算的独立只读复审在其范围内 PASS（16 项探针），尚不构成真实调用或 B007 关闭验收。继续实现角色投影、任务0驱动、生产传输与本地完整输入证明。真实模型调用、诊断与资格运行均为0；M0=100%，MVP=9/13（69.2%），总体=18/22（81.8%）。下文保留历史记录。
+
+
+2026-10-06 当前 B007：Owner 已批准 Q002 新闭包身份；精确单文件产物已构建，16 项预算测试及 8 个子测试（含 PostgreSQL 18.4）通过，独立复审进行中。原五文件输入包缺少真实任务0需要的角色与情报资料，已准备 12 项固定源输入附件 Q003，等待 Owner 决策，尚未接入运行。真实模型调用、诊断运行与资格运行均为0；M0=100%，MVP=9/13（69.2%），总体=18/22（81.8%），B007尚未关闭。下文早期记录保留其当时状态。
+
+
+2026-10-06 B007 预算预检：21项实际Git历史保护测试、16项预算race测试项及六项固定前序重放通过。独立纯离线复现确认旧闭包的一次调用可产生33次上游请求，无法证明已批准的32次总上限。已准备新增单文件闭包后继补丁，原闭包与前序身份不变，新增闭包身份须Owner单独决策；新补丁未执行，真实调用和资格运行仍为0，B007尚未关闭。
+
+
+2026-10-06 当前状态：Owner 已批准 B007 后继门禁规则、新增真实任务0诊断驱动及一次5美元非资格试跑预算。已登记独立授权；B007为唯一 GLOBAL_WIP=1 批次，B006与全部前序关闭依据保持不变。真实调用前必须证明上游生成限额、费用预留及持久预算记账；目前B007真实模型/诊断/qualification=0。M0=100%，MVP=9/13（69.2%），总体=18/22（81.8%），runtime_ready=false。
+
+
 2026-10-06 最新关闭状态：`AIPT-MVP-B006` 已具备精确 Candidate `6e04f9f86ff10af05e61f3be60880a96b09d7295` / tree `65dfcf8e5d21fd4dcf6ff1c1b10d0b28e23d6237`、合法 merge `11653c8fa8cf42a15b481e29b33df68eeef10c7a`、候选 CI `37420245124` 及合并 CI `37420903891`（attempt 1）全部 5/5 success、同一独立只读 Codex 审查 PASS（24 probes，六项 finding 全部 VERIFIED_FIXED）与真实 PostgreSQL 18.4 39 项 race 集成 PASS。治理-only direct closeout 以独立不可变 CI catalogue、review 和 canonical append-only lifecycle records 生效。B006=MERGED_CLOSED，GLOBAL_WIP=0，下一批 B007 尚未开始；M0=9/9（100%），MVP=9/13（69.2%），总体=18/22（81.8%）。B006 新增真实模型/桌测/qualification=0，qualification=0/8，runtime_ready=false，MVP Development Pass 仍未授予；首个阻塞为 B007 实际驱动和非资格真实诊断 pilot。
 
 > 以下较早的状态、失败审查和授权说明作为历史快照保留；当前机器状态以 `registry/project-status.json` 和上述不可变关闭依据为准。
