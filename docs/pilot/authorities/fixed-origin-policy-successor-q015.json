@@ -1,0 +1,76 @@
+{
+  "schema": "aipt.public.b007-exact-fixed-origin-policy-successor-authority/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B007",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q015",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "owner_instruction": "批准",
+  "scope_exception": "EXACT_NON_SECRET_ORIGIN_FINDING_CLASSIFICATION_AND_FORMAT_ONLY_TEST_REPLACEMENT_CANDIDATE",
+  "allowed_finding": {
+    "file": "docs/pilot/runtime/harness-runtime-closure-b007.ts",
+    "sha256": "1dedde689c31337dc0a29102239a828a9873003f80945d5c456eef5614d8512f",
+    "bytes": 6427,
+    "hazard": "DEEPSEEK_ENDPOINT",
+    "maximum_accepted_findings": 1
+  },
+  "retained_q002_authority_sha256": "214d271c85245bac4f009e524e841f59411291d1ea6c09cc068066b131f6ca7b",
+  "retained_q002_bundle_sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70",
+  "original_scanner_sha256": "d08c0f1da9e6b6c04aa91f0bdee0ae655e0c7b2baf301efc613a789ef5baa5b3",
+  "original_supply_chain_sha256": "0e7bd7b810be7bb80ab89d3e62a4285911e39fb3e7c13b2c4d729ed957521fa6",
+  "exact_supply_chain_successor_sha256": "57a9f1a69193506d9b80075342395e86fa2028f7eb5d3ab015f02095d0c8e1f2",
+  "original_supply_chain_snapshot": "docs/pilot/evidence/task0-q015/original-supply-chain.mjs",
+  "original_failed_candidate": {
+    "commit": "ec76d9c5cba0c32f3bb58c2a0abb9602f9ebe2d8",
+    "tree": "9ab33633cdf943571ca3693c15a53b4f0b3d2dd5",
+    "PR": 27,
+    "CI_run_id": 37921359218,
+    "CI_passed": 2,
+    "CI_failed": 3,
+    "public_observation_path": "docs/pilot/evidence/task0-q015/PR27-original-CI-failure.json",
+    "public_observation_sha256": "d108b729bd4872a14653a081d27dd679ab7d384589a266da4e1793c96594b8af"
+  },
+  "replacement_candidate": {
+    "base_commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "base_tree": "d91062ddb99d781a825e272a6365ed4effe97350",
+    "new_branch_and_public_PR": true,
+    "single_direct_child_of_base": true,
+    "retain_original_PR_and_branch": true,
+    "force_push": false,
+    "merge_requires_owner_approval": true,
+    "merge_strategy": "merge-commit"
+  },
+  "formatted_test": {
+    "path": "internal/pilot/runtime_helper_protocol_test.go",
+    "sha256": "8839aa2547341898cab998716709cf6f3c2f27731565a8d747a955949968a45f",
+    "bytes": 7124,
+    "runtime_business_changes": 0
+  },
+  "no_files_patterns_or_directories_skipped": true,
+  "classification_uses_same_scanned_buffer_sha256": true,
+  "all_other_findings_and_all_other_gate_failures_remain_blocking": true,
+  "original_negative_probes_unchanged": true,
+  "public_workflow_unchanged": true,
+  "original_B006_history_unchanged": true,
+  "future_generic_repair_policy_authorized": false,
+  "required_acceptance": [
+    "SAME_CONTINUING_INDEPENDENT_READ_ONLY_REVIEWER_FULL_EXACT_SUCCESSOR_REVIEW",
+    "ORIGINAL_BASE_SUPPLY_CHAIN_REPLAY",
+    "COMPLETE_CURRENT_SUPPLY_CHAIN_AND_REQUIRED_CHECKS",
+    "NEW_EXACT_CANDIDATE_CI_FIVE_OF_FIVE",
+    "OWNER_APPROVED_MERGE_COMMIT",
+    "EXACT_MERGE_CI_FIVE_OF_FIVE",
+    "INDEPENDENT_IMMUTABLE_LOCAL_ONLINE_CI_CATALOGUE",
+    "ACTUAL_PRODUCTION_RUNTIME_GRANTS_BEFORE_ONE_ORIGINAL_DIAG"
+  ],
+  "unchanged_budget": {
+    "remote_max_usd": "5.00",
+    "diagnostic_runs": 1,
+    "qualification_runs_authorized": 0,
+    "automatic_budget_increase": false
+  },
+  "runtime_ready": false,
+  "paid_callable": false,
+  "valid_START_MODEL_permitted": false,
+  "public_CI_GitHub_API_requests_added": 0,
+  "public_CI_real_model_calls": 0
+}

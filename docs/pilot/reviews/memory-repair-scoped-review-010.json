@@ -1,0 +1,101 @@
+{
+  "schema": "aipt.public.b007-independent-memory-repair-scoped-review/v1",
+  "task_id": "AIPT-MVP-B007",
+  "reviewer": "OWNER_AUTHORIZED_LOCAL_INDEPENDENT_READ_ONLY_CODEX_AGENT",
+  "report_sha256": "0fd62e12f510bea8071ee3f45afc752d40767235f3dd4dab951d17519170f86b",
+  "index_sha256": "deb32f55167fdeae4b7751935c06e08739c5fe7703fbc1456d2f4384a39a4c4a",
+  "result": "PASS_BOUNDED_PID_DISCOVERY_AND_READY_REPAIR_ONLY",
+  "source_files": [
+    {
+      "path": "internal/pilot/task0_rules.go",
+      "bytes": 16467,
+      "sha256": "c56c52e52d4494d4ad088b4468d5d689c9565777a1bd208ce7cdc3a5c20c624b"
+    },
+    {
+      "path": "internal/pilot/task0_rules_test.go",
+      "bytes": 7531,
+      "sha256": "6b67f326efcae733efa6ba9ad23260e86b5c6e1f507195c0612f555e93449e92"
+    },
+    {
+      "path": "internal/pilot/memory.go",
+      "bytes": 7626,
+      "sha256": "056cb159a3aadb83c4a51e0be710035013ca1412c49068c895657e11877d6618"
+    },
+    {
+      "path": "internal/pilot/memory_test.go",
+      "bytes": 2999,
+      "sha256": "2a9329afcdb757cdc82051933f485c9624838453ebded553d7590da1f757d2a6"
+    },
+    {
+      "path": "internal/pilot/memory_lifecycle.go",
+      "bytes": 8815,
+      "sha256": "346e1a7d802e8279523bb3ce89a23f27ee306db543ce17dc024050d1af4295ad"
+    },
+    {
+      "path": "internal/pilot/memory_lifecycle_test.go",
+      "bytes": 5763,
+      "sha256": "6754b8069909f7f305039c4772e1d946e0c955023d3c0d7cf48678ac617c5e7a"
+    }
+  ],
+  "independent_leaf_probes": {
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0
+  },
+  "repository_leaf_tests": {
+    "PASS": 5,
+    "FAIL": 0,
+    "SKIP": 0
+  },
+  "repository_helper_entrypoints_included": 1,
+  "original_findings": [
+    {
+      "id": "LOCAL-B007-MEMORY-PID-DISCOVERY-001",
+      "disposition": "VERIFIED_FIXED"
+    },
+    {
+      "id": "LOCAL-B007-MEMORY-READY-001",
+      "disposition": "VERIFIED_FIXED"
+    },
+    {
+      "id": "LOCAL-B007-D100-TENS-001",
+      "disposition": "VERIFIED_FIXED"
+    },
+    {
+      "id": "LOCAL-B007-LOAD-OVERFLOW-001",
+      "disposition": "VERIFIED_FIXED"
+    },
+    {
+      "id": "LOCAL-B007-MEMORY-PHASE-001",
+      "disposition": "VERIFIED_FIXED"
+    },
+    {
+      "id": "LOCAL-B007-LOCAL-RUNTIME-CLOSURE-001",
+      "disposition": "OPEN"
+    }
+  ],
+  "prior_fail_report_sha256": [
+    "314737aee0b57561c7700ec35e3363173f8ad17a71b8a554acc2573a00b423fd",
+    "bbd1f72096beccb95b550f44778b27b504ddc91d72e390130768ba44926da69f",
+    "74317519c99b77c15de6a07c2ca23b67f64e449eeb923f6e06e834523aa049af"
+  ],
+  "unresolved_runtime_readiness_findings": [
+    "LOCAL-B007-LOCAL-RUNTIME-CLOSURE-001"
+  ],
+  "race": true,
+  "oversized_live_process_or_thread_inventory_tested": false,
+  "process_inventory_size_bounds": "STATIC_ACCEPTANCE_REVIEW_NO_PREALLOCATION_OR_READ_SIZE_BOUND_CLAIM",
+  "future_derived_executable_over_32mib_requires_separate_review": true,
+  "actual_start_and_retire_memory_verification": false,
+  "full_local_runtime_closure_acceptance": false,
+  "paid_callable": false,
+  "runtime_ready": false,
+  "candidate_acceptance": false,
+  "batch_closeout": false,
+  "registered_runtime_starts": 0,
+  "real_model_calls": 0,
+  "network_requests": 0,
+  "certification_runs": 0,
+  "qualification_runs_executed": 0,
+  "private_source_or_locator_bodies_published": false
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "aipt.public.b007-predecessor-gates-and-diagnostic-authority/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B007",
+  "decision_id": "B007-PREDECESSOR-GATES-AND-DIAGNOSTIC-PILOT-Q001=A",
+  "state": "OWNER_AUTHORIZED_PENDING_IMPLEMENTATION_AND_ACCEPTANCE",
+  "owner_decision": "批准",
+  "owner_decision_context": "B007_TEXT_PROPOSAL_58316_SCOPE_AND_USD5_BUDGET",
+  "reviewed_proposal_sha256": "6d2cd4bca333e7493fe93e500859fa10664b58958cb487be41db965d12daa0ea",
+  "accepted_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  },
+  "predecessor_closeout_ci": {
+    "run_id": 37422523374,
+    "head_sha": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "run_attempt": 1,
+    "successful_jobs": 5,
+    "online_acceptance_receipt_sha256": "ec1a549fc4f0efeb82c013939bee619173d15dfcf250a6140384277c4c40316a"
+  },
+  "scope": {
+    "historical_replay_base": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "historical_replay_tree": "d91062ddb99d781a825e272a6365ed4effe97350",
+    "preserve_unchanged_b006_guard_validator_tests_and_all_accepted_authorities": true,
+    "new_guard": "STRICT_CURRENT_CHECKOUT_MAIN_ALL_FIRST_PARENT_STATUS_AND_PROTECTED_FILE_HISTORY",
+    "mutable_predecessor_paths": [
+      "package.json",
+      "scripts/ci/run-checks.mjs",
+      "docs/authority/registry/project-status.json",
+      "docs/authority/PROJECT_STATUS.md",
+      "docs/milestones/MVP.md"
+    ],
+    "bounded_package_change": "ADD_B007_PILOT_AND_CHECK_SCRIPTS_ONLY_NO_DEPENDENCY_CHANGES",
+    "bounded_aggregate_change": "ROUTE_PREDECESSOR_GATES_THROUGH_B007_AUTHORIZED_FIXED_REPLAY_ADD_CURRENT_B007_GATES",
+    "status_change": "B007_SOLE_WIP1_AND_FUTURE_NEXT_BATCH_FIELDS_ONLY_PRESERVE_ALL_CLOSED_PREDECESSOR_STATUS",
+    "old_business_mutation_authorized": false,
+    "b006_runtime_entry_mutation_authorized": false,
+    "closed_record_or_failed_history_rewrite_authorized": false,
+    "existing_integration_replay_authorized": false
+  },
+  "additive_implementation_surfaces": [
+    "internal/pilot/",
+    "cmd/aipt-pilot/",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/lib/b007-lifecycle.mjs",
+    "scripts/ci/validate/b007-approved-predecessors.mjs",
+    "scripts/ci/validate/mvp-b007.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "docs/authority/registry/b007-start.json",
+    "docs/authority/registry/b007-predecessor-gates-successor.json",
+    "docs/pilot/",
+    "testdata/pilot/v1/"
+  ],
+  "predecessor_guard_and_entry_bytes": {
+    "scripts/ci/lib/b006-successor.mjs": "df44ea3b47f12db5fec4cec022ae0a6b55c4a9a30577e023a157f2ad3fc07b79",
+    "scripts/ci/lib/b006-lifecycle.mjs": "b90042950ac97d3ea7d73fac4fb9d5e3d005715af2e8d575f79997898d0f4e61",
+    "scripts/ci/validate/b006-approved-predecessors.mjs": "c45f2d359516acd97ee2e9f12720b81e52360e79abdfaadf7b11a606de12bf07",
+    "scripts/ci/validate/mvp-b006.mjs": "c501607acffd49788b7f2d876b08ea47d7fd5a9fa71cecafd2a5fcfcceca0d9b",
+    "scripts/ci/test/b006-lifecycle.test.mjs": "82ca258058d7e7ddfb4a1460d61069f03c21ab2ae9f44ea6fec7ff7c44261430",
+    "internal/operational/runtime.go": "7cb5deef7527f8b257f05d195fdfe6338ffd933ebcfa0ed69da5de171498fb13",
+    "package.json": "cb24e6dd0b37e75d9f0236d79da1a806fef5c5ffb1f2fd6b37d440fa2d4e0486",
+    "scripts/ci/run-checks.mjs": "23c704e724cbe44a36c129d66d78eae6ed6d966dc9cabb1e05ff3dceb5fab5e7"
+  },
+  "fixed_input_package": {
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+    "tree": "34597e79c586fb034256daa32d67640692ec589d",
+    "nested_source": {
+      "package_id": "zyc14588/agent-sim",
+      "package_version": "1.0.0",
+      "game_id": "UNREGISTERED",
+      "game_version": "0.0.0-prototype.0",
+      "source_repository": "zyc14588/UNREGISTERED",
+      "source_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+      "source_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+      "source_digest": "605b4a72dda8348fc51245f0d0947d69cc47b174346bb9f14b378fb703ff594d",
+      "package_manifest_sha256": "99683081677f5ac098dc94ee1221b4ae1fd5a75b416da7094276dbf694bb23bd"
+    }
+  },
+  "diagnostic_budget": {
+    "runs": 1,
+    "classification": "DIAGNOSTIC",
+    "qualification_eligible": false,
+    "remote_max_usd": "5.00",
+    "remote_request_attempt_ceiling": 32,
+    "aggregate_input_token_ceiling": 262144,
+    "aggregate_output_token_ceiling": 32768,
+    "local_minimum_role_calls": 1,
+    "elapsed_time_seconds": 1800,
+    "automatic_budget_increase": false,
+    "qualification_runs_authorized": 0,
+    "before_paid_call": "REQUIRE_VERIFIED_UPSTREAM_GENERATION_CEILING_CURRENT_PRICE_RESERVATION_AND_DURABLE_BUDGET_ACCOUNTING_ELSE_STOP_NO_CALL",
+    "all_retries_and_certification_calls_included_in_budget": true
+  },
+  "remote_model_policy": {
+    "model_id": "deepseek-v4-pro",
+    "reuse_same_registered_harness_identity": true,
+    "new_versioned_role_specific_profiles_required": true,
+    "existing_public_only_b004_certification_is_not_hidden_context_permission": true,
+    "allowed_classifications": [
+      "PUBLIC",
+      "UNRELEASED_REMOTE_ALLOWED",
+      "TABLE_HIDDEN_REMOTE_ALLOWED"
+    ],
+    "never_send": [
+      "LOCAL_ONLY_SECRET",
+      "HUMAN_PRIVATE_DATA",
+      "CREDENTIAL_SECRET"
+    ],
+    "player_context_excludes_gm_only_and_other_player_private_assets": true,
+    "model_budget_decision": "OWNER_APPROVED_USD5_TOKEN_ATTEMPT_TIME_CAPS"
+  },
+  "acceptance": {
+    "public_ci_model_calls": 0,
+    "public_ci_application_github_api_calls": 0,
+    "independent_review": "SAME_OWNER_AUTHORIZED_READ_ONLY_CODEX_AGENT",
+    "candidate_and_exact_main_ci": "FIVE_OF_FIVE_SUCCESS",
+    "post_merge_evidence": "OWNER_APPROVED_LOCAL_ONLINE_INDEPENDENT_IMMUTABLE_CATALOGUE",
+    "pilot_failure": "PRESERVE_FAILURE_AND_DO_NOT_CLOSE_BATCH",
+    "qualifications": "NOT_INCREMENTED_BY_DIAGNOSTIC"
+  },
+  "global_wip": 1,
+  "qualification_runs_authorized": 0,
+  "public_ci_real_model_calls": 0,
+  "public_ci_application_github_requests": 0
+}

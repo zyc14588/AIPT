@@ -1,3 +1,4 @@
+import { currentQualificationProblems, historicalLockProjection, historicalLicenseInventory } from '../lib/b007-toolchain-security-q018.mjs';
 // AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4,
 // AIPT-M0-B003 iteration 6a, the AIPT-M0-B004 zero-new-dependency runtime
 // shell, and the first-party-only AIPT-MVP-B004 model gateway).
@@ -66,6 +67,7 @@ import {
   TOOLCHAIN,
 } from '../lib/constants.mjs';
 import { scanTreeForHazards } from '../lib/scan.mjs';
+import { inspectQ018OriginPolicy } from '../lib/b007-toolchain-security-q018.mjs';
 import { git, runAsMain } from '../lib/cli.mjs';
 
 // The exact approved pgx v5.10.0 Go runtime closure (AIPT-M0-B003 iteration
@@ -81,16 +83,25 @@ const GO_RUNTIME_MODULES = [
   { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
   { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
   { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
-  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, license: 'BSD-3-Clause', h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
-  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, license: 'BSD-3-Clause', h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
+  { module: 'golang.org/x/sync', version: 'v0.22.0', direct: false, license: 'BSD-3-Clause', h1hex: '4998e96de2e6ac2938c614526453595b980551e09e1608de92f23ffa07d271e9', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.41.0', direct: false, license: 'BSD-3-Clause', h1hex: 'bf3fec780d259d7f3b3ad86ed9fff42f6e11720ad70fdfd81534ae1a38f7ac7f', gomodhex: '8ef7f53bc6a337366a852ad004f6eeb51fc407cdc2734085adeccd408c1b6f93' },
 ];
 
 // Go 1.26.6 selected-module graph after the exact x/text v0.39.0 upgrade.
 // The two graph-only identities are not application runtime dependencies and
 // therefore do not enter go.mod's six-module runtime closure.
+const HISTORICAL_GO_RUNTIME_MODULES = [
+  { module: 'github.com/jackc/pgx/v5', version: 'v5.10.0', direct: true, license: 'MIT', h1hex: '5614af814da34a58bca3702a20439326beeb670004515a381385e147de197ebd', gomodhex: '99a975b4118015f2c7bd9cda621efb612fde0ba217f4e59b455d50208334267e' },
+  { module: 'github.com/jackc/pgpassfile', version: 'v1.0.0', direct: false, license: 'MIT', h1hex: 'ffa1e6ab2d774acdb30aaeb655d346f2d335c1c867f338d218e049ea2729b083', gomodhex: '084c74892e5a99b34575c46dc4f8f9261133fb107ab91932e5ec95bbf5b61c48' },
+  { module: 'github.com/jackc/pgservicefile', version: 'v0.0.0-20240606120523-5a60cdf6a761', direct: false, license: 'MIT', h1hex: '882127a287bb525c0e418a4a16105a6cf322e1a3407e83833c414d8809c2971a', gomodhex: 'e5325958a1169e23ef7b7def956612a0661e7e7de02d04738df0e585227d64a3' },
+  { module: 'github.com/jackc/puddle/v2', version: 'v2.2.2', direct: false, license: 'MIT', h1hex: '3d1f27c3e13fd70d062ee4454a68a2a18e94a28329e8a26fd3feb59c1ee2707a', gomodhex: 'beb8a21171ef104eb9e1a60a5d78cebd9337f6a274abe6b391916b7c439cdc7e' },
+  { module: 'golang.org/x/sync', version: 'v0.21.0', direct: false, license: 'BSD-3-Clause', h1hex: '1cb208e314514ed091931629e0734517426cfce83aab68bef8a5db8348070b03', gomodhex: 'f71acdc1d2dfc788e429b36f6bd1692fabc437b7af9c4e3734d3494362c5dfed' },
+  { module: 'golang.org/x/text', version: 'v0.39.0', direct: false, license: 'BSD-3-Clause', h1hex: '51b673e292cebe7eb4d03e8e87a186108e950269ddac404bbfcffa0445f3caeb', gomodhex: 'dd4c117259c2da0d1353dc7c3d98b27ce6a309dd7369434717d72fa9c419f993' },
+];
+
 const GO_MODULE_GRAPH_TOOLING = [
-  { module: 'golang.org/x/mod', previousVersion: 'v0.27.0', version: 'v0.37.0', license: 'BSD-3-Clause', h1hex: 'bc5d438e9544b21708aa811a6aeb8779b68b9353b57e8af18f105a567f3ce094', gomodhex: '9bc4bc55e33daf87730f08eb28ed1ad6c64fdd88de31a9914650fe7e647643fd' },
-  { module: 'golang.org/x/tools', previousVersion: 'v0.36.0', version: 'v0.47.0', license: 'BSD-3-Clause', h1hex: 'eca9f9c7f775b2fc7f3f3af24eca9ea193784d9c2a787e691968de7e12e2ff54', gomodhex: '7451e7c93bc5598db5d86fa1ed963856ca7f2b7538ffb5bd4f255a02e97cb820' },
+  { module: 'golang.org/x/mod', previousVersion: 'v0.27.0', version: 'v0.38.0', license: 'BSD-3-Clause', h1hex: '3040818ee6ed5c3ef28f81eb84851ccb035a19e35551d7d59f198f6a33a4e329', gomodhex: '57a5f3d29abc4d0ddd1aa550d45547b9e959a402f4b8d852924f688183f7738d' },
+  { module: 'golang.org/x/tools', previousVersion: 'v0.36.0', version: 'v0.48.0', license: 'BSD-3-Clause', h1hex: 'dfe84294cd5a2cbe668cc2a6e68be8930f5ea604573eebb6b482e08ac98ce911', gomodhex: 'd3cc57d28ae775bfc5ee327118389cc74eb5b72779a5c32da3be583005ebea59' },
 ];
 
 const EXPECTED_SELECTED_MODULE_GRAPH = {
@@ -103,10 +114,10 @@ const EXPECTED_SELECTED_MODULE_GRAPH = {
   'github.com/pmezard/go-difflib': 'v1.0.0',
   'github.com/stretchr/objx': 'v0.1.0',
   'github.com/stretchr/testify': 'v1.11.1',
-  'golang.org/x/mod': 'v0.37.0',
-  'golang.org/x/sync': 'v0.21.0',
-  'golang.org/x/text': 'v0.39.0',
-  'golang.org/x/tools': 'v0.47.0',
+  'golang.org/x/mod': 'v0.38.0',
+  'golang.org/x/sync': 'v0.22.0',
+  'golang.org/x/text': 'v0.41.0',
+  'golang.org/x/tools': 'v0.48.0',
   'gopkg.in/check.v1': 'v1.0.0-20201130134442-10cb98267c6c',
   'gopkg.in/yaml.v3': 'v3.0.1',
 };
@@ -512,7 +523,7 @@ function checkLicenseInventory(licenses) {
   // directness, and truthful B003 selection/verification evidence — never
   // claimed as B001/B002-verified.
   let goRuntimeOk = true;
-  for (const m of GO_RUNTIME_MODULES) {
+  for (const m of HISTORICAL_GO_RUNTIME_MODULES) {
     const rec = records.find((r) => r?.id === m.module);
     if (!rec) {
       fail(`licenses.json missing Go runtime record ${m.module}`);
@@ -546,7 +557,7 @@ function checkLicenseInventory(licenses) {
     if (!rec.verified_at) fail(`licenses.json record ${m.module} missing verified_at`);
   }
   if (goRuntimeOk) {
-    ok(`${GO_RUNTIME_MODULES.length} Go runtime license records carry exact versions, SPDX licenses, kind/role, go.mod directness, and truthful B003 selection/verification evidence`);
+    ok(`${HISTORICAL_GO_RUNTIME_MODULES.length} Go runtime license records carry exact versions, SPDX licenses, kind/role, go.mod directness, and truthful B003 selection/verification evidence`);
   }
 
   // B004 preserves the B003 selectors while recording the current security
@@ -678,12 +689,12 @@ function checkLicenseInventory(licenses) {
   }
   const appDeps = src.application_dependencies && typeof src.application_dependencies === 'object' ? src.application_dependencies : {};
   if (
-    appDeps.go_runtime_third_party_modules !== GO_RUNTIME_MODULES.length ||
+    appDeps.go_runtime_third_party_modules !== HISTORICAL_GO_RUNTIME_MODULES.length ||
     appDeps.go_selected_module_graph_tooling_modules !== GO_MODULE_GRAPH_TOOLING.length ||
     appDeps.pnpm_runtime_third_party_packages !== 0
   ) {
-    fail(`licenses.json application_dependencies must be runtime-go=${GO_RUNTIME_MODULES.length}/graph-tooling=${GO_MODULE_GRAPH_TOOLING.length}/pnpm=0, got go=${JSON.stringify(appDeps.go_runtime_third_party_modules)}/graph-tooling=${JSON.stringify(appDeps.go_selected_module_graph_tooling_modules)}/pnpm=${JSON.stringify(appDeps.pnpm_runtime_third_party_packages)}`);
-  } else ok(`licenses.json application dependency inventory = runtime-go ${GO_RUNTIME_MODULES.length}, selected graph tooling ${GO_MODULE_GRAPH_TOOLING.length}, pnpm runtime 0`);
+    fail(`licenses.json application_dependencies must be runtime-go=${HISTORICAL_GO_RUNTIME_MODULES.length}/graph-tooling=${GO_MODULE_GRAPH_TOOLING.length}/pnpm=0, got go=${JSON.stringify(appDeps.go_runtime_third_party_modules)}/graph-tooling=${JSON.stringify(appDeps.go_selected_module_graph_tooling_modules)}/pnpm=${JSON.stringify(appDeps.pnpm_runtime_third_party_packages)}`);
+  } else ok(`licenses.json application dependency inventory = runtime-go ${HISTORICAL_GO_RUNTIME_MODULES.length}, selected graph tooling ${GO_MODULE_GRAPH_TOOLING.length}, pnpm runtime 0`);
   const dependencyNoteTokens = [
     'AIPT-M0-B003',
     'AIPT-M0-B004',
@@ -1105,6 +1116,9 @@ export function run(ctx) {
     details.push(`FAIL: ${msg}`);
   };
   const read = (rel) => fs.readFileSync(path.join(ctx.repo, rel), 'utf8');
+  const q018Problems = currentQualificationProblems(ctx.repo);
+  if (q018Problems.length) return { name: 'supply-chain', result: 'FAIL', details: q018Problems.map(p => 'FAIL: ' + p) };
+  ok('Q018 actual current full22 license inventory, Go1.26.9 and current pins match exact independent prerequisites; old vulnerability qualifiers below are historical only');
 
   // ---- policy.json: exactly the frozen rule set ----
   let policy;
@@ -1132,17 +1146,19 @@ export function run(ctx) {
   // mutated in-memory copies (the file is never written) ----
   let licenses;
   try {
-    licenses = JSON.parse(read('tools/supply-chain/licenses.json'));
+    licenses = historicalLicenseInventory(ctx.repo);
   } catch (err) {
     fail(`licenses.json unparseable: ${err.message}`);
     return { name: 'supply-chain', result: 'FAIL', details };
   }
   const records = Array.isArray(licenses?.records) ? licenses.records : [];
+  // All original historical license fields/probes remain independently checked.
+  // The actual current full22 inventory was checked against Q018 above.
   const licSem = checkLicenseInventory(licenses);
-  details.push(...licSem.details);
+  details.push(...licSem.details.map(d => 'historical pre-Q018 license inventory: ' + d));
   if (licSem.result !== 'PASS') {
     fail('licenses.json machine license inventory FAIL');
-  } else ok('licenses.json machine license inventory PASS');
+  } else ok('historical pre-Q018 license inventory PASS; current Q018 inventory independently checked above');
   const licenseProbes = [
     {
       label: 'composite image record mislabeled PostgreSQL',
@@ -1922,18 +1938,18 @@ export function run(ctx) {
   const selectedGraphProbes = [
     {
       label: 'x/text old vulnerable v0.29.0',
-      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
-      text: selectedGraph.output.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0'),
+      reason: /golang\.org\/x\/text version must be v0\.41\.0/,
+      text: selectedGraph.output.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.29.0'),
     },
     {
-      label: 'x/text unexpected newer v0.40.0',
-      reason: /golang\.org\/x\/text version must be v0\.39\.0/,
-      text: selectedGraph.output.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0'),
+      label: 'x/text unexpected newer v0.42.0',
+      reason: /golang\.org\/x\/text version must be v0\.41\.0/,
+      text: selectedGraph.output.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.42.0'),
     },
     {
       label: 'x/mod MVS version drift',
-      reason: /golang\.org\/x\/mod version must be v0\.37\.0/,
-      text: selectedGraph.output.replace('golang.org/x/mod v0.37.0', 'golang.org/x/mod v0.38.0'),
+      reason: /golang\.org\/x\/mod version must be v0\.38\.0/,
+      text: selectedGraph.output.replace('golang.org/x/mod v0.38.0', 'golang.org/x/mod v0.39.0'),
     },
     {
       label: 'unexpected unrelated selected module',
@@ -2007,42 +2023,42 @@ export function run(ctx) {
     },
     {
       label: 'x/text vulnerable v0.29.0 selected in go.mod',
-      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      reason: /golang.org\/x\/text version must be v0\.41\.0/,
       mutate: () => checkGoModuleClosure({
-        goMod: goMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.29.0'),
+        goMod: goMod.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.29.0'),
         goSum,
       }),
     },
     {
       label: 'x/text below-fixed v0.38.0 selected in go.mod',
-      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      reason: /golang.org\/x\/text version must be v0\.41\.0/,
       mutate: () => checkGoModuleClosure({
-        goMod: goMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.38.0'),
+        goMod: goMod.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.38.0'),
         goSum,
       }),
     },
     {
-      label: 'x/text unapproved newer v0.40.0 selected in go.mod',
-      reason: /golang.org\/x\/text version must be v0\.39\.0/,
+      label: 'x/text unapproved newer v0.42.0 selected in go.mod',
+      reason: /golang.org\/x\/text version must be v0\.41\.0/,
       mutate: () => checkGoModuleClosure({
-        goMod: goMod.replace('golang.org/x/text v0.39.0', 'golang.org/x/text v0.40.0'),
+        goMod: goMod.replace('golang.org/x/text v0.41.0', 'golang.org/x/text v0.42.0'),
         goSum,
       }),
     },
     {
       label: 'x/sync pre-MVS v0.17.0 selected in go.mod',
-      reason: /golang.org\/x\/sync version must be v0\.21\.0/,
+      reason: /golang.org\/x\/sync version must be v0\.22\.0/,
       mutate: () => checkGoModuleClosure({
-        goMod: goMod.replace('golang.org/x/sync v0.21.0', 'golang.org/x/sync v0.17.0'),
+        goMod: goMod.replace('golang.org/x/sync v0.22.0', 'golang.org/x/sync v0.17.0'),
         goSum,
       }),
     },
     {
       label: 'x/text zip h1 removed from go.sum',
-      reason: /go.sum missing zip h1 for golang.org\/x\/text v0\.39\.0/,
+      reason: /go.sum missing zip h1 for golang.org\/x\/text v0\.41\.0/,
       mutate: () => checkGoModuleClosure({
         goMod,
-        goSum: goSum.replace(/^golang\.org\/x\/text v0\.39\.0 h1:[^\n]+\n/m, ''),
+        goSum: goSum.replace(/^golang\.org\/x\/text v0\.41\.0 h1:[^\n]+\n/m, ''),
       }),
     },
     {
@@ -2180,13 +2196,17 @@ export function run(ctx) {
   // scripts (no blanket scripts/ci skip; the scanner sources are self-safe
   // because every hazard literal is assembled from fragments) ----
   const hazards = scanTreeForHazards(ctx.repo);
-  if (hazards.length > 0) {
-    for (const h of hazards.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}`);
+  const hazardPolicy = inspectQ018OriginPolicy(ctx.repo, hazards);
+  for (const problem of hazardPolicy.problems) fail('Q018 current fixed-origin policy: ' + problem);
+  if (hazardPolicy.blocking_findings.length > 0) {
+    for (const h of hazardPolicy.blocking_findings.slice(0, 20)) fail(`hazard ${h.hazard} in ${h.file}`);
+  } else if (hazardPolicy.accepted_findings.length === 1) {
+    ok('Q018: one exact Owner-approved public non-secret origin finding retained; all other findings remain blocking');
   } else ok('no secrets, private paths, model endpoints or prompt bodies in tracked config or executable scripts');
   if (workflow.includes('secrets.')) fail('workflow references secrets.*');
   else ok('workflow secret-free');
 
-  return { name: 'supply-chain', result: pass ? 'PASS' : 'FAIL', details };
+  return { name: 'supply-chain', result: pass ? 'PASS' : 'FAIL', details, hazard_policy: hazardPolicy };
 }
 
 runAsMain(import.meta.url, 'supply-chain', run);

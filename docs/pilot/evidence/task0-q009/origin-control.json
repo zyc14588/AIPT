@@ -1,0 +1,27 @@
+{
+  "schema": "aipt.public.b007-local-online-game-source-origin-control/v1",
+  "local_online_verification": true,
+  "observed_at_utc": "2026-10-07T21:05:54.840130+00:00",
+  "private_raw_return": {
+    "bytes": 43859,
+    "sha256": "4ed2375a1886ef818091a8e553826a5e89b2efed27450873921cf6049e7a8d4a"
+  },
+  "repository": {
+    "default_branch": "main",
+    "full_name": "zyc14588/UNREGISTERED",
+    "id": 1334368477,
+    "private": false
+  },
+  "pr_url": "https://github.com/zyc14588/UNREGISTERED/pull/5",
+  "candidate_commit": "76e79aa7536b42406f1cb77baa5844073b5d7fe7",
+  "merge_commit": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+  "merge_tree": "d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9",
+  "merge_parents": [
+    "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+    "76e79aa7536b42406f1cb77baa5844073b5d7fe7"
+  ],
+  "package_entries": 45,
+  "canonical_package_sha256": "f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d",
+  "workflow_sha256": "a11ab33c7522b21bc54f9c72ead6ae737ae746335cab83f4f72dbaca1a636ce4",
+  "origin_pass": true
+}

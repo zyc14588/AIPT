@@ -1,0 +1,59 @@
+{
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 5982,
+    "sha256": "ba1650edda1a4ee7100518b5641bdf05faa498c232682c158e46aefbe200ac77"
+  },
+  "approved_material": {
+    "bytes": 9138,
+    "sha256": "f369c442ed9fa2011b4212381b781ad8670c22a0352376b3a472ef01a673e963"
+  },
+  "approved_private_contract": {
+    "bytes": 21456,
+    "sha256": "cff90e12144c8ebb9a23ecd88f82caccc23ecfe8ae0599e16ff6cf581c897022"
+  },
+  "baseline": {
+    "commit": "307935c68577077ef1f8e5a1dfefcb492c162263",
+    "parents": [
+      "5f3f6353d744f6674de7cb610a8d8e9b9220c02a"
+    ],
+    "tree": "f0c832a0f5f64856ff60821b19e0ca60608517b7"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 654,
+  "current_work_paths": [
+    ".github/workflows/ci.yml",
+    "internal/pilot/runtime_namespace_test.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q022",
+  "generic_followon_permission": false,
+  "local_required1_positive_mandatory": true,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "docs/pilot/authorities/ci-generated-metadata-optional-namespace-fixture-successor-q022.json",
+    "docs/pilot/proposals/ci-generated-metadata-optional-namespace-fixture-q022.json"
+  ],
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "production_namespace_changes_authorized": false,
+  "proposal_binding": {
+    "bytes": 367844,
+    "path": "docs/pilot/proposals/ci-generated-metadata-optional-namespace-fixture-q022.json",
+    "sha256": "8af81a37585bc71273071cda45c32888d8487adf479e93fc7947a60f93c5b873"
+  },
+  "protected_current_paths": 646,
+  "public_optional_namespace_skip_is_not_positive_evidence": true,
+  "qualification_runs_authorized": 0,
+  "retained_Q021_authority_sha256": "8cfaa7438164745e0e3b0c932b80636461682bf187d380dbac44ce5a3fba1739",
+  "retained_Q021_proposal_sha256": "9a4e4248433f1cf4c48599927ac36c0d1ea66325877870c3365c6cac89a5ad87",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full654_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.exact-ci-metadata-optional-namespace-q022-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI"
+}

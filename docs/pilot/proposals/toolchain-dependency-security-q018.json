@@ -1,0 +1,195 @@
+{
+  "Go_derived_private_runtime_rebuilds": "EXACT_REVIEWED_SOURCE_NEW_REGISTERED_GO_IDENTITY_PROFILE_CAPSULE_BINDING_AND_FULL_AFFECTED_PREMODEL_HIGH_REQUALIFICATION_REQUIRED_NO_OLD_CERT_INHERITANCE",
+  "Q015_old_policy_old_test_current_tree_result_may_not_be_laundered": "OLD_GATE_IDENTITY_FAIL_REQUIRED_NOT_Q018_CURRENT_HELPER_PASS",
+  "actual_MVS_and_tidy_source_H1_license_qualification": "PASS_SAME_REVIEWER094_ROOT_PREREQUISITES_ONLY",
+  "all_old_owner_authorities_old_Git_snapshots_old_failures_unchanged": true,
+  "amend_force_push_squash_rebase_or_original_PR_changes_authorized": false,
+  "base_commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+  "base_tree": "d91062ddb99d781a825e272a6365ed4effe97350",
+  "candidate_five_of_five_CI_required": true,
+  "candidate_source_exact_hash_mapping_independent_review_before_commit": true,
+  "complete_current_unfiltered_scan_and_same_scanned_byte_identity_required": true,
+  "current_changed_path_count": 18,
+  "current_go": "1.26.9",
+  "current_go_archive": {
+    "filename": "go1.26.9.linux-amd64.tar.gz",
+    "qualification": "PASS_FIXED_OFFICIAL_FULL_ARCHIVE_UNPACK_LICENSE",
+    "sha256": "42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d",
+    "size": 66935201,
+    "tag_commit": "2ae494ef9fb90e0da0073c31800ba38870249994"
+  },
+  "decision_id": "AIPT-MVP-B007-OWNER-Q018",
+  "expected_candidate_source_count_if_all8_added": 648,
+  "failed_predecessor_candidate": "f7c3736acd3524240ec178dc81e0a1c72a690930",
+  "failed_predecessor_source_files": 640,
+  "failed_predecessor_tree": "bd09b4e24b8cb2c7db15bdb43cbd3d3fc8c9bcea",
+  "fixed_wrapper_accepts_arbitrary_targets_or_shell_commands": false,
+  "generic_followon_permission": false,
+  "global_GITHUB_PATH_or_current_SDK_downgrade_authorized": false,
+  "historical_SDK_missing_substitute_or_injected_env_rejected": true,
+  "historical_and_current_compiler_caches_and_environment_domains_separate": true,
+  "historical_fixed_routes": [
+    "B007 outer predecessor replay including nested B006",
+    "run-checks fixed8d6a standalone child only",
+    "currentCI fixedB001 launcher integration normal/race viaQ018 wrapper",
+    "currentCI fixedP1 reverification viaQ018 wrapper",
+    "completeQ015 policy23 at exactf7 tree"
+  ],
+  "historical_go": "1.26.6",
+  "historical_go_archive": {
+    "filename": "go1.26.6.linux-amd64.tar.gz",
+    "sha256": "708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89",
+    "use": "EXACT_OFFLINE_HISTORICAL_ACCEPTANCE_ONLY_NOT_CURRENT_SECURITY_OR_PRODUCTION_QUALIFICATION"
+  },
+  "merge_five_of_five_CI_and_local_online_immutable_catalogue_required": true,
+  "model_cache_release_policy": "TARGET_REGISTERED_MODEL_FILES_AND_RECORD_BEFORE_START_AFTER_START_AFTER_RETIRE_NO_GLOBAL_KERNEL_CACHE_FLUSH",
+  "namespace_assertion_skip_credentials_cloneflags_maps_deadlines_allocator64_EBADF_changes_authorized": false,
+  "namespace_fresh_replay_is_original_call_trace": false,
+  "namespace_original_failed_call_branch": "UNOBSERVED",
+  "namespace_production_source_or_semantics_changes_authorized": false,
+  "native_CPP_Node_Harness_GGUF_template_hardware_policy_changes_authorized": false,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_endpoint_secret_prompt_scan_exemptions_authorized": false,
+  "new_exact_paths": [
+    "docs/pilot/authorities/toolchain-dependency-security-successor-q018.json",
+    "docs/pilot/proposals/toolchain-dependency-security-q018.json",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "docs/pilot/evidence/task0-q018/PR28-original-CI-failure.json",
+    "docs/pilot/evidence/task0-q018/toolchain-dependency-qualification.json",
+    "docs/pilot/evidence/task0-q018/historical-toolchain-domains.json",
+    "docs/pilot/evidence/task0-q018/namespace-fixture-source-contract.json"
+  ],
+  "new_exact_versions_for_existing_modules": {
+    "golang.org/x/mod": "v0.38.0",
+    "golang.org/x/sync": "v0.22.0",
+    "golang.org/x/text": "v0.41.0",
+    "golang.org/x/tools": "v0.48.0"
+  },
+  "new_or_other_changed_MVS_member_requires_new_owner_decision": true,
+  "new_path_count": 8,
+  "new_public_PR_required": true,
+  "old_Q015_full23_replay_at_f7_and_new_Q018_current_helper_negative_tests_required": true,
+  "one_new_codex_branch_and_one_direct_BASE_child_candidate": true,
+  "original_once_USD5_nonQUAL_DIAG_unchanged": true,
+  "other_selected_module_graph_members_and_versions_unchanged": true,
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "public_application_GitHub_API_or_model_calls": 0,
+  "qualification_runs_authorized": 0,
+  "runtime_ready": false,
+  "schema": "aipt.public.b007-toolchain-dependency-security-proposal/q018-v1",
+  "separate_final_owner_merge_approval_required": true,
+  "signed_offline_CI_proof_claim": false,
+  "stage_cleanup_policy": "RETIRE_COMPLETED_SELF_OWNED_TEMP_BUILDS_ONLY_KEEP_IMMUTABLE_SOURCE_REVIEW_FAILURE_ORIGIN_AND_REGISTERED_SHARED_ASSETS",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "unchanged_closed_files": [
+    "scripts/ci/lib/b006-successor.mjs",
+    "scripts/ci/lib/b007-fixed-origin-policy-q015.mjs",
+    "scripts/ci/lib/b007-byte-evidence-scan-q015.mjs",
+    "scripts/ci/test/b007-fixed-origin-policy-q015.test.mjs",
+    "package.json",
+    ".github/workflows/p1-b000-post-merge-reverification.yml",
+    "scripts/ci/validate/mvp-b001.mjs",
+    "scripts/ci/validate/p1-b000-post-merge-reverification.mjs",
+    "docs/authority/registry/deferred-parameters.json",
+    "docs/authority/registry/decisions.json",
+    "docs/authority/registry/supersessions.json",
+    "internal/pilot/runtime_namespace.go"
+  ],
+  "unchanged_language_floor": "1.26.0",
+  "current_modified_paths": [
+    {
+      "path": ".go-version",
+      "baseline_bytes": 7,
+      "baseline_sha256": "32ee1505c3395961b5f8c1510562ef7bf8b2c40a914b2e5821d54f35a6052873"
+    },
+    {
+      "path": "go.mod",
+      "baseline_bytes": 369,
+      "baseline_sha256": "3295b2543abded5e81047f2d63743930abc65ef9156aa01a7962a3897020f6bd"
+    },
+    {
+      "path": "go.sum",
+      "baseline_bytes": 2301,
+      "baseline_sha256": "f65654519c652388e9f315cef1ef299e86fdc964d8d18332c05dbdb51a40c7fb"
+    },
+    {
+      "path": "tools/toolchain.lock.json",
+      "baseline_bytes": 7461,
+      "baseline_sha256": "c151a770ec1d62a33f065d2c01a3b1952fc62375351d0bff46b32906a402bfac"
+    },
+    {
+      "path": "tools/supply-chain/licenses.json",
+      "baseline_bytes": 19677,
+      "baseline_sha256": "b8af8fac337cc14325ab79052b1f340489cb5683b58252ce56fadc4dbf9d64aa"
+    },
+    {
+      "path": "scripts/ci/lib/constants.mjs",
+      "baseline_bytes": 42194,
+      "baseline_sha256": "d6b771747b416dd6a5e21a7bc4796e0d6d1622a65040c22aa073750cb64298aa"
+    },
+    {
+      "path": "scripts/ci/validate/toolchain-lock.mjs",
+      "baseline_bytes": 59667,
+      "baseline_sha256": "71a39664a38defd02af626f29ed99b573c6ef97ab513c75a30acbd530ae31877"
+    },
+    {
+      "path": "scripts/ci/validate/supply-chain.mjs",
+      "baseline_bytes": 106824,
+      "baseline_sha256": "57a9f1a69193506d9b80075342395e86fa2028f7eb5d3ab015f02095d0c8e1f2"
+    },
+    {
+      "path": "scripts/ci/validate/storage.mjs",
+      "baseline_bytes": 48343,
+      "baseline_sha256": "592fde1c83240883c7d35bc55d5427561a85045445a75bfb1efd099f0372b484"
+    },
+    {
+      "path": "scripts/ci/validate/defer-016.mjs",
+      "baseline_bytes": 20444,
+      "baseline_sha256": "6741c82d955ccfff9ddd21f07f42d072b5ffd1625010703a0adf00b646d907a8"
+    },
+    {
+      "path": "scripts/ci/sbom/generate-sbom.mjs",
+      "baseline_bytes": 40443,
+      "baseline_sha256": "356cbb1ed6c2288e0d26fbf663bfbd9644c1004206594a0d80e093916a5fac6c"
+    },
+    {
+      "path": "scripts/ci/validate/sbom.mjs",
+      "baseline_bytes": 100054,
+      "baseline_sha256": "e04e882750850d06da3e9ff557378c76bccff1f90369f26e5f38772ddbb7ba16"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "baseline_bytes": 21005,
+      "baseline_sha256": "37841fbcc728c7f82b214c222f725e979bf74c24ea8d19ba311cf76b97b83f72"
+    },
+    {
+      "path": "scripts/ci/validate/workflow.mjs",
+      "baseline_bytes": 120764,
+      "baseline_sha256": "18a2b2d4e8bab46817a795ce7e980a3fffc86de4aa70a6be2a21d7bff8e6057a"
+    },
+    {
+      "path": "scripts/ci/lib/b007-successor.mjs",
+      "baseline_bytes": 36980,
+      "baseline_sha256": "bf288c4052f27ec55cb91ca377188d4a340c5cdbbdb1924c8c009a0c33221d2b"
+    },
+    {
+      "path": "scripts/ci/test/b007-lifecycle.test.mjs",
+      "baseline_bytes": 18350,
+      "baseline_sha256": "9ece077d11905aaaddc8923ac57fbb5b4c7289bbd351fe8320ce7d67d96ef838"
+    },
+    {
+      "path": "scripts/ci/run-checks.mjs",
+      "baseline_bytes": 10440,
+      "baseline_sha256": "47a2b6aabed5956a6459d4944bb92d5bc63031bacd5fb35f7618db11f011f08f"
+    },
+    {
+      "path": "internal/pilot/runtime_namespace_test.go",
+      "baseline_bytes": 5584,
+      "baseline_sha256": "6ee906289bf19447bf8e0b3c3f79d4aec2bdc6eaf54e6abe7645df4020d03be2"
+    }
+  ],
+  "private_approved_material_sha256": "00c49995e061c90bb36d249cc6139bd14ce63681c7ba34c046f83ff00c74c8ca",
+  "private_approved_contract_sha256": "6c0d6a32d8289bc7386972e7e7ed68ca57b1775669b7f44787669aaf900eca7f"
+}

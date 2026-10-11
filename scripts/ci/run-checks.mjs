@@ -9,6 +9,7 @@
 // immutable read-only integration closeout, the current B005 R1 evidence
 // closure gate, and its governance-only remote-provenance Authority gate.
 // Historical semantics remain immutable.
+import { historicalEnvironment } from './lib/b007-toolchain-security-q018.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,11 +26,10 @@ import { run as runStandalone } from './validate/standalone-entrypoints.mjs';
 import { run as runProtocol } from './validate/protocol-assets.mjs';
 import { run as runAdapterSdk } from './validate/adapter-sdk.mjs';
 import { run as runHarnessAdapter } from './validate/harness-adapter.mjs';
-import { run as runEvidence } from './validate/evidence.mjs';
 import { runHistoricalWeb } from './validate/mvp-b001.mjs';
 import { run as runMvpB001 } from './validate/mvp-b001-regression.mjs';
-import { runApprovedPredecessor, cleanupSnapshots } from './lib/b006-successor.mjs';
-import { run as runMvpB006 } from './validate/mvp-b006.mjs';
+import { runApprovedPredecessor, cleanupSnapshots } from './lib/b007-successor.mjs';
+import { run as runMvpB007 } from './validate/mvp-b007.mjs';
 import { run as runB005RemoteProvenanceAuthority } from './validate/b005-remote-provenance-authority.mjs';
 import { runHistoricalGovernance } from './validate/historical-governance.mjs';
 import { run as runP1B000AuthorityRepair } from './validate/p1-b000-authority-repair.mjs';
@@ -51,7 +51,9 @@ function runClosedEntrypoint(targetCtx, name) {
   const execution = spawnSync(process.execPath, [validator, '--repo', targetCtx.repo], {
     cwd: targetCtx.repo,
     encoding: 'utf8',
-    env: historicalReplayEnvironment(),
+    env: name === 'standalone-entrypoints'
+      ? historicalEnvironment(ctx.repo, targetCtx.repo, 'STANDALONE_8D6A')
+      : historicalReplayEnvironment(),
     maxBuffer: 64 * 1024 * 1024,
   });
   let report = null;
@@ -166,14 +168,15 @@ const checks = await Promise.all([
   standaloneCheck,
   runAdapterSdk(ctx),
   runHarnessAdapter(ctx),
-  runEvidence(ctx),
+  runApprovedPredecessor(ctx, { gate: 'evidence' }),
   runHistoricalWeb(ctx),
   runMvpB001(ctx),
   runApprovedPredecessor(ctx, { gate: 'mvp-b002' }),
   runApprovedPredecessor(ctx, { gate: 'mvp-b003' }),
   runApprovedPredecessor(ctx, { gate: 'mvp-b004' }),
   runApprovedPredecessor(ctx, { gate: 'mvp-b005' }),
-  runMvpB006(ctx),
+  runApprovedPredecessor(ctx, { gate: 'mvp-b006' }),
+  runMvpB007(ctx),
   runB005RemoteProvenanceAuthority(ctx),
   runApprovedPredecessor(ctx, { gate: 'int001-closeout-authority' }),
   repairCheck,

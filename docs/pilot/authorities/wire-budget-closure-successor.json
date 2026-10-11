@@ -1,0 +1,64 @@
+{
+  "schema": "aipt.public.b007-wire-budget-closure-successor-authority/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B007",
+  "decision_id": "B007-WIRE-BUDGET-CLOSURE-SUCCESSOR-Q002=A",
+  "state": "OWNER_AUTHORIZED_PENDING_EXACT_BUNDLE_REGISTRATION_CERTIFICATION_AND_ACCEPTANCE",
+  "owner_instruction": "批准",
+  "decision_context": "EXPLICIT_APPROVAL_OF_NEW_SINGLE_FILE_CLOSURE_IDENTITY_REQUEST_BOUND_JSON_ROLE_OUTPUT_AND_INDEPENDENT_CERTIFICATION",
+  "predecessor_start_authority_sha256": "605fd163c5c2245ae7088c849b82d35de6d04783b37639f48001a7b22de35d06",
+  "scope_exception": "NEW_VERSIONED_B007_CLOSURE_IDENTITY_ONLY_KEEP_FROZEN_B004_SOURCE_CLOSURE_AND_CERTIFICATIONS",
+  "source": {
+    "path": "docs/pilot/runtime/harness-runtime-closure-b007.ts",
+    "sha256": "1dedde689c31337dc0a29102239a828a9873003f80945d5c456eef5614d8512f",
+    "reviewed_patch_sha256": "1430c0a2cd7f9ccc6aee6e542656c1866d05365e65b7883e649f0dfdcbbf7043"
+  },
+  "frozen_harness": {
+    "source_commit": "141eb6fef83422698aef7a981029e843e8161534",
+    "version": "0.1.0-rc.8",
+    "package_sha256": "fda21471d83772bbbf2019500fa4a23e6238d0cd304a409cc54630153ad07eba",
+    "capability_fingerprint": "c33bc33f7cc62c172897a6ea6ba96d56c422dfbea01ab135d0c41dd1c2d09940",
+    "old_b004_closure_sha256": "e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db"
+  },
+  "required_controls": {
+    "actual_fetch_attempts_per_retired_child": 1,
+    "automatic_redirects": false,
+    "upstream_max_output_tokens": 1024,
+    "thinking": "disabled",
+    "strict_canonical_request_fields": true,
+    "complete_request_byte_ceiling": 8192,
+    "byte_bound_is_provider_token_proof": false,
+    "assigned_role_json_response": true
+  },
+  "independent_proposal_assessment": {
+    "source": "LOCAL_READ_ONLY_CODEX_AGENT",
+    "agent": "b005_independent_security_review",
+    "report_sha256": "85ab152555b38f65aa7a2b64bfc0ad56e6a3c110ca8aa82dedcf74114ba3da08",
+    "scope": "V2_EXACT_PREFIX_16_PROBES_AND_FIXED_SOURCE_COMPOSITION_ONLY",
+    "paid_call_acceptance": "NOT_GRANTED"
+  },
+  "paid_execution_prerequisites": [
+    "EXACT_NEW_SINGLE_FILE_BUNDLE_AND_HELD_IDENTITY",
+    "INDEPENDENT_WIRE_GATE_ACCEPTANCE",
+    "VERIFIED_FULL_INPUT_TOKEN_ACCOUNTING",
+    "FRESH_OFFICIAL_PRICE_AND_DURABLE_WORST_CASE_RESERVATIONS",
+    "POSTGRESQL_UNIQUE_DIAGNOSTIC_CLAIM_AND_HELD_PRIVATE_ROOT",
+    "EXACT_ROLE_SPECIFIC_CONTROLLED_CERTIFICATIONS_INSIDE_APPROVED_BUDGET"
+  ],
+  "budget": {
+    "remote_max_usd": "5.00",
+    "remote_request_attempt_ceiling": 32,
+    "aggregate_input_token_ceiling": 262144,
+    "aggregate_output_token_ceiling": 32768,
+    "local_minimum_role_calls": 1,
+    "elapsed_time_seconds": 1800,
+    "automatic_budget_increase": false,
+    "retries_and_certification_included": true,
+    "diagnostic_runs": 1,
+    "qualification_runs_authorized": 0
+  },
+  "independent_review": "SAME_OWNER_AUTHORIZED_READ_ONLY_CODEX_AGENT",
+  "public_pr": "EXISTING_APPROVED_PUBLIC_PR_AND_EXACT_CANDIDATE_MAIN_CI_FIVE_OF_FIVE_ACCEPTANCE",
+  "public_ci_application_github_requests": 0,
+  "public_ci_real_model_calls": 0
+}

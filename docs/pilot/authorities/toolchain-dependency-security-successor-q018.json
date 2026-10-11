@@ -1,0 +1,114 @@
+{
+  "schema": "aipt.public.b007-toolchain-dependency-security-successor-authority/q018-v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q018",
+  "task_id": "AIPT-MVP-B007",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "owner_instruction": "批准",
+  "accepted_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  },
+  "failed_predecessor": {
+    "commit": "f7c3736acd3524240ec178dc81e0a1c72a690930",
+    "tree": "bd09b4e24b8cb2c7db15bdb43cbd3d3fc8c9bcea"
+  },
+  "current_modified_paths": [
+    ".go-version",
+    "go.mod",
+    "go.sum",
+    "tools/toolchain.lock.json",
+    "tools/supply-chain/licenses.json",
+    "scripts/ci/lib/constants.mjs",
+    "scripts/ci/validate/toolchain-lock.mjs",
+    "scripts/ci/validate/supply-chain.mjs",
+    "scripts/ci/validate/storage.mjs",
+    "scripts/ci/validate/defer-016.mjs",
+    "scripts/ci/sbom/generate-sbom.mjs",
+    "scripts/ci/validate/sbom.mjs",
+    ".github/workflows/ci.yml",
+    "scripts/ci/validate/workflow.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "scripts/ci/run-checks.mjs",
+    "internal/pilot/runtime_namespace_test.go"
+  ],
+  "new_exact_paths": [
+    "docs/pilot/authorities/toolchain-dependency-security-successor-q018.json",
+    "docs/pilot/proposals/toolchain-dependency-security-q018.json",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "docs/pilot/evidence/task0-q018/PR28-original-CI-failure.json",
+    "docs/pilot/evidence/task0-q018/toolchain-dependency-qualification.json",
+    "docs/pilot/evidence/task0-q018/historical-toolchain-domains.json",
+    "docs/pilot/evidence/task0-q018/namespace-fixture-source-contract.json"
+  ],
+  "unchanged_closed_files": [
+    "scripts/ci/lib/b006-successor.mjs",
+    "scripts/ci/lib/b007-fixed-origin-policy-q015.mjs",
+    "scripts/ci/lib/b007-byte-evidence-scan-q015.mjs",
+    "scripts/ci/test/b007-fixed-origin-policy-q015.test.mjs",
+    "package.json",
+    ".github/workflows/p1-b000-post-merge-reverification.yml",
+    "scripts/ci/validate/mvp-b001.mjs",
+    "scripts/ci/validate/p1-b000-post-merge-reverification.mjs",
+    "docs/authority/registry/deferred-parameters.json",
+    "docs/authority/registry/decisions.json",
+    "docs/authority/registry/supersessions.json",
+    "internal/pilot/runtime_namespace.go"
+  ],
+  "current_go": "1.26.9",
+  "historical_go": "1.26.6",
+  "new_exact_versions_for_existing_modules": {
+    "golang.org/x/mod": "v0.38.0",
+    "golang.org/x/sync": "v0.22.0",
+    "golang.org/x/text": "v0.41.0",
+    "golang.org/x/tools": "v0.48.0"
+  },
+  "independent094_prerequisites_only": true,
+  "full_actual_source_review_and_new_Go_derived_runtime_origins_profiles_capsules_FD_bindings_HIGH_required": true,
+  "current_unfiltered_bytebound_scan_required": true,
+  "complete_old_Q015_full23_fixed_f7_and_new_current_negative_cases_required": true,
+  "fixed_route_wrapper_rejects_arbitrary_targets_shell_or_envSDK": true,
+  "candidate_and_merge_each5CI_required": true,
+  "separate_final_Owner_merge_approval_required": true,
+  "new_public_PR_required": true,
+  "old_PR27_PR28_failures_retained": true,
+  "generic_followon_permission": false,
+  "production_namespace_changes_authorized": false,
+  "amend_forcepush_rebase_squash_history_rewrite_authorized": false,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "original_one_USD5_nonQUAL_DIAG_unchanged": true,
+  "qualification_runs_authorized": 0,
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_calls": 0,
+  "diag_runs": 0,
+  "qual_runs": 0,
+  "bindings": [
+    {
+      "path": "docs/pilot/proposals/toolchain-dependency-security-q018.json",
+      "bytes": 9203,
+      "sha256": "5f4235b91e84f8c45ab8e460d1fd35b975a348cca83c32154fd13d594e2f16b3"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q018/PR28-original-CI-failure.json",
+      "bytes": 3429,
+      "sha256": "f3b916cb60d7433a98e47d737d2a9027564d0190dee65e97782f958f9576786e"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q018/toolchain-dependency-qualification.json",
+      "bytes": 7050731,
+      "sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q018/historical-toolchain-domains.json",
+      "bytes": 138975,
+      "sha256": "39b000c685d40fadec7c948e4cf09fb5bb1ecdec8dd8ea3b5bf68c7cfaa473c1"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q018/namespace-fixture-source-contract.json",
+      "bytes": 771,
+      "sha256": "6c6e1d436709bd3f93b763a25535a53d36dbd93da8cc58d73306ed7f99c7e69e"
+    }
+  ]
+}

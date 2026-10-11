@@ -1,0 +1,43 @@
+{
+  "schema": "aipt.public.b007-registered-file-cache-only-verification/v1",
+  "task_id": "AIPT-MVP-B007",
+  "owner_selected_scope": "TARGETED_REGISTERED_MODEL_FILE_CACHE_RELEASE_WITH_MEMORY_CHANGE_RECEIPTS",
+  "required_phases": [
+    "BEFORE_START",
+    "AFTER_START",
+    "AFTER_RETIRE"
+  ],
+  "verification_result": "PASS_REGISTERED_FILE_CACHE_ONLY",
+  "private_receipt_sha256": "246363b27d3a1c454de36f2f4785730a34839e7522760ed235463b2d3455be35",
+  "executed_phase": "BEFORE_START_WITHOUT_STARTING_SERVER",
+  "asset_residency": [
+    {
+      "asset_id": "LLAMACPP-01",
+      "bytes": 17904,
+      "resident_before_bytes": 17904,
+      "resident_after_bytes": 0,
+      "fadvise_dontneed_accepted": true,
+      "cache_release_observed": true
+    },
+    {
+      "asset_id": "GGUF-04",
+      "bytes": 29047084416,
+      "resident_before_bytes": 29047084416,
+      "resident_after_bytes": 0,
+      "fadvise_dontneed_accepted": true,
+      "cache_release_observed": true
+    }
+  ],
+  "available_memory_before_bytes": 104806854656,
+  "available_memory_after_bytes": 104817242112,
+  "cache_residency_reduction_is_equal_available_memory_increase": false,
+  "linux_hint_guarantees_eviction": false,
+  "actual_after_start_and_after_retire": "NOT_EXECUTED_SERVER_NOT_STARTED",
+  "runtime_lifecycle_acceptance": false,
+  "server_started": false,
+  "real_model_calls": 0,
+  "qualification_runs_executed": 0,
+  "system_global_cache_cleared": false,
+  "unrelated_processes_terminated": false,
+  "private_locators_published": false
+}

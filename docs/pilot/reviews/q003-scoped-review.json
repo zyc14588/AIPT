@@ -1,0 +1,18 @@
+{
+  "schema": "aipt.public.b007-independent-q003-scoped-review/v1",
+  "task_id": "AIPT-MVP-B007",
+  "reviewer": "OWNER_AUTHORIZED_LOCAL_INDEPENDENT_READ_ONLY_CODEX_AGENT",
+  "report_sha256": "f1c1c00a05fdbd9e497e3f25926d3b824ff1ef43bb12672381e70cdc660dd662",
+  "module_sha256": "1076b8e26c382d29ba65d73ee37633be8792af0c92bc9065ef1ed98d9d18890e",
+  "annex_sha256": "5f4ecf19c84a384245071c3f23f491a8c1fe4c8dcae0326a7123a3d6000566f5",
+  "result": "PASS_SCOPED_INPUT_MODULE_ONLY",
+  "independent_leaf_probes_pass": 712,
+  "original_leaf_tests_pass": 23,
+  "race": true,
+  "skip": 0,
+  "trusted_driver_principal_and_release_binding_required": true,
+  "driver_acceptance": false,
+  "paid_callable": false,
+  "real_model_calls": 0,
+  "batch_closeout": false
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aipt.local/schemas/evidence/private/v1/aipt-private-audit-ready.schema.json",
+  "title": "Q011 private encrypted AUDIT_READY manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "stage", "normalization_version", "source", "run_id", "run_manifest", "ledger", "raw_capture_root", "plaintext_root", "disclosure", "remote_verification", "members"],
+  "properties": {
+    "schema": {"const": "aipt.private-audit-ready/v1"},
+    "version": {"const": "1.0.0"},
+    "stage": {"const": "AUDIT_READY"},
+    "normalization_version": {"const": "aipt.audit-ready.private/v1"},
+    "source": {"$ref": "#/$defs/source"},
+    "run_id": {"$ref": "#/$defs/id"},
+    "run_manifest": {"$ref": "#/$defs/manifestIdentity"},
+    "ledger": {"$ref": "#/$defs/ledger"},
+    "raw_capture_root": {"$ref": "#/$defs/sha"},
+    "plaintext_root": {"$ref": "#/$defs/sha"},
+    "disclosure": {"$ref": "#/$defs/disclosure"},
+    "remote_verification": {"$ref": "#/$defs/remote"},
+    "members": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/member"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+/-]*$"},
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "git": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["repository", "commit", "tree"],
+      "properties": {"repository": {"const": "https://github.com/zyc14588/AIPT"}, "commit": {"$ref": "#/$defs/git"}, "tree": {"$ref": "#/$defs/git"}}
+    },
+    "manifestIdentity": {
+      "type": "object", "additionalProperties": false, "required": ["id", "schema", "canonical_sha256"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "schema": {"const": "aipt.run-manifest/v1"}, "canonical_sha256": {"$ref": "#/$defs/sha"}}
+    },
+    "ledger": {
+      "type": "object", "additionalProperties": false, "required": ["stream_id", "event_count", "tail_sequence", "tail_event_hash"],
+      "properties": {"stream_id": {"type": "string", "minLength": 1, "maxLength": 512}, "event_count": {"type": "integer", "minimum": 1, "maximum": 100000}, "tail_sequence": {"type": "integer", "minimum": 1, "maximum": 100000}, "tail_event_hash": {"$ref": "#/$defs/sha"}}
+    },
+    "disclosure": {
+      "type": "object", "additionalProperties": false, "required": ["profile", "contains_unpublished_content", "encryption"],
+      "properties": {
+        "profile": {"const": "PRIVATE_FULL"}, "contains_unpublished_content": {"const": true},
+        "encryption": {
+          "type": "object", "additionalProperties": false, "required": ["status", "scheme", "key_reference"],
+          "properties": {"status": {"const": "ENCRYPTED"}, "scheme": {"const": "AES_256_GCM_V1"}, "key_reference": {"type": "string", "pattern": "^key-[0-9a-f]{32}$"}}
+        }
+      }
+    },
+    "remote": {
+      "type": "object", "additionalProperties": false, "required": ["remote", "commit", "status"],
+      "properties": {"remote": {"const": "https://github.com/zyc14588/AIPT"}, "commit": {"$ref": "#/$defs/git"}, "status": {"const": "VERIFIED_IMMUTABLE_REMOTE_COMMIT"}}
+    },
+    "asset": {
+      "type": "object", "additionalProperties": false, "required": ["path", "media_type", "bytes", "sha256"],
+      "properties": {"path": {"type": "string", "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}, "media_type": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]*/[A-Za-z0-9][A-Za-z0-9.+-]*$"}, "bytes": {"type": "integer", "minimum": 0, "maximum": 134217728}, "sha256": {"$ref": "#/$defs/sha"}}
+    },
+    "member": {
+      "type": "object", "additionalProperties": false, "required": ["ordinal", "path", "bytes", "sha256", "nonce", "plaintext"],
+      "properties": {"ordinal": {"type": "integer", "minimum": 0, "maximum": 9999}, "path": {"type": "string", "pattern": "^encrypted-[0-9]{5}\\.bin$"}, "bytes": {"type": "integer", "minimum": 16, "maximum": 134217744}, "sha256": {"$ref": "#/$defs/sha"}, "nonce": {"type": "string", "pattern": "^[0-9a-f]{24}$"}, "plaintext": {"$ref": "#/$defs/asset"}}
+    }
+  }
+}

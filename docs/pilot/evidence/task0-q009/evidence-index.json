@@ -1,0 +1,56 @@
+{
+  "schema": "aipt.public.b007-exact-game-source-ci-evidence/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q009",
+  "source_package": {
+    "package_id": "UNREGISTERED-TASK0-PROTOTYPE-V2",
+    "schema": "unregistered.task0-prototype-package/v2",
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+    "tree": "d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9",
+    "canonical_sha256": "f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d"
+  },
+  "accepted_baseline_commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+  "candidate_commit": "76e79aa7536b42406f1cb77baa5844073b5d7fe7",
+  "public_pr_url": "https://github.com/zyc14588/UNREGISTERED/pull/5",
+  "workflow_sha256": "a11ab33c7522b21bc54f9c72ead6ae737ae746335cab83f4f72dbaca1a636ce4",
+  "required_jobs": [
+    "aipt-content-gate",
+    "task0-prototype-check"
+  ],
+  "files": [
+    {
+      "path": "docs/pilot/evidence/task0-q009/candidate-jobs.json",
+      "bytes": 1270,
+      "sha256": "10e932ad29e5235a5119a0d7965ba7a7d39dabc9b95534e03d727892722fc36a"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q009/candidate-run.json",
+      "bytes": 1004,
+      "sha256": "524069645fe3845ed8cb9e36e41b009a5ff2b8b9cfdd150883549bc7bbbf74c4"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q009/merge-jobs.json",
+      "bytes": 1180,
+      "sha256": "ae8f03ecc0c62bedcbc3b7da1ee517be32762b618b876eeca921718e5d472c25"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q009/merge-run.json",
+      "bytes": 959,
+      "sha256": "01ae6f7811758f56978777467bf9d9bd58611777a41a3901506c1348bcc8effb"
+    },
+    {
+      "path": "docs/pilot/evidence/task0-q009/origin-control.json",
+      "bytes": 1049,
+      "sha256": "912d4e04cb2385886637f55e7ed30baa52ea2e91ddb655b9a4e2ae13999b49d5"
+    }
+  ],
+  "private_immutable_source_ci_index_sha256": "bb04e79bcfcd20710707f4a9aca988029eb03e475f24f73edba2f086c9fc90d7",
+  "owner_authority_sha256": "8022dd119627ccc5f6df4dfe55125c62b9a1decc74e00cf43dc88687e1879aa6",
+  "independent_source_adoption_report_sha256": "5190c5bb788f9fbb45a36b15eba95a954e9f8da7ee35807aa331799842651786",
+  "trust_basis": "OWNER_ACCEPTED_MAIN_BASELINE_AND_LOCAL_ONLINE_GITHUB_AND_GIT_ORIGIN_VERIFICATION_WITH_IMMUTABLE_DIGESTED_RECEIPTS",
+  "public_projection": "CONTROL_METADATA_ONLY_PRIVATE_RAW_RETURNS_RETAINED_BY_DIGEST",
+  "cryptographic_ci_signature_claim": false,
+  "public_ci_github_api_queries": false,
+  "aipt_runtime_acceptance": false,
+  "qualification_eligible": false
+}

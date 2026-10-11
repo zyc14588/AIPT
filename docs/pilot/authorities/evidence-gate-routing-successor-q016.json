@@ -1,0 +1,75 @@
+{
+  "schema": "aipt.public.b007-evidence-gate-routing-successor-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q016",
+  "task_id": "AIPT-MVP-B007",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "owner_instruction": "批准",
+  "scope_exception": "EXACT_Q011_FROZEN_EVIDENCE_GATE_ROUTING_ONLY_ADDED_TO_Q015_REPLACEMENT",
+  "accepted_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  },
+  "required_existing_authorities": {
+    "Q011": {
+      "path": "docs/pilot/authorities/private-evidence-successor-q011.json",
+      "sha256": "57edcd5470a8be49f5089040df4165243a1de6e893299cf510241529c61e878d"
+    },
+    "Q015": {
+      "path": "docs/pilot/authorities/fixed-origin-policy-successor-q015.json",
+      "sha256": "d9c58aa1cd329bcb9f5c83ceea216c0427d7d3ed968d69f2dfc8c007be7076be"
+    }
+  },
+  "frozen_historical_gate": {
+    "gate": "evidence",
+    "entry": "scripts/ci/validate/evidence.mjs",
+    "sha256": "6f6cffc0dc642382e4d72c650743df57f3c62eacfee21088087e9a201f8bf97b",
+    "unchanged_validator_inventory_and_all_schema_mutation_probes": "REPLAY_COMPLETE_AT_EXACT_ACCEPTED_BASE",
+    "current_checkout_main_and_full_first_parent_history_guard": "REQUIRED_BEFORE_HISTORICAL_REPLAY",
+    "caller_repository_snapshot_gate_override": "FORBIDDEN"
+  },
+  "exact_current_routes": {
+    "package.json": {
+      "sha256": "981f3c441122d0d31f4e66632c4e1572ea23808f2fe1c34a7562fe8a096b7fcf",
+      "only_change": "check:evidence routes through approved B007 predecessor wrapper"
+    },
+    "scripts/ci/run-checks.mjs": {
+      "sha256": "47a2b6aabed5956a6459d4944bb92d5bc63031bacd5fb35f7618db11f011f08f",
+      "only_change": "replace the direct old evidence import/call with the same approved B007 wrapper"
+    }
+  },
+  "implementation_delta_from_approved_Q015": [
+    "package.json",
+    "scripts/ci/run-checks.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "docs/pilot/authorities/evidence-gate-routing-successor-q016.json"
+  ],
+  "additional_Q015_replacement_scope_paths": [
+    "package.json",
+    "scripts/ci/run-checks.mjs",
+    "docs/pilot/authorities/evidence-gate-routing-successor-q016.json"
+  ],
+  "single_direct_accepted_BASE_child_and_original_ec76_source_preserved_except_explicit_Q015_Q016_paths": true,
+  "original_PR27_failed_run_and_all_current_failed_checks_preserved": true,
+  "old_evidence_business_validator_tests_and_Q011_Q015_authority_bytes_unchanged": true,
+  "new_Q011_private_encryption_and_current_B007_contract_checks_remain_required_separately": true,
+  "acceptance": [
+    "SAME_CONTINUING_INDEPENDENT_READ_ONLY_REVIEWER_FULL_EXACT_SUCCESSOR_REVIEW",
+    "COMPLETE_ORIGINAL_BASE_AND_CURRENT_REQUIRED_GATES_AND_ORDINARY_RACE_TESTS",
+    "EXACT_CANDIDATE_FIVE_OF_FIVE_CI_INCLUDING_POSTGRES_PRIVATE_INTEGRATION",
+    "SEPARATE_FINAL_OWNER_MERGE_APPROVAL",
+    "EXACT_MERGE_FIVE_OF_FIVE_CI_AND_INDEPENDENT_LOCAL_ONLINE_IMMUTABLE_CATALOGUE",
+    "ACTUAL_PRODUCTION_PARENT_PREP_SETUP_GRANTS_BEFORE_EXISTING_ONCE_NONQUAL_DIAG"
+  ],
+  "generic_followon_permission": false,
+  "historical_failure_rewrite_authorized": false,
+  "frozen_gate_inventory_relaxation_authorized": false,
+  "dependency_or_workflow_or_model_game_scope_change_authorized": false,
+  "original_one_USD5_diagnostic_unchanged": true,
+  "qualification_runs_authorized": 0,
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_calls": 0,
+  "diag_runs": 0,
+  "qual_runs": 0
+}

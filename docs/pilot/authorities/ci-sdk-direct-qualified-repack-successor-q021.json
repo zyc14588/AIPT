@@ -1,0 +1,55 @@
+{
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 5433,
+    "sha256": "4616431db448c4c7d694c9cdf604352deaa7c8368bcfed727c16fc0f6724c03f"
+  },
+  "approved_material": {
+    "bytes": 5192,
+    "sha256": "31683f320261794b5ce0f28c1086746bcce461810346016b5febafc0ab908544"
+  },
+  "approved_private_contract": {
+    "bytes": 11021,
+    "sha256": "0ff994445b1cd8df002abee6a63a2564b852f59a0d10cbf6817bdf8851dc30cc"
+  },
+  "baseline": {
+    "commit": "d9228b80329380aafc9282f6ce72aa5c0eb30b11",
+    "parents": [
+      "5f3f6353d744f6674de7cb610a8d8e9b9220c02a"
+    ],
+    "tree": "9d72bf5c1a08114f66ff3a154487f02e15492733"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 652,
+  "current_work_paths": [
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q021",
+  "generic_followon_permission": false,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "docs/pilot/authorities/ci-sdk-direct-qualified-repack-successor-q021.json",
+    "docs/pilot/proposals/ci-sdk-direct-qualified-repack-q021.json"
+  ],
+  "owner_instruction": "批准Q021限定后继，并按全部验收条件继续（推荐）",
+  "paid_callable": false,
+  "production_namespace_changes_authorized": false,
+  "proposal_binding": {
+    "bytes": 364742,
+    "path": "docs/pilot/proposals/ci-sdk-direct-qualified-repack-q021.json",
+    "sha256": "9a4e4248433f1cf4c48599927ac36c0d1ea66325877870c3365c6cac89a5ad87"
+  },
+  "protected_current_paths": 646,
+  "qualification_runs_authorized": 0,
+  "retained_Q018_authority_sha256": "c9c157c12e19833373b9a610db3de68a1bcd19f3ab71aa2b3e94dc2fcd5962b4",
+  "retained_Q018_qualification_sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284",
+  "retained_Q019_authority_sha256": "11a0f1931f8351a7b6107a7079da5b1cce3d3240e0ca33001c487937ebafeb25",
+  "runtime_ready": false,
+  "schema": "aipt.b007.exact-direct-qualified-CI-repack-q021-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "aipt.public.b007-companion-worker-registration/v1",
+  "state": "IMPLEMENTED_WITHIN_Q001_ADDITIVE_DRIVER_SCOPE_PENDING_FULL_ACCEPTANCE",
+  "authority_path": "docs/authority/registry/b007-predecessor-gates-successor.json",
+  "authority_sha256": "605fd163c5c2245ae7088c849b82d35de6d04783b37639f48001a7b22de35d06",
+  "source_path": "docs/pilot/runtime/model-process-worker-b007.ts",
+  "source_sha256": "acb4852b8a67a3777f1da970f5e8c194169540de42af84e0916e671f3e74e2a5",
+  "predecessor_source_path": "packages/model-harness-gateway/src/model-process-worker.ts",
+  "predecessor_source_sha256": "07621fa600d129ae7359e80a4828653f833b51131eb2d796db0e400410259bd2",
+  "source_change": "PREPARED_CONTEXT_CANONICAL_BASE64_REPRESENTATION_BOUND_ONLY",
+  "ordinary_identity_string_character_ceiling": 4096,
+  "decoded_context_utf8_byte_ceiling": 8192,
+  "canonical_base64_character_ceiling": 10924,
+  "complete_q002_upstream_request_utf8_byte_ceiling": 8192,
+  "q002_harness_bundle_sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70",
+  "new_owner_authority_created": false,
+  "frozen_predecessor_source_changed": false,
+  "controlled_certifications_performed": false,
+  "production_driver_acceptance": false,
+  "runtime_ready": false,
+  "paid_callable": false,
+  "qualification_runs_authorized": 0
+}

@@ -1,0 +1,94 @@
+{
+  "schema": "aipt.public.b007-low-descriptor-fixture-successor-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q017",
+  "task_id": "AIPT-MVP-B007",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "owner_instruction": "批准",
+  "scope_exception": "EXACT_TEST_CHILD_ALLOCATOR_PRECONDITION_ONLY_ADDED_TO_Q015_Q016_REPLACEMENT",
+  "accepted_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  },
+  "required_existing_authorities": {
+    "Q015": {
+      "path": "docs/pilot/authorities/fixed-origin-policy-successor-q015.json",
+      "sha256": "d9c58aa1cd329bcb9f5c83ceea216c0427d7d3ed968d69f2dfc8c007be7076be"
+    },
+    "Q016": {
+      "path": "docs/pilot/authorities/evidence-gate-routing-successor-q016.json",
+      "sha256": "8506ca89438dd7ba9782a2f835e57013e928c869904d61697ab35e05f86845cb"
+    }
+  },
+  "exact_fixture": {
+    "path": "internal/pilot/runtime_namespace_test.go",
+    "original_sha256": "864e3a55dfd3a5d8f24dff1892b71871c48a4cb31db87b5c7e90b99086b96599",
+    "repaired_sha256": "6ee906289bf19447bf8e0b3c3f79d4aec2bdc6eaf54e6abe7645df4020d03be2",
+    "sole_behavior_change": "Add MALLOC_ARENA_MAX=1 to only the low-FD test child environment",
+    "actual_kernel_namespace_user_and_mount_isolation_retained": true,
+    "rejection_iterations_retained": 64,
+    "EBADF_close_assertions_retained": true,
+    "race_deadline_and_required_fixture_semantics_retained": true
+  },
+  "retained_failure_history": {
+    "original_public_PR": 27,
+    "original_public_candidate_commit": "ec76d9c5cba0c32f3bb58c2a0abb9602f9ebe2d8",
+    "original_public_CI_run": 37921359218,
+    "original_public_CI_counts": {
+      "PASS": 2,
+      "FAIL": 3
+    },
+    "local_unpublished_Q016_candidate_commit": "4d65a744002273dcd0acdd0a5219d60d65e0a664",
+    "local_unpublished_Q016_candidate_tree": "9b7031d1ea6fc6ec81085e23fc4c39bc24254c34",
+    "original_local_required26_counts": {
+      "PASS": 25,
+      "FAIL": 1
+    },
+    "original_local_failed_test_name_recorded": false,
+    "bounded_count5_reproduced_failure": "TestOwnedNamespaceLowDescriptorRejectionClosesOwnership",
+    "bounded_count5_counts": {
+      "PASS": 5624,
+      "FAIL": 1,
+      "SKIP": 125
+    },
+    "local_failure_metadata_is_not_CI_acceptance_or_required_public_Git_object": true
+  },
+  "implementation_delta_from_approved_Q016": [
+    "internal/pilot/runtime_namespace_test.go",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "docs/pilot/authorities/namespace-low-descriptor-fixture-successor-q017.json"
+  ],
+  "additional_Q015_Q016_replacement_scope_paths": [
+    "internal/pilot/runtime_namespace_test.go",
+    "docs/pilot/authorities/namespace-low-descriptor-fixture-successor-q017.json"
+  ],
+  "replacement_scope_paths_total_from_original_ec76": 15,
+  "one_new_unpublished_branch_direct_accepted_BASE_child_preserving_previous_candidate_and_history": true,
+  "amend_force_push_or_history_rewrite_authorized": false,
+  "production_runtime_Q011_encryption_all_other_business_bytes_unchanged": true,
+  "existing_Q015_Q016_authority_and_evidence_routes_unchanged": true,
+  "isolated_two_counterfactuals_required": [
+    "LOW_FD_ACCEPTANCE_MUST_FAIL_MARKER_EXIT4",
+    "OMITTED_LOW_FD_CLOSE_MUST_FAIL_MARKER_EXIT5"
+  ],
+  "acceptance": [
+    "SAME_CONTINUING_INDEPENDENT_READ_ONLY_REVIEWER_EXACT_PROPOSAL_AND_FULL_ACTIVATED_SOURCE",
+    "COMPLETE_ORIGINAL_BASE_AND_CURRENT_REQUIRED_GATES_AND_ORDINARY_RACE_TESTS",
+    "EXACT_CANDIDATE_FIVE_OF_FIVE_CI_INCLUDING_POSTGRES_PRIVATE_INTEGRATION",
+    "SEPARATE_FINAL_OWNER_MERGE_APPROVAL",
+    "EXACT_MERGE_FIVE_OF_FIVE_CI_AND_INDEPENDENT_LOCAL_ONLINE_IMMUTABLE_CATALOGUE",
+    "ACTUAL_PRODUCTION_PARENT_PREP_SETUP_GRANTS_BEFORE_EXISTING_ONCE_NONQUAL_DIAG"
+  ],
+  "generic_followon_permission": false,
+  "historical_failure_rewrite_authorized": false,
+  "frozen_gate_inventory_relaxation_authorized": false,
+  "dependency_workflow_model_game_or_production_allocator_scope_change_authorized": false,
+  "new_diagnostic_attempt_authorized": false,
+  "original_one_USD5_diagnostic_unchanged": true,
+  "qualification_runs_authorized": 0,
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_calls": 0,
+  "diag_runs": 0,
+  "qual_runs": 0
+}

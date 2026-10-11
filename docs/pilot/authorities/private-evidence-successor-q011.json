@@ -1,0 +1,125 @@
+{
+  "schema": "aipt.public.b007-private-evidence-successor-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q011",
+  "state": "OWNER_AUTHORIZED_PENDING_IMPLEMENTATION_AND_ACCEPTANCE",
+  "task_id": "AIPT-MVP-B007",
+  "accepted_aipt_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  },
+  "accepted_game_source": {
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+    "tree": "d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9",
+    "package_digest_sha256": "f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d",
+    "entries": 45,
+    "canonical": false
+  },
+  "blocked_contract": {
+    "existing_b005_private_encryption": "ENCRYPTION_REQUIRED_BUT_UNAVAILABLE",
+    "public_relabel_of_hidden_core": "FORBIDDEN",
+    "original_q001_requires_unchanged_b005_and_audit_ready": true
+  },
+  "bounded_exception": {
+    "purpose": "ENCRYPTED_PRIVATE_FULL_TASK0_EVIDENCE_AND_BOUND_PUBLIC_REPORTS_FOR_EXISTING_SINGLE_DIAGNOSTIC",
+    "new_predecessor_module_files": [
+      "internal/evidence/private_audit_ready.go",
+      "internal/evidence/private_audit_types.go",
+      "internal/evidence/private_audit_ready_test.go",
+      "internal/evidence/private_audit_postgres_integration_test.go",
+      "schemas/evidence/private/v1/aipt-private-audit-ready.schema.json"
+    ],
+    "existing_b007_additive_files": [
+      "internal/pilot/",
+      "cmd/aipt-pilot/",
+      "docs/pilot/",
+      "scripts/ci/lib/b007-successor.mjs",
+      "scripts/ci/lib/b007-lifecycle.mjs",
+      "scripts/ci/validate/mvp-b007.mjs",
+      "scripts/ci/test/b007-lifecycle.test.mjs"
+    ],
+    "old_b005_and_b006_existing_bytes_must_remain_exact": true,
+    "old_public_audit_ready_path_unchanged": true,
+    "old_historical_guards_replayed_at_accepted_base": true,
+    "historical_closed_records_and_failures_preserved": true,
+    "generic_followon_permission": false
+  },
+  "private_contract": {
+    "stage": "AUDIT_READY",
+    "normalization_version": "aipt.audit-ready.private/v1",
+    "profile": "PRIVATE_FULL",
+    "encryption": "AES_256_GCM_V1",
+    "plaintext_normalization": "EXISTING_CANONICAL_CORE_CLOSURE_REPLAY_DEFECT_REPORT_CONTRACTS",
+    "encryption_randomness": "FRESH_OS_RANDOM_32_BYTE_PER_BUNDLE_KEY_AND_DISTINCT_12_BYTE_NONCE_PER_ENCRYPTED_MEMBER",
+    "aad_binding": [
+      "version",
+      "source_identity",
+      "run_manifest_sha256",
+      "raw_capture_root",
+      "ledger_stream_and_tail",
+      "logical_member_id",
+      "chunk_ordinal_and_length"
+    ],
+    "plaintext_identity_stable_ciphertext_root_instance_specific": true,
+    "key_authority": "LOCAL_OWNER_ONLY_HELD_DESCRIPTOR_AND_SEPARATE_PRIVATE_DIRECTORY",
+    "key_in_bundle_or_remote_or_worker_or_log_or_web_rpc": false,
+    "key_creation": "EXCLUSIVE_NO_FOLLOW_OWNER_MODE_SYNC_NO_OVERWRITE",
+    "private_payload_publication": false,
+    "credential_capture": false,
+    "plaintext_private_fallback": false,
+    "raw_core_sequence_and_payloads_preserved_exact": true,
+    "private_ciphertext_must_cover_all_required_core_evidence_and_bounded_model_body_references": true,
+    "control_only_ledger_cannot_replace_core_or_claim_core_replay": true,
+    "fresh_source_verification": "EXISTING_FIXED_ANONYMOUS_GITHUB_VERIFIER_ONCE_PER_GENERATION_AND_FRESH_AGAIN_PER_INDEPENDENT_VERIFICATION",
+    "caller_verifier_cache_proxy_ca_mirror_fallback": false,
+    "new_audit_verdict": "NONE"
+  },
+  "report_contract": {
+    "implementation": "NEW_CONCRETE_B007_REPORTS_ADAPTER_USING_UNCHANGED_B006_REPORTS_INTERFACE",
+    "inspection_requires": "DECRYPT_AUTHENTICATE_EXACT_PRIVATE_BUNDLE_FRESH_SOURCE_AND_MATCH_QUEUE_MANIFEST_RUN_SOURCE_QUALIFICATION_FLAG",
+    "completion_root": "EXACT_VERIFIED_PRIVATE_AUDIT_READY_ROOT",
+    "export": "EXACT_PUBLIC_ALLOWLIST_CANONICAL_REPORT_AND_DETERMINISTIC_EXISTING_RENDERERS",
+    "public_allowlist": [
+      "run_and_profile_stable_ids",
+      "source_commit_tree_and_accepted_authority_hashes",
+      "ledger_raw_closure_replay_and_bundle_hashes",
+      "budget_attempt_and_token_counts",
+      "execution_status_and_nonqualification_flag",
+      "public_safe_finding_codes_and_sanitized_counts"
+    ],
+    "export_private_body_key_seed_credential_or_locator": false
+  },
+  "acceptance": {
+    "same_owner_authorized_read_only_reviewer": true,
+    "immutable_exact_full_implementation_snapshot": true,
+    "private_encryption_tamper_wrong_key_nonce_aad_chunk_path_and_cross_run_tests": "REQUIRED",
+    "existing_public_b005_negative_and_race_checks": "UNCHANGED_REQUIRED",
+    "postgres_core_raw_private_bundle_exact_replay_and_b006_inspection_export_integration": "REQUIRED",
+    "candidate_and_exact_main_ci_successful_jobs": 5,
+    "post_merge_evidence": "INDEPENDENT_LOCAL_ONLINE_IMMUTABLE_CATALOGUE",
+    "public_ci_model_and_application_github_calls": 0,
+    "actual_models_blocked_until_full_runtime_privacy_and_ci_acceptance": true
+  },
+  "budget_and_game_scope": {
+    "remote_max_usd": "5.00",
+    "diagnostic_runs": 1,
+    "remote_attempt_ceiling": 32,
+    "aggregate_input_ceiling": 262144,
+    "aggregate_output_ceiling": 32768,
+    "local_minimum_and_maximum_calls": 1,
+    "elapsed_seconds": 1800,
+    "qualification_runs_authorized": 0,
+    "new_game_rule_or_canon_authorized": false,
+    "forced_model_action_or_seed_authorized": false
+  },
+  "runtime_ready": false,
+  "paid_callable": false,
+  "diag_runs": 0,
+  "qual_runs": 0,
+  "model_calls": 0,
+  "failed_history_rewrite_authorized": false,
+  "owner_decision": "批准受限私有加密后继并继续（推荐）",
+  "approved_at_utc": "2026-10-08T00:11:29.170241+00:00",
+  "approved_proposal_sha256": "cd8c4fbad444c4d13020d4142723084512c970d8590ac582f6350981aa06aac6",
+  "approved_text_material_sha256": "42f1dd52a16bb1f7c8f6ea16dd8bbc9a4cbd4753537acd188111aa1fb1b333e9"
+}

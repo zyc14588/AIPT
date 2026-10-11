@@ -1,0 +1,32 @@
+{
+  "schema": "aipt.public.b007-local-online-ci-run-control/v1",
+  "local_online_observation": true,
+  "observed_at_utc": "2026-10-07T21:04:51.593036+00:00",
+  "private_raw_return": {
+    "bytes": 13329,
+    "sha256": "570363e11084f6beb0126da56e794d9995a27d7eaa5030f9fc6dfeb98086e231"
+  },
+  "run": {
+    "id": 37686735678,
+    "name": "AIPT Content Gate",
+    "head_branch": "main",
+    "head_sha": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+    "path": ".github/workflows/aipt-content-gate.yml",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "workflow_id": 336437725,
+    "run_attempt": 1,
+    "html_url": "https://github.com/zyc14588/UNREGISTERED/actions/runs/37686735678",
+    "repository": {
+      "id": 1334368477,
+      "full_name": "zyc14588/UNREGISTERED",
+      "private": false
+    },
+    "head_repository": {
+      "id": 1334368477,
+      "full_name": "zyc14588/UNREGISTERED",
+      "private": false
+    }
+  }
+}
