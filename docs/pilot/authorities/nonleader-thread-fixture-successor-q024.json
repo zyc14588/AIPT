@@ -1,0 +1,81 @@
+{
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 10418,
+    "sha256": "685cf92bad6cd2a1e8074e4493d64dea2c2fa009a6edc408f3e049e199fd555d"
+  },
+  "approved_material": {
+    "bytes": 6343,
+    "sha256": "348ab4b31877cdc9d51005782e9e3b35752c43d8d09bd354fab94c43e965f173"
+  },
+  "approved_private_contract": {
+    "bytes": 373513,
+    "sha256": "c39608568ecd2efd1b4a939eb9e950d2d7da42288eaae502f575ba1499fe466a"
+  },
+  "baseline": {
+    "candidate_CI_attempt": 1,
+    "candidate_CI_jobs_PASS": 5,
+    "candidate_CI_run": 38113304413,
+    "candidate_commit": "834f1830315a0eb025e62745435cc36b672a668e",
+    "candidate_parents": [
+      "5f3f6353d744f6674de7cb610a8d8e9b9220c02a"
+    ],
+    "candidate_tree": "a759945b4a705d535f7e9da7b41132edada2b5a0",
+    "failed_job": 114410305237,
+    "failed_job_name": "toolchain (ubuntu-24.04)",
+    "failed_merge_CI_attempt": 1,
+    "failed_merge_CI_run": 38119223135,
+    "failed_merged_PR": 32,
+    "failed_step": "go test",
+    "merge_CI_accepted": false,
+    "merge_CI_jobs_FAIL": 1,
+    "merge_CI_jobs_PASS": 4,
+    "merge_commit": "19a928d1c03715ecc99d04e9a43bc6a337ad1426",
+    "merge_parents": [
+      "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+      "834f1830315a0eb025e62745435cc36b672a668e"
+    ],
+    "merge_tree": "a759945b4a705d535f7e9da7b41132edada2b5a0"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 658,
+  "current_work_paths": [
+    "internal/pilot/memory_lifecycle_test.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q024",
+  "frozen_workflow_sha256": "5c0f81fa51bc51b494f8cb768a080262f64d4b3eed0e0c3c3ba8eddc3f56b4ef",
+  "generic_followon_permission": false,
+  "local_required1_positive_mandatory": true,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "docs/pilot/authorities/nonleader-thread-fixture-successor-q024.json",
+    "docs/pilot/proposals/nonleader-thread-fixture-q024.json"
+  ],
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "production_runtime_changes_authorized": false,
+  "proposal_binding": {
+    "bytes": 371785,
+    "path": "docs/pilot/proposals/nonleader-thread-fixture-q024.json",
+    "sha256": "687b901f714d86efb04ef7eb9afabbf1749c55fd98e85d7e8cddd0c2797e9ac8"
+  },
+  "protected_current_paths": 651,
+  "public_optional_namespace_skip_is_not_positive_evidence": true,
+  "qualification_runs_authorized": 0,
+  "retained_Q023_authority_sha256": "96c5bb8c3b7e911ba7e71711ec112b7298221df87c05e41cdfe97d6d80c934e1",
+  "retained_Q023_proposal_sha256": "0deb8a23deec0c829f99eef55cde53bd198456ff18d61c236651f4da7995abb9",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full658_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.nonleader-thread-fixture-q024-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "test_binding": {
+    "bytes": 10670,
+    "sha256": "712fa0c55ed3e4753fbe9fbc4ae032309d8be4ac55a66428d82f9fbaf67983fd"
+  }
+}

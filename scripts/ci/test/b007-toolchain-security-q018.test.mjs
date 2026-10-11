@@ -6,9 +6,11 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems } from '../lib/b007-toolchain-security-q018.mjs';
+import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { FIXED_ORIGIN_FINDING } from '../lib/b007-fixed-origin-policy-q015.mjs';
-const q023CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q024CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q023CurrentSource=q024OriginalTestSource(q024CurrentSource);
+test.after(cleanupQ024OriginalTestSources);
 const currentSource=q023OriginalTestSource(q023CurrentSource);
 test.after(cleanupQ023OriginalTestSources);
 const source=q022OriginalTestSource(currentSource);
@@ -571,3 +573,77 @@ for(let index=0;index<5;index++)for(const [label,mutate] of [
  ['passed missing',j=>delete j.passed],['passed null',j=>j.passed=null],['passed zero',j=>j.passed=0],['passed one',j=>j.passed=1],['passed string',j=>j.passed='true'],['passed false',j=>j.passed=false],
  ['name changed',j=>j.name='unapproved'],['conclusion changed',j=>j.conclusion='failure'],['unknown job grant',j=>j.formal_evidence_eligible=true],
 ])test('Q023 fixed P1 report refuses job '+index+' '+label,()=>{const r=q023P1ReportGolden();mutate(r.jobs[index]);assert.ok(q023FixedP1ReportProblems(r).length);});
+
+// Q024 cases use only the live658 source; every original281 case uses fixed834f.
+function q024OwnedGit(repo,args,statuses=[0]) {
+ const r=spawnSync('/usr/bin/git',['--no-optional-locks','-C',repo,...args],{encoding:'utf8',env:{...process.env,GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}});
+ assert.equal(r.error,undefined);assert.equal(r.signal,null);assert.ok(statuses.includes(r.status),r.stderr);return r.stdout.trim();
+}
+function q024SDKFixture(t) {
+ const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q024-sdk-boundary-')),repo=path.join(owned,'source');
+ t.after(()=>{
+  let bytes=0,files=0,dirs=0;
+  const walk=p=>{const s=fs.lstatSync(p);if(s.isDirectory()&&!s.isSymbolicLink()){dirs++;for(const name of fs.readdirSync(p))walk(path.join(p,name));}else if(s.isFile()){bytes+=s.size;files++;}};
+  walk(owned);fs.rmSync(owned,{recursive:true,force:true});assert.equal(fs.existsSync(owned),false);
+  console.log(JSON.stringify({owned_scratch:owned,retired_after_join:true,removed_bytes:bytes,removed_files:files,removed_directories:dirs,SDK_program_executions:0,model_DB_namespace_DIAG_QUAL:0}));
+ });
+ q024OwnedGit(q024CurrentSource,['clone','--no-local','--no-checkout',q024CurrentSource,repo]);
+ q024OwnedGit(repo,['checkout','--detach',Q024_BASELINE]);q024OwnedGit(repo,['update-ref','refs/remotes/origin/main',Q024_BASELINE]);q024OwnedGit(repo,['config','core.hooksPath','/dev/null']);
+ const paths=q024OwnedGit(q024CurrentSource,['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean);assert.equal(new Set(paths).size,658);
+ for(const relative of paths){const dest=path.join(repo,relative);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join(q024CurrentSource,relative),dest);}
+ return {owned,repo,paths};
+}
+test('Q024 exact paired authority binds only reviewed nonleader fixture, protected651 and failed4of5 successor',()=>{
+ assert.equal(q024Approved(q024CurrentSource),true);assert.deepEqual(q024SourceProblems(q024CurrentSource),[]);
+ const p=q024Proposal(q024CurrentSource);assert.equal(p.baseline656.length,656);assert.equal(p.protected651.length,651);assert.equal(Q024_WORK_PATHS.length,5);assert.equal(Q024_NEW_PATHS.length,2);
+ assert.equal(p.original_PR32_merge_CI.PASS,4);assert.equal(p.original_PR32_merge_CI.FAIL,1);assert.equal(p.original_PR32_merge_CI.accepted,false);
+ assert.equal(p.runtime_ready,false);assert.equal(p.paid_callable,false);assert.equal(p.qualification_runs_authorized,0);assert.equal(p.generic_followon_permission,false);
+ assert.deepEqual(q024RevisionProblems(q024CurrentSource,Q024_BASELINE,{original:true}),[]);
+ assert.deepEqual(q024RevisionProblems(q024CurrentSource,Q024_ORIGINAL_CANDIDATE,{original:true}),[]);
+ assert.ok(q024RevisionProblems(q024CurrentSource,Q023_BASELINE,{original:true}).length);
+});
+test('Q024 original281 SDK bodies, four original programs and three Q021 helpers remain byte complete',()=>{
+ const file='scripts/ci/test/b007-toolchain-security-q018.test.mjs',old=fs.readFileSync(path.join(q023CurrentSource,file),'utf8'),live=fs.readFileSync(path.join(q024CurrentSource,file),'utf8');
+ assert.ok(live.slice(live.indexOf('const hash=')).startsWith(old.slice(old.indexOf('const hash='))));
+ assert.equal(q024OwnedGit(q023CurrentSource,['rev-parse','HEAD']),Q024_ORIGINAL_CANDIDATE);assert.equal(q024OwnedGit(q023CurrentSource,['rev-parse','HEAD^{tree}']),Q024_BASELINE_TREE);
+ const lib='scripts/ci/lib/b007-toolchain-security-q018.mjs',original=fs.readFileSync(path.join(q023CurrentSource,lib),'utf8'),next=fs.readFileSync(path.join(q024CurrentSource,lib),'utf8');
+ for(const marker of ['export function verifySDK(root,spec) {','export function historicalEnvironment(repo,target,route) {','function snapshot(repo,commit,tree) {','export function runFixedHistoricalCLI(repo,route) {','function q021CloneState(repo) {','function q021CloneRef(repo,ref) {','export function prepareQ021FixedCloneOrigins(repo) {']){
+  const start=original.indexOf(marker),fragment=original.slice(start,original.indexOf('\n}\n',start)+3);assert.ok(next.includes(fragment),marker);
+ }
+});
+for(const [name,mutate]of[
+ ['missing Authority',r=>fs.unlinkSync(path.join(r,Q024_AUTHORITY))],
+ ['missing proposal',r=>fs.unlinkSync(path.join(r,Q024_PROPOSAL))],
+ ['Authority appended byte',r=>fs.appendFileSync(path.join(r,Q024_AUTHORITY),' ')],
+ ['proposal appended byte',r=>fs.appendFileSync(path.join(r,Q024_PROPOSAL),' ')],
+ ['proposal instead of approval',r=>{const f=path.join(r,Q024_AUTHORITY),v=JSON.parse(fs.readFileSync(f));v.state='PROPOSAL_ONLY';fs.writeFileSync(f,JSON.stringify(v));}],
+ ['retained Q023 Authority rewrite',r=>fs.appendFileSync(path.join(r,Q023_AUTHORITY),' ')],
+ ['protected production source rewrite',r=>fs.appendFileSync(path.join(r,'internal/operational/runtime.go'),'\n// unapproved\n')],
+ ['reviewed test rewrite',r=>fs.appendFileSync(path.join(r,Q024_TEST),'\n// unapproved\n')],
+ ['frozen workflow rewrite',r=>fs.appendFileSync(path.join(r,'.github/workflows/ci.yml'),'\n# unapproved\n')],
+ ['protected executable mode',r=>fs.chmodSync(path.join(r,'internal/operational/runtime.go'),0o700)],
+ ['work executable mode',r=>fs.chmodSync(path.join(r,Q024_WORK_PATHS[1]),0o700)],
+ ['Owner executable mode',r=>fs.chmodSync(path.join(r,Q024_AUTHORITY),0o700)],
+ ['symbolic program alias',r=>{const f=path.join(r,Q024_WORK_PATHS[1]);fs.unlinkSync(f);fs.symlinkSync('/dev/null',f);}],
+ ['hardlinked protected source',r=>fs.linkSync(path.join(r,'internal/operational/runtime.go'),path.join(r,'q024-hardlink.go'))],
+ ['unknown source addition',r=>fs.writeFileSync(path.join(r,'q024-unknown.go'),'unapproved\n')],
+])test('Q024 source boundary rejects '+name,t=>{const {repo}=q024SDKFixture(t);mutate(repo);assert.ok(q024SourceProblems(repo).length);});
+test('Q024 preserves only untracked generated node_modules exclusion and rejects tracked or unrelated extras',t=>{
+ const {repo}=q024SDKFixture(t),n=path.join(repo,'node_modules/generated/package.json');fs.mkdirSync(path.dirname(n),{recursive:true});fs.writeFileSync(n,'{}\n');
+ assert.ok(q024SourceProblems(repo).length);fs.appendFileSync(path.join(repo,'.git/info/exclude'),'\nnode_modules/\n');assert.deepEqual(q024SourceProblems(repo),[]);
+ fs.writeFileSync(path.join(repo,'q024-extra-generated.txt'),'unexpected\n');assert.ok(q024SourceProblems(repo).length);fs.unlinkSync(path.join(repo,'q024-extra-generated.txt'));
+ q024OwnedGit(repo,['add','-f','--','node_modules/generated/package.json']);assert.ok(q024SourceProblems(repo).length);
+});
+test('Q024 fixed834f clone origin is idempotent and preserves full658 source, HEAD, tree, index and main',t=>{
+ const {repo,paths}=q024SDKFixture(t),index=fs.readFileSync(path.join(repo,'.git/index')),identity=q024OwnedGit(repo,['rev-parse','HEAD','HEAD^{tree}','refs/remotes/origin/main']);
+ const source=paths.map(p=>[p,hash(fs.readFileSync(path.join(repo,p)))]),v=prepareQ024FixedCloneOrigin(repo);
+ assert.equal(v.commit,Q024_ORIGINAL_CANDIDATE);assert.equal(v.tree,Q024_BASELINE_TREE);assert.equal(v.full_HIGH_or_CI_or_runtime_accepted,false);
+ const refs=q024OwnedGit(repo,['for-each-ref','--format=%(refname) %(objectname) %(symref)']);assert.equal(prepareQ024FixedCloneOrigin(repo).result,v.result);assert.equal(q024OwnedGit(repo,['for-each-ref','--format=%(refname) %(objectname) %(symref)']),refs);
+ assert.deepEqual(fs.readFileSync(path.join(repo,'.git/index')),index);assert.equal(q024OwnedGit(repo,['rev-parse','HEAD','HEAD^{tree}','refs/remotes/origin/main']),identity);assert.deepEqual(paths.map(p=>[p,hash(fs.readFileSync(path.join(repo,p)))]),source);
+ assert.throws(()=>prepareQ024FixedCloneOrigin(repo,{commit:Q024_BASELINE}),/no caller targets/);
+});
+test('Q024 wrong or dangling symbolic fixed original ref is rejected without overwriting references',t=>{
+ const {repo}=q024SDKFixture(t),ref='refs/heads/codex/q024-fixed-history-pr32-candidate';q024OwnedGit(repo,['update-ref',ref,Q024_BASELINE]);
+ const before=q024OwnedGit(repo,['for-each-ref','--format=%(refname) %(objectname) %(symref)']);assert.throws(()=>prepareQ024FixedCloneOrigin(repo),/overwrite forbidden/);assert.equal(q024OwnedGit(repo,['for-each-ref','--format=%(refname) %(objectname) %(symref)']),before);
+ q024OwnedGit(repo,['update-ref','--no-deref','-d',ref]);q024OwnedGit(repo,['symbolic-ref',ref,'refs/heads/q024-dangling']);assert.throws(()=>prepareQ024FixedCloneOrigin(repo),/symbolic/);assert.equal(q024OwnedGit(repo,['symbolic-ref',ref]),'refs/heads/q024-dangling');
+});

@@ -1,5 +1,5 @@
 // Explicit Owner-authorized B007 successor. Historical B006 bytes never change.
-import { Q018_AUTHORITY, Q018_AUTHORITY_SHA, Q018_MODIFIED_PATHS, Q018_NEW_PATHS, Q019_AUTHORITY, Q019_AUTHORITY_SHA, Q019_PROPOSAL, Q019_PROPOSAL_SHA, Q019_NEW_PATHS, Q019_SMOKE, Q019_SMOKE_SHA, Q019_ORIGINAL_SMOKE_SHA, q019Approved, q018Approved, q018SourceProblems, approvedCurrentSHA, historicalEnvironment, Q021_AUTHORITY, Q021_AUTHORITY_SHA, Q021_PROPOSAL, Q021_PROPOSAL_SHA, Q021_WORK_PATHS, Q021_NEW_PATHS, Q021_BASELINE, q021Approved, q021RevisionProblems, Q022_AUTHORITY, Q022_AUTHORITY_SHA, Q022_PROPOSAL, Q022_PROPOSAL_SHA, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, Q022_BASELINE_TREE, Q022_FIXTURE_SHA, Q022_WORKFLOW_SHA, q022Present, q022Approved, q022RevisionProblems, Q023_AUTHORITY, Q023_AUTHORITY_SHA, Q023_PROPOSAL, Q023_PROPOSAL_SHA, Q023_WORKFLOW_SHA, Q023_WORK_PATHS, Q023_NEW_PATHS, Q023_BASELINE, q023Present, q023Approved, q023LifecycleProblems } from './b007-toolchain-security-q018.mjs';
+import { Q018_AUTHORITY, Q018_AUTHORITY_SHA, Q018_MODIFIED_PATHS, Q018_NEW_PATHS, Q019_AUTHORITY, Q019_AUTHORITY_SHA, Q019_PROPOSAL, Q019_PROPOSAL_SHA, Q019_NEW_PATHS, Q019_SMOKE, Q019_SMOKE_SHA, Q019_ORIGINAL_SMOKE_SHA, q019Approved, q018Approved, q018SourceProblems, approvedCurrentSHA, historicalEnvironment, Q021_AUTHORITY, Q021_AUTHORITY_SHA, Q021_PROPOSAL, Q021_PROPOSAL_SHA, Q021_WORK_PATHS, Q021_NEW_PATHS, Q021_BASELINE, q021Approved, q021RevisionProblems, Q022_AUTHORITY, Q022_AUTHORITY_SHA, Q022_PROPOSAL, Q022_PROPOSAL_SHA, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, Q022_BASELINE_TREE, Q022_FIXTURE_SHA, Q022_WORKFLOW_SHA, q022Present, q022Approved, q022RevisionProblems, Q023_AUTHORITY, Q023_AUTHORITY_SHA, Q023_PROPOSAL, Q023_PROPOSAL_SHA, Q023_WORKFLOW_SHA, Q023_WORK_PATHS, Q023_NEW_PATHS, Q023_BASELINE, q023Present, q023Approved, q023LifecycleProblems, Q024_AUTHORITY, Q024_AUTHORITY_SHA, Q024_PROPOSAL, Q024_PROPOSAL_SHA, Q024_BASELINE, Q024_ORIGINAL_CANDIDATE, Q024_WORK_PATHS, q024Present, q024Approved, q024Topology } from './b007-toolchain-security-q018.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -111,7 +111,7 @@ function exactQ022Fixture(repo,revision=null) {
  return q022Approved(repo)&&(!revision||sha(blob(repo,revision,Q022_AUTHORITY)??'')===Q022_AUTHORITY_SHA&&sha(blob(repo,revision,Q022_PROPOSAL)??'')===Q022_PROPOSAL_SHA)?Q022_FIXTURE_SHA:null;
 }
 function q022ExactRecords(repo) {
- const selected=new Map(EXACT);if(q022Present(repo)){selected.set(Q022_AUTHORITY,Q022_AUTHORITY_SHA);selected.set(Q022_PROPOSAL,Q022_PROPOSAL_SHA);}if(q023Present(repo)){selected.set(Q023_AUTHORITY,Q023_AUTHORITY_SHA);selected.set(Q023_PROPOSAL,Q023_PROPOSAL_SHA);}return selected;
+ const selected=new Map(EXACT);if(q022Present(repo)){selected.set(Q022_AUTHORITY,Q022_AUTHORITY_SHA);selected.set(Q022_PROPOSAL,Q022_PROPOSAL_SHA);}if(q023Present(repo)){selected.set(Q023_AUTHORITY,Q023_AUTHORITY_SHA);selected.set(Q023_PROPOSAL,Q023_PROPOSAL_SHA);}if(q024Present(repo)){selected.set(Q024_AUTHORITY,Q024_AUTHORITY_SHA);selected.set(Q024_PROPOSAL,Q024_PROPOSAL_SHA);}return selected;
 }
 function exactQ015Gate(repo,file,bytes,revision,t) {
  const digest=sha(bytes??'');
@@ -273,6 +273,10 @@ function projectedBytesProblems(repo,p,bytes,baselineAllowed,revision=null) {
   return bytes&&bytes.subarray(0,split+1).equals(base.subarray(0,split+1))&&bytes.toString().endsWith(base.subarray(split+1).toString())&&bytes.length>=base.length&&bytes.length-base.length<=16384?[]:['historical status/milestone prose changed: '+p];
 }
 export function topology(repo) {
+ if(q024Present(repo))return q024Topology(repo);
+ return originalB007Topology(repo);
+}
+function originalB007Topology(repo) {
   const head=out(repo,['rev-parse','HEAD^{commit}']),main=out(repo,['rev-parse','refs/remotes/origin/main^{commit}']);
   const p=[];
   if(facts(repo,BASE)?.tree!==BASE_TREE||!head||!main||!firstParentContains(repo,head,BASE)||!firstParentContains(repo,main,BASE))p.push('exact accepted B006 base and checkout/main first-parent lineage required');
@@ -293,7 +297,7 @@ export function topology(repo) {
 export function successorProblems(repo) {
   const p=[...sourceAdoptionProblems(repo),...q018SourceProblems(repo)];
   try {
-    const t=topology(repo);p.push(...t.problems);p.push(...q015ReplacementScopeProblems(repo,t));
+    const t=originalB007Topology(repo);const approvedQ024=q024Approved(repo)&&t.candidate?.commit===Q024_ORIGINAL_CANDIDATE&&t.merge?.commit===Q024_BASELINE;p.push(...t.problems);p.push(...q015ReplacementScopeProblems(repo,t));
     if(fs.existsSync(path.join(repo,Q021_AUTHORITY))||fs.existsSync(path.join(repo,Q021_PROPOSAL)))p.push(...q021HistoryProblems(repo,t));
     if(!q016Approved(repo))p.push('Q016 explicit Owner decision pending; proposed evidence routing cannot authorize a replacement');
     if(!q017Approved(repo))p.push('Q017 explicit Owner decision pending; proposed test fixture cannot authorize a replacement');
@@ -324,6 +328,7 @@ export function successorProblems(repo) {
         for(const file of tree.keys())if(allowedNew(file)&&!file.startsWith('docs/pilot/')) {
           const c=inventory(repo,t.candidate.commit).get(file);
           const since=t.merge&&firstParentContains(repo,revision,t.merge.commit)?t.merge.commit:t.candidate.commit;
+          if(approvedQ024&&Q024_WORK_PATHS.includes(file))continue;
           if(!equal(tree.get(file),c)||rows(repo,['log','--first-parent','--full-history','--format=%H',since+'..'+revision,'--',file]).length) p.push('B007 committed implementation changed after Candidate: '+file);
         }
       }
@@ -337,7 +342,7 @@ export function successorProblems(repo) {
     }
     // Historical f7 construction keeps its original scope. Q021 separately
     // permits only its four paths while held at the exact failed PR29 baseline.
-    if(t.candidate)for(const [file,entry] of inventory(repo,t.candidate.commit))if(!MUTABLE.has(file)&&!file.startsWith('docs/pilot/')&&!(t.candidate.commit==='f7c3736acd3524240ec178dc81e0a1c72a690930'&&q018Approved(repo)&&(Q018_MODIFIED_PATHS.includes(file)||file===Q019_SMOKE&&q019Approved(repo)))&&!(t.candidate.commit===Q021_BASELINE&&q021Approved(repo)&&t.main===BASE&&Q021_WORK_PATHS.includes(file))&&!(q022Approved(repo)&&[Q021_BASELINE,Q022_BASELINE].includes(t.candidate.commit)&&t.main===BASE&&!t.merge&&Q022_WORK_PATHS.includes(file))&&!(q023Approved(repo)&&t.candidate.commit===Q023_BASELINE&&t.main===BASE&&!t.merge&&Q023_WORK_PATHS.includes(file))&&!equal(workingEntry(repo,file),entry))p.push('working B007 implementation differs from exact Candidate: '+file);
+    if(t.candidate)for(const [file,entry] of inventory(repo,t.candidate.commit))if(!MUTABLE.has(file)&&!file.startsWith('docs/pilot/')&&!(t.candidate.commit==='f7c3736acd3524240ec178dc81e0a1c72a690930'&&q018Approved(repo)&&(Q018_MODIFIED_PATHS.includes(file)||file===Q019_SMOKE&&q019Approved(repo)))&&!(t.candidate.commit===Q021_BASELINE&&q021Approved(repo)&&t.main===BASE&&Q021_WORK_PATHS.includes(file))&&!(q022Approved(repo)&&[Q021_BASELINE,Q022_BASELINE].includes(t.candidate.commit)&&t.main===BASE&&!t.merge&&Q022_WORK_PATHS.includes(file))&&!(q023Approved(repo)&&t.candidate.commit===Q023_BASELINE&&t.main===BASE&&!t.merge&&Q023_WORK_PATHS.includes(file))&&!(approvedQ024&&Q024_WORK_PATHS.includes(file))&&!equal(workingEntry(repo,file),entry))p.push('working B007 implementation differs from exact Candidate: '+file);
   }catch(e){p.push('B007 successor guard failed closed: '+e.message);}
   return [...new Set(p)];
 }

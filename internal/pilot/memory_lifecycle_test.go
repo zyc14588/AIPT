@@ -134,7 +134,7 @@ func TestMemoryDiscoveryFindsNonLeaderThreadOwnedChild(t *testing.T) {
 	}
 	expected := hex.EncodeToString(h.Sum(nil))
 	result := make(chan error, 1)
-	go func() {
+	spawnFromNonLeader := func() {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
 		if syscall.Gettid() == os.Getpid() {
@@ -175,8 +175,28 @@ func TestMemoryDiscoveryFindsNonLeaderThreadOwnedChild(t *testing.T) {
 			err = waitErr
 		}
 		result <- err
+	}
+	chooserDone := make(chan struct{})
+	go func() {
+		defer close(chooserDone)
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if syscall.Gettid() == os.Getpid() {
+			// Keep the leader occupied until a second locked thread finishes.
+			// The original spawn assertion still verifies that worker's TID.
+			workerDone := make(chan struct{})
+			go func() {
+				defer close(workerDone)
+				spawnFromNonLeader()
+			}()
+			<-workerDone
+			return
+		}
+		spawnFromNonLeader()
 	}()
-	if err := <-result; err != nil {
+	err = <-result
+	<-chooserDone
+	if err != nil {
 		t.Fatal(err)
 	}
 }
