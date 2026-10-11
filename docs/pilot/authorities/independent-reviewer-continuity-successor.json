@@ -1,0 +1,76 @@
+{
+  "schema": "aipt.public.b007-independent-reviewer-continuity-successor-authority/v1",
+  "task_id": "AIPT-MVP-B007",
+  "decision_id": "B007-INDEPENDENT-REVIEWER-CONTINUITY-Q005=A",
+  "state": "OWNER_AUTHORIZED_REVIEWER_INSTANCE_EXCEPTION_PENDING_FULL_INDEPENDENT_RUNTIME_REVIEW",
+  "q004_authority_sha256": "a7c7495cd97e950a9c9112df089bff6dfae913fadc9c3c751ce4c63e913277a5",
+  "accepted_base_commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+  "problem": {
+    "prior_reviewer": "b005_independent_security_review",
+    "failed_attempts": [
+      "015",
+      "015-static",
+      "016-memory-api"
+    ],
+    "reason": "AUTOMATIC_CONTENT_SCREENING_ERROR_WITH_NO_REVIEW_RESULT",
+    "quota_exhaustion_reported": false,
+    "existing_review_gate_pass": false
+  },
+  "required_before_actual_diagnostic": [
+    "COMPLETE_SOURCE_AUTHENTICATED_RUNTIME_AND_TASK0_DRIVER",
+    "THREE_PHASE_TARGETED_MODEL_CACHE_GATES",
+    "FINAL_REQUEST_COUNTER_AND_DURABLE_AGGREGATE_BUDGET",
+    "NEW_CONTROLLED_ROLE_CERTIFICATIONS",
+    "FULL_INDEPENDENT_RUNTIME_AND_PRIVACY_PASS",
+    "PUBLIC_PR_EXACT_CANDIDATE_AND_MERGE_CI_5_OF_5_AND_IMMUTABLE_ONLINE_ACCEPTANCE"
+  ],
+  "not_granted": [
+    "WAIVE_INDEPENDENT_REVIEW",
+    "TREAT_MODERATION_ERROR_AS_PASS",
+    "BYPASS_AUTOMATIC_APPROVAL_OR_CONTENT_SCREENING",
+    "BUDGET_INCREASE_OR_RESET",
+    "B007_CLOSEOUT_WITHOUT_REAL_ACCEPTED_TRACE",
+    "B008_START_OR_QUALIFICATION_EXECUTION",
+    "MODIFY_PREDECESSOR_ACCEPTED_BYTES"
+  ],
+  "budget_unchanged": {
+    "remote_max_usd": "5.00",
+    "remote_request_attempt_ceiling": 32,
+    "aggregate_input_token_ceiling": 262144,
+    "aggregate_output_token_ceiling": 32768,
+    "elapsed_time_seconds": 1800,
+    "diagnostic_runs": 1,
+    "qualification_runs_authorized": 0
+  },
+  "reviewable_packet_sha256": "eda370b381877c0cd3f259a3a5b41673ba2a7b52f8ad86c6d16236f399611a4a",
+  "current_state": {
+    "b007_real_model_calls": 0,
+    "server_started": false,
+    "runtime_ready": false,
+    "complete_runtime_review": "OPEN",
+    "m0_completed": 9,
+    "m0_total": 9,
+    "mvp_completed": 9,
+    "mvp_total": 13
+  },
+  "authorized_exception": {
+    "only_reviewer_instance_continuity_changed": true,
+    "fresh_independent_read_only_reviewer_authorized": true,
+    "new_reviewer_must_read_all_preserved_findings_and_exact_final_source": true,
+    "do_not_hide_or_override_automatic_screening": true,
+    "do_not_claim_prior_primary_runs_as_independent": true,
+    "old_failures_and_scoped_passes_preserved": true,
+    "full_runtime_and_privacy_review_still_required": true,
+    "blocked_or_incomplete_review_cannot_pass": true,
+    "minimum_first_scope": "ORDINARY_READ_ONLY_SOURCE_AND_EXISTING_EVIDENCE_AUDIT",
+    "expanded_execution_scope": "ONLY_PREEXISTING_AUTHORIZED_MODEL_FREE_CHECKS_IF_TOOL_APPROVAL_ALLOWS",
+    "reviewer_cannot_modify_product_source_or_governance": true,
+    "actual_model_or_paid_calls_by_reviewer": false,
+    "independence_requirement_unchanged": true
+  },
+  "owner_instruction": "同意",
+  "owner_approval_source": "CURRENT_THREAD_DIRECT_USER_TEXT_REPLY_TO_Q005_QUESTION",
+  "reviewed_proposal_sha256": "60696d9b1fef1ccf2a8c2c0948bdf9f0e8f58ff330608d2708feb5f235965a01",
+  "reviewed_approval_material_sha256": "21569d460171d7da4f68a4e35a4c8bed31867a271fe6e35153af2d975c8fedf7",
+  "reviewed_patch_sha256": "b594c9a97782b6216098fe4e568294cafb5b7d47a362006e51055eff61466a99"
+}

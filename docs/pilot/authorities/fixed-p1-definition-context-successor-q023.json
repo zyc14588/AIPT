@@ -1,0 +1,63 @@
+{
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 7616,
+    "sha256": "4696ed1e9613ef7053e06f2e23dc97b9618b00e6f8f6e8dc0c9a23d7090aa3fd"
+  },
+  "approved_material": {
+    "bytes": 6253,
+    "sha256": "0e790ac7043ead56273e6e26770f70409fad80a1da6e03eb82d0f2c943f8f155"
+  },
+  "approved_private_contract": {
+    "bytes": 442796,
+    "sha256": "9a59c7a2e9b0218b2ea7fe0d8ac547a3e88f30a86b127b6a886e56770c8defa1"
+  },
+  "baseline": {
+    "accepted": false,
+    "attempt": 1,
+    "candidate_CI_run_id": 38101656150,
+    "commit": "0e1f2670bc866b5076cd8e3478398c9d9042e6b3",
+    "failed_public_PR": 31,
+    "jobs_FAIL": 2,
+    "jobs_PASS": 3,
+    "parents": [
+      "5f3f6353d744f6674de7cb610a8d8e9b9220c02a"
+    ],
+    "tree": "d212ca68dfa826c430a8f7e851d8382666ccd3cb"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 656,
+  "current_work_paths": [
+    ".github/workflows/ci.yml",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q023",
+  "generic_followon_permission": false,
+  "local_required1_positive_mandatory": true,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "docs/pilot/authorities/fixed-p1-definition-context-successor-q023.json",
+    "docs/pilot/proposals/fixed-p1-definition-context-q023.json"
+  ],
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "proposal_binding": {
+    "bytes": 441228,
+    "path": "docs/pilot/proposals/fixed-p1-definition-context-q023.json",
+    "sha256": "0deb8a23deec0c829f99eef55cde53bd198456ff18d61c236651f4da7995abb9"
+  },
+  "protected_current_paths": 649,
+  "public_optional_namespace_skip_is_not_positive_evidence": true,
+  "qualification_runs_authorized": 0,
+  "retained_Q022_authority_sha256": "4754ce5584bba167307d236d86540c728e950b2b2938b92d6af0f3d8a2c70180",
+  "retained_Q022_proposal_sha256": "8af81a37585bc71273071cda45c32888d8487adf479e93fc7947a60f93c5b873",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full656_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.fixed-P1-definition-context-q023-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI"
+}
