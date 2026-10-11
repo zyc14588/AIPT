@@ -247,6 +247,7 @@ function q023CommittedSource(repo,revision) {
  return actual;
 }
 export function q023RevisionProblems(repo,revision,{original=false}={}) {
+ if(!original&&q024Present(repo))return q024RevisionProblems(repo,revision);
  const p=[];
  try {
   const q=q023Proposal(repo),resolved=git(repo,['rev-parse',revision+'^{commit}']);
@@ -284,6 +285,7 @@ function q023FixedDefinitionProblems(repo) {
 // A fixed failed PR31 can host construction only while main stays BASE.
 // Every accepted candidate/merge and all later history preserve all656 files.
 export function q023LifecycleProblems(repo) {
+ if(q024Present(repo))return q024LifecycleProblems(repo);
  const p=[];
  try {
   p.push(...q023RevisionProblems(repo,Q023_BASELINE,{original:true}),...q023FixedDefinitionProblems(repo));
@@ -325,6 +327,7 @@ export function q023LifecycleProblems(repo) {
  return p;
 }
 export function q023SourceProblems(repo) {
+ if(q024Present(repo))return q024SourceProblems(repo);
  const p=currentQualificationProblems(repo);
  try {
   const q=q023Proposal(repo),expected=[...q.protected649.map(v=>v.relative),...Q023_WORK_PATHS,...Q023_NEW_PATHS].sort();
@@ -386,6 +389,185 @@ export function cleanupQ023OriginalTestSources() {
   console.log(JSON.stringify({owned_scratch:target,retired_after_join:true,removed_bytes:bytes,removed_files:files,removed_directories:dirs,SDK_program_executions:0,model_DB_namespace_DIAG_QUAL:0}));
  }
  q023OriginalTestSources.clear();
+}
+
+// Owner Q024: one exact test fixture and one child of the preserved failed merge.
+export const Q024_AUTHORITY='docs/pilot/authorities/nonleader-thread-fixture-successor-q024.json';
+export const Q024_PROPOSAL='docs/pilot/proposals/nonleader-thread-fixture-q024.json';
+export const Q024_AUTHORITY_SHA='6ec03075ad38de04906f70c9fd96c2b5fdcd46fc9b37ffd305fb4a55b7d81168';
+export const Q024_PROPOSAL_SHA='687b901f714d86efb04ef7eb9afabbf1749c55fd98e85d7e8cddd0c2797e9ac8';
+export const Q024_BASELINE='19a928d1c03715ecc99d04e9a43bc6a337ad1426';
+export const Q024_ORIGINAL_CANDIDATE='834f1830315a0eb025e62745435cc36b672a668e';
+export const Q024_BASELINE_TREE='a759945b4a705d535f7e9da7b41132edada2b5a0';
+export const Q024_TEST='internal/pilot/memory_lifecycle_test.go';
+export const Q024_TEST_SHA='712fa0c55ed3e4753fbe9fbc4ae032309d8be4ac55a66428d82f9fbaf67983fd';
+export const Q024_WORK_PATHS=Object.freeze([Q024_TEST,'scripts/ci/lib/b007-toolchain-security-q018.mjs','scripts/ci/test/b007-toolchain-security-q018.test.mjs','scripts/ci/lib/b007-successor.mjs','scripts/ci/test/b007-lifecycle.test.mjs']);
+export const Q024_NEW_PATHS=Object.freeze([Q024_AUTHORITY,Q024_PROPOSAL]);
+const Q024_HISTORY_REF='refs/heads/codex/q024-fixed-history-pr32-candidate';
+export function q024Present(repo) {
+ return Q024_NEW_PATHS.some(file=>{try{fs.lstatSync(path.join(repo,file));return true;}catch(e){return e.code!=='ENOENT';}});
+}
+export function q024Approved(repo) {
+ try {
+  if(!q023Approved(repo))return false;
+  const a=json(repo,Q024_AUTHORITY,Q024_AUTHORITY_SHA),p=heldQ018Bytes(path.join(repo,Q024_PROPOSAL));
+  return a.decision_id==='AIPT-MVP-B007-OWNER-Q024'&&a.state==='OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI'&&a.owner_instruction==='批准'
+   &&equal(a.current_work_paths,Q024_WORK_PATHS)&&equal(a.new_exact_public_paths,Q024_NEW_PATHS)
+   &&a.approved_private_contract.sha256==='c39608568ecd2efd1b4a939eb9e950d2d7da42288eaae502f575ba1499fe466a'
+   &&a.actual_Owner_approval_registration.sha256==='685cf92bad6cd2a1e8074e4493d64dea2c2fa009a6edc408f3e049e199fd555d'
+   &&a.approved_material.sha256==='348ab4b31877cdc9d51005782e9e3b35752c43d8d09bd354fab94c43e965f173'
+   &&a.proposal_binding.path===Q024_PROPOSAL&&a.proposal_binding.sha256===Q024_PROPOSAL_SHA&&p.sha256===Q024_PROPOSAL_SHA&&p.bytes===a.proposal_binding.bytes
+   &&a.baseline.merge_commit===Q024_BASELINE&&a.baseline.merge_tree===Q024_BASELINE_TREE&&equal(a.baseline.merge_parents,[BASE,Q024_ORIGINAL_CANDIDATE])
+   &&a.baseline.candidate_commit===Q024_ORIGINAL_CANDIDATE&&a.baseline.candidate_tree===Q024_BASELINE_TREE&&equal(a.baseline.candidate_parents,[BASE])
+   &&a.baseline.merge_CI_jobs_PASS===4&&a.baseline.merge_CI_jobs_FAIL===1&&a.baseline.merge_CI_accepted===false
+   &&a.retained_Q023_authority_sha256===Q023_AUTHORITY_SHA&&a.retained_Q023_proposal_sha256===Q023_PROPOSAL_SHA
+   &&a.frozen_workflow_sha256===Q023_WORKFLOW_SHA&&a.test_binding.bytes===10670&&a.test_binding.sha256===Q024_TEST_SHA
+   &&a.combined_source_count===658&&a.protected_current_paths===651&&a.local_required1_positive_mandatory&&a.public_optional_namespace_skip_is_not_positive_evidence
+   &&a.same_independent_agent_and_Root_full658_HIGH_and_exact_CI_each5_required&&a.separate_final_Owner_merge_approval_required
+   &&a.SDK_execution_interval_source_stability_owner_accepted&&a.cannot_guarantee_same_UID_instant_replace_restore_detection
+   &&!a.generic_followon_permission&&!a.SDK_copy_write_chmod_registry_retirement_authorized&&!a.production_runtime_changes_authorized
+   &&!a.new_DIAG_or_extra_budget_authorized&&!a.runtime_ready&&!a.paid_callable&&a.qualification_runs_authorized===0;
+ }catch{return false;}
+}
+export function q024Proposal(repo) {
+ if(!q024Approved(repo))throw new Error('Q024 exact paired approved Owner authority/proposal absent or changed');
+ const q=json(repo,Q024_PROPOSAL,Q024_PROPOSAL_SHA);
+ if(q.baseline656.length!==656||q.protected651.length!==651||!equal(q.work_paths,Q024_WORK_PATHS)||!equal(q.new_paths,Q024_NEW_PATHS)
+  ||!equal(q.protected651,q.baseline656.filter(v=>!Q024_WORK_PATHS.includes(v.relative))))throw new Error('Q024 exact656/651/5+2 scope invalid');
+ return q;
+}
+export function q024RevisionProblems(repo,revision,{original=false}={}) {
+ const p=[];
+ try {
+  const q=q024Proposal(repo),resolved=git(repo,['rev-parse',revision+'^{commit}']);
+  const old=[Q024_BASELINE,Q024_ORIGINAL_CANDIDATE].includes(resolved);
+  if(original&&!old)throw new Error('Q024 original source must be exact PR32 candidate or failed merge');
+  if(old){
+   const parents=resolved===Q024_BASELINE?[BASE,Q024_ORIGINAL_CANDIDATE]:[BASE];
+   if(!equal(q023Facts(repo,resolved),{commit:resolved,tree:Q024_BASELINE_TREE,parents}))throw new Error('Q024 fixed original SHA/tree/ordered parents changed');
+  }
+  const actual=q023CommittedSource(repo,resolved),expected=old?q.baseline656:q.protected651;
+  const paths=(old?q.baseline656.map(v=>v.relative):[...q.protected651.map(v=>v.relative),...Q024_WORK_PATHS,...Q024_NEW_PATHS]).sort();
+  if(actual.size!==paths.length||new Set(paths).size!==paths.length||!equal([...actual.keys()].sort(),paths))throw new Error('Q024 exact committed656/658 source set changed');
+  for(const f of expected)if(!equal(actual.get(f.relative),{bytes:f.bytes,sha256:f.sha256,git_mode:f.git_mode,git_blob_oid:f.git_blob_oid}))p.push('Q024 frozen original/protected Git source changed: '+f.relative);
+  if(!old){
+   for(const file of [...Q024_WORK_PATHS,...Q024_NEW_PATHS])if(actual.get(file)?.git_mode!=='100644')p.push('Q024 committed work/Owner mode changed: '+file);
+   for(const [file,digest]of [[Q024_AUTHORITY,Q024_AUTHORITY_SHA],[Q024_PROPOSAL,Q024_PROPOSAL_SHA],[Q024_TEST,Q024_TEST_SHA],['.github/workflows/ci.yml',Q023_WORKFLOW_SHA]])if(actual.get(file)?.sha256!==digest)p.push('Q024 committed exact Owner/test/workflow changed: '+file);
+  }
+ }catch(e){p.push('Q024 full source revision fails closed: '+e.message);}
+ return p;
+}
+// No descendant, arbitrary parent, alternate candidate, or second successor is accepted.
+export function q024Topology(repo) {
+ let head=null,main=null,candidate=null,merge=null;
+ const problems=[];
+ try {
+  q024Proposal(repo);head=git(repo,['rev-parse','HEAD^{commit}']);main=git(repo,['rev-parse','refs/remotes/origin/main^{commit}']);
+  const original=q023Facts(repo,Q024_BASELINE);
+  if(!equal(original,{commit:Q024_BASELINE,tree:Q024_BASELINE_TREE,parents:[BASE,Q024_ORIGINAL_CANDIDATE]})
+   ||!equal(q023Facts(repo,Q024_ORIGINAL_CANDIDATE),{commit:Q024_ORIGINAL_CANDIDATE,tree:Q024_BASELINE_TREE,parents:[BASE]}))throw new Error('Q024 actual fixed failed merge ancestry changed');
+  const select=revision=>{
+   if(revision===Q024_BASELINE)return null;
+   const history=git(repo,['rev-list','--first-parent',Q024_BASELINE+'..'+revision]).split('\n').filter(Boolean),f=q023Facts(repo,revision);
+   if(!git(repo,['rev-list','--first-parent',revision]).split('\n').includes(Q024_BASELINE)||history.length!==1||history[0]!==revision)throw new Error('Q024 unexpected first-parent history or later rewrite/restore');
+   if(equal(f.parents,[Q024_BASELINE]))return {candidate:f,merge:null};
+   if(f.parents.length!==2||f.parents[0]!==Q024_BASELINE)throw new Error('Q024 unexpected candidate or merge parents');
+   const c=q023Facts(repo,f.parents[1]);
+   if(!equal(c.parents,[Q024_BASELINE])||c.tree!==f.tree)throw new Error('Q024 merge must have ordered failed-baseline/candidate parents and identical tree');
+   return {candidate:c,merge:f};
+  };
+  const h=select(head),m=select(main);
+  if(main!==Q024_BASELINE&&!m?.merge)throw new Error('Q024 main must be fixed failed merge or one identical-tree normal successor merge');
+  if(head===Q024_BASELINE&&main!==Q024_BASELINE)throw new Error('Q024 old construction cannot host accepted successor main');
+  if(h&&m&&h.candidate.commit!==m.candidate.commit)throw new Error('Q024 checkout/main disagree on exact successor candidate');
+  const selected=h??m;candidate=selected?.candidate??null;merge=h?.merge??m?.merge??null;
+ }catch(e){problems.push('Q024 exact single-successor topology fails closed: '+e.message);}
+ return {head,main,candidate,merge,problems,failed_baseline:Q024_BASELINE,original_failed_merge_CI_accepted:false};
+}
+export function q024LifecycleProblems(repo) {
+ const p=[];
+ try {
+  p.push(...q024RevisionProblems(repo,Q024_BASELINE,{original:true}),...q024RevisionProblems(repo,Q024_ORIGINAL_CANDIDATE,{original:true}),
+   ...q023RevisionProblems(repo,Q023_BASELINE,{original:true}),...q022RevisionProblems(repo,Q022_BASELINE,{original:true}),
+   ...q021RevisionProblems(repo,Q021_BASELINE,{baseline:true}),...q023FixedDefinitionProblems(repo));
+  if(git(repo,['rev-parse',BASE+'^{tree}'])!=='d91062ddb99d781a825e272a6365ed4effe97350')throw new Error('Q024 frozen accepted BASE tree changed');
+  q023CommittedSource(repo,BASE);
+  for(const [id,tree]of [['f7c3736acd3524240ec178dc81e0a1c72a690930','bd09b4e24b8cb2c7db15bdb43cbd3d3fc8c9bcea'],['ec76d9c5cba0c32f3bb58c2a0abb9602f9ebe2d8','9ab33633cdf943571ca3693c15a53b4f0b3d2dd5']]){
+   if(!equal(q023Facts(repo,id),{commit:id,tree,parents:[BASE]}))throw new Error('Q024 prior failed fixed source ancestry changed');
+   q023CommittedSource(repo,id);
+  }
+  const t=q024Topology(repo);p.push(...t.problems);if(t.problems.length)return [...new Set(p)];
+  if(!t.candidate)return [...new Set(p)];
+  p.push(...q024RevisionProblems(repo,t.candidate.commit));
+  const candidate=q023CommittedSource(repo,t.candidate.commit);
+  for(const [file,want]of candidate){const actual=heldQ018Bytes(path.join(repo,file));if(actual.bytes!==want.bytes||actual.sha256!==want.sha256||actual.executable!==(want.git_mode==='100755'))p.push('Q024 working658 differs from exact Candidate: '+file);}
+  for(const revision of new Set([t.head,t.main]))if(revision!==Q024_BASELINE)p.push(...q024RevisionProblems(repo,revision));
+ }catch(e){p.push('Q024 complete original/successor lifecycle fails closed: '+e.message);}
+ return [...new Set(p)];
+}
+export function q024SourceProblems(repo) {
+ const p=currentQualificationProblems(repo);
+ try {
+  const q=q024Proposal(repo),expected=[...q.protected651.map(v=>v.relative),...Q024_WORK_PATHS,...Q024_NEW_PATHS].sort();
+  if(new Set(expected).size!==658)throw new Error('Q024 duplicate or incomplete exact658 source');
+  const observed=git(repo,['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean);
+  if(!equal([...new Set(observed)].sort(),expected))p.push('Q024 exact working658 source set changed');
+  for(const f of q.protected651){const actual=heldQ018Bytes(path.join(repo,f.relative));if(actual.bytes!==f.bytes||actual.sha256!==f.sha256||actual.executable!==(f.git_mode==='100755'))p.push('Q024 protected651 source changed: '+f.relative);}
+  for(const file of [...Q024_WORK_PATHS,...Q024_NEW_PATHS])if(heldQ018Bytes(path.join(repo,file)).executable)p.push('Q024 work/Owner execution mode changed: '+file);
+  const test=heldQ018Bytes(path.join(repo,Q024_TEST));if(test.bytes!==10670||test.sha256!==Q024_TEST_SHA)p.push('Q024 exact reviewed nonleader test changed');
+  if(heldQ018Bytes(path.join(repo,'.github/workflows/ci.yml')).sha256!==Q023_WORKFLOW_SHA)p.push('Q024 frozen fixed P1 workflow changed');
+  p.push(...q024LifecycleProblems(repo));
+ }catch(e){p.push('Q024 exact approved source contract fails closed: '+e.message);}
+ return [...new Set(p)];
+}
+function q024CloneState(repo) {
+ const q=q024Proposal(repo),identity=file=>{const v=heldQ018Bytes(file);return {bytes:v.bytes,sha256:v.sha256,executable:v.executable};};
+ const paths=[...q.protected651.map(v=>v.relative),...Q024_WORK_PATHS,...Q024_NEW_PATHS].sort();
+ return {head:git(repo,['rev-parse','HEAD']),tree:git(repo,['rev-parse','HEAD^{tree}']),main:git(repo,['rev-parse','refs/remotes/origin/main']),index:identity(git(repo,['rev-parse','--path-format=absolute','--git-path','index'])),source:paths.map(relative=>({relative,...identity(path.join(repo,relative))}))};
+}
+function q024CloneRef(repo) {
+ const probe=spawnSync('/usr/bin/git',['--no-optional-locks','-C',repo,'symbolic-ref','-q',Q024_HISTORY_REF],{encoding:'utf8',env:{PATH:'/usr/bin:/bin',GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}});
+ if(probe.error||probe.signal||![0,1].includes(probe.status))throw new Error('Q024 fixed ref symbolic probe failed');
+ if(probe.status===0)throw new Error('Q024 fixed clone ref is symbolic, including a dangling target');
+ return q021CloneRef(repo,Q024_HISTORY_REF);
+}
+export function prepareQ024FixedCloneOrigin(repo) {
+ if(arguments.length!==1)throw new Error('Q024 fixed clone origin accepts no caller targets or options');
+ const p=q024SourceProblems(repo);if(p.length)throw new Error('Q024 fixed original clone prerequisites failed: '+p.join('; '));
+ const before=q024CloneState(repo),existing=q024CloneRef(repo);
+ if(existing!==null&&existing!==Q024_ORIGINAL_CANDIDATE)throw new Error('Q024 existing fixed original ref differs; overwrite forbidden');
+ prepareQ023FixedCloneOrigin(repo);
+ run('/usr/bin/git',['--no-optional-locks','-C',repo,'update-ref','--no-deref','--stdin'],{input:'start\n'+(existing===null?'create ':'verify ')+Q024_HISTORY_REF+' '+Q024_ORIGINAL_CANDIDATE+'\nprepare\ncommit\n',env:{...process.env,GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}});
+ if(!equal(before,q024CloneState(repo)))throw new Error('Q024 source/HEAD/tree/index/main changed during fixed origin preparation');
+ const after=q024SourceProblems(repo);if(after.length||q024CloneRef(repo)!==Q024_ORIGINAL_CANDIDATE)throw new Error('Q024 fixed original clone postcheck failed: '+after.join('; '));
+ return {result:'PASS_Q024_FIXED_PR32_CANDIDATE_LOCAL_CLONE_ORIGIN_PREPARED',fixed_ref:Q024_HISTORY_REF,commit:Q024_ORIGINAL_CANDIDATE,tree:Q024_BASELINE_TREE,source_HEAD_tree_index_origin_main_unchanged:true,SDK_program_or_mutation:0,network_requests:0,model_DIAG_QUAL:0,full_HIGH_or_CI_or_runtime_accepted:false};
+}
+const q024OriginalTestSources=new Map();
+export function q024OriginalTestSource(repo) {
+ if(arguments.length!==1)throw new Error('Q024 original test source accepts no caller targets');
+ if(!q024Present(repo))return repo;
+ if(q024OriginalTestSources.has(repo))return q024OriginalTestSources.get(repo);
+ prepareQ024FixedCloneOrigin(repo);
+ const target=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q024-original-pr32-tests-'));
+ try {
+  run('/usr/bin/git',['clone','--no-local','--no-checkout',repo,target]);
+  git(target,['checkout','--detach',Q024_ORIGINAL_CANDIDATE]);git(target,['update-ref','refs/remotes/origin/main',BASE]);
+  const q=q024Proposal(repo);
+  if(git(target,['status','--porcelain=v1','--untracked-files=all'])!==''||git(target,['rev-parse','HEAD^{tree}'])!==Q024_BASELINE_TREE)throw new Error('Q024 original test656 identity/cleanliness changed');
+  for(const f of q.baseline656){const v=heldQ018Bytes(path.join(target,f.relative));if(v.bytes!==f.bytes||v.sha256!==f.sha256||v.executable!==(f.git_mode==='100755'))throw new Error('Q024 original test656 physical source changed: '+f.relative);}
+  if(git(target,['ls-files','-z']).split('\0').filter(Boolean).length!==656)throw new Error('Q024 original test656 source count changed');
+  prepareQ023FixedCloneOrigin(target);
+  q024OriginalTestSources.set(repo,target);return target;
+ }catch(e){fs.rmSync(target,{recursive:true,force:true});throw e;}
+}
+export function cleanupQ024OriginalTestSources() {
+ for(const target of q024OriginalTestSources.values()){
+  let bytes=0,files=0,dirs=0;
+  const walk=p=>{const s=fs.lstatSync(p);if(s.isDirectory()&&!s.isSymbolicLink()){dirs++;for(const name of fs.readdirSync(p))walk(path.join(p,name));}else if(s.isFile()){bytes+=s.size;files++;}else throw new Error('unexpected owned Q024 snapshot artifact');};
+  walk(target);fs.rmSync(target,{recursive:true,force:true});if(fs.existsSync(target))throw new Error('owned Q024 test snapshot not retired');
+  console.log(JSON.stringify({owned_scratch:target,retired_after_join:true,removed_bytes:bytes,removed_files:files,removed_directories:dirs,SDK_program_executions:0,model_DB_namespace_DIAG_QUAL:0}));
+ }
+ q024OriginalTestSources.clear();
 }
 
 const SOURCE_IDENTITIES=Object.freeze({
@@ -854,7 +1036,7 @@ function snapshot(repo,commit,tree) {
 export function prepareDomains(repo) {
  if(!q018Approved(repo))throw new Error('Q018 preparation lacks exact authorization');
  const current=currentRoot(repo);currentSDKProof(repo,current);
- if(q023Present(repo))prepareQ023FixedCloneOrigin(repo);else if(q022Present(repo))prepareQ022FixedCloneOrigin(repo);else if(q021Approved(repo))prepareQ021FixedCloneOrigins(repo);
+ if(q024Present(repo))prepareQ024FixedCloneOrigin(repo);else if(q023Present(repo))prepareQ023FixedCloneOrigin(repo);else if(q022Present(repo))prepareQ022FixedCloneOrigin(repo);else if(q021Approved(repo))prepareQ021FixedCloneOrigins(repo);
  const old=historicalRoot(repo),spec=sdkSpec(repo,'1.26.6');
  if(!fs.existsSync(old)){
   const parent=directory(path.join(stateRoot(),'SDK'),true),tmp=fs.mkdtempSync(path.join(parent,'fixed-archive-'));

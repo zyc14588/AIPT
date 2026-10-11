@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Q018_AUTHORITY, Q018_MODIFIED_PATHS, Q019_AUTHORITY, Q019_PROPOSAL, Q019_SMOKE, Q021_AUTHORITY, Q021_PROPOSAL, Q021_WORK_PATHS, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification } from '../lib/b007-toolchain-security-q018.mjs';
+import { Q018_AUTHORITY, Q018_MODIFIED_PATHS, Q019_AUTHORITY, Q019_PROPOSAL, Q019_SMOKE, Q021_AUTHORITY, Q021_PROPOSAL, Q021_WORK_PATHS, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,7 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { BASE,Q015_GATE,Q016_AUTHORITY,Q017_AUTHORITY,Q017_FIXTURE,runApprovedPredecessor,cleanupSnapshots,START,AUTHORITY,Q002_AUTHORITY,Q002_SOURCE,Q003_AUTHORITY,Q003_ANNEX,Q004_AUTHORITY,Q004_PROPOSAL,Q005_AUTHORITY,Q009_AUTHORITY,Q009_ANNEX,Q009_REVIEW,Q009_CI,Q009_ADAPTER,Q009_GATEWAY,Q011_AUTHORITY,STATUS,MUTABLE,allowedNew,successorProblems,rows } from '../lib/b007-successor.mjs';
 import { resolveB007 } from '../lib/b007-lifecycle.mjs';
 import { inspectConstruction } from '../validate/mvp-b007.mjs';
-const q023CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q024CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q023CurrentSource=q024OriginalTestSource(q024CurrentSource);
+test.after(cleanupQ024OriginalTestSources);
 const currentSource=q023OriginalTestSource(q023CurrentSource);
 test.after(cleanupQ023OriginalTestSources);
 const source=q022OriginalTestSource(currentSource);
@@ -375,4 +377,75 @@ test('Q023 merged HEAD cannot hide its own later source rewrite/restore while ma
  fs.writeFileSync(file,original);commit(repo,'Synthetic hidden merged HEAD restore');
  assert.equal(git(repo,['rev-parse','refs/remotes/origin/main']),merge);
  assert.ok(q023LifecycleProblems(repo).some(v=>/source history changed/.test(v)));assert.ok(successorProblems(repo).length);
+});
+
+// Q024 synthetic probes never publish, admit CI, start a model, or mutate a SDK.
+function q024LifeGit(repo,args) {
+ const r=spawnSync('/usr/bin/git',['--no-optional-locks','-C',repo,...args],{encoding:'utf8',env:{...process.env,GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'}});
+ assert.equal(r.error,undefined);assert.equal(r.signal,null);assert.equal(r.status,0,r.stderr);return r.stdout.trim();
+}
+function q024LifeFixture(t) {
+ const repo=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q024-lifecycle-probe-'));
+ t.after(()=>{
+  let bytes=0,files=0,dirs=0;const walk=p=>{const s=fs.lstatSync(p);if(s.isDirectory()&&!s.isSymbolicLink()){dirs++;for(const n of fs.readdirSync(p))walk(path.join(p,n));}else if(s.isFile()){bytes+=s.size;files++;}};
+  walk(repo);fs.rmSync(repo,{recursive:true,force:true});assert.equal(fs.existsSync(repo),false);console.log(JSON.stringify({owned_scratch:repo,retired_after_join:true,removed_bytes:bytes,removed_files:files,removed_directories:dirs,SDK_program_executions:0,model_DB_namespace_DIAG_QUAL:0}));
+ });
+ q024LifeGit(q024CurrentSource,['clone','--no-local','--no-checkout',q024CurrentSource,repo]);q024LifeGit(repo,['checkout','--detach',Q024_BASELINE]);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',Q024_BASELINE]);
+ q024LifeGit(repo,['config','core.hooksPath','/dev/null']);q024LifeGit(repo,['config','user.name','Synthetic Q024 Probe']);q024LifeGit(repo,['config','user.email','q024-probe@example.invalid']);
+ const paths=rows(q024CurrentSource,['ls-files','--cached','--others','--exclude-standard']);assert.equal(new Set(paths).size,658);
+ for(const relative of paths){const dest=path.join(repo,relative);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join(q024CurrentSource,relative),dest);}
+ q024LifeGit(repo,['add','--',...Q024_WORK_PATHS,...Q024_NEW_PATHS]);return repo;
+}
+function q024LifeCandidate(repo,message='Synthetic Q024 candidate') {
+ q024LifeGit(repo,['commit','-m',message]);return q024LifeGit(repo,['rev-parse','HEAD']);
+}
+function q024LifeMerge(repo,candidate,{tree=null,parents=null}={}) {
+ const body=tree??q024LifeGit(repo,['rev-parse',candidate+'^{tree}']),p=parents??[Q024_BASELINE,candidate];
+ return q024LifeGit(repo,['commit-tree',body,...p.flatMap(v=>['-p',v]),'-m','Synthetic Q024 normal-merge shape']);
+}
+test('Q024 original180 lifecycle test bodies remain complete and failed merge provides construction only',()=>{
+ const file='scripts/ci/test/b007-lifecycle.test.mjs',old=fs.readFileSync(path.join(q023CurrentSource,file),'utf8'),live=fs.readFileSync(path.join(q024CurrentSource,file),'utf8');
+ assert.ok(live.slice(live.indexOf('function git(')).startsWith(old.slice(old.indexOf('function git('))));assert.deepEqual(q024SourceProblems(q024CurrentSource),[]);
+ assert.equal(q024LifeGit(q023CurrentSource,['rev-parse','HEAD']),Q024_ORIGINAL_CANDIDATE);const v=resolveB007(q024CurrentSource);assert.deepEqual(v.problems,[]);assert.equal(v.runtime_ready,false);assert.equal(v.qualification_runs_executed,0);
+});
+test('Q024 accepts a complete synthetic658 sole-failed-merge-parent candidate without production grants',t=>{
+ const repo=q024LifeFixture(t),candidate=q024LifeCandidate(repo),v=resolveB007(repo);assert.deepEqual(successorProblems(repo),[]);assert.deepEqual(q024LifecycleProblems(repo),[]);assert.equal(v.candidate.commit,candidate);assert.equal(v.merge,null);assert.equal(v.runtime_ready,false);assert.equal(v.qualification_runs_executed,0);
+ assert.deepEqual(q024RevisionProblems(repo,candidate),[]);assert.ok(q024RevisionProblems(repo,candidate,{original:true}).length);
+});
+test('Q024 accepts only identical-tree ordered failed-baseline/candidate normal merge and common candidate',t=>{
+ const repo=q024LifeFixture(t),candidate=q024LifeCandidate(repo),merge=q024LifeMerge(repo,candidate);q024LifeGit(repo,['checkout','--detach',merge]);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',merge]);
+ assert.deepEqual(successorProblems(repo),[]);const v=resolveB007(repo);assert.equal(v.candidate.commit,candidate);assert.equal(v.merge.commit,merge);assert.equal(v.runtime_ready,false);
+ q024LifeGit(repo,['checkout','--detach',candidate]);assert.deepEqual(q024SourceProblems(repo),[]);
+});
+test('Q024 rejects candidate-shaped accepted main',t=>{
+ const repo=q024LifeFixture(t),candidate=q024LifeCandidate(repo);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',candidate]);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects a successor candidate whose sole parent is the earlier BASE',t=>{
+ const repo=q024LifeFixture(t),tree=q024LifeGit(repo,['write-tree']),candidate=q024LifeGit(repo,['commit-tree',tree,'-p',BASE,'-m','Synthetic wrong old BASE parent']);q024LifeGit(repo,['checkout','--detach',candidate]);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects extra candidate parents',t=>{
+ const repo=q024LifeFixture(t),tree=q024LifeGit(repo,['write-tree']),candidate=q024LifeGit(repo,['commit-tree',tree,'-p',Q024_BASELINE,'-p',BASE,'-m','Synthetic extra parent']);q024LifeGit(repo,['checkout','--detach',candidate]);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects reversed normal-merge parents',t=>{
+ const repo=q024LifeFixture(t),candidate=q024LifeCandidate(repo),merge=q024LifeMerge(repo,candidate,{parents:[candidate,Q024_BASELINE]});q024LifeGit(repo,['checkout','--detach',merge]);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',merge]);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects a normal merge with a different tree',t=>{
+ const repo=q024LifeFixture(t),candidate=q024LifeCandidate(repo),merge=q024LifeMerge(repo,candidate,{tree:Q024_BASELINE_TREE});q024LifeGit(repo,['checkout','--detach',merge]);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',merge]);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects different checkout and accepted-main candidates even with identical source trees',t=>{
+ const repo=q024LifeFixture(t),one=q024LifeCandidate(repo,'Synthetic candidate one'),merge=q024LifeMerge(repo,one),tree=q024LifeGit(repo,['rev-parse',one+'^{tree}']),two=q024LifeGit(repo,['commit-tree',tree,'-p',Q024_BASELINE,'-m','Synthetic candidate two']);
+ q024LifeGit(repo,['checkout','--detach',two]);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',merge]);assert.notEqual(one,two);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects working implementation changes after its exact candidate',t=>{
+ const repo=q024LifeFixture(t);q024LifeCandidate(repo);fs.appendFileSync(path.join(repo,Q024_WORK_PATHS[1]),'\n// changed after candidate\n');assert.ok(q024SourceProblems(repo).length);
+});
+test('Q024 rejects even byte-restoring history after its candidate',t=>{
+ const repo=q024LifeFixture(t);q024LifeCandidate(repo);const file=Q024_WORK_PATHS[1],original=fs.readFileSync(path.join(repo,file));fs.appendFileSync(path.join(repo,file),'\n// transient rewrite\n');q024LifeGit(repo,['add','--',file]);q024LifeGit(repo,['commit','-m','Synthetic forbidden rewrite']);fs.writeFileSync(path.join(repo,file),original);q024LifeGit(repo,['add','--',file]);q024LifeGit(repo,['commit','-m','Synthetic forbidden restoration']);assert.ok(q024SourceProblems(repo).length);
+});
+test('Q024 rejects empty descendant commits and additional normal successors',t=>{
+ const repo=q024LifeFixture(t),candidate=q024LifeCandidate(repo);q024LifeGit(repo,['commit','--allow-empty','-m','Synthetic extra successor']);assert.ok(q024LifecycleProblems(repo).length);
+ q024LifeGit(repo,['checkout','--detach',candidate]);const merge=q024LifeMerge(repo,candidate);q024LifeGit(repo,['checkout','--detach',merge]);q024LifeGit(repo,['update-ref','refs/remotes/origin/main',merge]);q024LifeGit(repo,['commit','--allow-empty','-m','Synthetic extra after merge']);assert.ok(q024LifecycleProblems(repo).length);
+});
+test('Q024 rejects a committed protected runtime source change',t=>{
+ const repo=q024LifeFixture(t),file='internal/operational/runtime.go';fs.appendFileSync(path.join(repo,file),'\n// unapproved runtime rewrite\n');q024LifeGit(repo,['add','--',file]);const candidate=q024LifeCandidate(repo);assert.ok(q024RevisionProblems(repo,candidate).length);assert.ok(successorProblems(repo).length);
 });
