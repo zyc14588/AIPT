@@ -1,0 +1,96 @@
+{
+  "Candidate_Base_merge_and_full_rewrite_restore_history_rules_retained": true,
+  "accepted_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  },
+  "actual_Owner_approval_registration": {
+    "bytes": 4579,
+    "sha256": "f8a4a898ad030620c6d179a9b055efaba6a2ed15a207d70e1867f27bb5491850"
+  },
+  "amend_forcepush_rebase_squash_history_rewrite_authorized": false,
+  "approved_private_contract": {
+    "bytes": 9391,
+    "sha256": "27e987d761e4b377e85a42316cdabb260afcdee0b0e6d3c75a3613fd47d7851a"
+  },
+  "approved_private_material": {
+    "bytes": 6947,
+    "sha256": "9eacf6c1e5443976c7f7616bd43f7ec305290f601aa1d7c922760665cfb86542"
+  },
+  "approved_private_routing_plan": {
+    "bytes": 3488,
+    "sha256": "e550b7e8b8df4539b26715cc992d400e1dd179dfb9cddc733f5dec48638b14ac"
+  },
+  "candidate_CI_accepted": false,
+  "candidate_and_merge_each5CI_required": true,
+  "combined_source_count": 650,
+  "complete_current_and_historical26_gates_ordinary_race_and_private_PostgreSQL_integration_required": true,
+  "current_go": "1.26.9",
+  "current_work_paths": [
+    "internal/toolchainsmoke/toolchainsmoke_test.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q019",
+  "diag_runs": 0,
+  "failed_predecessor": {
+    "commit": "f7c3736acd3524240ec178dc81e0a1c72a690930",
+    "tree": "bd09b4e24b8cb2c7db15bdb43cbd3d3fc8c9bcea"
+  },
+  "full_actual650_source_and_newGo_derived_runtime_origins_profiles_capsules_FD_bindings_HIGH_required": true,
+  "full_source_and_HIGH_accepted": false,
+  "generic_followon_permission": false,
+  "historical_f7_smoke_go1_26_6_retained": true,
+  "historical_go": "1.26.6",
+  "language_minimum": "1.26.0",
+  "local_online_exact_SHA_immutable_CI_evidence_required": true,
+  "merge_CI_accepted": false,
+  "model_calls": 0,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "docs/pilot/authorities/toolchain-smoke-current-pin-successor-q019.json",
+    "docs/pilot/proposals/toolchain-smoke-current-pin-q019.json"
+  ],
+  "one_new_directBASE_candidate_and_public_PR_required": true,
+  "original_PR27_PR28_failures_retained": true,
+  "original_Q01818plus8_scope_and_authority_unchanged": true,
+  "original_one_USD5_nonQUAL_DIAG_unchanged": true,
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "production_namespace_changes_authorized": false,
+  "proposal_binding": {
+    "bytes": 4752,
+    "path": "docs/pilot/proposals/toolchain-smoke-current-pin-q019.json",
+    "sha256": "688b2608fb36538faa7bee811a22e5873dd85295e324df811da9072018dcab1b"
+  },
+  "qual_runs": 0,
+  "qualification_runs_authorized": 0,
+  "retained_Q018_authority": {
+    "bytes": 4676,
+    "path": "docs/pilot/authorities/toolchain-dependency-security-successor-q018.json",
+    "sha256": "c9c157c12e19833373b9a610db3de68a1bcd19f3ab71aa2b3e94dc2fcd5962b4"
+  },
+  "retained_Q018_qualification_sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284",
+  "runtime_ready": false,
+  "same_independent_reviewer_and_fresh_Root_required": true,
+  "schema": "aipt.public.b007-toolchain-smoke-current-pin-successor-authority/q019-v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "smoke": {
+    "all_other_versions_rejected": true,
+    "approved_current": {
+      "bytes": 635,
+      "sha256": "2945b831b5fb54bc9c2ae7e4ae04a7a5001c1e6b87fe62e717e2f8929c56076e"
+    },
+    "compiler_assertion": "runtime.Compiler == gc",
+    "environment_override_or_skip_authorized": false,
+    "original": {
+      "bytes": 789,
+      "sha256": "96c0832d08b3b6bf7ff7028eec05036680c54f27047a9f0d2f47f3c0d11dd504"
+    },
+    "path": "internal/toolchainsmoke/toolchainsmoke_test.go"
+  },
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "task_id": "AIPT-MVP-B007",
+  "unchanged_f7_protected_paths": 621
+}

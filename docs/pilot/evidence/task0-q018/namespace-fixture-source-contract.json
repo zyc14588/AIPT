@@ -1,0 +1,16 @@
+{
+  "schema": "aipt.public.b007-namespace-fixture-source-contract/q018-v1",
+  "path": "internal/pilot/runtime_namespace_test.go",
+  "before_SHA256": "6ee906289bf19447bf8e0b3c3f79d4aec2bdc6eaf54e6abe7645df4020d03be2",
+  "after_SHA256": "4b60755568336b8c446df43b45cd2d60b4befaa9f0358254d6a086ea5e9d7458",
+  "after_bytes": 9157,
+  "production_source": {
+    "path": "internal/pilot/runtime_namespace.go",
+    "sha256": "69c1b4a39a1376f26602a91910ac64b6c1f20097c595988bd47a714cb3aef9c1"
+  },
+  "original_CI_cause": "UNOBSERVED",
+  "fresh_fixed_label_replay_is_original_trace": false,
+  "allocator1_64_EBADF_assertions_skip_credentials_cloneflags_maps_deadlines_unchanged": true,
+  "scope": "EXACT_APPROVED_DIAGNOSTICS_ONLY_FAILURE_REMAINS_FAILURE",
+  "models_DIAG_QUAL": 0
+}
