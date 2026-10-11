@@ -1,0 +1,54 @@
+{
+  "schema": "aipt.public.b007-task0-runtime-adapter-input/v2",
+  "adapter_id": "AIPT-B007-UNREGISTERED-TASK0-ADAPTER-V2",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q009",
+  "source_package": {
+    "package_id": "UNREGISTERED-TASK0-PROTOTYPE-V2",
+    "schema": "unregistered.task0-prototype-package/v2",
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+    "tree": "d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9",
+    "canonical_sha256": "f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d"
+  },
+  "source_annex_sha256": "0dba7a660e147dec4536f7b272b73a2e768b2a04986be6a4e71880eb316229cc",
+  "retained_q003_annex_sha256": "5f4ecf19c84a384245071c3f23f491a8c1fe4c8dcae0326a7123a3d6000566f5",
+  "game_action_contract_sha256": "6fa75e95fd1508958c551aaa507a07deffeb8d8ccf8485de1c98478f2d20c7d9",
+  "actor_authentication": "TRUSTED_B003_SEAT_AND_RUN_CORE_AUTHORIZER",
+  "source_selection": "EXACT_OWNER_ACCEPTED_45_HELD_BYTES_NO_MODEL_PATH_OR_SOURCE_OVERRIDE",
+  "rng_ownership": "RUN_CORE_ONLY",
+  "rng_version": "AIPT_RNG_HMAC_SHA256_V1",
+  "rng_stream": "UNR-T0-ROLL",
+  "rng_count": "DERIVED_FROM_ACCEPTED_GAME_STATE_AND_INTENT",
+  "queue_and_ledger_authority": "EXISTING_POSTGRESQL",
+  "model_frame_fields": [
+    "actor_id",
+    "action_type",
+    "payload"
+  ],
+  "model_cannot_supply": [
+    "run_id",
+    "action_id",
+    "expected_sequence",
+    "source",
+    "rng_requests",
+    "seed",
+    "draws",
+    "state_patch",
+    "principal",
+    "release_policy"
+  ],
+  "registered_seats": [
+    "GM",
+    "PLAYER_1",
+    "PLAYER_2",
+    "PLAYER_3",
+    "PLAYER_4"
+  ],
+  "role_projection": "ACCEPTED_GAME_B003_PROTOCOL_PROJECTION_PLUS_DUAL_EGRESS_ENFORCEMENT",
+  "legacy_projection": "EXACT_RETAINED_Q003_17_SOURCE_SUBSET",
+  "maximum_payload_bytes": 1024,
+  "maximum_core_draws_per_action": 32,
+  "technical_failure_blocks_acceptance": true,
+  "runtime_ready": false,
+  "qualification_eligible": false
+}

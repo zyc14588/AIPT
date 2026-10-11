@@ -1,0 +1,97 @@
+{
+  "schema": "aipt.public.b007-original-failed-ci-local-online-observation/v1",
+  "local_online_observation": true,
+  "cryptographic_ci_signature_claim": false,
+  "recorded_at_utc": "2026-10-09T11:17:27.545270+00:00",
+  "repository": "zyc14588/AIPT",
+  "PR": 27,
+  "candidate_commit": "ec76d9c5cba0c32f3bb58c2a0abb9602f9ebe2d8",
+  "candidate_tree": "9ab33633cdf943571ca3693c15a53b4f0b3d2dd5",
+  "workflow_path": ".github/workflows/ci.yml",
+  "workflow_id": 335420656,
+  "run_id": 37921359218,
+  "run_attempt": 1,
+  "event": "pull_request",
+  "status": "completed",
+  "conclusion": "failure",
+  "required_jobs": [
+    "b000-retro (fixed B000 commit, read-only expansion)",
+    "toolchain (ubuntu-24.04)",
+    "toolchain (ubuntu-26.04)",
+    "supply-chain (R4-Q023 gates)",
+    "storage-postgres (ephemeral PostgreSQL 18.4 integration)"
+  ],
+  "jobs": [
+    {
+      "id": 113789788347,
+      "name": "b000-retro (fixed B000 commit, read-only expansion)",
+      "run_id": 37921359218,
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-09T11:03:14Z",
+      "completed_at": "2026-10-09T11:03:22Z"
+    },
+    {
+      "id": 113789788624,
+      "name": "toolchain (ubuntu-24.04)",
+      "run_id": 37921359218,
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-09T11:03:14Z",
+      "completed_at": "2026-10-09T11:03:38Z"
+    },
+    {
+      "id": 113789788695,
+      "name": "storage-postgres (ephemeral PostgreSQL 18.4 integration)",
+      "run_id": 37921359218,
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-09T11:03:15Z",
+      "completed_at": "2026-10-09T11:05:01Z"
+    },
+    {
+      "id": 113789788773,
+      "name": "supply-chain (R4-Q023 gates)",
+      "run_id": 37921359218,
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-09T11:03:15Z",
+      "completed_at": "2026-10-09T11:03:42Z"
+    },
+    {
+      "id": 113789788776,
+      "name": "toolchain (ubuntu-26.04)",
+      "run_id": 37921359218,
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-09T11:03:15Z",
+      "completed_at": "2026-10-09T11:03:36Z"
+    }
+  ],
+  "observed_failures": [
+    {
+      "gate": "gofmt",
+      "files": [
+        "internal/pilot/runtime_helper_protocol_test.go"
+      ],
+      "affected_jobs": [
+        "toolchain (ubuntu-24.04)",
+        "toolchain (ubuntu-26.04)"
+      ]
+    },
+    {
+      "gate": "supply-chain",
+      "file": "docs/pilot/runtime/harness-runtime-closure-b007.ts",
+      "hazard": "DEEPSEEK_ENDPOINT"
+    }
+  ],
+  "raw_local_receipt_sha256": "c851c5e9731bf92fccf9cb11bae784d0d0d73ecd42d54af0ca10d9a43d97c5cd",
+  "candidate_CI_accepted": false,
+  "source_pre_model_review_084_085_does_not_accept_failed_CI": true,
+  "model_native_DIAG_QUAL_executions": 0
+}

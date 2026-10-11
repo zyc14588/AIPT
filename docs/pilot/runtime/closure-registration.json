@@ -1,0 +1,36 @@
+{
+  "schema": "aipt.public.b007-new-closure-registration/v1",
+  "task_id": "AIPT-MVP-B007",
+  "state": "EXACT_LOCAL_ARTIFACT_BUILT_PENDING_INDEPENDENT_AND_ROLE_SPECIFIC_CONTROLLED_CERTIFICATION",
+  "authority_path": "docs/pilot/authorities/wire-budget-closure-successor.json",
+  "authority_sha256": "214d271c85245bac4f009e524e841f59411291d1ea6c09cc068066b131f6ca7b",
+  "decision_id": "B007-WIRE-BUDGET-CLOSURE-SUCCESSOR-Q002=A",
+  "runtime_closure": {
+    "kind": "VERIFIED_SINGLE_FILE_DATA_URL_V1",
+    "sha256": "d4d1d6d7558d0190caf192f6db77d04eacd6573280fef4041589ea2ba09fec70",
+    "bytes": 591429,
+    "source_sha256": "1dedde689c31337dc0a29102239a828a9873003f80945d5c456eef5614d8512f",
+    "harness_source_commit": "141eb6fef83422698aef7a981029e843e8161534"
+  },
+  "build": {
+    "node_version": "v24.19.0",
+    "harness_version": "0.1.0-rc.8",
+    "package_manager": "pnpm@11.7.0",
+    "source_tsconfig": "FROZEN_HARNESS_TSCONFIG_BASE_SOURCE_PATHS",
+    "lock_sha256": "af037e0f6c18f13e2388c2a010da742e890187e513fd9226b726b6eab4cbe149",
+    "builder_path": "docs/pilot/runtime/build-closure.mjs",
+    "builder_sha256": "a53c3343e90b40a49439c1b6995718d4a862a2cb54706b27a7587298dcd5f611",
+    "config_path": "docs/pilot/runtime/harness-runtime-closure.config.ts",
+    "config_sha256": "4d96aff30ef5e8cea28003afabcecceada77b2727f4b5e3ef0949fd5dee430e4",
+    "single_execute_file": true,
+    "nonbuiltin_runtime_imports": 0,
+    "private_build_paths": 0,
+    "dynamic_runtime_imports": 0
+  },
+  "old_b004_closure_sha256": "e4cb5990bc7f42337cbc2a734c0afe12d3b9a2aeb0061f5dcb5c9dded8d343db",
+  "old_b004_registration_and_certifications_unchanged": true,
+  "role_specific_certifications": "NOT_EXECUTED",
+  "paid_readiness": "NOT_VERIFIED",
+  "real_model_calls": 0,
+  "public_ci_model_calls": 0
+}

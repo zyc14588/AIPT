@@ -1,0 +1,133 @@
+{
+  "schema": "aipt.public.b007-system-ca-readonly-tmpfs-successor-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q013",
+  "task_id": "AIPT-MVP-B007",
+  "state": "OWNER_AUTHORIZED_PENDING_FIRST_FEASIBILITY_IMPLEMENTATION_AND_ACCEPTANCE",
+  "policy_version": "B007_PARENT_SEALED_CA_TO_PREP_READONLY_TMPFS_V1",
+  "retained_q012_authority_sha256": "f0d82ca89af129aec85bbcb1a00282516dd060308b209e21f4af2434be9c74cf",
+  "retained_q011_authority_sha256": "57edcd5470a8be49f5089040df4165243a1de6e893299cf510241529c61e878d",
+  "fixed_host_ca": {
+    "path": "/etc/ssl/certs/ca-certificates.crt",
+    "bytes": 182140,
+    "sha256": "80eedd808e4cbd6fd42e125da2ea225fd1365d8e29edef8bcc45ff8bc7044ce2"
+  },
+  "blocked_q012_memfd_bind": {
+    "fixture_result": "FAIL_MEMFD_BIND_WITH_REGULAR_BIND_POSITIVE_CONTROL",
+    "fixture_receipt_sha256": "5c6d3ad40dea68d1ae4b9a277ff963e944f39b4012a36cfb81142a05739a4aa1",
+    "errno": 22,
+    "regular_same_target_readonly_bind_positive": true,
+    "sealed_source_uid_mode_and_full_seals_positive": true,
+    "q012_feasibility_accepted": false,
+    "no_permissive_substitute_used": true
+  },
+  "bounded_exception": {
+    "implementation_scope": [
+      "NEW_B007_PARENT_PREP_BINDINGS_CA_HANDOFF_AND_PRIVATE_MATERIALIZATION_CODE",
+      "CORRESPONDING_B007_REGRESSION_AND_LIFETIME_TESTS",
+      "SEPARATE_Q013_AUTHORITY_AND_CONTROL_METADATA"
+    ],
+    "three_objects_distinct": [
+      "FIXED_ROOT_OWNED_HOST_ORIGINAL",
+      "PARENT_FULLY_SEALED_MEMFD_BYTE_SNAPSHOT",
+      "PREP_OWNED_PRIVATE_TMPFS_MATERIALIZED_INODE"
+    ],
+    "fixed_target_same_inode": "EXACT_HELD_PREP_MATERIALIZED_INODE",
+    "full_memfd_seals_apply_to": "PARENT_SOURCE_SNAPSHOT_ONLY_NOT_MATERIALIZED_FIXED_TARGET",
+    "old_b005_b006_q011_q012_bytes_and_historical_failures_frozen": true,
+    "generic_followon_permission": false
+  },
+  "parent_source_contract": {
+    "all_q012_fixed_source_owner_hash_size_path_stability_and_domain_checks_retained": true,
+    "parent_source_snapshot_mode": "0400",
+    "parent_source_snapshot_seals": [
+      "WRITE",
+      "GROW",
+      "SHRINK",
+      "SEAL"
+    ],
+    "same_fresh_static_parent_prep_pidfd_uid_map_namespaces_nonce_and_generation_binding": true,
+    "new_exact_q013_policy_and_authority_binding_required": true,
+    "fixed_fd_slot_cloexec_no_game_worker_native_model_inheritance": true
+  },
+  "private_materialization_contract": {
+    "filesystem": "OWNED_PREP_PRIVATE_TMPFS_ONLY",
+    "copy_source": "EXACT_APPROVED_FULLY_SEALED_PARENT_FD_OFFSET_ZERO_BOUNDED_BYTES",
+    "file_creation": "EXCLUSIVE_NOFOLLOW_OWNER_UID0_MODE0400",
+    "all_writer_descriptors_closed_before_freezing": true,
+    "whole_private_filesystem_and_all_fixed_target_aliases": "RDONLY_NOSUID_NODEV_NOEXEC_PRIVATE_PROPAGATION",
+    "fixed_target_open_checks": [
+      "REGULAR",
+      "UID0",
+      "MODE0400",
+      "EXACT_BYTES_AND_SHA256",
+      "SAME_MATERIALIZED_INODE",
+      "SECURE_READONLY_MOUNT_FLAGS"
+    ],
+    "host_global_mount_or_certificate_change": false,
+    "caller_selectable_ca_path_pem_directory_endpoint_transport_verifier_proxy_cache_mirror_or_fallback": false
+  },
+  "active_prep_contract": {
+    "before_any_evidence_verifier_call": "ALL_EXISTING_AND_FUTURE_PREP_THREADS_CAPINH_CAPPRM_CAPEFF_CAPBND_CAPAMB_ZERO_AND_NO_NEW_PRIVS_ONE",
+    "outside_parent_fresh_ready_admit_rechecks_all_threads_and_exact_inode": true,
+    "no_capability_or_write_access_restoration_for_active_prep": true,
+    "owned_nested_user_namespace_creation_and_join_still_required": true,
+    "hold_all_source_materialized_readonly_and_binding_descriptors_until_all_generation_verification_and_reports_end": true,
+    "retirement": "STOP_AND_JOIN_OWNED_DESCENDANTS_THEN_PREP_EXIT_JOIN_KERNEL_PRIVATE_NAMESPACE_TEARDOWN_THEN_PARENT_FD_CLOSE_AND_OWNED_EMPTY_DIRECTORY_CLEANUP",
+    "host_mount_changes_on_cleanup": false
+  },
+  "source_verifier_contract": {
+    "existing_remote_provenance_go_sha256": "6fb2c23f02f21ec18b1c4f203f5820b9fd15304f6cbced9e08552f1d7da0ee29",
+    "original_fixed_anonymous_https_tls_no_proxy_and_freshness_bytes_unchanged": true,
+    "fresh_source_verification_once_per_generation_and_again_per_independent_verification_and_report": true
+  },
+  "acceptance": {
+    "first_owned_no_network_no_model_fixture": [
+      "EXACT_UID0_MODE0400_BYTES_SHA_SAME_MATERIALIZED_INODE",
+      "WHOLE_TMPFS_AND_ALL_ALIASES_RDONLY_NOSUID_NODEV_NOEXEC",
+      "NO_WRITER_FD_OR_WRITABLE_ALIAS",
+      "ALL_THREADS_CAPS_ZERO_NO_NEW_PRIVS_ONE_AND_NO_RESTORATION",
+      "WRITE_TRUNCATE_CHMOD_REPLACE_REMOUNT_AND_STALE_BINDING_REJECTED",
+      "OWNED_NESTED_USER_MNT_CHILD_CREATION_AND_JOIN",
+      "LIFETIME_AND_NAMESPACE_TEARDOWN_JOIN_PROOF"
+    ],
+    "first_fixture_failure_action": "STOP_PRESERVE_RAW_RESULT_NO_PERMISSIVE_SUBSTITUTE",
+    "same_readonly_agent_exact_full_implementation_review": true,
+    "full_runtime_privacy_HIGH_required": true,
+    "actual_fresh_source_pg_core_raw_exact_replay_private_crypto_b006_completion_inspection_all_five_safe_exports_tamper_checks": true,
+    "candidate_and_exact_merge_ci_jobs_required_each": 5,
+    "independent_local_online_immutable_ci_catalogue_required": true,
+    "public_ci_model_and_application_github_calls": 0,
+    "actual_models_only_after_all_acceptance": true,
+    "retained_q012_original_source_and_admission_negative_and_race_checks": "UNCHANGED_REQUIRED_IN_THEIR_CORRESPONDING_SOURCE_AND_ADMISSION_DOMAINS",
+    "existing_b005_negative_and_race_and_all_retained_predecessor_gates": "UNCHANGED_REQUIRED",
+    "q012_memfd_failure_history": "PRESERVED_NOT_RELABELED_PASS",
+    "explicit_target_contract_and_cap0_retirement_change_only": true
+  },
+  "budget_and_game_scope": {
+    "budget_usd": "5.00",
+    "diagnostic_runs": 1,
+    "qualification_runs_authorized": 0,
+    "remote_attempt_ceiling": 32,
+    "aggregate_input_ceiling": 262144,
+    "aggregate_output_ceiling": 32768,
+    "local_minimum_and_maximum_calls": 1,
+    "elapsed_seconds": 1800,
+    "changed_game_source_rules_model_template_parameters_or_visibility": false,
+    "forced_model_actions_or_seed_authorized": false
+  },
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_calls": 0,
+  "diag_runs": 0,
+  "qual_runs": 0,
+  "approval_granted_by_proposal_itself": false,
+  "owner_decision": "批准",
+  "approval_recorded_at_utc": "2026-10-08T09:12:06.194409+00:00",
+  "approved_text_material_sha256": "e1b38adb2972f9424b4bb71fa1e45e9945e98cb644d49f1a04dc1f4495a210b8",
+  "approved_proposal_sha256": "c948ca29cd53dd68fba448d5bb9bb1e1bb02cf3d1d9f5c4a5d99fa7b82ad862f",
+  "approved_authority_draft_sha256": "3f4ddd5ccc41187bd0f17f5379d6170a9f4dd93b37b83a80d6d237412c40d761",
+  "accepted_aipt_base": {
+    "commit": "5f3f6353d744f6674de7cb610a8d8e9b9220c02a",
+    "tree": "d91062ddb99d781a825e272a6365ed4effe97350"
+  }
+}

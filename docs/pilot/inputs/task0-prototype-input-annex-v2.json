@@ -1,0 +1,259 @@
+{
+  "schema": "aipt.public.b007-task0-prototype-input-annex/v2",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q009",
+  "authority_path": "docs/pilot/authorities/task0-prototype-source-successor-q009.json",
+  "authority_sha256": "1d6c9600cbd3ff2917146c8c4a80647c70f9e17641f565944e4c948dc541e032",
+  "retained_q003_authority_sha256": "ee801db456897f11429238c3ffdbc08cca2a7d40009ea3ad1adee658eafc63e5",
+  "retained_q003_annex_sha256": "5f4ecf19c84a384245071c3f23f491a8c1fe4c8dcae0326a7123a3d6000566f5",
+  "source_adoption_review_sha256": "4732a423d5235780eb8e560c7d523f3846f4c4b59a4f8548caca0b6c5fd93024",
+  "online_ci_evidence_sha256": "508d65a46b8ff87dc9edb3153bc4f635147d391dfed20e48e80842f39158c1c2",
+  "source_package": {
+    "package_id": "UNREGISTERED-TASK0-PROTOTYPE-V2",
+    "schema": "unregistered.task0-prototype-package/v2",
+    "repository": "zyc14588/UNREGISTERED",
+    "commit": "d37ae9b38bce84f8bfc164306fee2bebf73178b7",
+    "tree": "d802d28c7275e3e75ada5d6ef3edeb7fb57eb7b9",
+    "canonical_sha256": "f87f011f8c57c3eef371ad1e8f5569effd035957158fd17ba7fa63655c86e13d"
+  },
+  "source_manifest": {
+    "schema": "unregistered.task0-prototype-package/v2",
+    "package_id": "UNREGISTERED-TASK0-PROTOTYPE-V2",
+    "lifecycle": "PROTOTYPE",
+    "canonical": false,
+    "source_baseline": {
+      "repository": "zyc14588/UNREGISTERED",
+      "commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+      "tree": "34597e79c586fb034256daa32d67640692ec589d"
+    },
+    "containing_revision_binding": "EXTERNAL_ACCEPTED_COMMIT_TREE_AND_DIGEST_REQUIRED",
+    "entries": [
+      {
+        "path": "LICENSES/UNREGISTERED-CONTENT-POLICY-1.0.md",
+        "bytes": 1875,
+        "sha256": "2aab086afd0fc6a0d9455a56ae9052039b4af3d098e5fd2fc4cc22551972bc11"
+      },
+      {
+        "path": "aipt/input-manifest.json",
+        "bytes": 15845,
+        "sha256": "0b5f13c4dbfe429fc07a59a67b2d1c10db9ba74d205f1b3e7a9a1e896577608a"
+      },
+      {
+        "path": "aipt/p0-b000/identity.json",
+        "bytes": 625,
+        "sha256": "b2302eb17c6ab08bbc47bbcb884ff03f92de8b0159d7508c25c565b4ef31d22d"
+      },
+      {
+        "path": "aipt/p0-b000/licensing.json",
+        "bytes": 4030,
+        "sha256": "480b8924a928bdd8ed3e4eabadf2cb4bdfb4ee4021c7a8c5c0c2f1564d9ed17e"
+      },
+      {
+        "path": "aipt/p0-b000/premades-v2.json",
+        "bytes": 8983,
+        "sha256": "5bbd5bb9ca180004b4407e558961dc679dde888df78f3dd1b9d1ea2b8c9b2163"
+      },
+      {
+        "path": "aipt/p0-b001/safety-profile.json",
+        "bytes": 5063,
+        "sha256": "dea0b7a62ba8ac81cb9314546afebca400642d9923f9ae928d97c9a40a29304f"
+      },
+      {
+        "path": "aipt/p0-b001/stable-ids.json",
+        "bytes": 21496,
+        "sha256": "c7e296bf7f7595ec17e67e44fef60ac38e979d4906ab31d1d9081e6bed53dba6"
+      },
+      {
+        "path": "aipt/p0-b001/visibility.json",
+        "bytes": 45359,
+        "sha256": "e232a2f95c6359cf54dd5f4147c72e0c3433614e00555226cd2993716f7bbb70"
+      },
+      {
+        "path": "aipt/p0-b002/machine-rules.json",
+        "bytes": 121011,
+        "sha256": "139d095fe54926e1599edf208b65f7a89061f1cda6d8b492f83b5e47c0693c78"
+      },
+      {
+        "path": "aipt/p0-b002/rule-id-map.json",
+        "bytes": 49777,
+        "sha256": "321550a1bb91066c263e5857c8095878d708af3f296430bc00011d70f5bb242c"
+      },
+      {
+        "path": "aipt/p0-b002/semantic-graph.json",
+        "bytes": 30928,
+        "sha256": "8c9ad9ade247ac6195019b7225725c70cd26b55270979d31c7b3701d02092562"
+      },
+      {
+        "path": "aipt/p0-b003/game-adapter.json",
+        "bytes": 3589,
+        "sha256": "5ddef252e1b93a4b9348fb71e9490f106c02e9e0b8b11fa9a11a589bbc3effc5"
+      },
+      {
+        "path": "aipt/p1-b000/playtest-package.json",
+        "bytes": 6617,
+        "sha256": "99683081677f5ac098dc94ee1221b4ae1fd5a75b416da7094276dbf694bb23bd"
+      },
+      {
+        "path": "aipt/p1-b000/runtime-adapter-input.json",
+        "bytes": 5854,
+        "sha256": "c8e4e25ebd9a553d1a1db2e449d58b2030091cea7ae304ad649e4f0391d1bee4"
+      },
+      {
+        "path": "aipt/task0-v2/README.md",
+        "bytes": 2413,
+        "sha256": "7828d33d377fdfc3561d94986eb5f268b56ec23402fb4a9587f479f6a6102a4f"
+      },
+      {
+        "path": "aipt/task0-v2/action-contract.json",
+        "bytes": 4432,
+        "sha256": "6fa75e95fd1508958c551aaa507a07deffeb8d8ccf8485de1c98478f2d20c7d9"
+      },
+      {
+        "path": "aipt/task0-v2/adoption-proposal.md",
+        "bytes": 8572,
+        "sha256": "30697c1aba14876101f039cc4d49e9847594b5f2c320d3545795b6c38537e28d"
+      },
+      {
+        "path": "aipt/task0-v2/character-private.json",
+        "bytes": 4121,
+        "sha256": "799d6b3964a468edd6e941b222703d7a48cff8510171eafc91ba538063541b57"
+      },
+      {
+        "path": "aipt/task0-v2/characters.json",
+        "bytes": 1870,
+        "sha256": "e45e20ef0d4c00815cd81b5908fef87f988472f3e7de761bb914b2cefc3c11d0"
+      },
+      {
+        "path": "aipt/task0-v2/ci-successor-proposal.yml",
+        "bytes": 5254,
+        "sha256": "69983b353f831e6a13870571ce2f7a8973be20687450b43b47c924ab13a25e03"
+      },
+      {
+        "path": "aipt/task0-v2/gm-content.json",
+        "bytes": 12474,
+        "sha256": "f07b047f84ffcf721c475317f281a825c9bf273ba0b1768952097c376e09347f"
+      },
+      {
+        "path": "aipt/task0-v2/gm-runbook.md",
+        "bytes": 7722,
+        "sha256": "4dd824bb2bf6ca7775c30df88798e1e871f19b9aa2f2f603fa1bcb8ac491b7df"
+      },
+      {
+        "path": "aipt/task0-v2/handouts.json",
+        "bytes": 2478,
+        "sha256": "6292859746b0261a3a22b52cdb950707642e25b40cd1257a34062fc7deb26291"
+      },
+      {
+        "path": "aipt/task0-v2/parameters.json",
+        "bytes": 10027,
+        "sha256": "b99b09bc089793f19b5a58e5a165ca8bb2b9c657506f5245e77c389dd2b0c18c"
+      },
+      {
+        "path": "aipt/task0-v2/player-reference.md",
+        "bytes": 4665,
+        "sha256": "e47cec7465675bfa2358b7f312afca3fca8c02dff91e8a5861b419544f6b01c9"
+      },
+      {
+        "path": "aipt/task0-v2/readiness.json",
+        "bytes": 1294,
+        "sha256": "bfc934dbcafc57997f9df49b932b6430a243cc4aa6eb741a663ebba8acb0f4a4"
+      },
+      {
+        "path": "aipt/task0-v2/visibility.json",
+        "bytes": 923,
+        "sha256": "5d695a8fb8cd69bc9bf5afe50795278f4aca17efc01c4390c3a25a134047ce3b"
+      },
+      {
+        "path": "campaign/playtest/gm-screen-v1.md",
+        "bytes": 2292,
+        "sha256": "2a054d42eb48e378a29db07ddd6c5cd751b4d2340f6426552fea516d63bf2b8a"
+      },
+      {
+        "path": "campaign/playtest/rule-knowledge-sheet-v1.md",
+        "bytes": 1819,
+        "sha256": "61af1a1beaede971b50508bc38954533b18e3706587dc96e472406c0260d3691"
+      },
+      {
+        "path": "campaign/playtest/stage3-run-guide-v1.md",
+        "bytes": 13268,
+        "sha256": "c1ccd8a77d917e05f86f0604731344b22c8902c508858ef71a39ed9da3cce17f"
+      },
+      {
+        "path": "campaign/playtest/task0-handouts-v1.md",
+        "bytes": 2308,
+        "sha256": "56f1a9fba799f5c281162290c27b39db9bbbaa9d83cdaa83dd235506f3d68288"
+      },
+      {
+        "path": "campaign/playtest/task0-intel-pack-v1.md",
+        "bytes": 2301,
+        "sha256": "38908bcaa6155e5e916aa1e9f73c58289054e3a0f333a0f2114f3e239009acf0"
+      },
+      {
+        "path": "campaign/proposals/tasks-v1.md",
+        "bytes": 31025,
+        "sha256": "df4d6c7afe0a891ce29a21306ab810ad32cc0b54c8ccf3d7ff3281d43cac2a72"
+      },
+      {
+        "path": "campaign/rules/logic-map-v1.md",
+        "bytes": 5346,
+        "sha256": "7ba536f1d235981b32a8a8f27c7429d6b53ead6daa4c0f3e82e465584a89f1b4"
+      },
+      {
+        "path": "campaign/rules/mechanics-fine-v1.md",
+        "bytes": 11358,
+        "sha256": "69c6effd923b18b8bbb83331489fbd8f7949197501ab897a92e9338fdb62c37a"
+      },
+      {
+        "path": "campaign/rules/vertical-slice-v0.md",
+        "bytes": 15350,
+        "sha256": "e4fa4070ee48ed97e7483d844f04f233967cb04ea2c2abfd6672af4ad07433c2"
+      },
+      {
+        "path": "campaign/session0-redlines.md",
+        "bytes": 1555,
+        "sha256": "d5d9246e07b2d4c9de9ce602835ec763ac33f5dd01a8b5e83c9b2318f9b6e630"
+      },
+      {
+        "path": "scripts/aipt/build-task0-package.mjs",
+        "bytes": 3671,
+        "sha256": "7f63541ce3285af9b939f59698a562f38a44059bc213afb38f144a874bbfdff1"
+      },
+      {
+        "path": "scripts/aipt/task0-aipt-bridge.mjs",
+        "bytes": 4099,
+        "sha256": "01d98a4003c3a7e0c0c1f60231dc1298eae47cd913a2ec4d4cde22ab0772c1e8"
+      },
+      {
+        "path": "scripts/aipt/task0-json.mjs",
+        "bytes": 5921,
+        "sha256": "c201445b4f405ed621d7fa0f24c142492d2c722012aa9e30adeb104a52e83e6e"
+      },
+      {
+        "path": "scripts/aipt/task0-prototype.mjs",
+        "bytes": 54992,
+        "sha256": "2b0ac4ae6ed16c88b5880b29fbbaaaa654aecbf231770cea5a770ae2507b1352"
+      },
+      {
+        "path": "scripts/aipt/task0-reference-cli.mjs",
+        "bytes": 1374,
+        "sha256": "af9b33f2e604ed36b0c046a7c1151fb609964963b4e84aa89ea25d4bd58d33e3"
+      },
+      {
+        "path": "scripts/aipt/test/task0-compatibility.mjs",
+        "bytes": 4478,
+        "sha256": "c2deccd6c142407c4347ad311d3dbd292d9ba5ead4ada88def4d0062f7421add"
+      },
+      {
+        "path": "scripts/aipt/test/task0.test.mjs",
+        "bytes": 36496,
+        "sha256": "3434c548ea91ea66e23dc83aa48dabe5a79b85e37ff41867a5babdbf668e5f99"
+      },
+      {
+        "path": "scripts/aipt/validate-task0-v2.mjs",
+        "bytes": 1157,
+        "sha256": "c3ab1dfffb8915c33eeccbcc9895cea97f84bc20b223f35a7b18d3747d4027b5"
+      }
+    ]
+  },
+  "runtime_ready": false,
+  "qualification_eligible": false
+}
