@@ -1,0 +1,164 @@
+{
+  "schema": "aipt.public.b007-task0-input-annex/v1",
+  "version": "1.0.0",
+  "task_id": "AIPT-MVP-B007",
+  "authority_path": "docs/pilot/authorities/task0-supplemental-input-annex.json",
+  "decision_id": "B007-TASK0-SUPPLEMENTAL-INPUT-ANNEX-Q003=A",
+  "binding": {
+    "repository": "zyc14588/UNREGISTERED",
+    "package_commit": "fe0965977447caf8cd7b6e58252bc1b991b7cc6f",
+    "package_tree": "34597e79c586fb034256daa32d67640692ec589d",
+    "nested_source_commit": "358d6d9d08a86818e34fd0c0d9a62bfe66e73abe",
+    "nested_source_tree": "5585271c78d1fe5cd8357c7b36a501bee34f0240",
+    "old_package_manifest_sha256": "99683081677f5ac098dc94ee1221b4ae1fd5a75b416da7094276dbf694bb23bd",
+    "old_package_digest": "605b4a72dda8348fc51245f0d0947d69cc47b174346bb9f14b378fb703ff594d",
+    "old_package_rewrite": false
+  },
+  "preserved_base_files": [
+    {
+      "path": "aipt/p0-b003/game-adapter.json",
+      "sha256": "5ddef252e1b93a4b9348fb71e9490f106c02e9e0b8b11fa9a11a589bbc3effc5"
+    },
+    {
+      "path": "campaign/playtest/stage3-run-guide-v1.md",
+      "sha256": "c1ccd8a77d917e05f86f0604731344b22c8902c508858ef71a39ed9da3cce17f"
+    },
+    {
+      "path": "aipt/p0-b002/machine-rules.json",
+      "sha256": "139d095fe54926e1599edf208b65f7a89061f1cda6d8b492f83b5e47c0693c78"
+    },
+    {
+      "path": "campaign/playtest/task0-handouts-v1.md",
+      "sha256": "56f1a9fba799f5c281162290c27b39db9bbbaa9d83cdaa83dd235506f3d68288"
+    },
+    {
+      "path": "campaign/session0-redlines.md",
+      "sha256": "d5d9246e07b2d4c9de9ce602835ec763ac33f5dd01a8b5e83c9b2318f9b6e630"
+    }
+  ],
+  "supplemental_inputs": [
+    {
+      "path": "aipt/p0-b000/premades-v2.json",
+      "sha256": "5bbd5bb9ca180004b4407e558961dc679dde888df78f3dd1b9d1ea2b8c9b2163",
+      "bytes": 8983,
+      "visibility": "MIXED_CHARACTER_VISIBILITY",
+      "purpose": "FIXED_FOUR_FIRST_ROSTER_CHARACTERS_AND_OWN_PRIVATE_CLUES",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "aipt/p0-b001/stable-ids.json",
+      "sha256": "c7e296bf7f7595ec17e67e44fef60ac38e979d4906ab31d1d9081e6bed53dba6",
+      "bytes": 21496,
+      "visibility": "SYSTEM_INTERNAL",
+      "purpose": "STABLE_CHARACTER_SEAT_SCENE_CLUE_NPC_ITEM_IDENTITIES",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "aipt/p0-b001/visibility.json",
+      "sha256": "e232a2f95c6359cf54dd5f4147c72e0c3433614e00555226cd2993716f7bbb70",
+      "bytes": 45359,
+      "visibility": "SYSTEM_INTERNAL",
+      "purpose": "FAIL_CLOSED_SOURCE_AND_OWNER_ROLE_PROJECTION_RULES",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "aipt/p0-b001/safety-profile.json",
+      "sha256": "dea0b7a62ba8ac81cb9314546afebca400642d9923f9ae928d97c9a40a29304f",
+      "bytes": 5063,
+      "visibility": "SYSTEM_INTERNAL",
+      "purpose": "FIXED_SAFETY_DEFAULTS_AND_CONFIRMED_REQUIREMENTS",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "aipt/p0-b002/rule-id-map.json",
+      "sha256": "321550a1bb91066c263e5857c8095878d708af3f296430bc00011d70f5bb242c",
+      "bytes": 49777,
+      "visibility": "SYSTEM_INTERNAL",
+      "purpose": "EXACT_MACHINE_RULE_SOURCE_AND_INVARIANT_BINDINGS",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "aipt/p0-b002/semantic-graph.json",
+      "sha256": "8c9ad9ade247ac6195019b7225725c70cd26b55270979d31c7b3701d02092562",
+      "bytes": 30928,
+      "visibility": "SYSTEM_INTERNAL",
+      "purpose": "MACHINE_RULE_CONCEPT_AND_INVARIANT_BINDINGS",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "campaign/playtest/task0-intel-pack-v1.md",
+      "sha256": "38908bcaa6155e5e916aa1e9f73c58289054e3a0f333a0f2114f3e239009acf0",
+      "bytes": 2301,
+      "visibility": "GM_ONLY",
+      "purpose": "TASK0_AREA_PATROL_TARGET_AND_GUARD_SOURCE_FACTS",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "campaign/playtest/gm-screen-v1.md",
+      "sha256": "2a054d42eb48e378a29db07ddd6c5cd751b4d2340f6426552fea516d63bf2b8a",
+      "bytes": 2292,
+      "visibility": "GM_ONLY",
+      "purpose": "TASK0_JUDGMENT_AND_STATE_PROCEDURE_REFERENCE",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "campaign/playtest/rule-knowledge-sheet-v1.md",
+      "sha256": "61af1a1beaede971b50508bc38954533b18e3706587dc96e472406c0260d3691",
+      "bytes": 1819,
+      "visibility": "MIXED_PLAYER_GM_VISIBILITY",
+      "purpose": "PLAYER_KNOWLEDGE_RECORD_AND_SEPARATE_GM_NOTES",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "campaign/rules/vertical-slice-v0.md",
+      "sha256": "e4fa4070ee48ed97e7483d844f04f233967cb04ea2c2abfd6672af4ad07433c2",
+      "bytes": 15350,
+      "visibility": "FAIL_CLOSED_PER_REGISTRY",
+      "purpose": "CORE_RESOLUTION_AND_RESOURCE_RULE_SOURCE",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "campaign/rules/mechanics-fine-v1.md",
+      "sha256": "69c6effd923b18b8bbb83331489fbd8f7949197501ab897a92e9338fdb62c37a",
+      "bytes": 11358,
+      "visibility": "FAIL_CLOSED_PER_REGISTRY",
+      "purpose": "RULE_DETAIL_SOURCE_REFERENCED_BY_MACHINE_RULES",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    },
+    {
+      "path": "campaign/rules/logic-map-v1.md",
+      "sha256": "7ba536f1d235981b32a8a8f27c7429d6b53ead6daa4c0f3e82e465584a89f1b4",
+      "bytes": 5346,
+      "visibility": "FAIL_CLOSED_PER_REGISTRY",
+      "purpose": "RULE_CONCEPT_SOURCE_REFERENCED_BY_MACHINE_RULES",
+      "nested_source_byte_identical": true,
+      "readiness": "PRESERVE_ORIGINAL_PROPOSAL_OR_PLAYTESTABLE_DRAFT_NOT_CANON"
+    }
+  ],
+  "supplemental_input_count": 12,
+  "required_projection_controls": [
+    "FAIL_CLOSED_FOR_UNLISTED_MISSING_CHANGED_NONREGULAR_OR_UNCLASSIFIED_SOURCE",
+    "STRICT_GM_PLAYER_PUBLIC_OWN_CHARACTER_PROJECTION_FROM_PINNED_VISIBILITY_REGISTRY",
+    "PLAYER_NEVER_RECEIVES_GM_ONLY_OR_OTHER_PLAYER_PRIVATE_CONTENT",
+    "SYSTEM_INTERNAL_REGISTRIES_USED_FOR_VALIDATION_NOT_RAW_MODEL_CONTEXT",
+    "EXPLICIT_VERSIONED_GM_AND_PLAYER_TABLE_HIDDEN_REMOTE_ALLOWED_CERTIFICATIONS_INSIDE_ORIGINAL_BUDGET",
+    "NO_LOCAL_ONLY_HUMAN_PRIVATE_OR_CREDENTIAL_DATA_TO_REMOTE_MODEL",
+    "PUBLIC_PR_RECORDS_CONTROL_CODE_AND_DIGESTS_ONLY_PRIVATE_CHARACTER_AND_GM_INPUT_BODIES_STAY_PRIVATE",
+    "PRESERVE_SOURCE_LIFECYCLE_NO_NEW_GAME_CANON_OR_INVENTED_CHARACTER_MECHANICS",
+    "NO_USE_OF_NON_CANON_TEST_FIXTURE_AS_REAL_TASK0_RUN"
+  ],
+  "source_bodies_publicly_embedded": false,
+  "run_manifest_binding": "SEPARATE_SHA256_DIGEST_IN_FROZEN_PILOT_INPUT_ANCESTRY_NO_ORIGINAL_PACKAGE_REWRITE",
+  "qualification_eligible": false
+}
