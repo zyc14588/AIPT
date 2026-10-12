@@ -53,23 +53,69 @@ func task0ParentResultValid(r task0PreparationResult, bindingSHA string) bool {
 // mountpoint. Fresh outside readback admits Cap0 PREP before a verifier or
 // model call. Inputs close only after this parent's actual command.Wait.
 func RunAcceptedTask0Parent(expectedBindingSHA string) (runErr error) {
+	return runTask0Parent(expectedBindingSHA, nil)
+}
+
+// RunObserveTask0ParentPrefix shares the production input/CA prefix and stops
+// before any PREP start. It rejects an inherited provider credential. The fixed
+// observation entry is separately compiled and never reuses the original DIAG.
+func RunObserveTask0ParentPrefix(expectedBindingSHA string) error {
+	return runTask0Parent(expectedBindingSHA, os.Stdout)
+}
+
+type task0ParentPrefixObservation struct {
+	Schema                    string `json:"schema"`
+	Stage                     string `json:"stage"`
+	Outcome                   string `json:"outcome"`
+	PreparationSpawnAttempted bool   `json:"preparation_spawn_attempted"`
+}
+
+func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr error) {
+	prefixOnly := observation != nil
+	stage := "ENTRY_IDENTITY"
+	if prefixOnly {
+		defer func() {
+			outcome := "REJECTED"
+			if runErr == nil {
+				outcome = "PREFIX_STOPPED_BEFORE_PREPARATION"
+			}
+			record := task0ParentPrefixObservation{
+				Schema: "aipt.private.b007-parent-prefix-observation/v1",
+				Stage:  stage, Outcome: outcome, PreparationSpawnAttempted: false,
+			}
+			if json.NewEncoder(observation).Encode(record) != nil {
+				runErr = ErrRuntimeLaunch
+			}
+		}()
+	}
 	inputsRetained := false
 	if !digest(expectedBindingSHA) || len(os.Args) != 1 {
 		return ErrRuntimeLaunch
 	}
-	credential := os.Getenv("DEEPSEEK_API_KEY")
-	if !task0PreparationCredentialValid(credential) {
-		return ErrRuntimeLaunch
+	stage = "CREDENTIAL_POLICY"
+	credential := ""
+	if prefixOnly {
+		if _, present := os.LookupEnv("DEEPSEEK_API_KEY"); present {
+			return ErrRuntimeLaunch
+		}
+	} else {
+		credential = os.Getenv("DEEPSEEK_API_KEY")
+		if !task0PreparationCredentialValid(credential) {
+			return ErrRuntimeLaunch
+		}
 	}
+	stage = "PARENT_BINDING_FD_BORROW"
 	incoming, err := frozenBorrowFile(3)
 	if err != nil {
 		return ErrRuntimeLaunch
 	}
+	stage = "PARENT_BINDING_FD_SIZE"
 	info, err := incoming.Stat()
 	incoming.Close()
 	if err != nil || info.Size() < 1 || info.Size() > task0ParentBindingMaxBytes {
 		return ErrRuntimeLaunch
 	}
+	stage = "PARENT_BINDING_FD_SEALS"
 	held, err := frozenSealedFile(3, expectedBindingSHA, info.Size())
 	if err != nil {
 		return ErrRuntimeLaunch
@@ -79,16 +125,19 @@ func RunAcceptedTask0Parent(expectedBindingSHA string) (runErr error) {
 			_ = held.Close()
 		}
 	}()
+	stage = "PARENT_BINDING_READ"
 	raw, err := io.ReadAll(io.NewSectionReader(held, 0, info.Size()))
 	defer clear(raw)
 	if err != nil {
 		return ErrRuntimeLaunch
 	}
+	stage = "PARENT_BINDING_DECODE"
 	b, err := decodeTask0ParentBinding(raw, expectedBindingSHA)
 	if err != nil {
 		return ErrRuntimeLaunch
 	}
 	defer clear(b.Preparation)
+	stage = "PREPARATION_FD_SEALS"
 	self, err := frozenSealedFile(4, b.ExecutableSHA, b.ExecutableBytes)
 	if err != nil {
 		return ErrRuntimeLaunch
@@ -98,9 +147,11 @@ func RunAcceptedTask0Parent(expectedBindingSHA string) (runErr error) {
 			_ = self.Close()
 		}
 	}()
+	stage = "PREPARATION_STATIC_ELF"
 	if !staticPreparationFile(self) {
 		return ErrRuntimeLaunch
 	}
+	stage = "PREPARATION_BINDING_MEMFD"
 	binding, err := task0SealedBytes(b.Preparation)
 	if err != nil {
 		return ErrRuntimeLaunch
@@ -110,10 +161,12 @@ func RunAcceptedTask0Parent(expectedBindingSHA string) (runErr error) {
 			_ = binding.Close()
 		}
 	}()
+	stage = "SYSTEM_CA_SNAPSHOT"
 	ca, err := openTask0ParentSystemCA()
 	if err != nil {
 		return ErrRuntimeLaunch
 	}
+	stage = "SYSTEM_CA_DIRECTORY"
 	directory, err := openTask0CAParentDirectory()
 	if err != nil {
 		ca.close()
@@ -137,11 +190,18 @@ func RunAcceptedTask0Parent(expectedBindingSHA string) (runErr error) {
 			return
 		}
 		if !directoryRemoved && directory.removeAfterJoin(true) != nil {
+			if prefixOnly {
+				stage = "CA_DIRECTORY_RETIRE"
+			}
 			runErr = ErrRuntimeLaunch
 		}
 		directory.close()
 		ca.close()
 	}()
+	if prefixOnly {
+		stage = "PREFIX_BEFORE_PREPARATION_SPAWN"
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
 	defer cancel()
 	environment := frozenEnvironment(map[string]string{"DEEPSEEK_API_KEY": credential})
