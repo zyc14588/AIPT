@@ -75,9 +75,21 @@ func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr er
 }
 
 func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready *task0PreparationReadyObserver) (runErr error) {
+	return runTask0ParentObservationMode(expectedBindingSHA, observation, ready, nil)
+}
+
+func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Writer, ready *task0PreparationReadyObserver, admitted *task0PreparationAdmittedObserver) (runErr error) {
 	prefixOnly := observation != nil
 	readyOnly := ready != nil
+	admittedOnly := admitted != nil
 	stage := "ENTRY_IDENTITY"
+	if admittedOnly {
+		defer func() {
+			if admitted.publish(stage, runErr) != nil {
+				runErr = ErrRuntimeLaunch
+			}
+		}()
+	}
 	if readyOnly {
 		defer func() {
 			if ready.publish(stage, runErr) != nil {
@@ -106,7 +118,7 @@ func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready 
 	}
 	stage = "CREDENTIAL_POLICY"
 	credential := ""
-	if prefixOnly || readyOnly {
+	if prefixOnly || readyOnly || admittedOnly {
 		if _, present := os.LookupEnv("DEEPSEEK_API_KEY"); present {
 			return ErrRuntimeLaunch
 		}
@@ -194,6 +206,9 @@ func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready 
 		if readyOnly {
 			ready.observeDirectJoin(p)
 		}
+		if admittedOnly {
+			admitted.observeDirectJoin(p)
+		}
 		if p != nil && !task0DirectJoinCompleted(p) {
 			runErr, inputsRetained = ErrRuntimeLaunch, true
 			task0RetainInputsUntilDirectJoin(p, func() {
@@ -205,7 +220,7 @@ func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready 
 			return
 		}
 		if !directoryRemoved && directory.removeAfterJoin(true) != nil {
-			if prefixOnly || readyOnly {
+			if prefixOnly || readyOnly || admittedOnly {
 				stage = "CA_DIRECTORY_RETIRE"
 			}
 			runErr = ErrRuntimeLaunch
@@ -223,6 +238,13 @@ func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready 
 			return ErrRuntimeLaunch
 		}
 		stage = "READY_BEFORE_ADMISSION"
+		return nil
+	}
+	if admittedOnly {
+		stage = "PREPARATION_ADMITTED_OBSERVATION"
+		if observeTask0PreparationAdmitted(self, binding, b, ca, directory, &p, admitted, &stage) != nil {
+			return ErrRuntimeLaunch
+		}
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
