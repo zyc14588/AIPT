@@ -1,0 +1,86 @@
+{
+  "Q025_prefix_entry_consumed": true,
+  "Q026_READY_entry_consumed": true,
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 5293,
+    "sha256": "30f711dd077730d9aa8651bfcc7e00ef46f74c9e69ecc6c5c617af20b4306976"
+  },
+  "approved_material": {
+    "bytes": 7024,
+    "sha256": "2cbab0088fe938dc7b1e0a169c22747a9b99552df8a20efbe16cf99c1171ca26"
+  },
+  "baseline": {
+    "commit": "eab05ed492f0f811906be4c8903727a29dcaf059",
+    "parents": [
+      "ead7858764229c08b2041e1bad93402a49883929",
+      "bba272cc266f088383aec9b37f8ecfb3478472a4"
+    ],
+    "tree": "21013b21890ccbce979f7544fc671d61b15d290f"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 669,
+  "current_work_paths": [
+    "internal/pilot/task0_parent.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q027",
+  "distinct_ADMITTED_maximum_attempts": 1,
+  "fixed_child_marker": {
+    "name": "DEEPSEEK_API_KEY",
+    "reason": "Only the original immutable PREP syntax check; never a provider credential. Parent rejects inherited field presence. No CONFIRMED or model access.",
+    "value": "AIPT_Q027_ADMITTED_OBSERVATION_ONLY_NOT_A_PROVIDER_CREDENTIAL"
+  },
+  "fixed_nonsecret_observation_only": true,
+  "generic_followon_permission": false,
+  "maximum_direct_PREP_children": 1,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "internal/pilot/task0_preparation_admitted_observation.go",
+    "internal/pilot/task0_preparation_admitted_observation_test.go",
+    "docs/pilot/authorities/preparation-admitted-observation-successor-q027.json",
+    "docs/pilot/proposals/preparation-admitted-observation-q027.json"
+  ],
+  "no_ADMITTED_pass_as_B007_or_all8_runtime_acceptance": true,
+  "no_second_original_Parent_prefix_READY_or_DIAG": true,
+  "observer_binding": {
+    "bytes": 7195,
+    "sha256": "3b4ba1501caa3b534d0b6dacb8675b5f23eb70a7edc5722be87384eea9cb159b"
+  },
+  "original_Parent_entry_consumed": true,
+  "original_Parent_or_DIAG_retry_authorized": false,
+  "original_Q025_or_Q026_repeat_authorized": false,
+  "original_budget_usd": "5.00",
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "parent_binding": {
+    "bytes": 10564,
+    "sha256": "c0dcd7b1bd0f592a0a697aa75d969ff8840678abbdb565aa51e60fe27430b2c5"
+  },
+  "parent_sends_exactly_one_ADMIT_only": true,
+  "proposal_binding": {
+    "bytes": 377837,
+    "path": "docs/pilot/proposals/preparation-admitted-observation-q027.json",
+    "sha256": "aab224e19aa414b2e0a01610025366f7c1917ea9b1b85b45f3f91f8c863656bf"
+  },
+  "protected_current_paths": 660,
+  "qualification_runs_authorized": 0,
+  "reject_provider_credential_presence_before_input": true,
+  "retained_Q026_authority_sha256": "6146e23896717c65b7e6e1dd5e6468dd2132c40f431d6fd11250a119da5bbc00",
+  "retained_Q026_proposal_sha256": "8b059fd5179fbb5da5590bbe28b2371b667d4e29f9129bc0a5239d3ca5ddde2c",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full669_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.preparation-admitted-observation-q027-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "stop_before_CONFIRMED": true,
+  "test_binding": {
+    "bytes": 13207,
+    "sha256": "c772179fc02ce780835a33dba5ac07a4a52a6e2f65eaf45e0c8ff71e6f05d359"
+  },
+  "valid_START_MODEL_permitted": false
+}
