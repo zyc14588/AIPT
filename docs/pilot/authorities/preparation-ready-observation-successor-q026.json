@@ -1,0 +1,88 @@
+{
+  "Q025_prefix_entry_consumed": true,
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 2681,
+    "sha256": "9dfd1145befd6b19a16e6d561fe8942655394d71960771d2d9ef194f16184440"
+  },
+  "approved_material": {
+    "bytes": 6256,
+    "sha256": "d6bc31ec91a3b3c48eaa9e508ecf26f5a443659a567a8c2353fe55ca64995af6"
+  },
+  "approved_private_contract": {
+    "bytes": 16962,
+    "sha256": "443cce4f7659e923d6282db3e229d03281a395ed615ee136f96456a1e70fdb16"
+  },
+  "baseline": {
+    "commit": "ead7858764229c08b2041e1bad93402a49883929",
+    "parents": [
+      "bafa3e60659b89cd565a484d305be5cf87d44d4b",
+      "e9d8f8637301915b75389e4ecaece1d4038cefb2"
+    ],
+    "tree": "22ab8a84ce456e37fb47d72b7ad5f6aab942df37"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 665,
+  "current_work_paths": [
+    "internal/pilot/task0_parent.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q026",
+  "distinct_READY_maximum_attempts": 1,
+  "fixed_child_marker": {
+    "name": "DEEPSEEK_API_KEY",
+    "reason": "Original immutable PREP rejects an empty credential field before READY. The marker passes that original syntax-only nonempty check while being no provider credential; parent rejects inherited key presence and never reads or copies a real key. No ADMIT can be sent.",
+    "value": "AIPT_Q026_READY_OBSERVATION_ONLY_NOT_A_PROVIDER_CREDENTIAL"
+  },
+  "fixed_nonsecret_observation_only": true,
+  "generic_followon_permission": false,
+  "maximum_direct_PREP_children": 1,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "internal/pilot/task0_preparation_ready_observation.go",
+    "internal/pilot/task0_preparation_ready_observation_test.go",
+    "docs/pilot/authorities/preparation-ready-observation-successor-q026.json",
+    "docs/pilot/proposals/preparation-ready-observation-q026.json"
+  ],
+  "no_READY_pass_as_B007_or_all8_runtime_acceptance": true,
+  "no_second_original_Parent_prefix_or_DIAG": true,
+  "observer_binding": {
+    "bytes": 6103,
+    "sha256": "ca3416a8db0e7fd3229352a41a86ea7d38415cf71ed8f9f29062dc1a4cee9f09"
+  },
+  "original_Parent_entry_consumed": true,
+  "original_Parent_or_DIAG_retry_authorized": false,
+  "original_budget_usd": "5.00",
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "parent_binding": {
+    "bytes": 9833,
+    "sha256": "abacf429b4857db179060e27f5f27a9e1bb4088f9b88e6ff06622606c807eed1"
+  },
+  "parent_sends_ADMIT_CONFIRMED_or_CA_messages": false,
+  "proposal_binding": {
+    "bytes": 376088,
+    "path": "docs/pilot/proposals/preparation-ready-observation-q026.json",
+    "sha256": "8b059fd5179fbb5da5590bbe28b2371b667d4e29f9129bc0a5239d3ca5ddde2c"
+  },
+  "protected_current_paths": 656,
+  "qualification_runs_authorized": 0,
+  "reject_provider_credential_presence_before_input": true,
+  "retained_Q025_authority_sha256": "39fb7ac93be046ef5e468074bd94c197bd17295a9d3605c12c96c293f8711fa1",
+  "retained_Q025_proposal_sha256": "3c5eceacb7d0fe4e1ae858f0421184cb95b15f65d64eb0b11309d549b0d9037b",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full665_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.preparation-ready-observation-q026-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "stop_before_PREP_admission": true,
+  "test_binding": {
+    "bytes": 9110,
+    "sha256": "fc43c7f0ca25ab39de39df47eaf80367c0bf899f166ea34f262c49d38aa7b1cd"
+  },
+  "valid_START_MODEL_permitted": false
+}

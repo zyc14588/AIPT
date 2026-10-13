@@ -1,5 +1,5 @@
 // Explicit Owner-authorized B007 successor. Historical B006 bytes never change.
-import { Q018_AUTHORITY, Q018_AUTHORITY_SHA, Q018_MODIFIED_PATHS, Q018_NEW_PATHS, Q019_AUTHORITY, Q019_AUTHORITY_SHA, Q019_PROPOSAL, Q019_PROPOSAL_SHA, Q019_NEW_PATHS, Q019_SMOKE, Q019_SMOKE_SHA, Q019_ORIGINAL_SMOKE_SHA, q019Approved, q018Approved, q018SourceProblems, approvedCurrentSHA, historicalEnvironment, Q021_AUTHORITY, Q021_AUTHORITY_SHA, Q021_PROPOSAL, Q021_PROPOSAL_SHA, Q021_WORK_PATHS, Q021_NEW_PATHS, Q021_BASELINE, q021Approved, q021RevisionProblems, Q022_AUTHORITY, Q022_AUTHORITY_SHA, Q022_PROPOSAL, Q022_PROPOSAL_SHA, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, Q022_BASELINE_TREE, Q022_FIXTURE_SHA, Q022_WORKFLOW_SHA, q022Present, q022Approved, q022RevisionProblems, Q023_AUTHORITY, Q023_AUTHORITY_SHA, Q023_PROPOSAL, Q023_PROPOSAL_SHA, Q023_WORKFLOW_SHA, Q023_WORK_PATHS, Q023_NEW_PATHS, Q023_BASELINE, q023Present, q023Approved, q023LifecycleProblems, Q024_AUTHORITY, Q024_AUTHORITY_SHA, Q024_PROPOSAL, Q024_PROPOSAL_SHA, Q024_BASELINE, Q024_ORIGINAL_CANDIDATE, Q024_WORK_PATHS, q024Present, q024Approved, q024Topology, q025Present, q025SourceProblems, q025Topology, q025PredecessorSource, cleanupQ025PredecessorSources } from './b007-toolchain-security-q018.mjs';
+import { Q018_AUTHORITY, Q018_AUTHORITY_SHA, Q018_MODIFIED_PATHS, Q018_NEW_PATHS, Q019_AUTHORITY, Q019_AUTHORITY_SHA, Q019_PROPOSAL, Q019_PROPOSAL_SHA, Q019_NEW_PATHS, Q019_SMOKE, Q019_SMOKE_SHA, Q019_ORIGINAL_SMOKE_SHA, q019Approved, q018Approved, q018SourceProblems, approvedCurrentSHA, historicalEnvironment, Q021_AUTHORITY, Q021_AUTHORITY_SHA, Q021_PROPOSAL, Q021_PROPOSAL_SHA, Q021_WORK_PATHS, Q021_NEW_PATHS, Q021_BASELINE, q021Approved, q021RevisionProblems, Q022_AUTHORITY, Q022_AUTHORITY_SHA, Q022_PROPOSAL, Q022_PROPOSAL_SHA, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, Q022_BASELINE_TREE, Q022_FIXTURE_SHA, Q022_WORKFLOW_SHA, q022Present, q022Approved, q022RevisionProblems, Q023_AUTHORITY, Q023_AUTHORITY_SHA, Q023_PROPOSAL, Q023_PROPOSAL_SHA, Q023_WORKFLOW_SHA, Q023_WORK_PATHS, Q023_NEW_PATHS, Q023_BASELINE, q023Present, q023Approved, q023LifecycleProblems, Q024_AUTHORITY, Q024_AUTHORITY_SHA, Q024_PROPOSAL, Q024_PROPOSAL_SHA, Q024_BASELINE, Q024_ORIGINAL_CANDIDATE, Q024_WORK_PATHS, q024Present, q024Approved, q024Topology, q025Present, q025SourceProblems, q025Topology, q025PredecessorSource, cleanupQ025PredecessorSources, q026Present, q026SourceProblems, q026Topology, q026PredecessorSource, cleanupQ026PredecessorSources } from './b007-toolchain-security-q018.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -273,6 +273,7 @@ function projectedBytesProblems(repo,p,bytes,baselineAllowed,revision=null) {
   return bytes&&bytes.subarray(0,split+1).equals(base.subarray(0,split+1))&&bytes.toString().endsWith(base.subarray(split+1).toString())&&bytes.length>=base.length&&bytes.length-base.length<=16384?[]:['historical status/milestone prose changed: '+p];
 }
 export function topology(repo) {
+ if(q026Present(repo))return q026Topology(repo);
  if(q025Present(repo))return q025Topology(repo);
  if(q024Present(repo))return q024Topology(repo);
  return originalB007Topology(repo);
@@ -296,6 +297,8 @@ function originalB007Topology(repo) {
   return {head,main,candidate:h?.candidate??m?.candidate??null,merge:h?.merge??m?.merge??null,problems:p};
 }
 export function successorProblems(repo) {
+ if(q026Present(repo)){const p=q026SourceProblems(repo);if(p.length)return p;try{p.push(...successorProblems(q026PredecessorSource(repo)));}catch(e){p.push('Q026 fixed complete original Q025 replay fails closed: '+e.message);}return [...new Set(p)];}
+
  if(!q025Present(repo))return originalQ024SuccessorProblems(repo);
  const p=q025SourceProblems(repo);
  if(p.length)return p;
@@ -390,7 +393,7 @@ function snapshot(repo) {
     snapshots.set(repo,target);return target;
   }catch(e){fs.rmSync(target,{recursive:true,force:true});throw e;}
 }
-export function cleanupSnapshots(){cleanupQ025PredecessorSources();for(const p of snapshots.values())fs.rmSync(p,{recursive:true,force:true});snapshots.clear();}
+export function cleanupSnapshots(){cleanupQ026PredecessorSources();cleanupQ025PredecessorSources();for(const p of snapshots.values())fs.rmSync(p,{recursive:true,force:true});snapshots.clear();}
 export function runApprovedPredecessor(ctx,args={}) {
   const evidence=args.gate==='evidence'&&q016Approved(ctx.repo);
   const p=GATES.includes(args.gate)||evidence?successorProblems(ctx.repo):['unknown or unapproved B007 predecessor gate'];let report=null;
