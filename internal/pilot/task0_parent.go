@@ -71,8 +71,20 @@ type task0ParentPrefixObservation struct {
 }
 
 func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr error) {
+	return runTask0ParentMode(expectedBindingSHA, observation, nil)
+}
+
+func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready *task0PreparationReadyObserver) (runErr error) {
 	prefixOnly := observation != nil
+	readyOnly := ready != nil
 	stage := "ENTRY_IDENTITY"
+	if readyOnly {
+		defer func() {
+			if ready.publish(stage, runErr) != nil {
+				runErr = ErrRuntimeLaunch
+			}
+		}()
+	}
 	if prefixOnly {
 		defer func() {
 			outcome := "REJECTED"
@@ -94,7 +106,7 @@ func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr er
 	}
 	stage = "CREDENTIAL_POLICY"
 	credential := ""
-	if prefixOnly {
+	if prefixOnly || readyOnly {
 		if _, present := os.LookupEnv("DEEPSEEK_API_KEY"); present {
 			return ErrRuntimeLaunch
 		}
@@ -179,6 +191,9 @@ func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr er
 		if p != nil && p.retire() != nil {
 			runErr = ErrRuntimeLaunch
 		}
+		if readyOnly {
+			ready.observeDirectJoin(p)
+		}
 		if p != nil && !task0DirectJoinCompleted(p) {
 			runErr, inputsRetained = ErrRuntimeLaunch, true
 			task0RetainInputsUntilDirectJoin(p, func() {
@@ -190,7 +205,7 @@ func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr er
 			return
 		}
 		if !directoryRemoved && directory.removeAfterJoin(true) != nil {
-			if prefixOnly {
+			if prefixOnly || readyOnly {
 				stage = "CA_DIRECTORY_RETIRE"
 			}
 			runErr = ErrRuntimeLaunch
@@ -200,6 +215,14 @@ func runTask0Parent(expectedBindingSHA string, observation io.Writer) (runErr er
 	}()
 	if prefixOnly {
 		stage = "PREFIX_BEFORE_PREPARATION_SPAWN"
+		return nil
+	}
+	if readyOnly {
+		stage = "PREPARATION_READY_OBSERVATION"
+		if observeTask0PreparationReady(self, binding, b, ca, directory, &p, ready) != nil {
+			return ErrRuntimeLaunch
+		}
+		stage = "READY_BEFORE_ADMISSION"
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
