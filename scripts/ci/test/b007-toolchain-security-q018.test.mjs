@@ -6,9 +6,12 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
+import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources, Q025_AUTHORITY, Q025_PROPOSAL, Q025_BASELINE, Q025_BASELINE_TREE, Q025_PARENT, Q025_TEST, Q025_WORK_PATHS, Q025_NEW_PATHS, q025Approved, q025Proposal, q025SourceProblems, q025RevisionProblems, q025LifecycleProblems, q025Topology, prepareQ025FixedCloneOrigin, q025OriginalTestSource, cleanupQ025OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { FIXED_ORIGIN_FINDING } from '../lib/b007-fixed-origin-policy-q015.mjs';
-const q024CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+import {successorProblems as q025SuccessorProblems,cleanupSnapshots as q025CleanupPredecessors} from '../lib/b007-successor.mjs';
+const q025CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q024CurrentSource=q025OriginalTestSource(q025CurrentSource);
+test.after(cleanupQ025OriginalTestSources);
 const q023CurrentSource=q024OriginalTestSource(q024CurrentSource);
 test.after(cleanupQ024OriginalTestSources);
 const currentSource=q023OriginalTestSource(q023CurrentSource);
@@ -646,4 +649,94 @@ test('Q024 wrong or dangling symbolic fixed original ref is rejected without ove
  const {repo}=q024SDKFixture(t),ref='refs/heads/codex/q024-fixed-history-pr32-candidate';q024OwnedGit(repo,['update-ref',ref,Q024_BASELINE]);
  const before=q024OwnedGit(repo,['for-each-ref','--format=%(refname) %(objectname) %(symref)']);assert.throws(()=>prepareQ024FixedCloneOrigin(repo),/overwrite forbidden/);assert.equal(q024OwnedGit(repo,['for-each-ref','--format=%(refname) %(objectname) %(symref)']),before);
  q024OwnedGit(repo,['update-ref','--no-deref','-d',ref]);q024OwnedGit(repo,['symbolic-ref',ref,'refs/heads/q024-dangling']);assert.throws(()=>prepareQ024FixedCloneOrigin(repo),/symbolic/);assert.equal(q024OwnedGit(repo,['symbolic-ref',ref]),'refs/heads/q024-dangling');
+});
+
+function q025TestGit(repo,args) {
+ const r=spawnSync('/usr/bin/git',['--no-optional-locks','-C',repo,...args],{encoding:'utf8',env:{PATH:'/usr/bin:/bin',LANG:'C.UTF-8',GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0',GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_SYSTEM:'/dev/null'}});
+ assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);return r.stdout.trim();
+}
+function q025TestRetire(root) {
+ let bytes=0,files=0,dirs=0;const seen=new Set();
+ const walk=p=>{const s=fs.lstatSync(p);if(s.isDirectory()&&!s.isSymbolicLink()){dirs++;for(const name of fs.readdirSync(p))walk(path.join(p,name));}else if(s.isFile()){files++;const id=s.dev+':'+s.ino;if(!seen.has(id)){bytes+=s.size;seen.add(id);}}else if(!s.isSymbolicLink())throw new Error('unexpected owned Q025 fixture member');};
+ walk(root);fs.rmSync(root,{recursive:true,force:true});assert.equal(fs.existsSync(root),false);
+ console.log(JSON.stringify({owned_scratch:root,retired_after_join:true,removed_bytes:bytes,removed_files:files,removed_directories:dirs,SDK_program_executions:0,model_DB_namespace_DIAG_QUAL:0}));
+}
+function q025SDKFixture(t) {
+ const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q025-SDK-fixture-')),repo=path.join(owned,'source');t.after(()=>q025TestRetire(owned));
+ const r=spawnSync('/usr/bin/git',['clone','--no-local','--no-checkout',q025CurrentSource,repo],{encoding:'utf8'});assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);
+ q025TestGit(repo,['config','core.hooksPath','/dev/null']);q025TestGit(repo,['checkout','--detach',Q025_BASELINE]);q025TestGit(repo,['update-ref','refs/remotes/origin/main',Q025_BASELINE]);
+ const paths=q025TestGit(q025CurrentSource,['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean);assert.equal(new Set(paths).size,661);
+ for(const relative of new Set(paths)){const from=path.join(q025CurrentSource,relative),dest=path.join(repo,relative);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(from,dest);fs.chmodSync(dest,fs.statSync(from).mode&0o777);}
+ return repo;
+}
+test('Q025 retains complete original301 SDK test bodies at accepted PR33 source658',()=>{
+ const file='scripts/ci/test/b007-toolchain-security-q018.test.mjs',old=fs.readFileSync(path.join(q024CurrentSource,file),'utf8'),live=fs.readFileSync(path.join(q025CurrentSource,file),'utf8');
+ assert.ok(live.slice(live.indexOf('const hash=')).startsWith(old.slice(old.indexOf('const hash='))));
+ assert.equal(q025TestGit(q024CurrentSource,['rev-parse','HEAD']),Q025_BASELINE);assert.equal(q025TestGit(q024CurrentSource,['rev-parse','HEAD^{tree}']),Q025_BASELINE_TREE);
+ assert.deepEqual(q024SourceProblems(q024CurrentSource),[]);assert.deepEqual(q025SourceProblems(q025CurrentSource),[]);
+});
+for(const [name,change]of [
+ ['Owner authority removed',r=>fs.unlinkSync(path.join(r,Q025_AUTHORITY))],
+ ['paired proposal removed',r=>fs.unlinkSync(path.join(r,Q025_PROPOSAL))],
+ ['Owner bytes changed',r=>fs.appendFileSync(path.join(r,Q025_AUTHORITY),' ')],
+ ['paired proposal bytes changed',r=>fs.appendFileSync(path.join(r,Q025_PROPOSAL),' ')],
+ ['Owner approval changed to proposal',r=>{const p=path.join(r,Q025_AUTHORITY),v=JSON.parse(fs.readFileSync(p));v.state='PROPOSAL_ONLY';v.owner_instruction=null;fs.writeFileSync(p,JSON.stringify(v));}],
+ ['Parent identity changed',r=>fs.appendFileSync(path.join(r,Q025_PARENT),'\n// unapproved prefix change\n')],
+ ['negative tests changed',r=>fs.appendFileSync(path.join(r,Q025_TEST),'\n// unapproved coverage change\n')],
+ ['protected runtime changed',r=>fs.appendFileSync(path.join(r,'internal/pilot/memory_lifecycle.go'),'\n// forbidden\n')],
+ ['retained Q024 authority changed',r=>fs.appendFileSync(path.join(r,Q024_AUTHORITY),' ')],
+ ['retained workflow changed',r=>fs.appendFileSync(path.join(r,'.github/workflows/ci.yml'),'\n')],
+ ['unauthorized source added',r=>fs.writeFileSync(path.join(r,'unauthorized-prefix-source.txt'),'unapproved')],
+ ['Parent executable mode',r=>fs.chmodSync(path.join(r,Q025_PARENT),0o755)],
+ ['new test executable mode',r=>fs.chmodSync(path.join(r,Q025_TEST),0o755)],
+ ['Parent replaced by symbolic link',r=>{const p=path.join(r,Q025_PARENT),other=path.join(r,'owned-parent-alias');fs.renameSync(p,other);fs.symlinkSync(other,p);}],
+ ['Parent given a hardlink alias',r=>fs.linkSync(path.join(r,Q025_PARENT),path.join(r,'owned-parent-hardlink'))],
+])test('Q025 mandatory source guard rejects '+name,t=>{const r=q025SDKFixture(t);change(r);assert.ok(q025SourceProblems(r).length);});
+test('Q025 fixed clone origin preserves exact bafa and six original refs with checkout/main/index/source',t=>{
+ const r=q025SDKFixture(t),before={head:q025TestGit(r,['rev-parse','HEAD']),tree:q025TestGit(r,['rev-parse','HEAD^{tree}']),main:q025TestGit(r,['rev-parse','refs/remotes/origin/main']),index:hash(fs.readFileSync(q025TestGit(r,['rev-parse','--path-format=absolute','--git-path','index'])))};
+ const v=prepareQ025FixedCloneOrigin(r);assert.equal(v.commit,Q025_BASELINE);assert.equal(v.fixed_origins.length,7);assert.equal(v.SDK_program_or_mutation,0);assert.equal(v.network_requests,0);assert.equal(v.full_HIGH_or_CI_or_runtime_accepted,false);
+ assert.deepEqual({head:q025TestGit(r,['rev-parse','HEAD']),tree:q025TestGit(r,['rev-parse','HEAD^{tree}']),main:q025TestGit(r,['rev-parse','refs/remotes/origin/main']),index:hash(fs.readFileSync(q025TestGit(r,['rev-parse','--path-format=absolute','--git-path','index'])))},before);
+ assert.equal(prepareQ025FixedCloneOrigin(r).commit,Q025_BASELINE);
+ assert.throws(()=>prepareQ025FixedCloneOrigin(r,{target:Q024_BASELINE}),/no caller/);
+});
+for(const [name,change]of [
+ ['different existing fixed ref',r=>q025TestGit(r,['update-ref','refs/heads/codex/q025-fixed-history-pr33-merge',Q024_BASELINE])],
+ ['symbolic fixed ref',r=>q025TestGit(r,['symbolic-ref','refs/heads/codex/q025-fixed-history-pr33-merge','refs/heads/owned-fixed-alias'])],
+])test('Q025 fixed clone origin rejects '+name,t=>{const r=q025SDKFixture(t);change(r);assert.throws(()=>prepareQ025FixedCloneOrigin(r),/fixed clone ref|symbolic/);});
+test('Q025 accepted baseline revision cannot be replaced with a caller target',()=>{
+ assert.deepEqual(q025RevisionProblems(q025CurrentSource,Q025_BASELINE,{baseline:true}),[]);
+ assert.ok(q025RevisionProblems(q025CurrentSource,Q024_BASELINE,{baseline:true}).length);
+ assert.throws(()=>q025OriginalTestSource(q025CurrentSource,Q024_BASELINE),/no caller/);
+});
+
+test('Q025 fixed P1 source selector accepts current661 without weakening original658',()=>{
+ assert.deepEqual(q023SourceProblems(q025CurrentSource),[]);
+ assert.deepEqual(q023SourceProblems(q025CurrentSource),q025SourceProblems(q025CurrentSource));
+ assert.deepEqual(q024SourceProblems(q024CurrentSource),[]);
+});
+for(const [name,change]of [
+ ['reviewed Parent changed',r=>fs.appendFileSync(path.join(r,Q025_PARENT),'\n// forbidden P1 prefix\n')],
+ ['protected go.sum changed',r=>fs.appendFileSync(path.join(r,'go.sum'),'\n')],
+ ['paired Q025 authority changed',r=>fs.appendFileSync(path.join(r,Q025_AUTHORITY),' ')],
+ ['accepted main replaced by older baseline',r=>q025TestGit(r,['update-ref','refs/remotes/origin/main',Q024_BASELINE])],
+])test('Q025 fixed P1 direct source selector rejects '+name,t=>{
+ const r=q025SDKFixture(t);change(r);const direct=q023SourceProblems(r);assert.ok(direct.length);assert.deepEqual(direct,q025SourceProblems(r));
+});
+test('Q025 predecessor cleanup retains borrowed complete original test context',t=>{
+ const r=q025SDKFixture(t),original=q025OriginalTestSource(q025CurrentSource);
+ assert.equal(original,q024CurrentSource);assert.deepEqual(q025SuccessorProblems(r),[]);
+ q025CleanupPredecessors();assert.equal(fs.existsSync(original),true);assert.deepEqual(q024SourceProblems(original),[]);
+ assert.deepEqual(q025SuccessorProblems(r),[]);q025CleanupPredecessors();
+ assert.equal(q025TestGit(original,['rev-parse','HEAD']),Q025_BASELINE);
+});
+
+for(const [name,ref,commit]of [
+ ['wrong retained PR29 ref','refs/heads/codex/q021-fixed-history-pr29',Q024_BASELINE],
+ ['dangling symbolic retained PR31 ref','refs/heads/codex/q023-fixed-history-pr31',null],
+])test('Q025 atomic seven-ref preparation refuses '+name,t=>{
+ const r=q025SDKFixture(t);
+ if(commit)q025TestGit(r,['update-ref',ref,commit]);else q025TestGit(r,['symbolic-ref',ref,'refs/heads/owned-missing-history-target']);
+ assert.throws(()=>prepareQ025FixedCloneOrigin(r),/fixed clone ref|symbolic/);
+ const probe=spawnSync('/usr/bin/git',['--no-optional-locks','-C',r,'show-ref','--verify','--quiet','refs/heads/codex/q025-fixed-history-pr33-merge'],{encoding:'utf8'});
+ assert.equal(probe.error,undefined);assert.equal(probe.status,1);
 });

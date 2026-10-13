@@ -1,0 +1,75 @@
+{
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 8133,
+    "sha256": "09d789dae9bfe52cd769901730ed00fad8b69b1b0f3fc1e1f3142eae24c9721b"
+  },
+  "approved_material": {
+    "bytes": 6616,
+    "sha256": "dc9b386734bf52fdb0ea02e3486a10aeea999c9ac04edacf376bb0566083acdb"
+  },
+  "approved_private_contract": {
+    "bytes": 14945,
+    "sha256": "b29849baf8415a30bbaf6d5d3426d8f8535618770b624effe9f934138bf24af4"
+  },
+  "baseline": {
+    "commit": "bafa3e60659b89cd565a484d305be5cf87d44d4b",
+    "parents": [
+      "19a928d1c03715ecc99d04e9a43bc6a337ad1426",
+      "66ada2addfb2f6ac35ddb75d79a3eac70b89f3dc"
+    ],
+    "tree": "22a6307a6ed84a56c602657e78d0bba0e2409f62"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 661,
+  "current_work_paths": [
+    "internal/pilot/task0_parent.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q025",
+  "distinct_prefix_maximum_attempts": 1,
+  "fixed_nonsecret_observation_only": true,
+  "generic_followon_permission": false,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "internal/pilot/task0_parent_prefix_observation_test.go",
+    "docs/pilot/authorities/parent-prefix-observation-successor-q025.json",
+    "docs/pilot/proposals/parent-prefix-observation-q025.json"
+  ],
+  "no_PREFIX_pass_as_B007_or_all8_runtime_acceptance": true,
+  "no_second_original_Parent_or_DIAG": true,
+  "original_Parent_entry_consumed": true,
+  "original_Parent_or_DIAG_retry_authorized": false,
+  "original_budget_usd": "5.00",
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "parent_binding": {
+    "bytes": 9184,
+    "sha256": "a72a977f9eef07bfddb8191cb776edcb8b7ddf3564f4954e8d8d24ff2f02e692"
+  },
+  "proposal_binding": {
+    "bytes": 373200,
+    "path": "docs/pilot/proposals/parent-prefix-observation-q025.json",
+    "sha256": "3c5eceacb7d0fe4e1ae858f0421184cb95b15f65d64eb0b11309d549b0d9037b"
+  },
+  "protected_current_paths": 653,
+  "qualification_runs_authorized": 0,
+  "reject_provider_credential_presence_before_input": true,
+  "retained_Q024_authority_sha256": "6ec03075ad38de04906f70c9fd96c2b5fdcd46fc9b37ffd305fb4a55b7d81168",
+  "retained_Q024_proposal_sha256": "687b901f714d86efb04ef7eb9afabbf1749c55fd98e85d7e8cddd0c2797e9ac8",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full661_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.parent-prefix-observation-q025-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "stop_before_context_environment_and_PREP": true,
+  "test_binding": {
+    "bytes": 4812,
+    "sha256": "fbc6d3c3a4f67d1c18ac803dd994a8fb1a63448593a6eb9dfd203320745f59cb"
+  },
+  "valid_START_MODEL_permitted": false
+}
