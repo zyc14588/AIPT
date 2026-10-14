@@ -79,10 +79,22 @@ func runTask0ParentMode(expectedBindingSHA string, observation io.Writer, ready 
 }
 
 func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Writer, ready *task0PreparationReadyObserver, admitted *task0PreparationAdmittedObserver) (runErr error) {
+	return runTask0ParentCAReadyMode(expectedBindingSHA, observation, ready, admitted, nil)
+}
+
+func runTask0ParentCAReadyMode(expectedBindingSHA string, observation io.Writer, ready *task0PreparationReadyObserver, admitted *task0PreparationAdmittedObserver, caReady *task0PreparationCAReadyObserver) (runErr error) {
 	prefixOnly := observation != nil
 	readyOnly := ready != nil
 	admittedOnly := admitted != nil
+	caReadyOnly := caReady != nil
 	stage := "ENTRY_IDENTITY"
+	if caReadyOnly {
+		defer func() {
+			if caReady.publish(stage, runErr) != nil {
+				runErr = ErrRuntimeLaunch
+			}
+		}()
+	}
 	if admittedOnly {
 		defer func() {
 			if admitted.publish(stage, runErr) != nil {
@@ -118,7 +130,7 @@ func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Wri
 	}
 	stage = "CREDENTIAL_POLICY"
 	credential := ""
-	if prefixOnly || readyOnly || admittedOnly {
+	if prefixOnly || readyOnly || admittedOnly || caReadyOnly {
 		if _, present := os.LookupEnv("DEEPSEEK_API_KEY"); present {
 			return ErrRuntimeLaunch
 		}
@@ -200,7 +212,11 @@ func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Wri
 	directoryRemoved := false
 	defer func() {
 		// The direct child join comes first even on a failed admission.
-		if p != nil && p.retire() != nil {
+		if caReadyOnly {
+			if caReady.retire(self, b, ca, directory) != nil {
+				runErr = ErrRuntimeLaunch
+			}
+		} else if p != nil && p.retire() != nil {
 			runErr = ErrRuntimeLaunch
 		}
 		if readyOnly {
@@ -209,7 +225,7 @@ func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Wri
 		if admittedOnly {
 			admitted.observeDirectJoin(p)
 		}
-		if p != nil && !task0DirectJoinCompleted(p) {
+		if p != nil && !task0DirectJoinCompleted(p) && !(caReadyOnly && caReady.record.PreparationNoSpawn) {
 			runErr, inputsRetained = ErrRuntimeLaunch, true
 			task0RetainInputsUntilDirectJoin(p, func() {
 				_ = directory.removeAfterJoin(true)
@@ -220,7 +236,7 @@ func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Wri
 			return
 		}
 		if !directoryRemoved && directory.removeAfterJoin(true) != nil {
-			if prefixOnly || readyOnly || admittedOnly {
+			if prefixOnly || readyOnly || admittedOnly || caReadyOnly {
 				stage = "CA_DIRECTORY_RETIRE"
 			}
 			runErr = ErrRuntimeLaunch
@@ -246,6 +262,10 @@ func runTask0ParentObservationMode(expectedBindingSHA string, observation io.Wri
 			return ErrRuntimeLaunch
 		}
 		return nil
+	}
+	if caReadyOnly {
+		stage = "PREPARATION_CA_READY_OBSERVATION"
+		return observeTask0PreparationCAReady(self, binding, b, ca, directory, &p, caReady, &stage)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
 	defer cancel()

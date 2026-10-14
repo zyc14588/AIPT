@@ -1,0 +1,138 @@
+{
+  "B007": "OPEN",
+  "SDK_copy_write_chmod_registry_retirement_authorized": false,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "SETUP_CREATE_and_business_requests_forbidden": true,
+  "SETUP_actual_Wait_or_NoSpawn_then_PREP_actual_Wait_then_outer_actual_Wait_required": true,
+  "actual_Owner_approval_registration": {
+    "bytes": 7861,
+    "sha256": "3f130cfddd1355181f3c204a4ea8ccbd84da89c7b848704e7daac4401cec21bf"
+  },
+  "all8_production_gates": "OPEN",
+  "approved_material": {
+    "bytes": 13742,
+    "sha256": "33de2c25528cbcdec8a4c518ecb8f726ad19cc52b82edaf05ea8ee6abbb8679f"
+  },
+  "baseline": {
+    "commit": "6a05518e68a380bdeecd677525ca5d69d0194294",
+    "parents": [
+      "eab05ed492f0f811906be4c8903727a29dcaf059",
+      "9c86f857aa1c740e596108d3abf6a70112cab8f1"
+    ],
+    "tree": "8734a93d6d836199464c9a2a6e4f8dc6a8dc6083"
+  },
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "combined_source_count": 673,
+  "current_work_paths": [
+    "internal/pilot/task0_parent.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "decision_id": "AIPT-MVP-B007-OWNER-Q028",
+  "dedicated_fixed_PREP_entry_and_new_images_required": true,
+  "distinct_CA_READY_maximum_attempts": 1,
+  "fixed_child_marker": {
+    "name": "DEEPSEEK_API_KEY",
+    "reason": "Fixed dedicated no-model PREP marker only. Parent rejects inherited credential presence; SETUP never receives credentials or CREATE.",
+    "value": "AIPT_Q028_CA_READY_OBSERVATION_ONLY_NOT_A_PROVIDER_CREDENTIAL"
+  },
+  "fixed_nonsecret_observation_only": true,
+  "generic_followon_permission": false,
+  "isolated_NONCANON_acceptance_sha256": "c3a1350f00e2c3390face1db8aea551c24d01d1b38da74866a84768b6c87879c",
+  "isolated_NONCANON_feasibility_accepted_component_only": true,
+  "mandatory_design_conditions": [
+    {
+      "condition": "明确沿用原 materialize+SETUP握手完成后、CA_READY前的全线程零能力边界。不能提前永久降为零能力后绕过原tmpfs/SETUP权限前提，也不能扩大SETUP的CAP_SETFCAP、PREP后置Cap0或主机权限。",
+      "id": "C1"
+    },
+    {
+      "condition": "新Parent模式不得继承旧p.retire()杀PREP来代替SETUP Wait。SETUP join未知时Parent/PREP/外层持续保留输入和CA；正常返回必须先有SETUP真实Cmd.Wait或明确NoSpawn，再有Parent对PREP真实Wait，再有外层对Parent真实Wait。",
+      "id": "C2"
+    },
+    {
+      "condition": "新PREP是独立固定入口与绑定，不能调用RunAcceptedTask0Preparation、完整admitCA或生产业务路径后假设停住。采用受限固定原语/专用代码验证完整CA_READY后不发送CA_ADMIT/CA_RESAMPLE/CA_CONFIRMED；SETUP不收到CREATE或任何业务角色请求。",
+      "id": "C3"
+    },
+    {
+      "condition": "PREP及SETUP两层都须在Start前保持强Cmd/control/input owner，取得真实ProcessState/Wait或严格NoSpawn；不能盲沿用旧launchTask0Setup的Start后owner布局。可在新固定观测文件实现所需所有权；若必须修改受保护helper，先新Owner决定。",
+      "id": "C4"
+    },
+    {
+      "condition": "新固定Parent/PREP映像与专用绑定逐字节/SHA/来源资格证明，原a20/b05、既有静态程序和四once claim保持历史不变。外环境固定无凭据，PREP仅新固定非凭据marker；不读真实连接/秘密/GGUF正文，不写原DB/budget/evidence/key。",
+      "id": "C5"
+    },
+    {
+      "condition": "两层固定无秘密类型收据绑定各自nonce/generation/映像/CA和目录身份，区分SETUP创建、NoSpawn、真实Wait、退出/错误、PREP真实Wait。PID消失、kill请求、外层Wait、PREP exit=-1、CA_READY标签均不能替代SETUP Wait。持续signals/软期限/封存错误不能释放未知owner；失败消费唯一新claim且不重试。",
+      "id": "C6"
+    },
+    {
+      "condition": "5M4A/673/保护664只为预计，不是已验证路径集合。旧Parent签名/生产nil分支、Q025/Q026/Q027、原生产PREP/CA admission/SETUP/privilege/retained-input代码均冻结。需要其他路径、原合同/角色、权限或一般后继时停止并另给具体Owner材料，不能为凑计数削弱回收。",
+      "id": "C7"
+    },
+    {
+      "condition": "Owner批准后才做隔离无模型/DB写/真实claim的可行性与失效检查。完整新源码/SDK/H1/依赖回归、同代理与Root、精确candidateCI5、另批最终merge、mergeCI5、具体FD3/4/5与signal/Wait准入、实际一次见证全部仍需实际完成。原8生产门禁、USD5非QUAL/QUAL0不提升，不关闭B007/MVP。",
+      "id": "C8"
+    }
+  ],
+  "materialize_and_SETUP_admission_before_PREP_all_thread_Cap0": true,
+  "maximum_SETUP_children": 1,
+  "maximum_direct_PREP_children": 1,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "new_exact_public_paths": [
+    "internal/pilot/task0_preparation_ca_ready_observation.go",
+    "internal/pilot/task0_preparation_ca_ready_observation_test.go",
+    "docs/pilot/authorities/preparation-ca-ready-observation-successor-q028.json",
+    "docs/pilot/proposals/preparation-ca-ready-observation-q028.json"
+  ],
+  "observer_binding": {
+    "bytes": 31932,
+    "git_mode": "100644",
+    "relative": "internal/pilot/task0_preparation_ca_ready_observation.go",
+    "sha256": "cc2b82007cba193315507322cecc0e96ae59ddc5d893f985df289698af78052f"
+  },
+  "old_PREP_kill_never_substitutes_SETUP_Wait": true,
+  "original_Parent_or_DIAG_retry_authorized": false,
+  "original_Q025_Q026_Q027_repeat_authorized": false,
+  "original_budget_usd": "5.00",
+  "original_four_claims_consumed": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "owner_instruction": "批准",
+  "paid_callable": false,
+  "parent_CA_ADMIT_CA_RESAMPLE_CA_CONFIRMED_forbidden": true,
+  "parent_binding": {
+    "bytes": 11394,
+    "git_mode": "100644",
+    "relative": "internal/pilot/task0_parent.go",
+    "sha256": "0ad98fe6f4c3c66e10caa78792adab562752793d9e7bebf509c037861ef8471c"
+  },
+  "pre_Start_strong_PREP_and_SETUP_owners_required": true,
+  "proposal_binding": {
+    "bytes": 381116,
+    "path": "docs/pilot/proposals/preparation-ca-ready-observation-q028.json",
+    "sha256": "899e4a7fe9d387cb433520c4a1fb35b3d8df13571ebc9a01c6a2358b7516849f"
+  },
+  "protected_current_paths": 664,
+  "qualification_runs_authorized": 0,
+  "reject_provider_credential_presence_before_input": true,
+  "retained_Q027_authority_sha256": "7fb0853c089476ad704010888ee5b16fc1ef41bf84087d33d2f5e9727da7c5f6",
+  "retained_Q027_proposal_sha256": "c58350c5f87d0fd26bafa2d14bee872f6cf502964adcef04ab3b02c5cc07031a",
+  "runtime_ready": false,
+  "same_independent_agent_and_Root_full673_HIGH_and_exact_CI_each5_required": true,
+  "schema": "aipt.b007.preparation-ca-ready-observation-q028-authority/v1",
+  "separate_final_Owner_merge_approval_required": true,
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "test_binding": {
+    "bytes": 10093,
+    "git_mode": "100644",
+    "relative": "internal/pilot/task0_preparation_ca_ready_observation_test.go",
+    "sha256": "3c52587873511867391b4a3fb8f9826e8616f1dd6e59b3e903b6a5c2fce4385b"
+  },
+  "unknown_two_level_or_outer_join_retains_holders_and_signals_forever": true,
+  "valid_START_MODEL_permitted": false
+}
