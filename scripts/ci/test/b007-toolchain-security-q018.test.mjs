@@ -1,3 +1,4 @@
+import { isDeepStrictEqual as deepEqual } from 'node:util';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -6,10 +7,12 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources, Q025_AUTHORITY, Q025_PROPOSAL, Q025_BASELINE, Q025_BASELINE_TREE, Q025_PARENT, Q025_TEST, Q025_WORK_PATHS, Q025_NEW_PATHS, q025Approved, q025Proposal, q025SourceProblems, q025RevisionProblems, q025LifecycleProblems, q025Topology, prepareQ025FixedCloneOrigin, q025OriginalTestSource, cleanupQ025OriginalTestSources, Q026_AUTHORITY, Q026_PROPOSAL, Q026_BASELINE, Q026_BASELINE_TREE, Q026_PARENT, Q026_OBSERVER, Q026_TEST, Q026_WORK_PATHS, Q026_NEW_PATHS, q026Approved, q026Proposal, q026SourceProblems, q026RevisionProblems, q026LifecycleProblems, q026Topology, prepareQ026FixedCloneOrigin, q026OriginalTestSource, cleanupQ026OriginalTestSources, Q027_AUTHORITY, Q027_PROPOSAL, Q027_BASELINE, Q027_BASELINE_TREE, Q027_PARENT, Q027_OBSERVER, Q027_TEST, Q027_WORK_PATHS, Q027_NEW_PATHS, q027Approved, q027Proposal, q027SourceProblems, q027RevisionProblems, q027LifecycleProblems, q027Topology, prepareQ027FixedCloneOrigin, q027OriginalTestSource, cleanupQ027OriginalTestSources, Q028_AUTHORITY, Q028_PROPOSAL, Q028_BASELINE, Q028_BASELINE_TREE, Q028_PARENT, Q028_OBSERVER, Q028_TEST, Q028_WORK_PATHS, Q028_NEW_PATHS, q028Approved, q028Proposal, q028SourceProblems, q028RevisionProblems, q028LifecycleProblems, q028Topology, prepareQ028FixedCloneOrigin, q028OriginalTestSource, cleanupQ028OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
+import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources, Q025_AUTHORITY, Q025_PROPOSAL, Q025_BASELINE, Q025_BASELINE_TREE, Q025_PARENT, Q025_TEST, Q025_WORK_PATHS, Q025_NEW_PATHS, q025Approved, q025Proposal, q025SourceProblems, q025RevisionProblems, q025LifecycleProblems, q025Topology, prepareQ025FixedCloneOrigin, q025OriginalTestSource, cleanupQ025OriginalTestSources, Q026_AUTHORITY, Q026_PROPOSAL, Q026_BASELINE, Q026_BASELINE_TREE, Q026_PARENT, Q026_OBSERVER, Q026_TEST, Q026_WORK_PATHS, Q026_NEW_PATHS, q026Approved, q026Proposal, q026SourceProblems, q026RevisionProblems, q026LifecycleProblems, q026Topology, prepareQ026FixedCloneOrigin, q026OriginalTestSource, cleanupQ026OriginalTestSources, Q027_AUTHORITY, Q027_PROPOSAL, Q027_BASELINE, Q027_BASELINE_TREE, Q027_PARENT, Q027_OBSERVER, Q027_TEST, Q027_WORK_PATHS, Q027_NEW_PATHS, q027Approved, q027Proposal, q027SourceProblems, q027RevisionProblems, q027LifecycleProblems, q027Topology, prepareQ027FixedCloneOrigin, q027OriginalTestSource, cleanupQ027OriginalTestSources, Q028_AUTHORITY, Q028_PROPOSAL, Q028_BASELINE, Q028_BASELINE_TREE, Q028_PARENT, Q028_OBSERVER, Q028_TEST, Q028_WORK_PATHS, Q028_NEW_PATHS, q028Approved, q028Proposal, q028SourceProblems, q028RevisionProblems, q028LifecycleProblems, q028Topology, prepareQ028FixedCloneOrigin, q028OriginalTestSource, cleanupQ028OriginalTestSources, Q032_AUTHORITY, Q032_PROPOSAL, Q032_BASELINE, Q032_BASELINE_TREE, Q032_WORK_PATHS, Q032_NEW_PATHS, q032Present, q032Approved, q032Proposal, q032SourceProblems, q032RevisionProblems, q032LifecycleProblems, q032Topology, prepareQ032FixedCloneOrigin, q032OriginalTestSource, cleanupQ032OriginalTestSources, prepareQ032CurrentSDK, q032CurrentGoVersion } from '../lib/b007-toolchain-security-q018.mjs';
 import { FIXED_ORIGIN_FINDING } from '../lib/b007-fixed-origin-policy-q015.mjs';
 import {successorProblems as q025SuccessorProblems,cleanupSnapshots as q025CleanupPredecessors} from '../lib/b007-successor.mjs';
-const q028CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q032CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q028CurrentSource=q032OriginalTestSource(q032CurrentSource);
+test.after(cleanupQ032OriginalTestSources);
 const q027CurrentSource=q028OriginalTestSource(q028CurrentSource);
 test.after(cleanupQ028OriginalTestSources);
 const q026CurrentSource=q027OriginalTestSource(q027CurrentSource);
@@ -24,6 +27,111 @@ const currentSource=q023OriginalTestSource(q023CurrentSource);
 test.after(cleanupQ023OriginalTestSources);
 const source=q022OriginalTestSource(currentSource);
 test.after(cleanupQ022OriginalTestSources);
+// Test input only. The acquired current SDK stays the exact raw15045 SDK.
+// The old complete repack test runs unchanged against its own temporary copy.
+function q032PrepareLegacySDKTestInput() {
+ if(!q032Present(q032CurrentSource))return {adapted:false};
+ const originalEnvironment=process.env.AIPT_Q021_REAL_TEST_SDK,originalPath=process.env.PATH;
+ if(originalEnvironment!==undefined){
+  const proof=verifyQ021CurrentSDK(source,originalEnvironment);
+  assert.equal(proof.identity_class,'PINNED_CI_REPACK_LOGICAL_IDENTITY');
+  return {adapted:false,explicit_test_input:true,input:originalEnvironment,proof,originalPath};
+ }
+ let rawRoot;
+ for(const bin of (originalPath??'').split(path.delimiter))if(bin){
+  const go=path.join(path.resolve(bin),'go');
+  if(fs.existsSync(go)){
+   const s=fs.lstatSync(go);
+   assert.ok(s.isFile()&&!s.isSymbolicLink());
+   rawRoot=path.dirname(path.dirname(go));
+   assert.equal(fs.realpathSync(rawRoot),rawRoot);
+   break;
+  }
+ }
+ assert.ok(rawRoot,'Q032 original complete SDK test input absent; no skipped positive');
+ const rawProof=verifyQ021CurrentSDK(source,rawRoot);
+ assert.equal(rawProof.files,15045);
+ assert.equal(rawProof.directories,1667);
+ assert.equal(fs.existsSync(path.join(rawRoot,'setup.sh')),false);
+ const spec=qualification(source).SDKs.find(s=>s.version==='1.26.9');
+ let owned=null,owner=null,input=null,retired=false,environmentInstalled=false;
+ function retire(){
+  const errors=[];
+  // Restore our process-local variable independently of directory validation.
+  if(environmentInstalled){
+   if(process.env.AIPT_Q021_REAL_TEST_SDK!==input)errors.push(new Error('Q032 test input environment changed before restoration'));
+   try{
+    if(originalEnvironment===undefined)delete process.env.AIPT_Q021_REAL_TEST_SDK;
+    else process.env.AIPT_Q021_REAL_TEST_SDK=originalEnvironment;
+    environmentInstalled=false;
+   }catch(error){errors.push(error);}
+  }
+  if(owned&&!retired){
+   try{
+    if(owner===null)throw new Error('Q032 test input identity unconfirmed; retained '+owned);
+    const current=fs.lstatSync(owned,{bigint:true});
+    assert.ok(current.isDirectory()&&!current.isSymbolicLink());
+    for(const key of ['dev','ino','uid','gid','mode'])assert.equal(current[key],owner[key]);
+    let removalError=null;
+    try{q025TestRetire(owned);}catch(error){removalError=error;}
+    try{fs.lstatSync(owned);}catch(absence){
+     if(absence.code==='ENOENT')retired=true;
+     else errors.push(absence);
+    }
+    if(removalError)throw removalError;
+    if(!retired)throw new Error('Q032 test input removal not confirmed; retained '+owned);
+   }catch(error){errors.push(error);}
+  }
+  if(errors.length)throw new AggregateError(errors,'Q032 test input retirement errors; directory '+(retired?'retired':'retained or not created')+'; path '+owned);
+ }
+ try{
+  owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q032-legacy-repack-test-input-'));
+  input=path.join(owned,'input');
+  const initial=fs.lstatSync(owned,{bigint:true});
+  assert.ok(initial.isDirectory()&&!initial.isSymbolicLink());
+  assert.equal(initial.uid,BigInt(process.getuid()));
+  owner=initial;
+  assert.equal(initial.mode&0o777n,0o700n);
+  test.after(retire);
+  let copyError=null;
+  try{
+  withQ021VerifiedCurrentSDK(source,rawRoot,()=>{
+   try{
+   fs.mkdirSync(input,{mode:0o700});
+   for(const relative of spec.directories.filter(x=>x!=='.').sort((a,b)=>a.split('/').length-b.split('/').length||a.localeCompare(b)))fs.mkdirSync(path.join(input,relative),{mode:0o700});
+   for(const expected of spec.files){
+    const held=heldQ018Bytes(path.join(rawRoot,expected.relative),expected.bytes);
+    assert.equal(held.bytes,expected.bytes);
+    assert.equal(held.sha256,expected.sha256);
+    assert.equal(held.executable,expected.executable);
+    fs.writeFileSync(path.join(input,expected.relative),held.raw,{flag:'wx',mode:expected.executable?0o700:0o600});
+   }
+   // Exact previously accepted non-executable Q021 marker, never executed.
+   const marker=Buffer.from("set -e\n\nGO_VERSION=1.26.9\nARCH=x64\n\nGO_TOOLCACHE_PATH=$AGENT_TOOLSDIRECTORY/go\nGO_TOOLCACHE_VERSION_PATH=$GO_TOOLCACHE_PATH/$GO_VERSION\nGO_TOOLCACHE_VERSION_ARCH_PATH=$GO_TOOLCACHE_VERSION_PATH/$ARCH\n\necho \"Check if Go hostedtoolcache folder exist...\"\nif [ ! -d $GO_TOOLCACHE_PATH ]; then\n    mkdir -p $GO_TOOLCACHE_PATH\nfi\n\necho \"Delete Go $GO_VERSION if installed\"\nrm -rf $GO_TOOLCACHE_VERSION_PATH\n\necho \"Create Go $GO_VERSION folder\"\nmkdir -p $GO_TOOLCACHE_VERSION_ARCH_PATH\n\necho \"Copy Go binaries to hostedtoolcache folder\"\ncp -R ./* $GO_TOOLCACHE_VERSION_ARCH_PATH\nrm $GO_TOOLCACHE_VERSION_ARCH_PATH/setup.sh\n\necho \"Create complete file\"\ntouch $GO_TOOLCACHE_VERSION_PATH/$ARCH.complete\n\n",'utf8');
+   assert.equal(marker.length,694);
+   assert.equal(createHash('sha256').update(marker).digest('hex'),'ae49e39291a8c0731482cc314c56e368380d9a7fff45f0c6416361f31120e3e7');
+   fs.writeFileSync(path.join(input,'setup.sh'),marker,{flag:'wx',mode:0o600});
+   }catch(error){copyError=error;throw error;}
+  });
+  }catch(error){
+   if(copyError&&copyError!==error)throw new AggregateError([copyError,error],'Q032 test input copy and source post-verification both failed');
+   throw error;
+  }
+  const proof=verifyQ021CurrentSDK(source,input);
+  assert.deepEqual(proof,{version:'1.26.9',files:15046,directories:1667,identity_class:'PINNED_CI_REPACK_LOGICAL_IDENTITY',official_payload_members_match:true,complete_fixed_archive_identity:false,original_official_raw_archive_identity:false,setup_sh_executed:false});
+  assert.equal(process.env.PATH,originalPath);
+  assert.equal(process.env.AIPT_Q021_REAL_TEST_SDK,originalEnvironment);
+  process.env.AIPT_Q021_REAL_TEST_SDK=input;
+  environmentInstalled=true;
+  console.log(JSON.stringify({schema:'aipt.Q032.owned-legacy-repack-test-input/v1',raw_SDK:rawRoot,owned_test_input:input,raw_files:15045,repack_files:15046,directories:1667,marker_executed:false,official_archive_identity_promoted:false,production_SDK_or_PATH_mutated:false}));
+  return {adapted:true,input,rawRoot,proof,originalPath};
+ }catch(primary){
+  try{retire();}catch(cleanup){throw new AggregateError([primary,cleanup],'Q032 test input failed and owned cleanup did not complete');}
+  throw primary;
+ }
+}
+const q032LegacySDKTestInput=q032PrepareLegacySDKTestInput();
+
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const copy=v=>JSON.parse(JSON.stringify(v));
 const original=[{file:FIXED_ORIGIN_FINDING.file,hazard:FIXED_ORIGIN_FINDING.hazard}];
@@ -795,3 +903,124 @@ for(const [name,change]of [
 test('Q028 prepares exactly ten retained local origins without SDK/network/grant',t=>{const r=q028Fixture(t);const v=prepareQ028FixedCloneOrigin(r);assert.equal(v.commit,Q028_BASELINE);assert.equal(v.fixed_origins.length,10);assert.equal(v.network_requests,0);assert.equal(v.SDK_program_or_mutation,0);assert.equal(v.full_HIGH_or_CI_or_runtime_accepted,false);assert.throws(()=>prepareQ028FixedCloneOrigin(r,{target:Q027_BASELINE}),/no caller/);});
 test('Q028 forbids replacing a differing existing fixed ref',t=>{const r=q028Fixture(t);q028Git(r,['update-ref','refs/heads/codex/q028-fixed-history-pr37-merge',Q027_BASELINE]);assert.throws(()=>prepareQ028FixedCloneOrigin(r),/differs/);});
 test('Q028 forbids symbolic fixed origin aliases',t=>{const r=q028Fixture(t);q028Git(r,['symbolic-ref','refs/heads/codex/q028-fixed-history-pr37-merge','refs/heads/codex/absent']);assert.throws(()=>prepareQ028FixedCloneOrigin(r),/symbolic/);});
+
+function q032Git(repo,args){const r=spawnSync('/usr/bin/git',['--no-optional-locks','-C',repo,...args],{encoding:'utf8'});assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);return r.stdout.trim();}
+test.after(q025CleanupPredecessors);
+function q032Fixture(t){const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q032-source-fixture-')),repo=path.join(owned,'source');t.after(()=>q025TestRetire(owned));const r=spawnSync('/usr/bin/git',['clone','--no-local','--no-checkout',q032CurrentSource,repo],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);q032Git(repo,['config','core.hooksPath','/dev/null']);q032Git(repo,['config','user.name','Synthetic Q032 Probe']);q032Git(repo,['config','user.email','probe@example.invalid']);q032Git(repo,['checkout','--detach',Q032_BASELINE]);q032Git(repo,['update-ref','refs/remotes/origin/main',Q032_BASELINE]);const names=q032Git(q032CurrentSource,['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean);assert.equal(new Set(names).size,675);for(const name of new Set(names)){const src=path.join(q032CurrentSource,name),dst=path.join(repo,name);fs.mkdirSync(path.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);fs.chmodSync(dst,fs.statSync(src).mode&0o777);}q032Git(repo,['add','--',...Q032_WORK_PATHS,...Q032_NEW_PATHS]);return repo;}
+function q032Candidate(repo){q032Git(repo,['commit','-m','Synthetic exact Q032 Q033 candidate']);return q032Git(repo,['rev-parse','HEAD']);}
+test('Q032 Q033 retain all complete original SDK test bodies at exact PR38',()=>{const f='scripts/ci/test/b007-toolchain-security-q018.test.mjs',old=fs.readFileSync(path.join(q028CurrentSource,f),'utf8'),live=fs.readFileSync(path.join(q032CurrentSource,f),'utf8');assert.ok(live.slice(live.indexOf('const hash=')).startsWith(old.slice(old.indexOf('const hash='))));assert.equal(q032Git(q028CurrentSource,['rev-parse','HEAD']),Q032_BASELINE);assert.deepEqual(q028SourceProblems(q028CurrentSource),[]);assert.deepEqual(q032SourceProblems(q032CurrentSource),[]);});
+for(const [name,change]of [
+ ['authority absent',r=>fs.unlinkSync(path.join(r,Q032_AUTHORITY))],['proposal absent',r=>fs.unlinkSync(path.join(r,Q032_PROPOSAL))],['authority altered',r=>fs.appendFileSync(path.join(r,Q032_AUTHORITY),' ')],['proposal altered',r=>fs.appendFileSync(path.join(r,Q032_PROPOSAL),' ')],
+ ['frozen aggregate',r=>fs.appendFileSync(path.join(r,'scripts/ci/run-checks.mjs'),'\n// forbidden\n')],['frozen production PREP',r=>fs.appendFileSync(path.join(r,'internal/pilot/task0_preparation.go'),'\n// forbidden\n')],['frozen action lock',r=>fs.appendFileSync(path.join(r,'tools/ci-actions.lock.json'),' ')],['SDK verifier core',r=>{const p=path.join(r,'scripts/ci/lib/b007-toolchain-security-q018.mjs');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace("throw new Error('special SDK member')","throw new Error('changed SDK member')"));}],
+ ['workflow entry removed',r=>{const p=path.join(r,'.github/workflows/ci.yml');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace(' --q032-prepare-current-sdk',' --unknown-current-sdk'));}],['workflow adapter body changed',r=>fs.appendFileSync(path.join(r,'scripts/ci/validate/workflow.mjs'),'\n// forbidden\n')],['extra source',r=>fs.writeFileSync(path.join(r,'unapproved-sdk-source.txt'),'forbidden')],['executable work path',r=>fs.chmodSync(path.join(r,Q032_AUTHORITY),0o755)],['hardlink alias',r=>fs.linkSync(path.join(r,Q032_AUTHORITY),path.join(r,'unapproved-alias'))],['symbolic authority',r=>{const p=path.join(r,Q032_AUTHORITY),a=path.join(r,'unapproved-target');fs.renameSync(p,a);fs.symlinkSync(a,p);}]
+])test('Q032 Q033 source rejects '+name,t=>{const r=q032Fixture(t);change(r);assert.ok(q032SourceProblems(r).length);});
+test('Q032 prepares exactly eleven immutable fixed clone origins without SDK or network',t=>{const r=q032Fixture(t),v=prepareQ032FixedCloneOrigin(r);assert.equal(v.fixed_origins.length,11);assert.equal(v.commit,Q032_BASELINE);assert.equal(v.network_requests,0);assert.equal(v.SDK_program_or_mutation,0);assert.equal(v.full_HIGH_or_CI_or_runtime_accepted,false);assert.throws(()=>prepareQ032FixedCloneOrigin(r,{target:Q028_BASELINE}),/no caller/);});
+test('Q032 fixed origins refuse replacement and symbolic aliases',t=>{const r=q032Fixture(t),ref='refs/heads/codex/q032-fixed-history-pr38-merge';q032Git(r,['update-ref',ref,Q028_BASELINE]);assert.throws(()=>prepareQ032FixedCloneOrigin(r),/cannot be overwritten/);q032Git(r,['update-ref','-d',ref]);q032Git(r,['symbolic-ref',ref,'refs/heads/codex/absent']);assert.throws(()=>prepareQ032FixedCloneOrigin(r),/symbolic/);});
+test('Q032 public acquisition/version routes reject extra caller arguments before effects',()=>{assert.throws(()=>prepareQ032CurrentSDK(q032CurrentSource,{url:'forbidden'}),/no caller/);assert.throws(()=>q032CurrentGoVersion(q032CurrentSource,{args:['env']}),/no caller/);});
+
+// Drive the actual acquisition functions with real owned files and synthetic
+// command returns. SDK internals use the unchanged physical/hash verifiers on
+// an explicitly tiny test archive. This never qualifies a real15045 SDK or CI.
+function q032AcquisitionHarness(t,fault='none') {
+ const fixture=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q032-acquisition-probe-')),heldFailureFDs=new Set();t.after(()=>{for(const fd of heldFailureFDs)fs.closeSync(fd);q025TestRetire(fixture);});
+ const temp=path.join(fixture,'job');fs.mkdirSync(temp,{mode:0o700});const pathFile=path.join(temp,'add-path');fs.writeFileSync(pathFile,'',{flag:'wx',mode:0o600});
+ const payload=Buffer.from('synthetic fixed archive bytes, no executable SDK'),archive={url:'https://example.invalid/fixed-test-only.tar.gz',filename:'test-only.tar.gz',bytes:payload.length,sha256:hash(payload)};
+ const go=Buffer.from('synthetic go payload; never execute'),note=Buffer.from('synthetic contributor payload');
+ const tiny={version:'1.26.9',files:[{relative:'CONTRIBUTING.md',bytes:note.length,sha256:hash(note),executable:false},{relative:'bin/go',bytes:go.length,sha256:hash(go),executable:true}],directories:['.','bin']};
+ const fakeSpec={version:'1.26.9',archive,files:Array.from({length:15045},()=>({relative:'test-only-placeholder'})),directories:Array.from({length:1667},()=>'.')};
+ const source=fs.readFileSync(path.join(q032CurrentSource,'scripts/ci/lib/b007-toolchain-security-q018.mjs'),'utf8');
+ const first=source.indexOf('\nexport function verifySDK(root,spec) {')+1,middle=source.indexOf('\nconst q021StatFields=')+1,last=source.indexOf('\nfunction q021QualifiedSDK(repo,root) {')+1;
+ assert.ok(first>=0&&middle>first&&last>middle);
+ const core=Function('fs','path','createHash','equal','heldQ018Bytes',source.slice(first,last).replace(/^export /gm,'')+'\nreturn {verifySDK,q021PhysicalSDK,q021Same};')(fs,path,createHash,deepEqual,heldQ018Bytes);
+ const acqStart=source.indexOf('// Q032/Q033: fixed job-owned acquisition;'),acqEnd=source.indexOf('const SOURCE_IDENTITIES=');assert.ok(acqStart>=0&&acqEnd>acqStart);
+ const env={CI:'true',GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'zyc14588/AIPT',GITHUB_JOB:'toolchain',RUNNER_OS:'Linux',RUNNER_ARCH:'X64',GOENV:'off',GOTOOLCHAIN:'local',GITHUB_RUN_ID:'1',GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKSPACE:fixture,GITHUB_EVENT_NAME:'pull_request',GITHUB_REF:'refs/pull/1/merge',RUNNER_TEMP:temp,GITHUB_PATH:pathFile,PATH:'/usr/bin:/bin'};
+ let commands=0,extracts=0,SDKExecutions=0,diagnostics=[],initialStatFaultUsed=false;
+ const physical=root=>core.q021PhysicalSDK(root,tiny);
+ const qualify=(_,root)=>{const a=physical(root);core.verifySDK(root,tiny);const b=physical(root);assert.deepEqual(a,b);return {version:'1.26.9',files:15045,directories:1667,complete_fixed_archive_identity:true};};
+ const fakeSpawn=(program,args,options)=>{
+  commands++;const fd=options.stdio[3],owned=path.dirname(fs.realpathSync('/proc/self/fd/'+fd));
+  assert.deepEqual(options.env,{PATH:'/usr/bin:/bin',LANG:'C.UTF-8'});
+  if(program==='/usr/bin/curl'){
+   assert.deepEqual(args,['--disable','--fail','--silent','--show-error','--location','--proto','=https','--proto-redir','=https','--max-redirs','3','--connect-timeout','20','--max-time','240','--output','/proc/self/fd/3',archive.url]);
+   if(fault==='download-exit')return {pid:1234,status:22,signal:null};
+   if(fault==='unknown-spawn')return {pid:0,status:null,signal:null,error:new Error('synthetic unknown spawn')};
+   if(fault==='signal')return {pid:1234,status:null,signal:'SIGTERM'};
+   fs.writeSync(fd,fault==='archive-digest'?Buffer.alloc(payload.length,65):fault==='archive-size'?payload.subarray(1):payload);
+   if(fault==='archive-nlink')fs.linkSync(path.join(owned,archive.filename),path.join(owned,'archive-alias'));
+   if(fault==='archive-replacement'){fs.renameSync(path.join(owned,archive.filename),path.join(owned,'held-original'));fs.writeFileSync(path.join(owned,archive.filename),payload,{mode:0o600});}
+   if(fault==='owner-replacement'){fs.renameSync(owned,owned+'-original');fs.mkdirSync(owned,{mode:0o700});fs.writeFileSync(path.join(owned,'borrowed-sentinel'),'untouched');}
+  }else{
+   assert.equal(program,'/usr/bin/tar');extracts++;if(fault==='extract-exit')return {pid:1234,status:2,signal:null};
+   assert.deepEqual(args,['--no-same-owner','--no-same-permissions','-xzf','/proc/self/fd/3','-C',owned]);
+   const sdk=path.join(owned,'go');fs.mkdirSync(path.join(sdk,'bin'),{recursive:true});fs.writeFileSync(path.join(sdk,'bin/go'),go,{mode:0o755});fs.writeFileSync(path.join(sdk,'CONTRIBUTING.md'),note,{mode:0o644});
+   if(fault==='member-executable')fs.chmodSync(path.join(sdk,'CONTRIBUTING.md'),0o777);
+   if(fault==='member-nlink')fs.linkSync(path.join(sdk,'CONTRIBUTING.md'),path.join(owned,'member-alias'));
+   if(fault==='member-digest')fs.writeFileSync(path.join(sdk,'CONTRIBUTING.md'),Buffer.alloc(note.length,65));
+   if(fault==='member-missing')fs.unlinkSync(path.join(sdk,'CONTRIBUTING.md'));
+   if(fault==='member-extra')fs.writeFileSync(path.join(sdk,'extra'),'unapproved');
+   if(fault==='member-symbolic'){fs.unlinkSync(path.join(sdk,'CONTRIBUTING.md'));fs.symlinkSync(path.join(fixture,'outside-sentinel'),path.join(sdk,'CONTRIBUTING.md'));}
+  }
+  return {pid:1234,status:0,signal:null};
+ };
+ fs.writeFileSync(path.join(fixture,'outside-sentinel'),'outside unchanged');
+ const wrappedFS={...fs,
+  mkdtempSync:prefix=>{if(fault==='root-allocation'&&prefix===path.join(temp,'aipt-q032-sdk-'))throw new Error('synthetic root allocation failure');return fs.mkdtempSync(prefix);},
+  lstatSync:(p,...args)=>{if(fault==='initial-owner-stat'&&!initialStatFaultUsed&&typeof p==='string'&&path.dirname(p)===temp&&path.basename(p).startsWith('aipt-q032-sdk-')){initialStatFaultUsed=true;throw new Error('synthetic initial owner stat failure');}return fs.lstatSync(p,...args);},
+  fchmodSync:(fd,...args)=>{if(fault==='receipt-mode-close'&&fs.realpathSync('/proc/self/fd/'+fd).endsWith('/acquisition-receipt.json'))throw new Error('synthetic receipt mode failure');return fs.fchmodSync(fd,...args);},
+  fsyncSync:fd=>{if(['receipt-sync','receipt-sync-close'].includes(fault)&&fs.realpathSync('/proc/self/fd/'+fd).endsWith('/acquisition-receipt.json'))throw new Error('synthetic receipt sync failure');return fs.fsyncSync(fd);},
+  openSync:(p,...args)=>{if(fault==='path-open'&&p===pathFile)throw new Error('synthetic PATH open');return fs.openSync(p,...args);},
+  writeFileSync:(fd,...args)=>{if(['receipt-write','receipt-write-close'].includes(fault)&&typeof fd==='number'&&fs.realpathSync('/proc/self/fd/'+fd).endsWith('/acquisition-receipt.json'))throw new Error('synthetic receipt write');return fs.writeFileSync(fd,...args);},
+  writeSync:(fd,buffer,...args)=>{if(['path-short','path-partial','rollback-failure','rollback-close-failure','partial-close-failure','short-close-failure'].includes(fault)&&fs.realpathSync('/proc/self/fd/'+fd)===pathFile){if(['path-short','short-close-failure'].includes(fault))return 0;fs.writeSync(fd,buffer,0,3,0);throw new Error('synthetic partial PATH write');}return fs.writeSync(fd,buffer,...args);},
+  ftruncateSync:(fd,len)=>{if(['rollback-failure','rollback-close-failure'].includes(fault)&&fs.realpathSync('/proc/self/fd/'+fd)===pathFile)throw new Error('synthetic rollback failure');return fs.ftruncateSync(fd,len);},
+  closeSync:fd=>{if(['receipt-close','receipt-write-close','receipt-sync-close','receipt-mode-close'].includes(fault)&&fs.realpathSync('/proc/self/fd/'+fd).endsWith('/acquisition-receipt.json')){heldFailureFDs.add(fd);throw new Error('synthetic receipt close failure');}if(['rollback-close-failure','partial-close-failure','short-close-failure','success-close-failure'].includes(fault)&&fs.realpathSync('/proc/self/fd/'+fd)===pathFile){heldFailureFDs.add(fd);throw new Error('synthetic PATH close failure');}return fs.closeSync(fd);}
+ };
+ const fakeProcess={platform:'linux',arch:'x64',version:'v24.19.0',getuid:()=>process.getuid(),env,stderr:{write:s=>diagnostics.push(s)}};
+ const names=['fs','path','createHash','spawnSync','equal','process','q032SourceProblems','q032Topology','git','sdkSpec','Q032_ARCHIVE','q021Same','verifyQ021CurrentSDK','q021PhysicalSDK','Q018_QUALIFICATION_SHA','Q032_AUTHORITY_SHA','Q032_PROPOSAL_SHA','heldQ018Bytes','withQ021VerifiedCurrentSDK','run'];
+ const values=[wrappedFS,path,createHash,fakeSpawn,deepEqual,fakeProcess,()=>[],()=>({problems:[],candidate:{commit:'a'.repeat(40)}}),(_,args)=>args.at(-1)==='HEAD^{tree}'?'b'.repeat(40):'a'.repeat(40),()=>fakeSpec,archive,core.q021Same,qualify,physical,Q018_QUALIFICATION_SHA,'test-authority','test-proposal',heldQ018Bytes,(_,root,action)=>{const a=physical(root),v=action();assert.deepEqual(a,physical(root));return v;},()=>{SDKExecutions++;return {stdout:'go version go1.26.9 linux/amd64\n',stderr:''};}];
+ const api=Function(...names,source.slice(acqStart,acqEnd).replace(/^export /gm,'')+'\nreturn {prepareQ032CurrentSDK,q032CurrentGoVersion,q032BoundCurrentRoot,q032HeldArchive};')(...values);
+ return {api,fixture,temp,pathFile,env,archive,facts:()=>({commands,extracts,SDKExecutions,diagnostics}),roots:()=>fs.readdirSync(temp).filter(n=>n.startsWith('aipt-q032-sdk-')).map(n=>path.join(temp,n))};
+}
+test('Q032 actual acquisition control uses held archive, full tiny original verifiers and binds the published SDK',t=>{const h=q032AcquisitionHarness(t);const r=h.api.prepareQ032CurrentSDK(h.fixture);assert.equal(r.result,'PASS_Q032_JOB_OWNED_OFFICIAL_SDK_QUALIFIED_AND_PATH_PUBLISHED');assert.equal(r.SDK_registry_changed,false);assert.equal(h.facts().commands,2);assert.equal(h.facts().extracts,1);const bin=fs.readFileSync(h.pathFile,'utf8').trim();assert.equal(h.roots().length,1);assert.equal(fs.existsSync(path.join(h.roots()[0],h.archive.filename)),false);h.env.PATH=bin+path.delimiter+'/usr/bin:/bin';assert.equal(h.api.q032BoundCurrentRoot(h.fixture),path.dirname(bin));assert.equal(h.api.q032CurrentGoVersion(h.fixture).version,'go version go1.26.9 linux/amd64');assert.equal(h.facts().SDKExecutions,1);});
+for(const fault of ['archive-digest','archive-size','archive-nlink','archive-replacement','download-exit','extract-exit','member-executable','member-nlink','member-digest','member-missing','member-extra','member-symbolic','receipt-write','path-open','path-short','path-partial'])test('Q032 fails closed and retires only owned joined scratch: '+fault,t=>{const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{assert.equal(error.q032Failure.owned_directory_retired,true);assert.equal(error.q032Failure.publication_uncertain,false);return true;});assert.equal(h.roots().length,0);assert.equal(fs.readFileSync(h.pathFile,'utf8'),'');assert.equal(fs.readFileSync(path.join(h.fixture,'outside-sentinel'),'utf8'),'outside unchanged');assert.equal(h.facts().SDKExecutions,0);if(fault.startsWith('archive-')||fault==='download-exit')assert.equal(h.facts().extracts,0);});
+for(const fault of ['unknown-spawn','signal','rollback-failure','owner-replacement'])test('Q032 retains uncertain ownership/publication and never falls back: '+fault,t=>{const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{assert.equal(error.q032Failure.owned_directory_retired,false);assert.equal(error.q032Failure.owned_directory_retained,true);return true;});assert.ok(h.roots().length);assert.equal(h.facts().SDKExecutions,0);assert.equal(fs.readFileSync(path.join(h.fixture,'outside-sentinel'),'utf8'),'outside unchanged');if(fault==='owner-replacement'){const root=h.roots().find(r=>!r.endsWith('-original'));assert.equal(fs.readFileSync(path.join(root,'borrowed-sentinel'),'utf8'),'untouched');}});
+for(const fault of ['rollback-close-failure','partial-close-failure','short-close-failure','success-close-failure'])test('Q032 publication uncertainty never decreases when close also fails: '+fault,t=>{const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{assert.equal(error.q032Failure.publication_uncertain,true);assert.equal(error.q032Failure.owned_directory_retired,false);assert.equal(error.q032Failure.owned_directory_retained,true);if(fault==='rollback-close-failure'){assert.equal(error.message,'synthetic partial PATH write');assert.equal(error.q032RollbackError,'synthetic rollback failure');assert.equal(error.q032CloseError,'synthetic PATH close failure');}return true;});assert.equal(h.roots().length,1);assert.equal(h.facts().SDKExecutions,0);});
+test('Q032 rejects fallback, changed receipt and changed acquired member before Go',t=>{const h=q032AcquisitionHarness(t);h.api.prepareQ032CurrentSDK(h.fixture);assert.throws(()=>h.api.q032CurrentGoVersion(h.fixture),/fallback forbidden/);const bin=fs.readFileSync(h.pathFile,'utf8').trim();h.env.PATH=bin+path.delimiter+'/usr/bin:/bin';const receipt=path.join(h.roots()[0],'acquisition-receipt.json');fs.chmodSync(receipt,0o600);assert.throws(()=>h.api.q032CurrentGoVersion(h.fixture),/receipt ownership/);fs.chmodSync(receipt,0o400);const sdk=path.dirname(bin);fs.chmodSync(path.join(sdk,'CONTRIBUTING.md'),0o777);assert.throws(()=>h.api.q032CurrentGoVersion(h.fixture),/changed SDK member/);assert.equal(h.facts().SDKExecutions,0);});
+for(const [key,value]of [['GITHUB_ACTIONS','false'],['GITHUB_JOB','unapproved'],['GITHUB_RUN_ATTEMPT','2'],['GOROOT','/unapproved'],['GOTOOLCHAIN','auto']])test('Q032 acquisition refuses ambient environment drift before commands: '+key,t=>{const h=q032AcquisitionHarness(t);h.env[key]=value;assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),/Q032/);assert.equal(h.facts().commands,0);assert.equal(h.roots().length,0);});
+
+test('Q032 legacy repack regression input never promotes or mutates the acquired raw SDK',()=>{
+ const value=q032LegacySDKTestInput;
+ assert.equal(process.env.PATH,value.originalPath);
+ assert.equal(process.env.AIPT_Q021_REAL_TEST_SDK,value.input);
+ assert.deepEqual(verifyQ021CurrentSDK(source,value.input),value.proof);
+ assert.equal(value.proof.files,15046);
+ assert.equal(value.proof.complete_fixed_archive_identity,false);
+ assert.equal(value.proof.original_official_raw_archive_identity,false);
+ assert.equal(value.proof.setup_sh_executed,false);
+ if(value.adapted){
+  assert.equal(fs.existsSync(path.join(value.rawRoot,'setup.sh')),false);
+  assert.equal(verifyQ021CurrentSDK(source,value.rawRoot).files,15045);
+  assert.notEqual(value.input,value.rawRoot);
+ }else assert.equal(value.explicit_test_input,true);
+});
+
+for(const fault of ['root-allocation','initial-owner-stat'])test('Q032 initialization failure retains exact allocation and identity facts: '+fault,t=>{
+ const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{
+  assert.equal(error.message,fault==='root-allocation'?'synthetic root allocation failure':'synthetic initial owner stat failure');
+  assert.equal(error.q032Failure.owned_directory_allocation_returned,fault==='initial-owner-stat');
+  assert.equal(error.q032Failure.owned_directory_identity_established,false);assert.equal(error.q032Failure.owned_directory_retired,false);assert.equal(error.q032Failure.owned_directory_retained,fault==='initial-owner-stat');
+  assert.equal(error.q032Failure.owned_directory,fault==='initial-owner-stat'?h.roots()[0]:null);assert.equal(error.q032Failure.receipt_close_uncertain,false);return true;
+ });assert.equal(h.facts().commands,0);assert.equal(h.facts().SDKExecutions,0);assert.equal(h.roots().length,fault==='initial-owner-stat'?1:0);assert.equal(fs.readFileSync(h.pathFile,'utf8'),'');assert.equal(h.facts().diagnostics.length,1);
+});
+for(const fault of ['receipt-close','receipt-write-close','receipt-sync-close','receipt-mode-close'])test('Q032 receipt unknown close preserves primary facts and its owned directory: '+fault,t=>{
+ const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{
+  assert.equal(error.message,{'receipt-close':'synthetic receipt close failure','receipt-write-close':'synthetic receipt write','receipt-sync-close':'synthetic receipt sync failure','receipt-mode-close':'synthetic receipt mode failure'}[fault]);
+  assert.equal(error.q032ReceiptCloseError,'synthetic receipt close failure');assert.equal(error.q032ReceiptCloseUncertain,true);
+  assert.equal(error.q032Failure.receipt_close_uncertain,true);assert.equal(error.q032Failure.receipt_path,path.join(h.roots()[0],'acquisition-receipt.json'));
+  assert.equal(error.q032Failure.owned_directory_retired,false);assert.equal(error.q032Failure.owned_directory_retained,true);assert.equal(error.q032Failure.publication_uncertain,false);return true;
+ });assert.equal(h.roots().length,1);assert.equal(h.facts().commands,2);assert.equal(h.facts().SDKExecutions,0);assert.equal(fs.readFileSync(h.pathFile,'utf8'),'');
+});
+test('Q032 receipt write or sync failure after confirmed close retires only joined owned input',t=>{
+ for(const fault of ['receipt-write','receipt-sync']){
+  const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{assert.equal(error.q032Failure.receipt_close_uncertain,false);assert.equal(error.q032Failure.owned_directory_retired,true);return true;});assert.equal(h.roots().length,0);assert.equal(fs.readFileSync(h.pathFile,'utf8'),'');assert.equal(h.facts().SDKExecutions,0);
+ }
+});
