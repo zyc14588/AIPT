@@ -1,0 +1,79 @@
+{
+  "schema": "aipt.b007.ci-owned-official-SDK-q032-q033-authority/v1",
+  "decision_ids": [
+    "AIPT-MVP-B007-OWNER-Q032",
+    "AIPT-MVP-B007-OWNER-Q033"
+  ],
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_REVIEW_AND_EXACT_CI",
+  "owner_instruction": "批准",
+  "Q032_approval_sha256": "0c57aa11d5f150cc58eb8eb11fb897a78384673b463cb4c7bee4caa3d5a14c25",
+  "Q033_approval_sha256": "b4d31065b0fdab70af8d7fff145257689a023e1adb7c6a080448163b06c70aef",
+  "Q032_material_sha256": "420e90a5bae57d7875ef61241408bc87fe20715c17fc67b69788a4429942a67a",
+  "Q033_material_sha256": "677baca8510d0baaa0a3b506a1c17a4fb0e2bcc88ac30596205c5e6c51fe97a7",
+  "current_work_paths": [
+    ".github/workflows/ci.yml",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/lib/b007-successor.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "scripts/ci/validate/workflow.mjs"
+  ],
+  "new_exact_public_paths": [
+    "docs/pilot/authorities/ci-owned-official-sdk-acquisition-successor-q032.json",
+    "docs/pilot/proposals/ci-owned-official-sdk-acquisition-q032.json"
+  ],
+  "combined_source_count": 675,
+  "protected_current_paths": 667,
+  "baseline": {
+    "commit": "ab93c5c35281ef7d33a2bb2514fde8ee849c7f16",
+    "tree": "c461bb1e866b833ecf746c317c340ced601543cc",
+    "parents": [
+      "6a05518e68a380bdeecd677525ca5d69d0194294",
+      "95507b1e3a5df7fd321165fb33711afa9989bbb4"
+    ]
+  },
+  "proposal_binding": {
+    "path": "docs/pilot/proposals/ci-owned-official-sdk-acquisition-q032.json",
+    "bytes": 377963,
+    "sha256": "9a17efa4eb9178b424a9f197cc644bb2e0580e1a51355e46d88ce2aa21ca8b90"
+  },
+  "archive": {
+    "url": "https://dl.google.com/go/go1.26.9.linux-amd64.tar.gz",
+    "filename": "go1.26.9.linux-amd64.tar.gz",
+    "bytes": 66935201,
+    "sha256": "42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d"
+  },
+  "retained_Q028_authority_sha256": "cf8fb14d8fa2edc885612f4fcdb6a8e007fb751ab13c188e26ca5e0836f79831",
+  "retained_Q028_proposal_sha256": "899e4a7fe9d387cb433520c4a1fb35b3d8df13571ebc9a01c6a2358b7516849f",
+  "qualification_sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284",
+  "fixed_current_workflow_sha256": "1801e78b63b0de4ca52ff2bc2367671eb895913e10e3e11d0f15fb8879fc6a27",
+  "original_workflow_validator_sha256": "3becc03aaae1c1a088147190a09688d90abe9e141e1d732064cc519040d8ff0a",
+  "exact_validator_adapter_sha256": "627a4ec15671f724e3ec7ddcf5f803ab85c21a3b3e45111108468b5c200718bc",
+  "original_complete_workflow_report_sha256": "d0074e095e6c2e4b77bf3069b6f462f91468196bb6e903357d268435e8ec5778",
+  "original_SDK_core_sha256": "40927dff4a726903bec78ff331904f29a032618d57a6be97f4311e257f8bc78a",
+  "original_four_claims_consumed": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "original_budget_usd": "5.00",
+  "qualification_runs_authorized": 0,
+  "all8_production_gates": "OPEN",
+  "B007": "OPEN",
+  "full675_same_agent_Root_and_candidate_merge_CI_each5_required": true,
+  "separate_exact_public_source_body_destination_release_required": true,
+  "separate_final_Owner_merge_approval_required": true,
+  "Q028_C1_C8_remaining_admission_unchanged": true,
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "generic_followon_permission": false,
+  "preinstalled_SDK_mutation_or_fallback_authorized": false,
+  "SDK_qualification_or_dependency_registry_change_authorized": false,
+  "production_Go_or_namespace_changes_authorized": false,
+  "original_Parent_or_DIAG_retry_authorized": false,
+  "new_DIAG_or_extra_budget_authorized": false,
+  "runtime_ready": false,
+  "paid_callable": false,
+  "valid_START_MODEL_permitted": false
+}

@@ -114,6 +114,7 @@ import {
   GOVULNCHECK,
 } from '../lib/constants.mjs';
 import { runAsMain } from '../lib/cli.mjs';
+import { q032Present, runQ032WorkflowValidation } from '../lib/b007-toolchain-security-q018.mjs';
 
 const WORKFLOW = '.github/workflows/ci.yml';
 const DURABLE_WORKFLOW_NAME = 'AIPT M0 CI';
@@ -1772,6 +1773,11 @@ function mutateJobText(text, name, mutate) {
 }
 
 export function run(ctx) {
+  if (q032Present(ctx.repo)) return runQ032WorkflowValidation(ctx, originalRun);
+  return originalRun(ctx);
+}
+
+function originalRun(ctx) {
   const details = [];
   let pass = true;
   const ok = (msg) => details.push(`ok: ${msg}`);
