@@ -106,7 +106,13 @@ jobs:
           pnpm --version
       - name: gofmt check
         run: |
-          node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains
+          if node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains; then
+            :
+          else
+            q029_prepare_status=$?
+            node scripts/ci/lib/b007-sdk-failure-diagnostics-q029.mjs || true
+            exit "$q029_prepare_status"
+          fi
           node scripts/ci/lib/b007-toolchain-security-q018.mjs --q015-full23
           node --test scripts/ci/test/b007-toolchain-security-q018.test.mjs
           test -z "$(gofmt -l .)"
@@ -274,7 +280,13 @@ jobs:
         run: |
           npm install --global --no-audit --no-fund pnpm@11.4.0
           test "$(pnpm --version)" = "11.4.0"
-          node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains
+          if node scripts/ci/lib/b007-toolchain-security-q018.mjs --prepare-domains; then
+            :
+          else
+            q029_prepare_status=$?
+            node scripts/ci/lib/b007-sdk-failure-diagnostics-q029.mjs || true
+            exit "$q029_prepare_status"
+          fi
       - name: Keep generated pnpm links outside candidate source scope
         run: |
           test -z "$(git ls-files -- 'node_modules/**' ':(glob)**/node_modules/**')"
