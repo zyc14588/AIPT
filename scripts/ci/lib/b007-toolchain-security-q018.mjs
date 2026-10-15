@@ -2099,7 +2099,15 @@ function q021PhysicalSDK(root,spec) {
      const child=heldDirectory(location);try{walk(child,rel);}finally{fs.closeSync(child.fd);}
     }else{
      const expected=fileSpecs.get(rel);
-     if(!expected||!before.isFile()||before.nlink!==1n||before.size!==BigInt(expected.bytes)||Boolean(Number(before.mode)&0o111)!==expected.executable)throw new Error('Q021 nonregular/aliased/additional/changed SDK member: '+rel);
+     const q031Rejected=!expected||!before.isFile()||before.nlink!==1n||before.size!==BigInt(expected.bytes)||Boolean(Number(before.mode)&0o111)!==expected.executable;
+     if(rel==='CONTRIBUTING.md'&&spec.version==='1.26.9'){
+      try{
+       const q031Record={schema:'aipt.q031.fixed-Q021-original-validation-stat/v1',observation:'SAME_CAPTURED_VALIDATION_STAT_NOT_SDK_QUALIFICATION',member:'CONTRIBUTING.md',version:'1.26.9',expected:expected?{bytes:String(expected.bytes),executable:expected.executable}:null,metadata:Object.fromEntries(q021StatFields.map(k=>[k,String(before[k])])),regular:before.isFile(),original_predicate_rejected:q031Rejected,SDK_qualified:false,additional_SDK_body_reads:0};
+       const q031Line=JSON.stringify(q031Record)+'\n';
+       if(Buffer.byteLength(q031Line)<=4096)fs.writeSync(2,q031Line);
+      }catch{}
+     }
+     if(q031Rejected)throw new Error('Q021 nonregular/aliased/additional/changed SDK member: '+rel);
      const fd=fs.openSync(location,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
      try {
       if(!q021Same(before,fs.fstatSync(fd,{bigint:true})))throw new Error('Q021 SDK member replaced while opening');
