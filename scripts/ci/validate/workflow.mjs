@@ -1,3 +1,4 @@
+import { q034Present, runQ034WorkflowValidation } from '../lib/b007-toolchain-security-q018.mjs';
 // B004 workflow validator: the public .github/workflows/ci.yml must be the
 // durable `AIPT M0 CI` workflow — secret-free, full-SHA action pins agreed
 // with the frozen action lock, digest-pinned containers, Linux-only, the
@@ -1773,6 +1774,11 @@ function mutateJobText(text, name, mutate) {
 }
 
 export function run(ctx) {
+  if (q034Present(ctx.repo)) return runQ034WorkflowValidation(ctx, q034OriginalRun);
+  return q034OriginalRun(ctx);
+}
+
+function q034OriginalRun(ctx) {
   if (q032Present(ctx.repo)) return runQ032WorkflowValidation(ctx, originalRun);
   return originalRun(ctx);
 }

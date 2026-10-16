@@ -1,3 +1,4 @@
+import { Q034_AUTHORITY,Q034_PROPOSAL,Q034_BASELINE,Q034_BASELINE_TREE,Q034_PARENT,Q034_OBSERVER,Q034_TEST,Q034_WORK_PATHS,Q034_NEW_PATHS,q034Present,q034Approved,q034Proposal,q034SourceProblems,q034RevisionProblems,q034LifecycleProblems,q034Topology,prepareQ034FixedCloneOrigin,q034OriginalTestSource,cleanupQ034OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { isDeepStrictEqual as deepEqual } from 'node:util';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources, Q025_AUTHORITY, Q025_PROPOSAL, Q025_BASELINE, Q025_BASELINE_TREE, Q025_PARENT, Q025_TEST, Q025_WORK_PATHS, Q025_NEW_PATHS, q025Approved, q025Proposal, q025SourceProblems, q025RevisionProblems, q025LifecycleProblems, q025Topology, prepareQ025FixedCloneOrigin, q025OriginalTestSource, cleanupQ025OriginalTestSources, Q026_AUTHORITY, Q026_PROPOSAL, Q026_BASELINE, Q026_BASELINE_TREE, Q026_PARENT, Q026_OBSERVER, Q026_TEST, Q026_WORK_PATHS, Q026_NEW_PATHS, q026Approved, q026Proposal, q026SourceProblems, q026RevisionProblems, q026LifecycleProblems, q026Topology, prepareQ026FixedCloneOrigin, q026OriginalTestSource, cleanupQ026OriginalTestSources, Q027_AUTHORITY, Q027_PROPOSAL, Q027_BASELINE, Q027_BASELINE_TREE, Q027_PARENT, Q027_OBSERVER, Q027_TEST, Q027_WORK_PATHS, Q027_NEW_PATHS, q027Approved, q027Proposal, q027SourceProblems, q027RevisionProblems, q027LifecycleProblems, q027Topology, prepareQ027FixedCloneOrigin, q027OriginalTestSource, cleanupQ027OriginalTestSources, Q028_AUTHORITY, Q028_PROPOSAL, Q028_BASELINE, Q028_BASELINE_TREE, Q028_PARENT, Q028_OBSERVER, Q028_TEST, Q028_WORK_PATHS, Q028_NEW_PATHS, q028Approved, q028Proposal, q028SourceProblems, q028RevisionProblems, q028LifecycleProblems, q028Topology, prepareQ028FixedCloneOrigin, q028OriginalTestSource, cleanupQ028OriginalTestSources, Q032_AUTHORITY, Q032_PROPOSAL, Q032_BASELINE, Q032_BASELINE_TREE, Q032_WORK_PATHS, Q032_NEW_PATHS, q032Present, q032Approved, q032Proposal, q032SourceProblems, q032RevisionProblems, q032LifecycleProblems, q032Topology, prepareQ032FixedCloneOrigin, q032OriginalTestSource, cleanupQ032OriginalTestSources, prepareQ032CurrentSDK, q032CurrentGoVersion } from '../lib/b007-toolchain-security-q018.mjs';
 import { FIXED_ORIGIN_FINDING } from '../lib/b007-fixed-origin-policy-q015.mjs';
 import {successorProblems as q025SuccessorProblems,cleanupSnapshots as q025CleanupPredecessors} from '../lib/b007-successor.mjs';
-const q032CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q034CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q032CurrentSource=q034OriginalTestSource(q034CurrentSource);
+test.after(cleanupQ034OriginalTestSources);
 const q028CurrentSource=q032OriginalTestSource(q032CurrentSource);
 test.after(cleanupQ032OriginalTestSources);
 const q027CurrentSource=q028OriginalTestSource(q028CurrentSource);
@@ -1022,5 +1025,32 @@ for(const fault of ['receipt-close','receipt-write-close','receipt-sync-close','
 test('Q032 receipt write or sync failure after confirmed close retires only joined owned input',t=>{
  for(const fault of ['receipt-write','receipt-sync']){
   const h=q032AcquisitionHarness(t,fault);assert.throws(()=>h.api.prepareQ032CurrentSDK(h.fixture),error=>{assert.equal(error.q032Failure.receipt_close_uncertain,false);assert.equal(error.q032Failure.owned_directory_retired,true);return true;});assert.equal(h.roots().length,0);assert.equal(fs.readFileSync(h.pathFile,'utf8'),'');assert.equal(h.facts().SDKExecutions,0);
+ }
+});
+function q034PolicyGit(repo,args){const r=spawnSync('/usr/bin/git',['--no-optional-locks','-C',repo,...args],{encoding:'utf8'});assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);return r.stdout.trim();}
+function q034PolicyFixture(t){
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q034-policy-')),repo=path.join(root,'source');t.after(()=>fs.rmSync(root,{recursive:true}));
+ const r=spawnSync('/usr/bin/git',['clone','--no-local','--no-checkout',q034CurrentSource,repo],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);q034PolicyGit(repo,['config','core.hooksPath','/dev/null']);q034PolicyGit(repo,['checkout','--detach',Q034_BASELINE]);q034PolicyGit(repo,['update-ref','refs/remotes/origin/main',Q034_BASELINE]);
+ const names=q034PolicyGit(q034CurrentSource,['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean);assert.equal(new Set(names).size,679);
+ for(const f of new Set(names)){const src=path.join(q034CurrentSource,f),dst=path.join(repo,f);fs.mkdirSync(path.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);fs.chmodSync(dst,fs.statSync(src).mode&0o777);}return repo;
+}
+test('Q034 exact source contract binds all679 and preserves669 with no execution grant',()=>{
+ const p=q034Proposal(q034CurrentSource),a=JSON.parse(fs.readFileSync(path.join(q034CurrentSource,Q034_AUTHORITY),'utf8'));assert.equal(p.baseline675.length,675);assert.equal(p.protected669.length,669);assert.equal(Q034_WORK_PATHS.length,6);assert.equal(Q034_NEW_PATHS.length,4);assert.deepEqual(q034SourceProblems(q034CurrentSource),[]);
+ assert.equal(a.runtime_ready,false);assert.equal(a.paid_callable,false);assert.equal(a.business_CREATE_or_game_model_API_authorized,false);assert.equal(a.old_claim_retry_authorized,false);assert.equal(a.new_NONCANON_native_opportunity_authorized,false);assert.equal(a.qualification_runs_authorized,0);assert.deepEqual(a.original_five_formal_claims_consumed,[1,1,1,1,1]);
+});
+for(const key of ['runtime_ready','old_claim_retry_authorized','business_CREATE_or_game_model_API_authorized'])test('Q034 rejects authority broadening '+key,t=>{const repo=q034PolicyFixture(t),f=path.join(repo,Q034_AUTHORITY),a=JSON.parse(fs.readFileSync(f,'utf8'));a[key]=true;fs.writeFileSync(f,JSON.stringify(a,null,2)+'\n');assert.equal(q034Approved(repo),false);assert.ok(q034SourceProblems(repo).length);assert.ok(q032SourceProblems(repo).length);});
+test('Q034 preserves whole original SDK/acquisition implementation through exact routing only',t=>{
+ const repo=q034PolicyFixture(t),f=path.join(repo,'scripts/ci/lib/b007-toolchain-security-q018.mjs'),s=fs.readFileSync(f,'utf8');fs.writeFileSync(f,s.replace('export function verifySDK(root,spec) {','export function verifySDK(root,spec) { /* synthetic forbidden core change */'));assert.ok(q034SourceProblems(repo).some(v=>/original SDK\/acquisition\/library/.test(v)));
+});
+
+
+test('Q034 direct SDK CLI initializes source guards before rejecting a noncandidate context',t=>{
+ const repo=q034PolicyFixture(t),root=path.dirname(repo),before=fs.readdirSync(root).sort();
+ const env={PATH:'/usr/bin:/bin',LANG:'C.UTF-8',CI:'true',GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'zyc14588/AIPT',GITHUB_JOB:'toolchain',RUNNER_OS:'Linux',RUNNER_ARCH:'X64',GOENV:'off',GOTOOLCHAIN:'local',GOTELEMETRY:'off',GITHUB_RUN_ID:'1',GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKSPACE:repo,GITHUB_EVENT_NAME:'pull_request',GITHUB_REF:'refs/pull/1/merge',RUNNER_TEMP:root,GITHUB_PATH:path.join(root,'unpublished-path'),GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null',GIT_OPTIONAL_LOCKS:'0',GIT_TERMINAL_PROMPT:'0'};
+ for(const route of ['--q032-prepare-current-sdk','--q032-current-go-version']){
+  const r=spawnSync(process.execPath,['scripts/ci/lib/b007-toolchain-security-q018.mjs',route],{cwd:repo,env,encoding:'utf8',maxBuffer:1024*1024});
+  assert.equal(r.error,undefined);assert.equal(r.signal,null);assert.equal(r.status,1);assert.equal(r.stdout,'');
+  assert.equal(r.stderr,'Q018 fixed-domain failure: Q032 current exact source/candidate gate failed: \n');
+  assert.deepEqual(fs.readdirSync(root).sort(),before);
  }
 });
