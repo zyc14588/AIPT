@@ -14,10 +14,11 @@ import (
 )
 
 const task0SystemCAPath = "/etc/ssl/certs/ca-certificates.crt"
-const task0SystemCASHA = "80eedd808e4cbd6fd42e125da2ea225fd1365d8e29edef8bcc45ff8bc7044ce2"
-const task0SystemCABytes int64 = 182140
+const task0SystemCASHA = "235b718f4be20cac6880259e4668813550ba1255b35c03ccc66c24b2e0f87b2f"
+const task0SystemCABytes int64 = 180744
 const task0SystemCAPolicy = "B007_PARENT_SEALED_CA_TO_PREP_READONLY_TMPFS_V1"
 const task0Q013AuthoritySHA = "7227316d4d2a4efcbf61d957853cd5fb73c66757df765d08de1cf8dd2a497425"
+const task0Q036AuthoritySHA = "2b06a2d2e90bb711b313d59ac02a1d3c9554b5dbb0f00c975f25dc07e051102e"
 const task0SetupPolicy = "B007_CAP0_PREP_FIXED_SETUP_NAMESPACE_SUCCESSOR_V1"
 const task0Q014AuthoritySHA = "be7639384a7621828e0a67fa23e983c4bbdbafeea426e05294d441717c3ed5ff"
 
@@ -29,7 +30,7 @@ type task0SystemCABinding struct {
 }
 
 func task0SystemCABindingValid(b task0SystemCABinding) bool {
-	return b == (task0SystemCABinding{task0SystemCAPolicy, task0Q013AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA})
+	return b == (task0SystemCABinding{task0SystemCAPolicy, task0Q036AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA})
 }
 
 type task0ParentSystemCA struct {

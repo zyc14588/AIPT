@@ -1033,6 +1033,27 @@
             "new_remote_local_pre_model_boundary_observations": "PENDING_NO_MODEL_ACCEPTANCE"
           },
           "public_scoped_fact_record_path": "docs/pilot/reviews/q014-current010-pre-model-scoped-facts.json"
+        },
+        "q036_exact_system_CA_successor": {
+          "decision_id": "AIPT-MVP-B007-OWNER-Q036",
+          "authority_path": "docs/pilot/authorities/system-ca-exact-bundle-refresh-q036.json",
+          "authority_sha256": "2b06a2d2e90bb711b313d59ac02a1d3c9554b5dbb0f00c975f25dc07e051102e",
+          "proposal_path": "docs/pilot/proposals/system-ca-exact-bundle-refresh-q036.json",
+          "proposal_sha256": "3f7f2c5a11411209467a1aad2547828c01d8fd04304e7a4a986aa3fcb014683e",
+          "status": "OWNER_APPROVED_IMPLEMENTATION_AND_FULL_INDEPENDENT_ACCEPTANCE_PENDING",
+          "runtime_ready": false,
+          "paid_callable": false,
+          "model_API_DIAG_QUAL": 0,
+          "original_eight_conditions": "OPEN",
+          "budget_usd": "5.00",
+          "QUAL": 0,
+          "scope_supplement_decision_id": "AIPT-MVP-B007-OWNER-Q037",
+          "combined_modified_added_source_protected": [
+            10,
+            2,
+            681,
+            669
+          ]
         }
       }
     },

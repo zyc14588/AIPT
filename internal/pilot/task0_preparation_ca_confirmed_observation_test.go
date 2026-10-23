@@ -12,7 +12,7 @@ import (
 
 func q034FixtureProof() task0CAProof {
 	d := func(c string) string { return strings.Repeat(c, 64) }
-	return task0CAProof{CA: task0SystemCABinding{task0SystemCAPolicy, task0Q013AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}, BindingSHA: d("a"), ExecutableSHA: d("b"), Generation: d("c"), SetupSHA: d("e"), SetupBindingSHA: d("f"), SetupAdmitted: true, Original: task0SetupFDIdentity{1, 2}, Source: task0SetupFDIdentity{3, 4}, Materialized: task0SetupFDIdentity{7, 8}, Bytes: task0SystemCABytes, SHA256: task0SystemCASHA, Threads: 3}
+	return task0CAProof{CA: task0SystemCABinding{task0SystemCAPolicy, task0Q036AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}, BindingSHA: d("a"), ExecutableSHA: d("b"), Generation: d("c"), SetupSHA: d("e"), SetupBindingSHA: d("f"), SetupAdmitted: true, Original: task0SetupFDIdentity{1, 2}, Source: task0SetupFDIdentity{3, 4}, Materialized: task0SetupFDIdentity{7, 8}, Bytes: task0SystemCABytes, SHA256: task0SystemCASHA, Threads: 3}
 }
 
 func q034Binding(p task0CAProof) task0ParentBinding {
