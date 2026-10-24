@@ -75,9 +75,9 @@
       "id": "go",
       "kind": "toolchain",
       "license": "BSD-3-Clause",
-      "version": "1.26.9",
-      "evidence": "Q018 fixed SDK/module archive and complete source/license qualification; exact prior record preserved under historical_qualifications. Current govulncheck and affected runtime HIGH are independent acceptance gates.",
-      "verified_at": "2026-10-10T04:17:53.098921+00:00",
+      "version": "1.26.10",
+      "evidence": "Q038 complete fixed Go1.26.10 official SDK/LICENSE qualification and exact offline version; Q018 and older records are immutable historical provenance. Fresh govulncheck and new runtime HIGH are separate gates.",
+      "verified_at": "2026-10-24T04:59:53.215026+00:00",
       "selected_by_batch": "AIPT-M0-B001",
       "q018_requalification": {
         "decision_id": "AIPT-MVP-B007-OWNER-Q018",
@@ -87,6 +87,15 @@
         "qualification_path": "docs/pilot/evidence/task0-q018/toolchain-dependency-qualification.json",
         "license_file_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
         "prior_vulnerability_evidence_historical_only": true
+      },
+      "q038_requalification": {
+        "decision_id": "AIPT-MVP-B007-OWNER-Q038",
+        "previous_version": "1.26.9",
+        "current_version": "1.26.10",
+        "verified_at": "2026-10-24T04:59:53.215026+00:00",
+        "qualification_path": "docs/pilot/evidence/task0-q038/toolchain-dependency-qualification.json",
+        "license_file_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+        "old_full22_inventory_retained_at_fixed31ce": true
       }
     },
     {
@@ -268,5 +277,11 @@
     "path": "docs/pilot/evidence/task0-q018/toolchain-dependency-qualification.json",
     "sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284",
     "scope": "IMMUTABLE_PRE_Q018_FULL_LICENSE_INVENTORY_NOT_CURRENT_VULNERABILITY_STATUS"
+  },
+  "q038_qualification": {
+    "path": "docs/pilot/evidence/task0-q038/toolchain-dependency-qualification.json",
+    "sha256": "281fbea3108b4988b09bfa7997a7e62cdb721694c32d9e1644531f3e0e9453de",
+    "previous_historical_go": "1.26.9",
+    "current_go": "1.26.10"
   }
 }

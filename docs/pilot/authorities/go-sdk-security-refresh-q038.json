@@ -1,0 +1,117 @@
+{
+  "schema": "aipt.public.Q038.fixed-Go-security-refresh-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q038",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_IMPLEMENTATION_REVIEW_AND_EXACT_CI",
+  "owner_instruction": "批准 Q038 受限后继并继续（推荐）",
+  "actual_Q038_Owner_approval": {
+    "bytes": 2536,
+    "sha256": "c0020849b900fbc7fc1ab1449292fd8b7040f341de02f34c5239ad571e5f77ce",
+    "scope": "ACTUAL_OWNER_FIXED_GO12610_APPROVAL"
+  },
+  "actual_Q039_Owner_approval": {
+    "bytes": 2952,
+    "sha256": "a1154cb848f1818fc60eca51d662ada34186d065d5cde8db9a762ccabb8d90c1",
+    "scope": "ACTUAL_OWNER_EXTRA_EXACT_SMOKE_PATH_SUPPLEMENT"
+  },
+  "approved_Q038_material": {
+    "bytes": 7651,
+    "sha256": "3f7af87d87b1d5513c76e58fbe8360510e7fafcf37686ce64b79b7f48c65f018",
+    "scope": "EXACT13M4A_WITH_ALL_ACCEPTANCE_CONDITIONS"
+  },
+  "approved_Q039_material": {
+    "bytes": 4875,
+    "sha256": "43fd42ea25e09d4509329b07304c9b4e1e69f81da02b5a112e4fc6f27058c46a",
+    "scope": "ONE_EXACT_ADDITIONAL_TEST_PATH_ONLY"
+  },
+  "public_modified_paths": [
+    ".go-version",
+    "go.mod",
+    "tools/toolchain.lock.json",
+    "tools/supply-chain/licenses.json",
+    "scripts/ci/lib/constants.mjs",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "scripts/ci/validate/toolchain-lock.mjs",
+    "scripts/ci/validate/supply-chain.mjs",
+    "scripts/ci/sbom/generate-sbom.mjs",
+    "scripts/ci/validate/workflow.mjs",
+    "docs/authority/registry/project-status.json",
+    "internal/toolchainsmoke/toolchainsmoke_test.go"
+  ],
+  "public_added_paths": [
+    "docs/pilot/authorities/go-sdk-security-refresh-q038.json",
+    "docs/pilot/proposals/go-sdk-security-refresh-q038.json",
+    "docs/pilot/evidence/task0-q038/toolchain-dependency-qualification.json",
+    "docs/pilot/evidence/task0-q038/historical-toolchain-domains.json"
+  ],
+  "relative31ce": {
+    "modified": 14,
+    "added": 4,
+    "source": 685,
+    "protected": 667
+  },
+  "aggregate_PR43": {
+    "modified": 19,
+    "added": 6,
+    "source": 685,
+    "protected": 660
+  },
+  "proposal_binding": {
+    "path": "docs/pilot/proposals/go-sdk-security-refresh-q038.json",
+    "bytes": 380113,
+    "sha256": "55cab33820ab9fdd0b03db765d626c30b307ee52010c8530256b77f63e4cfcf3"
+  },
+  "qualification_binding": {
+    "path": "docs/pilot/evidence/task0-q038/toolchain-dependency-qualification.json",
+    "bytes": 3352987,
+    "sha256": "281fbea3108b4988b09bfa7997a7e62cdb721694c32d9e1644531f3e0e9453de"
+  },
+  "domains_binding": {
+    "path": "docs/pilot/evidence/task0-q038/historical-toolchain-domains.json",
+    "bytes": 1524,
+    "sha256": "ef21696bf9c967f6b7b46054412ba20e44f22918b5b0d98f3a58516c34d07926"
+  },
+  "fixed_archive": {
+    "url": "https://dl.google.com/go/go1.26.10.linux-amd64.tar.gz",
+    "bytes": 66936659,
+    "sha256": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
+    "filename": "go1.26.10.linux-amd64.tar.gz"
+  },
+  "fixed_current_go": "1.26.10",
+  "fixed_offline_historical_go": [
+    "1.26.9",
+    "1.26.6"
+  ],
+  "SDK_execution_interval_source_stability_owner_accepted": true,
+  "cannot_guarantee_same_UID_instant_replace_restore_detection": true,
+  "full_SDK_before_and_after_each_current_Go_command_required": true,
+  "full681_original_tests_at_fixed31ce_required": true,
+  "current685_independent_tests_and_full_runtime_HIGH_required": true,
+  "complete_Go_ordinary_race_PG41_Launcher2_required26_separateP1_sixclosures30H1_required": true,
+  "new_three_static_unregistered_images_two_cold_caches_identical_required": true,
+  "candidate_and_exact_normal_merge_first5CI_each_required": true,
+  "separate_final_exact_normal_merge_Owner_approval_required": true,
+  "separate_later_actual_production_Start_Owner_approval_required": true,
+  "generic_followon_permission": false,
+  "arbitrary_SDK_paths_versions_or_setup_inputs": false,
+  "test_filtering_or_runtime_Git_Node_FS_spoofing": false,
+  "new_native_formal_NONCANON_credits": 0,
+  "original_six_formal_claims_each1": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "old_NONCANON_consumed": 1,
+  "model_API_DIAG_QUAL": 0,
+  "budget_usd": "5.00",
+  "QUAL": 0,
+  "B007": "OPEN",
+  "all8_production_gates": "OPEN",
+  "runtime_ready": false,
+  "paid_callable": false,
+  "actual_production_Start_authorized": false
+}

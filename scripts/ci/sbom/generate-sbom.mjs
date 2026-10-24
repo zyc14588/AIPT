@@ -318,14 +318,14 @@ export function buildSbom(repoRoot) {
       filesAnalyzed: false,
       comment:
         'AIPT-MVP-B004 governed model profiles and Harness gateway; no new third-party dependency identity was introduced. ' +
-        'Go module github.com/zyc14588/AIPT (go 1.26.0, toolchain go1.26.9 — Q018 security requalification; historical B003 Go1.26.6 retained), private npm root package aipt@0.0.0, ' +
+        'Go module github.com/zyc14588/AIPT (go 1.26.0, toolchain go1.26.10 — Q038 security requalification; historical Q018 Go1.26.9 and B003 Go1.26.6 retained), private npm root package aipt@0.0.0, ' +
         `and first-party workspace packages @aipt/adapter-sdk@1.0.0, @aipt/harness-adapter@0.1.0, @aipt/model-harness-gateway@0.1.0 and @aipt/web-ui@0.1.0 (all PACKAGE_OF AIPT). ` +
         `B004 security-requalifies the B003 runtime closure: go=${goModules.length}, selected-module-graph tooling=${goGraphTooling.length}, pnpm=${pnpmPackages.length} ` +
         `(six approved Go runtime modules: pgx v5.10.0 direct + five transitive, recorded in ` +
         `tools/supply-chain/licenses.json with exact versions/licenses/directness; x/text v0.29.0 -> v0.39.0 resolves GO-2026-5970, ` +
         `and MVS selects x/sync v0.21.0 plus graph-only x/mod v0.37.0 and x/tools v0.47.0). ` +
         `SPDXRef-AIPT DEPENDS_ON ${goModuleSpdxId('github.com/jackc/pgx/v5')} — the pgx closure is an application ` +
-        'runtime dependency, never a DEV_TOOL_OF package. Q018 current qualification selects Go1.26.9, x/text v0.41.0, x/sync v0.22.0, x/mod v0.38.0 and x/tools v0.48.0; the B003/B004 statements above are preserved historical provenance.',
+        'runtime dependency, never a DEV_TOOL_OF package. Q038 current qualification selects Go1.26.10 (Q018 Go1.26.9 historical), x/text v0.41.0, x/sync v0.22.0, x/mod v0.38.0 and x/tools v0.48.0; the B003/B004 statements above are preserved historical provenance.',
       externalRefs: [
         purl('golang', 'github.com/zyc14588/AIPT'),
         purl('npm', 'aipt@0.0.0'),
@@ -551,7 +551,7 @@ export function buildSbom(repoRoot) {
       checksums: [{ algorithm: 'SHA256', checksumValue: m.h1hex }],
       externalRefs: [purl('golang', `${m.module}@${m.version}`)],
       sourceInfo:
-        `Q018 Go1.26.9 selected-module graph; deterministic x/text v0.41.0 consequence; ` +
+        `Q038 Go1.26.10 selected-module graph (unchanged Q018 module identities); deterministic x/text v0.41.0 consequence; ` +
         `sumdb zip h1 SHA-256 ${m.h1hex}; go.mod h1 SHA-256 ${m.gomodhex}`,
       comment:
         `third-party Go selected module-graph tooling (module-graph-tooling; indirect; not an AIPT runtime dependency); ` +

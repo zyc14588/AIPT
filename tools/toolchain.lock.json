@@ -15,28 +15,28 @@
   },
   "toolchains": {
     "go": {
-      "version": "1.26.9",
+      "version": "1.26.10",
       "channel": "stable",
       "official_source": "go.dev",
       "release_index": "https://go.dev/dl/?mode=json&include=all",
       "release_status": "stable",
-      "release_date": "2026-10-08",
-      "release_history": "https://go.dev/doc/devel/release#go1.26.9",
-      "security_announcement": "https://go.dev/doc/devel/release#go1.26.9",
+      "release_date": "2026-10-19",
+      "release_history": "https://go.dev/doc/devel/release#go1.26.10",
+      "security_announcement": "https://pkg.go.dev/vuln/GO-2026-6809",
       "upstream_tag": {
-        "tag": "go1.26.9",
-        "commit": "2ae494ef9fb90e0da0073c31800ba38870249994"
+        "tag": "go1.26.10",
+        "commit": "4e8c85f5319d999bfd7617fdc191631e5634e3c5"
       },
       "linux_amd64_archive": {
-        "filename": "go1.26.9.linux-amd64.tar.gz",
-        "url": "https://go.dev/dl/go1.26.9.linux-amd64.tar.gz",
-        "sha256": "42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d"
+        "filename": "go1.26.10.linux-amd64.tar.gz",
+        "url": "https://dl.google.com/go/go1.26.10.linux-amd64.tar.gz",
+        "sha256": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5"
       },
       "source_verification": {
-        "method": "Fixed official archive SHA256/size, safe complete unpack, every regular member digest/mode/size, actual version Wait0 and exact BSD-3-Clause LICENSE; same continuing independent reviewer094 and fresh Root acceptance. Current runtime HIGH and live govulncheck remain separately required.",
-        "verified_at": "2026-10-10T04:17:53.098921+00:00"
+        "method": "Q038 fixed official archive size/SHA256, complete15045files/1667dirs static same-original-agent and Root acceptance before use; complete physical SDK and actual offline version Wait0 verified; per-command full SDK before/after remains mandatory. Fresh govulncheck and current runtime HIGH are separate.",
+        "verified_at": "2026-10-24T04:59:53.215026+00:00"
       },
-      "expected_version_output": "go version go1.26.9 linux/amd64",
+      "expected_version_output": "go version go1.26.10 linux/amd64",
       "provenance": {
         "initial_qualification": {
           "batch": "AIPT-M0-B001",
@@ -70,11 +70,22 @@
           "archive_sha256": "42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d",
           "old_B001_and_B003_records_historical_only": true,
           "new_runtime_HIGH_required": true
+        },
+        "q038_security_requalification": {
+          "decision_id": "AIPT-MVP-B007-OWNER-Q038",
+          "scope_supplement_decision_id": "AIPT-MVP-B007-OWNER-Q039",
+          "previous_go_version": "1.26.9",
+          "current_go_version": "1.26.10",
+          "advisory": "GO-2026-6809",
+          "archive_sha256": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5",
+          "verified_at": "2026-10-24T04:59:53.215026+00:00",
+          "complete_current_source_and_runtime_HIGH_required": true,
+          "old_Q018_and_B001_B003_records_historical_only": true
         }
       },
       "repo_pins": [
         ".go-version",
-        "go.mod go/toolchain directives (go 1.26.0 / toolchain go1.26.9)"
+        "go.mod go/toolchain directives (go 1.26.0 / toolchain go1.26.10)"
       ]
     },
     "node": {
@@ -181,5 +192,11 @@
     "sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284",
     "old_B003_historical_go": "1.26.6",
     "current_go": "1.26.9"
+  },
+  "q038_qualification": {
+    "path": "docs/pilot/evidence/task0-q038/toolchain-dependency-qualification.json",
+    "sha256": "281fbea3108b4988b09bfa7997a7e62cdb721694c32d9e1644531f3e0e9453de",
+    "previous_historical_go": "1.26.9",
+    "current_go": "1.26.10"
   }
 }

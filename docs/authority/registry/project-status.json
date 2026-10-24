@@ -1,6 +1,6 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-10-09",
+  "as_of": "2026-10-24",
   "authority_snapshot_id": "AIPT-MVP-B007-START-001",
   "tracks": {
     "AIPT-STANDALONE": {
@@ -1054,6 +1054,41 @@
             681,
             669
           ]
+        },
+        "q038_fixed_go_security_refresh": {
+          "decision_id": "AIPT-MVP-B007-OWNER-Q038",
+          "scope_supplement_decision_id": "AIPT-MVP-B007-OWNER-Q039",
+          "authority_path": "docs/pilot/authorities/go-sdk-security-refresh-q038.json",
+          "authority_sha256": "ab6a6afeaa4fb8a40337b9ed36f0eb412e11b003a40fbbd5bb4557e18865daba",
+          "proposal_path": "docs/pilot/proposals/go-sdk-security-refresh-q038.json",
+          "proposal_sha256": "55cab33820ab9fdd0b03db765d626c30b307ee52010c8530256b77f63e4cfcf3",
+          "snapshot_state": "OWNER_APPROVED_IMPLEMENTATION_AND_FULL_CURRENT685_ACCEPTANCE_PENDING",
+          "current_go": "1.26.10",
+          "historical_go": [
+            "1.26.9",
+            "1.26.6"
+          ],
+          "combined_modified_added_source_protected": [
+            14,
+            4,
+            685,
+            667
+          ],
+          "aggregate_PR43_modified_added_source_protected": [
+            19,
+            6,
+            685,
+            660
+          ],
+          "original_PR43_head_and_failed_first_CI_retained": true,
+          "current_source_and_compiler_HIGH_inheritance": false,
+          "final_exact_merge_and_actual_Start_separately_approved": true,
+          "runtime_ready": false,
+          "paid_callable": false,
+          "model_API_DIAG_QUAL": 0,
+          "original_eight_conditions": "OPEN",
+          "budget_usd": "5.00",
+          "QUAL": 0
         }
       }
     },
