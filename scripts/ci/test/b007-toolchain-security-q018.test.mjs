@@ -1235,7 +1235,9 @@ test('Q038 F2 final error data retains existing publication rollback and both cl
 // Q040_CURRENT687_TESTS
 const current=q040LiveSource;
 test('Q040 replays the complete original685 SDK entry at exactfdf with all nested original tests',t=>{
- const report=runQ040OriginalEntry(current,'scripts/ci/test/b007-toolchain-security-q018.test.mjs',{test:true}).value;
+ let report;
+ try{report=runQ040OriginalEntry(current,'scripts/ci/test/b007-toolchain-security-q018.test.mjs',{test:true}).value;}
+ catch(error){t.diagnostic(JSON.stringify(q038ErrorFact(error)));throw error;}
  assert.equal(report.result,'PASS');assert.equal(report.commit,Q040_BASELINE);assert.equal(report.origin_main,Q040_BASELINE);assert.equal(report.tree,Q040_BASELINE_TREE);
  assert.match(report.stdout,/^# tests 20$/m);assert.match(report.stdout,/^# pass 20$/m);assert.equal(report.stderr,'');t.diagnostic(report.stdout);
 });

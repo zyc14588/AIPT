@@ -745,8 +745,12 @@ test('Q038 accepts only ordered normal merge parents and identical candidate tre
 }else{
 // Q040_CURRENT687_TESTS
 const current=q040LiveSource;
+// This canonical retained source remains owned throughout every fixture.
+const q040FixedOrigins=prepareQ040FixedCloneOrigin(current).fixed_refs;
 test('Q040/Q041 replays every original685 lifecycle case at exact9db in its original main context',t=>{
- const report=runQ040OriginalEntry(current,'scripts/ci/test/b007-lifecycle.test.mjs',{test:true}).value;
+ let report;
+ try{report=runQ040OriginalEntry(current,'scripts/ci/test/b007-lifecycle.test.mjs',{test:true}).value;}
+ catch(error){t.diagnostic(JSON.stringify(q038ErrorFact(error)));throw error;}
  assert.equal(report.result,'PASS');assert.equal(report.commit,Q041_LIFECYCLE_HEAD);assert.equal(report.origin_main,'cc44fcf16f7f6f6a595b8933f9ab1af508a2646e');assert.equal(report.tree,Q040_BASELINE_TREE);
  assert.match(report.stdout,/^# tests 13$/m);assert.match(report.stdout,/^# pass 13$/m);assert.equal(report.stderr,'');t.diagnostic(report.stdout);
 });
@@ -778,6 +782,10 @@ function q040Fixture(t,source=current){
   }catch(error){row.primary_error=fact(error);throw error;}
  };
  execute(['clone','--no-local','--no-hardlinks',source,root]);const git=args=>execute(['--no-optional-locks','-C',root,...args]);
+ // A second clone only receives local heads. Preserve exactly the fixed15
+ // aliases as heads, with every update covered by this fixture's sticky
+ // native Git retirement ledger, before a nested fixture can clone it.
+ for(const row of q040FixedOrigins)git(['update-ref',row.ref,row.commit]);
  git(['update-ref','refs/remotes/origin/main',Q040_BASELINE]);git(['config','user.name','Q040 Synthetic Source Probe']);git(['config','user.email','probe@example.invalid']);
  const make=(tree,parents)=>git(['commit-tree',tree,...parents.flatMap(p=>['-p',p]),'-m','Q040 synthetic unit-only topology probe']);
  // The source may be any permitted candidate or its normal merge. Preserve
