@@ -1,3 +1,4 @@
+import { q038Present, runQ038CurrentValidator, inspectQ038OriginPolicy } from '../lib/b007-toolchain-security-q018.mjs';
 import { currentQualificationProblems, historicalLockProjection, historicalLicenseInventory } from '../lib/b007-toolchain-security-q018.mjs';
 // AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4,
 // AIPT-M0-B003 iteration 6a, the AIPT-M0-B004 zero-new-dependency runtime
@@ -1108,6 +1109,7 @@ function checkToolchainLockObject(toolchainLock) {
 }
 
 export function run(ctx) {
+  if (q038Present(ctx.repo)) return runQ038CurrentValidator(ctx, 'supply-chain', () => q038CurrentSupplyChecks(ctx));
   const details = [];
   let pass = true;
   const ok = (msg) => details.push(`ok: ${msg}`);
@@ -2210,3 +2212,14 @@ export function run(ctx) {
 }
 
 runAsMain(import.meta.url, 'supply-chain', run);
+
+function q038CurrentSupplyChecks(ctx) {
+  const problems=currentQualificationProblems(ctx.repo),hazards=scanTreeForHazards(ctx.repo),policy=inspectQ038OriginPolicy(ctx.repo,hazards);
+  problems.push(...policy.problems);
+  for(const field of ['version','license']){
+    const licenses=JSON.parse(fs.readFileSync(path.join(ctx.repo,'tools/supply-chain/licenses.json'),'utf8'));
+    licenses.records.find(row=>row.id==='go')[field]=field==='version'?'1.26.9':'MIT';
+    if(currentQualificationProblems(ctx.repo,{licenses}).length===0)problems.push('Q038 changed current Go license '+field+' accepted');
+  }
+  return {result:problems.length?'FAIL':'PASS',details:problems.length?problems.map(value=>'FAIL: '+value):['ok: full22 current license/SDK identity and current unfiltered byte-bound origin scan','ok: current Go version and SPDX license drift rejected'],hazard_policy:policy};
+}

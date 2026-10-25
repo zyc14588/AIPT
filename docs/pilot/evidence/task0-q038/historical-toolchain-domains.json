@@ -1,0 +1,46 @@
+{
+  "schema": "aipt.public.Q038.fixed-offline-historical-toolchain-domains/v1",
+  "current_go": "1.26.10",
+  "historical_go": [
+    "1.26.9",
+    "1.26.6"
+  ],
+  "fixed_original681": {
+    "commit": "31ce245d3059628874a5e4e0fba3e2e72a816ec4",
+    "tree": "13636ab08c8a9362b663013d80cb938804685250",
+    "parents": [
+      "cc44fcf16f7f6f6a595b8933f9ab1af508a2646e"
+    ]
+  },
+  "original13_targets_retained_unchanged": true,
+  "only_added_target": "31ce245d3059628874a5e4e0fba3e2e72a816ec4",
+  "total_fixed_targets": 14,
+  "historical_SDK_qualification": {
+    "path": "docs/pilot/evidence/task0-q018/toolchain-dependency-qualification.json",
+    "sha256": "d653e2e51d97b7f2a3e5c48da8e72d20982ef908de3fa65812a21dd739ee8284",
+    "versions": [
+      "1.26.9",
+      "1.26.6"
+    ],
+    "complete_original_specs_required": true
+  },
+  "historical_execution_offline": true,
+  "separate_GOROOT_PATH_GOCACHE_GOMODCACHE_GOTMP_GOPATH": true,
+  "historical_network_preparation_only_with_new_current_SDK_or_fixed_nonGo_downloader": true,
+  "global_GITHUB_PATH_downgrade": false,
+  "arbitrary_target_shell_or_env_SDK": false,
+  "original_failed_CI": {
+    "run_id": 40059363524,
+    "attempt": 1,
+    "head_sha": "31ce245d3059628874a5e4e0fba3e2e72a816ec4",
+    "terminal_success": 4,
+    "terminal_failure": 1,
+    "failed_job": 120769312154,
+    "cause": "GO-2026-6809",
+    "retained_not_rerun_or_replaced": true
+  },
+  "old_HIGH_inheritance": false,
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_API_DIAG_QUAL": 0
+}

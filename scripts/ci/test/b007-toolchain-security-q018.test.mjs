@@ -1,3 +1,5 @@
+import { q038ErrorFact, q038PreservedFailure, q038OriginalFailureData, Q038_AUTHORITY, Q038_PROPOSAL, Q038_BASELINE, Q038_BASELINE_TREE, Q038_WORK_PATHS, Q038_NEW_PATHS, q038Present, q038Approved, q038Proposal, q038Qualification, q038SourceProblems, q038RevisionProblems, q038LifecycleProblems, q038Topology, prepareQ038FixedCloneOrigin, runQ038OriginalTestEntry } from '../lib/b007-toolchain-security-q018.mjs';
+import { Q036_BASELINE, Q036_BASELINE_TREE, Q036_AUTHORITY, Q036_AUTHORITY_SHA, Q036_PROPOSAL, Q036_WORK_PATHS, Q036_NEW_PATHS, q036Approved, q036Proposal, q036SourceProblems, q036RevisionProblems, q036LifecycleProblems, q036Topology, prepareQ036FixedCloneOrigin, q036OriginalTestSource, cleanupQ036OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { Q034_AUTHORITY,Q034_PROPOSAL,Q034_BASELINE,Q034_BASELINE_TREE,Q034_PARENT,Q034_OBSERVER,Q034_TEST,Q034_WORK_PATHS,Q034_NEW_PATHS,q034Present,q034Approved,q034Proposal,q034SourceProblems,q034RevisionProblems,q034LifecycleProblems,q034Topology,prepareQ034FixedCloneOrigin,q034OriginalTestSource,cleanupQ034OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { isDeepStrictEqual as deepEqual } from 'node:util';
 import test from 'node:test';
@@ -11,7 +13,11 @@ import { fileURLToPath } from 'node:url';
 import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources, Q025_AUTHORITY, Q025_PROPOSAL, Q025_BASELINE, Q025_BASELINE_TREE, Q025_PARENT, Q025_TEST, Q025_WORK_PATHS, Q025_NEW_PATHS, q025Approved, q025Proposal, q025SourceProblems, q025RevisionProblems, q025LifecycleProblems, q025Topology, prepareQ025FixedCloneOrigin, q025OriginalTestSource, cleanupQ025OriginalTestSources, Q026_AUTHORITY, Q026_PROPOSAL, Q026_BASELINE, Q026_BASELINE_TREE, Q026_PARENT, Q026_OBSERVER, Q026_TEST, Q026_WORK_PATHS, Q026_NEW_PATHS, q026Approved, q026Proposal, q026SourceProblems, q026RevisionProblems, q026LifecycleProblems, q026Topology, prepareQ026FixedCloneOrigin, q026OriginalTestSource, cleanupQ026OriginalTestSources, Q027_AUTHORITY, Q027_PROPOSAL, Q027_BASELINE, Q027_BASELINE_TREE, Q027_PARENT, Q027_OBSERVER, Q027_TEST, Q027_WORK_PATHS, Q027_NEW_PATHS, q027Approved, q027Proposal, q027SourceProblems, q027RevisionProblems, q027LifecycleProblems, q027Topology, prepareQ027FixedCloneOrigin, q027OriginalTestSource, cleanupQ027OriginalTestSources, Q028_AUTHORITY, Q028_PROPOSAL, Q028_BASELINE, Q028_BASELINE_TREE, Q028_PARENT, Q028_OBSERVER, Q028_TEST, Q028_WORK_PATHS, Q028_NEW_PATHS, q028Approved, q028Proposal, q028SourceProblems, q028RevisionProblems, q028LifecycleProblems, q028Topology, prepareQ028FixedCloneOrigin, q028OriginalTestSource, cleanupQ028OriginalTestSources, Q032_AUTHORITY, Q032_PROPOSAL, Q032_BASELINE, Q032_BASELINE_TREE, Q032_WORK_PATHS, Q032_NEW_PATHS, q032Present, q032Approved, q032Proposal, q032SourceProblems, q032RevisionProblems, q032LifecycleProblems, q032Topology, prepareQ032FixedCloneOrigin, q032OriginalTestSource, cleanupQ032OriginalTestSources, prepareQ032CurrentSDK, q032CurrentGoVersion } from '../lib/b007-toolchain-security-q018.mjs';
 import { FIXED_ORIGIN_FINDING } from '../lib/b007-fixed-origin-policy-q015.mjs';
 import {successorProblems as q025SuccessorProblems,cleanupSnapshots as q025CleanupPredecessors} from '../lib/b007-successor.mjs';
-const q034CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q038LiveSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+if(!q038Present(q038LiveSource)){
+const q036CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q034CurrentSource=q036OriginalTestSource(q036CurrentSource);
+test.after(cleanupQ036OriginalTestSources);
 const q032CurrentSource=q034OriginalTestSource(q034CurrentSource);
 test.after(cleanupQ034OriginalTestSources);
 const q028CurrentSource=q032OriginalTestSource(q032CurrentSource);
@@ -1054,3 +1060,170 @@ test('Q034 direct SDK CLI initializes source guards before rejecting a noncandid
   assert.deepEqual(fs.readdirSync(root).sort(),before);
  }
 });
+
+// BEGIN_EXACT_Q037_Q036_TEST_ENTRY_ADDITIONS
+test('Q036 SDK entry retains every original Q034 test body at the fixed accepted679 source',()=>{
+ const file='scripts/ci/test/b007-toolchain-security-q018.test.mjs';
+ const old=fs.readFileSync(path.join(q034CurrentSource,file),'utf8');
+ const live=fs.readFileSync(path.join(q036CurrentSource,file),'utf8');
+ assert.equal(q034PolicyGit(q034CurrentSource,['rev-parse','HEAD']),Q036_BASELINE);
+ assert.ok(live.includes(old.slice(old.indexOf('const q032CurrentSource='))));
+});
+test('Q036 SDK entry validates the full current681 source independently of the retained679 tests',()=>{
+ const p=q036Proposal(q036CurrentSource);
+ assert.equal(p.baseline679.length,679);
+ assert.equal(p.protected669.length,669);
+ assert.equal(p.work_paths.length,10);
+ assert.equal(p.new_paths.length,2);
+ assert.deepEqual(q036SourceProblems(q036CurrentSource),[]);
+});
+// END_EXACT_Q037_Q036_TEST_ENTRY_ADDITIONS
+
+// Q036/Q037 current-source regression additions; all preceding old bodies stay intact.
+function q036PolicyFixture(t) {
+ const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q036-policy-')),repo=path.join(owned,'source');t.after(()=>q025TestRetire(owned));
+ const clone=spawnSync('/usr/bin/git',['clone','--no-local','--no-checkout',q036CurrentSource,repo],{encoding:'utf8'});assert.equal(clone.error,undefined);assert.equal(clone.signal,null);assert.equal(clone.status,0,clone.stderr);
+ q034PolicyGit(repo,['config','core.hooksPath','/dev/null']);q034PolicyGit(repo,['checkout','--detach',Q036_BASELINE]);q034PolicyGit(repo,['update-ref','refs/remotes/origin/main',Q036_BASELINE]);
+ for(const file of [...Q036_WORK_PATHS,...Q036_NEW_PATHS]){const src=path.join(q036CurrentSource,file),dst=path.join(repo,file);const held=heldQ018Bytes(src);fs.mkdirSync(path.dirname(dst),{recursive:true});fs.writeFileSync(dst,held.raw,{mode:0o644});fs.chmodSync(dst,0o644);}
+ return repo;
+}
+test('Q036 SDK source supplement reverses exactly to the entire accepted679 test entry',()=>{
+ const old=fs.readFileSync(path.join(q034CurrentSource,'scripts/ci/test/b007-toolchain-security-q018.test.mjs'),'utf8'),live=fs.readFileSync(fileURLToPath(import.meta.url),'utf8');
+ const inverse=live.replace(live.slice(0,live.indexOf('\n')+1),'').split('\n// BEGIN_EXACT_Q037_Q036_TEST_ENTRY_ADDITIONS')[0].replace("const q036CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');\nconst q034CurrentSource=q036OriginalTestSource(q036CurrentSource);\ntest.after(cleanupQ036OriginalTestSources);","const q034CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');");
+ assert.equal(inverse,old);
+});
+test('Q036 exact authority binds both actual decisions without new native or model grants',()=>{
+ const a=JSON.parse(fs.readFileSync(path.join(q036CurrentSource,Q036_AUTHORITY),'utf8'));
+ assert.equal(q036Approved(q036CurrentSource),true);assert.equal(a.protected_baseline_paths,669);assert.equal(a.public_modified_paths.length,10);assert.equal(a.public_added_paths.length,2);
+ assert.equal(a.actual_Q037_test_entry_supplement_approval.sha256,'28004a7cdcce6bdd6f5ecd306d1137464457626cc5623ea3e56a0a4543790394');
+ assert.deepEqual(a.original_six_formal_claims_each1,[1,1,1,1,1,1]);assert.equal(a.old_NONCANON_consumed,1);assert.equal(a.new_native_formal_or_NONCANON_opportunities,0);assert.equal(a.runtime_ready,false);assert.equal(a.paid_callable,false);assert.equal(a.actual_production_Start_authorized,false);
+});
+for(const key of ['runtime_ready','actual_production_Start_authorized','old_bundle_fallback_or_bundle_allowlist'])test('Q036 rejects broadened exact authority '+key,t=>{
+ const repo=q036PolicyFixture(t),file=path.join(repo,Q036_AUTHORITY),a=JSON.parse(fs.readFileSync(file,'utf8'));a[key]=true;fs.writeFileSync(file,JSON.stringify(a,null,2)+'\n');
+ assert.equal(q036Approved(repo),false);assert.ok(q036SourceProblems(repo).length);assert.ok(q032SourceProblems(repo).length);
+});
+test('Q036 rejects old CA size or authority substituted into the reviewed Go core',t=>{
+ const repo=q036PolicyFixture(t),file=path.join(repo,'internal/pilot/task0_system_ca.go'),old=fs.readFileSync(file,'utf8');
+ fs.writeFileSync(file,old.replace('180744','182140'));assert.ok(q036SourceProblems(repo).some(v=>v.includes('exact reviewed source')));
+ fs.writeFileSync(file,old.replace(Q036_AUTHORITY_SHA,'7227316d4d2a4efcbf61d957853cd5fb73c66757df765d08de1cf8dd2a497425'));assert.ok(q036SourceProblems(repo).length);
+});
+for(const file of ['internal/pilot/task0_preparation.go','.github/workflows/ci.yml','scripts/ci/lib/b007-successor.mjs'])test('Q036 rejects protected source mutation '+file,t=>{
+ const repo=q036PolicyFixture(t);fs.appendFileSync(path.join(repo,file),'\n// forbidden current-source mutation\n');assert.ok(q036SourceProblems(repo).some(v=>v.includes('protected669')));
+});
+test('Q036 rejects an additional public source, executable work file, alias or missing proposal',t=>{
+ const repo=q036PolicyFixture(t),extra=path.join(repo,'docs/pilot/q036-extra-forbidden.txt');fs.writeFileSync(extra,'forbidden\n');assert.ok(q036SourceProblems(repo).length);fs.unlinkSync(extra);
+ const work=path.join(repo,'internal/pilot/task0_system_ca.go');fs.chmodSync(work,0o755);assert.ok(q036SourceProblems(repo).length);fs.chmodSync(work,0o644);
+ const alias=path.join(repo,'docs/pilot/q036-owned-alias');fs.linkSync(work,alias);assert.ok(q036SourceProblems(repo).length);fs.unlinkSync(alias);
+ fs.unlinkSync(path.join(repo,Q036_PROPOSAL));assert.equal(q036Approved(repo),false);assert.ok(q036SourceProblems(repo).length);
+});
+test('Q036 keeps the entire original SDK acquisition and old test assertion text',t=>{
+ const repo=q036PolicyFixture(t),lib=path.join(repo,'scripts/ci/lib/b007-toolchain-security-q018.mjs'),s=fs.readFileSync(lib,'utf8');
+ fs.writeFileSync(lib,s.replace('export function verifySDK(root,spec) {','export function verifySDK(root,spec) { /* forbidden */'));assert.ok(q036SourceProblems(repo).some(v=>v.includes('original SDK/acquisition/library')));
+ fs.writeFileSync(lib,s);const file=path.join(repo,'scripts/ci/test/b007-toolchain-security-q018.test.mjs');fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace('assert.equal(new Set(names).size,679)','assert.equal(new Set(names).size,681)'));assert.ok(q036SourceProblems(repo).some(v=>v.includes('exact reviewed source')));
+});
+test('Q036 fixed clone origins are exact13, preserve source and reject caller targets or differing refs',t=>{
+ const repo=q036PolicyFixture(t),before=q034PolicyGit(repo,['status','--porcelain=v1','--untracked-files=all']);
+ const result=prepareQ036FixedCloneOrigin(repo);assert.equal(result.fixed_origins.length,13);assert.equal(result.source_HEAD_tree_main_index_unchanged,true);assert.equal(q034PolicyGit(repo,['status','--porcelain=v1','--untracked-files=all']),before);
+ assert.throws(()=>prepareQ036FixedCloneOrigin(repo,{}),/no caller/);assert.throws(()=>q036OriginalTestSource(repo,'HEAD'),/no caller/);
+ const ref='refs/heads/codex/q036-fixed-history-pr42-merge';q034PolicyGit(repo,['update-ref',ref,Q034_BASELINE]);assert.throws(()=>prepareQ036FixedCloneOrigin(repo),/differing origin/);assert.equal(q034PolicyGit(repo,['rev-parse',ref]),Q034_BASELINE);
+});
+
+}else{
+// Q038_CURRENT685_TESTS
+const current=q038LiveSource;
+test('Q038 replays the complete original681 SDK suite at exact31ce with isolated offline historical Go1.26.9',t=>{
+ const report=runQ038OriginalTestEntry(current,'scripts/ci/test/b007-toolchain-security-q018.test.mjs');
+ assert.equal(report.result,'PASS');assert.equal(report.commit,Q038_BASELINE);assert.equal(report.tree,Q038_BASELINE_TREE);assert.equal(report.offline,true);
+ assert.match(report.stdout,/^# tests 457$/m);assert.match(report.stdout,/^# pass 457$/m);assert.equal(report.stderr,'');
+ t.diagnostic(report.stdout);
+});
+test('Q038 current qualification is exactly Go1.26.10 with the unchanged15-module graph and22-license inventory',()=>{
+ const q=q038Qualification(current);assert.equal(q.SDK.version,'1.26.10');assert.equal(q.SDK.files.length,15045);assert.equal(q.SDK.directories.length,1667);
+ assert.deepEqual(q.selected15_graph,qualification(current).selected15_graph);assert.equal(q.current_licenses.records.length,22);assert.deepEqual(currentQualificationProblems(current),[]);
+ assert.equal(q.SDK.archive.sha256,'ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5');
+ assert.equal(q.SDK.license.sha256,'911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad');
+});
+for(const version of ['1.26.9','1.26.6','1.26.11'])test('Q038 rejects a changed current Go lock version '+version,()=>{
+ const lock=JSON.parse(fs.readFileSync(path.join(current,'tools/toolchain.lock.json')));lock.toolchains.go.version=version;
+ assert.ok(currentQualificationProblems(current,{lock}).some(row=>/Q038 current exact Go1.26.10/.test(row)));
+});
+for(const [label,mutate]of[
+ ['archive digest',lock=>lock.toolchains.go.linux_amd64_archive.sha256='0'.repeat(64)],
+ ['Node identity',lock=>lock.toolchains.node.version='24.19.1'],
+ ['original Q018 provenance',lock=>delete lock.q018_qualification],
+ ['new provenance',lock=>delete lock.q038_qualification],
+])test('Q038 rejects '+label+' drift',()=>{
+ const lock=JSON.parse(fs.readFileSync(path.join(current,'tools/toolchain.lock.json')));mutate(lock);assert.ok(currentQualificationProblems(current,{lock}).length);
+});
+for(const [label,mutate]of[
+ ['Go version',licenses=>licenses.records.find(row=>row.id==='go').version='1.26.9'],
+ ['Go SPDX license',licenses=>licenses.records.find(row=>row.id==='go').license='MIT'],
+ ['runtime dependency version',licenses=>licenses.records.find(row=>row.id==='golang.org/x/text').version='v0.42.0'],
+ ['record deletion',licenses=>licenses.records.pop()],
+ ['extra record',licenses=>licenses.records.push({id:'extra',license:'MIT'})],
+])test('Q038 rejects current22 inventory '+label,()=>{
+ const licenses=JSON.parse(fs.readFileSync(path.join(current,'tools/supply-chain/licenses.json')));mutate(licenses);assert.ok(currentQualificationProblems(current,{licenses}).length);
+});
+test('Q038 complete current SDK is raw15045 and reverified around a synchronous action',()=>{
+ const selected=(process.env.PATH??'').split(path.delimiter).filter(Boolean).map(bin=>path.join(bin,'go')).find(file=>fs.existsSync(file));
+ assert.ok(selected,'actual current qualified SDK required; positive test cannot skip');const root=path.dirname(path.dirname(fs.realpathSync(selected)));
+ const proof=verifyQ021CurrentSDK(current,root);assert.deepEqual(proof,{version:'1.26.10',files:15045,directories:1667,complete_fixed_archive_identity:true});
+ let calls=0;assert.equal(withQ021VerifiedCurrentSDK(current,root,()=>++calls),1);assert.equal(calls,1);
+ assert.throws(()=>verifyQ021CurrentSDK(current,root,{}),/no caller SDK spec or options/);
+ assert.throws(()=>withQ021VerifiedCurrentSDK(current,root,()=>0,{}),/synchronous action required/);
+ assert.throws(()=>withQ021VerifiedCurrentSDK(current,root,()=>Promise.resolve(0)),/asynchronous current Go action forbidden/);
+});
+test('Q038 original681 bodies, protected667 and14+4 current source remain separately guarded',()=>{
+ const q=q038Proposal(current);assert.equal(q.baseline681.length,681);assert.equal(q.protected667.length,667);assert.equal(Q038_WORK_PATHS.length,14);assert.equal(Q038_NEW_PATHS.length,4);
+ assert.deepEqual(q038SourceProblems(current),[]);assert.deepEqual(q038RevisionProblems(current,Q038_BASELINE,{baseline:true}),[]);
+ assert.equal(q038Approved(current),true);assert.equal(q038Topology(current).problems.length,0);
+});
+test('Q038 F1 preserves the complete failed original report and unfiltered CLI data through the returned failure fields',()=>{
+ // Pure unit data, never actual Wait/CI/SDK evidence or an authorization.
+ const cli={status:1,signal:null,spawn_error:null,stdout:'{"result":"FAIL","details":["first","last"]}\n',stderr:'full diagnostic\n',parsed_report:{result:'FAIL',details:['first','last']}};
+ const primary=new Error('original validator rejected');primary.q038_original_cli=cli;
+ const combined=q038PreservedFailure('complete original entry',primary,[],[],{original_cli:cli});
+ const outcome=JSON.parse(JSON.stringify(q038OriginalFailureData(combined)));
+ assert.deepEqual(outcome.original_complete_report,cli.parsed_report);assert.deepEqual(outcome.original_cli,cli);
+ assert.deepEqual(outcome.primary_error.q038_failure.primary_error.q038_original_cli,cli);
+ assert.equal(outcome.original_cli.status,1);assert.equal(outcome.original_complete_report.result,'FAIL');
+});
+test('Q038 F2 keeps primary, postcheck and close/cleanup failures separate',()=>{
+ const failure=q038PreservedFailure('test-only aggregation',new Error('primary sentinel'),[new Error('postcheck sentinel')],[new Error('close sentinel'),new Error('cleanup sentinel')],{owned_directory_retained:true});
+ const fact=JSON.parse(JSON.stringify(q038ErrorFact(failure))).q038_failure;
+ assert.equal(fact.primary_error.message,'primary sentinel');assert.deepEqual(fact.postcheck_errors.map(row=>row.message),['postcheck sentinel']);
+ assert.deepEqual(fact.cleanup_errors.map(row=>row.message),['close sentinel','cleanup sentinel']);assert.equal(fact.details.owned_directory_retained,true);assert.equal(fact.original_failure_retained,true);
+});
+test('Q038 F2 actual full-SDK postcheck failure retains an earlier synchronous action failure',t=>{
+ const selected=(process.env.PATH??'').split(path.delimiter).filter(Boolean).map(bin=>path.join(bin,'go')).find(file=>fs.existsSync(file));assert.ok(selected);
+ const source=path.dirname(path.dirname(fs.realpathSync(selected))),spec=q038Qualification(current).SDK;
+ const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q038-negative-sdk-data-')),owner=fs.lstatSync(owned,{bigint:true}),copy=path.join(owned,'SDK');
+ // This owned negative test input is neither registered nor placed on PATH;
+ // no copied SDK program is executed. The actual current SDK remains held.
+ t.after(()=>{const after=fs.lstatSync(owned,{bigint:true});for(const key of ['dev','ino','uid','gid','mode'])assert.equal(after[key],owner[key]);fs.rmSync(owned,{recursive:true});assert.equal(fs.existsSync(owned),false);});
+ fs.mkdirSync(copy,{mode:0o700});
+ withQ021VerifiedCurrentSDK(current,source,()=>{
+  for(const relative of spec.directories.filter(row=>row!=='.').sort((a,b)=>a.split('/').length-b.split('/').length||a.localeCompare(b)))fs.mkdirSync(path.join(copy,relative),{mode:0o700});
+  for(const row of spec.files){const held=heldQ018Bytes(path.join(source,row.relative),row.bytes);assert.equal(held.sha256,row.sha256);fs.writeFileSync(path.join(copy,row.relative),held.raw,{flag:'wx',mode:row.executable?0o700:0o600});}
+ });
+ assert.throws(()=>withQ021VerifiedCurrentSDK(current,copy,()=>{fs.appendFileSync(path.join(copy,'LICENSE'),'deliberate negative-test corruption\n');throw new Error('earlier action sentinel');}),error=>{
+  const fact=q038ErrorFact(error).q038_failure;assert.equal(fact.primary_error.message,'earlier action sentinel');assert.equal(fact.postcheck_errors.length,1);assert.equal(fact.original_failure_retained,true);return true;
+ });
+});
+
+test('Q038 F2 final error data retains existing publication rollback and both close diagnostics',()=>{
+ // These are the concrete legacy attachment names, exercised through the
+ // same serializer as the final CLI. This unit data grants no actual Wait.
+ const primary=new Error('write or fsync sentinel');
+ Object.assign(primary,{q032RollbackError:'rollback sentinel',q032CloseError:'publication close sentinel',q032ReceiptCloseError:'receipt close sentinel',q032ReceiptPath:'/unit-only/receipt',q032PublicationUncertain:true,q032ReceiptCloseUncertain:true});
+ const direct=JSON.parse(JSON.stringify(q038ErrorFact(primary)));
+ const nested=JSON.parse(JSON.stringify(q038ErrorFact(q038PreservedFailure('retained primary',primary)))).q038_failure.primary_error;
+ for(const fact of [direct,nested]){
+  assert.equal(fact.message,'write or fsync sentinel');
+  assert.equal(fact.q032RollbackError,'rollback sentinel');assert.equal(fact.q032CloseError,'publication close sentinel');assert.equal(fact.q032ReceiptCloseError,'receipt close sentinel');
+  assert.equal(fact.q032ReceiptPath,'/unit-only/receipt');assert.equal(fact.q032PublicationUncertain,true);assert.equal(fact.q032ReceiptCloseUncertain,true);
+ }
+});
+
+}
+// END_Q038_TEST_ENTRY

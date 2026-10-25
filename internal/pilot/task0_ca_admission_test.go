@@ -31,7 +31,7 @@ func TestTask0CAAdmissionRejectsStaleGenerationAndUnsolicitedAuthority(t *testin
 			}
 		})
 	}
-	p := task0CAProof{CA: task0SystemCABinding{task0SystemCAPolicy, task0Q013AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}, BindingSHA: binding, ExecutableSHA: binding, Generation: generation, SetupSHA: binding, SetupBindingSHA: binding, SetupAdmitted: true, Original: task0SetupFDIdentity{1, 2}, Source: task0SetupFDIdentity{2, 3}, Materialized: task0SetupFDIdentity{3, 4}, Bytes: task0SystemCABytes, SHA256: task0SystemCASHA, Threads: 4}
+	p := task0CAProof{CA: task0SystemCABinding{task0SystemCAPolicy, task0Q036AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}, BindingSHA: binding, ExecutableSHA: binding, Generation: generation, SetupSHA: binding, SetupBindingSHA: binding, SetupAdmitted: true, Original: task0SetupFDIdentity{1, 2}, Source: task0SetupFDIdentity{2, 3}, Materialized: task0SetupFDIdentity{3, 4}, Bytes: task0SystemCABytes, SHA256: task0SystemCASHA, Threads: 4}
 	if !task0CAProofIdentities(&p) {
 		t.Fatal("three distinct bound identities rejected")
 	}

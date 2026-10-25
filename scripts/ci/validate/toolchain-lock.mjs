@@ -1,3 +1,4 @@
+import { q038Present, runQ038CurrentValidator } from '../lib/b007-toolchain-security-q018.mjs';
 import { currentQualificationProblems, historicalLockProjection, historicalLicenseInventory } from '../lib/b007-toolchain-security-q018.mjs';
 // B001 exact-toolchain lock validator, evolved by AIPT-M0-B003-SCOPE-
 // EXPANSION-001 for iteration 6a and by the AIPT-M0-B003 security
@@ -565,16 +566,16 @@ function checkRepoPins({ goVersion, nodeVersion, goMod, goSum, pkgJson, pnpmLock
     ok('go.mod pins the go directive to 1.26.x (exactly one anchored go directive)');
   }
   // go.mod must carry EXACTLY ONE anchored `toolchain` directive, and it must
-  // be exactly `toolchain go1.26.9`. EVERY anchored toolchain directive line
+  // be exactly `toolchain go1.26.10`. EVERY anchored toolchain directive line
   // is collected and counted regardless of its value, so a second/different
   // toolchain directive (or a removed one) is rejected.
   const toolchainDirectives = (goMod.match(/^[ \t]*toolchain\b[^\n]*$/gm) ?? []).map((line) => line.trim());
   if (toolchainDirectives.length !== 1) {
     fail(`go.mod must carry exactly one anchored toolchain directive, got ${toolchainDirectives.length}: ${toolchainDirectives.join(' | ') || 'none'}`);
-  } else if (toolchainDirectives[0] !== 'toolchain go1.26.9') {
-    fail(`go.mod toolchain directive must be exactly "toolchain go1.26.9", got ${JSON.stringify(toolchainDirectives[0])}`);
+  } else if (toolchainDirectives[0] !== 'toolchain go1.26.10') {
+    fail(`go.mod toolchain directive must be exactly "toolchain go1.26.10", got ${JSON.stringify(toolchainDirectives[0])}`);
   } else {
-    ok('go.mod pins toolchain go1.26.9 (exactly one anchored toolchain directive)');
+    ok('go.mod pins toolchain go1.26.10 (exactly one anchored toolchain directive)');
   }
   const closure = checkGoClosure({ goMod, goSum });
   details.push(...closure.details);
@@ -606,6 +607,7 @@ function checkRepoPins({ goVersion, nodeVersion, goMod, goSum, pkgJson, pnpmLock
 }
 
 export function run(ctx) {
+  if (q038Present(ctx.repo)) return runQ038CurrentValidator(ctx, 'toolchain-lock', () => q038CurrentPinChecks(ctx));
   const details = [];
   let pass = true;
   const ok = (msg) => details.push(`ok: ${msg}`);
@@ -1183,3 +1185,13 @@ export function run(ctx) {
 }
 
 runAsMain(import.meta.url, 'toolchain-lock', run);
+
+function q038CurrentPinChecks(ctx) {
+  const read=relative=>fs.readFileSync(path.join(ctx.repo,relative),'utf8');
+  const args={goVersion:read('.go-version').trim(),nodeVersion:read('.node-version').trim(),goMod:read('go.mod'),goSum:read('go.sum'),pkgJson:JSON.parse(read('package.json')),pnpmLockText:read('pnpm-lock.yaml')};
+  const report=checkRepoPins(args);const details=[...report.details];let pass=report.result==='PASS';
+  for(const [label,goMod]of [['historical compiler',args.goMod.replace('toolchain go1.26.10','toolchain go1.26.9')],['different compiler',args.goMod.replace('toolchain go1.26.10','toolchain go1.26.11')],['duplicate toolchain',args.goMod+'\ntoolchain go1.26.10\n']]){
+    const probe=checkRepoPins({...args,goMod});if(probe.result!=='FAIL'){pass=false;details.push('FAIL: Q038 current pin negative accepted: '+label);}else details.push('ok: Q038 current pin negative rejected: '+label);
+  }
+  return {result:pass?'PASS':'FAIL',details};
+}

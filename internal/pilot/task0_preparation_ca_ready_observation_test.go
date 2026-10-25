@@ -41,7 +41,7 @@ func TestTask0CAReadyWaitEvidenceRejectsClaimsAndPreservesFailures(t *testing.T)
 
 func TestTask0CAReadyRetirementBindsBothLayersAndCA(t *testing.T) {
 	d := func(c string) string { return strings.Repeat(c, 64) }
-	b := task0ParentBinding{PreparationSHA: d("a"), ExecutableSHA: d("b"), SystemCA: task0SystemCABinding{task0SystemCAPolicy, task0Q013AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}}
+	b := task0ParentBinding{PreparationSHA: d("a"), ExecutableSHA: d("b"), SystemCA: task0SystemCABinding{task0SystemCAPolicy, task0Q036AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}}
 	original, source, root, materialized := task0SetupFDIdentity{1, 2}, task0SetupFDIdentity{3, 4}, task0SetupFDIdentity{5, 6}, task0SetupFDIdentity{7, 8}
 	r := task0CAReadyRetirement{Schema: task0CAReadyRetirementSchema, BindingSHA: b.PreparationSHA, ExecutableSHA: b.ExecutableSHA,
 		Generation: d("c"), Nonce: d("d"), SetupSHA: d("e"), SetupBindingSHA: d("f"), CA: b.SystemCA,

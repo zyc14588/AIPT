@@ -1,0 +1,116 @@
+{
+  "schema": "aipt.public.b007-system-ca-exact-bundle-refresh-successor-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q036",
+  "state": "OWNER_AUTHORIZED_PENDING_FULL_IMPLEMENTATION_REVIEW_AND_EXACT_CI",
+  "retained_Q013_authority_sha256": "7227316d4d2a4efcbf61d957853cd5fb73c66757df765d08de1cf8dd2a497425",
+  "retained_Q014_authority_sha256": "be7639384a7621828e0a67fa23e983c4bbdbafeea426e05294d441717c3ed5ff",
+  "accepted_baseline_commit": "cc44fcf16f7f6f6a595b8933f9ab1af508a2646e",
+  "accepted_baseline_tree": "db6d5f6d4fbd1c56b47c97a297c52661a7af3d27",
+  "historical_fixed_host_CA": {
+    "path": "/etc/ssl/certs/ca-certificates.crt",
+    "bytes": 182140,
+    "sha256": "80eedd808e4cbd6fd42e125da2ea225fd1365d8e29edef8bcc45ff8bc7044ce2"
+  },
+  "new_exact_fixed_host_CA": {
+    "path": "/etc/ssl/certs/ca-certificates.crt",
+    "bytes": 180744,
+    "sha256": "235b718f4be20cac6880259e4668813550ba1255b35c03ccc66c24b2e0f87b2f"
+  },
+  "exact_installed_ca_package": "20260816ubuntu0.26.04.1",
+  "new_CA_is_one_exact_bundle_not_dynamic_system_trust": true,
+  "same_Q013_materialization_policy_and_Q014_SETUP_roles": true,
+  "old_bundle_fallback_or_bundle_allowlist": false,
+  "caller_CA_paths_env_overrides_or_skipped_hash_size_owner_checks": false,
+  "host_CA_files_mounts_or_installed_packages_mutations": false,
+  "new_parent_PREP_SETUP_bindings_must_use_new_exact_Q036_authority": true,
+  "original_authorities_bindings_images_failures_and_claims_immutable": true,
+  "public_modified_paths": [
+    "internal/pilot/task0_system_ca.go",
+    "internal/pilot/task0_system_ca_test.go",
+    "internal/pilot/task0_ca_admission_test.go",
+    "internal/pilot/task0_preparation_ca_ready_observation_test.go",
+    "internal/pilot/task0_preparation_ca_confirmed_observation_test.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/validate/workflow.mjs",
+    "docs/authority/registry/project-status.json",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs"
+  ],
+  "public_added_paths": [
+    "docs/pilot/authorities/system-ca-exact-bundle-refresh-q036.json",
+    "docs/pilot/proposals/system-ca-exact-bundle-refresh-q036.json"
+  ],
+  "baseline_source_files": 679,
+  "protected_baseline_paths": 669,
+  "candidate_source_files": 681,
+  "frozen_full_Q034_workflow_and_complete_history_replay_required": true,
+  "full_current681_source_same_original_independent_agent_and_Root_required": true,
+  "candidate_CI_jobs_required": 5,
+  "exact_normal_merge_CI_jobs_required": 5,
+  "separate_final_exact_normal_merge_Owner_approval_required": true,
+  "separate_later_exact_actual_production_Start_Owner_approval_required": true,
+  "new_native_formal_or_NONCANON_opportunities": 0,
+  "implementation_or_PR_approval_is_not_runtime_admission": true,
+  "budget_usd": "5.00",
+  "original_at_most_one_NONQUAL_DIAG_unchanged": true,
+  "QUAL": 0,
+  "original_six_formal_claims_each1": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "old_NONCANON_consumed": 1,
+  "model_API_DIAG_QUAL": 0,
+  "B007": "OPEN",
+  "all8_production_gates": "OPEN",
+  "runtime_ready": false,
+  "paid_callable": false,
+  "actual_Owner_approval": {
+    "bytes": 3659,
+    "sha256": "08bef287f9357b297be9c02fd0e27c40ea099dc05eae306969e1bb3e409711d6"
+  },
+  "owner_instruction": "批准",
+  "approval_recorded_at_utc": "2026-10-23T16:41:59.725496+00:00",
+  "approved_material": {
+    "bytes": 6705,
+    "sha256": "b0770a1e2c64b7bbe05b5f8ff0dc377a75fdabfe112450c6f4d3223d10b636bd"
+  },
+  "approved_private_plan": {
+    "bytes": 669291,
+    "sha256": "e7a9c402c7e73a1cda3da731f8621d97e104eb5a7fa89fdb56ccfe4d05b9f8ef"
+  },
+  "baseline": {
+    "commit": "cc44fcf16f7f6f6a595b8933f9ab1af508a2646e",
+    "tree": "db6d5f6d4fbd1c56b47c97a297c52661a7af3d27",
+    "parents": [
+      "d751958fd61fcf22739b3377e83001d09c0f063a",
+      "f5beb6a1ec2d9026837d8fd849ebb4e46486c024"
+    ]
+  },
+  "proposal_binding": {
+    "path": "docs/pilot/proposals/system-ca-exact-bundle-refresh-q036.json",
+    "bytes": 379485,
+    "sha256": "3f7f2c5a11411209467a1aad2547828c01d8fd04304e7a4a986aa3fcb014683e"
+  },
+  "candidate_full_review_complete": false,
+  "candidate_test_build_CI_complete": false,
+  "actual_production_Start_authorized": false,
+  "actual_Q037_test_entry_supplement_approval": {
+    "bytes": 3821,
+    "sha256": "28004a7cdcce6bdd6f5ecd306d1137464457626cc5623ea3e56a0a4543790394"
+  },
+  "approved_Q037_material": {
+    "bytes": 4116,
+    "sha256": "d63f1af144dc1de05b9a88bd181935ea6bd04c69de5e618f8d8df44b438ecfaf"
+  },
+  "approved_Q037_private_scope": {
+    "bytes": 4429,
+    "sha256": "6ccd5f6fce5e9fae506f82dcdf0ae724a494b5e6110476cb7a441a3ba6c34736"
+  },
+  "Q037_scope_supplement_decision_id": "AIPT-MVP-B007-OWNER-Q037",
+  "complete_old679_tests_and_hard_assertions_retained": true,
+  "current681_rejection_and_normal_merge_regressions_required": true
+}

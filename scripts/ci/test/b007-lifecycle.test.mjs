@@ -1,3 +1,5 @@
+import { q038ErrorFact, q038PreservedFailure, q038OriginalFailureData, Q038_AUTHORITY, Q038_PROPOSAL, Q038_BASELINE, Q038_BASELINE_TREE, Q038_WORK_PATHS, Q038_NEW_PATHS, q038Present, q038Approved, q038Proposal, q038Qualification, q038SourceProblems, q038RevisionProblems, q038LifecycleProblems, q038Topology, prepareQ038FixedCloneOrigin, runQ038OriginalTestEntry } from '../lib/b007-toolchain-security-q018.mjs';
+import { Q036_BASELINE, Q036_BASELINE_TREE, Q036_AUTHORITY, Q036_AUTHORITY_SHA, Q036_PROPOSAL, Q036_WORK_PATHS, Q036_NEW_PATHS, q036Approved, q036Proposal, q036SourceProblems, q036RevisionProblems, q036LifecycleProblems, q036Topology, prepareQ036FixedCloneOrigin, q036OriginalTestSource, cleanupQ036OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { Q034_AUTHORITY,Q034_PROPOSAL,Q034_BASELINE,Q034_BASELINE_TREE,Q034_PARENT,Q034_OBSERVER,Q034_TEST,Q034_WORK_PATHS,Q034_NEW_PATHS,q034Present,q034Approved,q034Proposal,q034SourceProblems,q034RevisionProblems,q034LifecycleProblems,q034Topology,prepareQ034FixedCloneOrigin,q034OriginalTestSource,cleanupQ034OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +12,11 @@ import { fileURLToPath } from 'node:url';
 import { BASE,Q015_GATE,Q016_AUTHORITY,Q017_AUTHORITY,Q017_FIXTURE,runApprovedPredecessor,cleanupSnapshots,START,AUTHORITY,Q002_AUTHORITY,Q002_SOURCE,Q003_AUTHORITY,Q003_ANNEX,Q004_AUTHORITY,Q004_PROPOSAL,Q005_AUTHORITY,Q009_AUTHORITY,Q009_ANNEX,Q009_REVIEW,Q009_CI,Q009_ADAPTER,Q009_GATEWAY,Q011_AUTHORITY,STATUS,MUTABLE,allowedNew,successorProblems,rows } from '../lib/b007-successor.mjs';
 import { resolveB007 } from '../lib/b007-lifecycle.mjs';
 import { inspectConstruction } from '../validate/mvp-b007.mjs';
-const q034CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q038LiveSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+if(!q038Present(q038LiveSource)){
+const q036CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+const q034CurrentSource=q036OriginalTestSource(q036CurrentSource);
+test.after(cleanupQ036OriginalTestSources);
 const q032CurrentSource=q034OriginalTestSource(q034CurrentSource);
 test.after(cleanupQ034OriginalTestSources);
 const q028CurrentSource=q032OriginalTestSource(q032CurrentSource);
@@ -629,3 +635,106 @@ test('Q034 workflow keeps the complete original675 report and every original neg
  const repo=q034Fixture(t);q034Candidate(repo);const {run}=await import('../validate/workflow.mjs');const v=run({repo});assert.equal(v.result,'PASS',JSON.stringify(v));assert.equal(v.current_workflow.source_files,679);assert.equal(v.original_complete_workflow_report.current_workflow.source_files,675);assert.equal(v.original_complete_workflow_report.original_complete_workflow_report.result,'PASS');assert.equal(v.original_validation_target.commit,Q034_BASELINE);assert.equal(v.external_github_requests,0);assert.equal(v.runtime_ready,false);
  fs.appendFileSync(path.join(repo,'.github/workflows/ci.yml'),'\n# synthetic forbidden\n');const bad=run({repo});assert.equal(bad.result,'FAIL');assert.equal(bad.original_complete_workflow_report,null);
 });
+
+// BEGIN_EXACT_Q037_Q036_TEST_ENTRY_ADDITIONS
+test('Q036 lifecycle entry retains the complete old679 lifecycle test body and hard assertions',()=>{
+ const file='scripts/ci/test/b007-lifecycle.test.mjs';
+ const old=fs.readFileSync(path.join(q034CurrentSource,file),'utf8');
+ const live=fs.readFileSync(path.join(q036CurrentSource,file),'utf8');
+ assert.equal(q034Git(q034CurrentSource,['rev-parse','HEAD']),Q036_BASELINE);
+ assert.ok(live.includes(old.slice(old.indexOf('const q032CurrentSource='))));
+});
+test('Q036 current681 topology and successor checks remain independent from the old679 fixture',()=>{
+ const p=q036Proposal(q036CurrentSource),v=q036Topology(q036CurrentSource);
+ assert.equal(p.protected669.length,669);
+ assert.deepEqual(v.problems,[]);
+ assert.deepEqual(successorProblems(q036CurrentSource),[]);
+ assert.equal(v.accepted_baseline,Q036_BASELINE);
+});
+// END_EXACT_Q037_Q036_TEST_ENTRY_ADDITIONS
+
+// Q036/Q037 current lifecycle is checked separately from every retained679 test.
+function q036LifeFixture(t) {
+ const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q036-lifecycle-')),repo=path.join(owned,'source');t.after(()=>q025LifeRetire(owned));
+ const clone=spawnSync('/usr/bin/git',['clone','--no-local','--no-checkout',q036CurrentSource,repo],{encoding:'utf8'});assert.equal(clone.error,undefined);assert.equal(clone.signal,null);assert.equal(clone.status,0,clone.stderr);
+ for(const [key,value]of [['core.hooksPath','/dev/null'],['user.name','Synthetic Q036 Probe'],['user.email','probe@example.invalid']])q034Git(repo,['config',key,value]);
+ q034Git(repo,['checkout','--detach',Q036_BASELINE]);q034Git(repo,['update-ref','refs/remotes/origin/main',Q036_BASELINE]);
+ for(const file of [...Q036_WORK_PATHS,...Q036_NEW_PATHS]){const src=path.join(q036CurrentSource,file),dst=path.join(repo,file);fs.mkdirSync(path.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);fs.chmodSync(dst,0o644);}
+ q034Git(repo,['add','--',...Q036_WORK_PATHS,...Q036_NEW_PATHS]);return repo;
+}
+function q036LifeCandidate(repo){q034Git(repo,['commit','-m','Synthetic exact Q036 Q037 candidate']);return q034Git(repo,['rev-parse','HEAD']);}
+function q036LifeMerge(repo,candidate,parents=[Q036_BASELINE,candidate],tree=q034Git(repo,['rev-parse',candidate+'^{tree}'])){return q034Git(repo,['commit-tree',tree,...parents.flatMap(v=>['-p',v]),'-m','Synthetic Q036 normal merge']);}
+test('Q036 lifecycle supplement reverses exactly to the entire accepted679 entry',()=>{
+ const old=fs.readFileSync(path.join(q034CurrentSource,'scripts/ci/test/b007-lifecycle.test.mjs'),'utf8'),live=fs.readFileSync(fileURLToPath(import.meta.url),'utf8');
+ const inverse=live.replace(live.slice(0,live.indexOf('\n')+1),'').split('\n// BEGIN_EXACT_Q037_Q036_TEST_ENTRY_ADDITIONS')[0].replace("const q036CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');\nconst q034CurrentSource=q036OriginalTestSource(q036CurrentSource);\ntest.after(cleanupQ036OriginalTestSources);","const q034CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');");assert.equal(inverse,old);
+});
+test('Q036 accepts only the exact sole-M679 candidate and identical ordered normal merge',t=>{
+ const repo=q036LifeFixture(t),candidate=q036LifeCandidate(repo);assert.deepEqual(q036RevisionProblems(repo,candidate),[]);assert.deepEqual(q036LifecycleProblems(repo),[]);assert.deepEqual(successorProblems(repo),[]);
+ const m=q036LifeMerge(repo,candidate);q034Git(repo,['checkout','--detach',m]);q034Git(repo,['update-ref','refs/remotes/origin/main',m]);assert.deepEqual(q036LifecycleProblems(repo),[]);assert.deepEqual(successorProblems(repo),[]);assert.equal(q036Topology(repo).original_Parent_or_DIAG_retry_authorized,false);
+});
+test('Q036 current SDK topology routes to the exact681 guard without rewriting historical revision semantics',t=>{
+ const repo=q036LifeFixture(t),c=q036LifeCandidate(repo);assert.deepEqual(q032SourceProblems(repo),[]);assert.equal(q032Topology(repo).candidate.commit,c);assert.equal(q034Topology(repo).candidate.commit,c);assert.ok(q034RevisionProblems(repo,c).length);assert.deepEqual(q036RevisionProblems(repo,c),[]);
+});
+test('Q036 rejects a candidate used as accepted main and an extra empty successor',t=>{
+ const repo=q036LifeFixture(t),c=q036LifeCandidate(repo);q034Git(repo,['update-ref','refs/remotes/origin/main',c]);assert.ok(q036LifecycleProblems(repo).length);q034Git(repo,['update-ref','refs/remotes/origin/main',Q036_BASELINE]);q034Git(repo,['commit','--allow-empty','-m','Synthetic forbidden successor']);assert.ok(q036LifecycleProblems(repo).length);
+});
+for(const reversed of [false,true])test('Q036 rejects '+(reversed?'reversed merge parents':'a different normal-merge tree'),t=>{
+ const repo=q036LifeFixture(t),c=q036LifeCandidate(repo),m=q036LifeMerge(repo,c,reversed?[c,Q036_BASELINE]:[Q036_BASELINE,c],reversed?undefined:Q036_BASELINE_TREE);q034Git(repo,['checkout','--detach',m]);assert.ok(q036LifecycleProblems(repo).length);
+});
+test('Q036 rejects a foreign direct parent and later accepted-merge history',t=>{
+ const repo=q036LifeFixture(t),tree=q034Git(repo,['write-tree']),foreign=q034Git(repo,['commit-tree',tree,'-p',Q034_BASELINE,'-m','Synthetic foreign baseline']);q034Git(repo,['checkout','--detach',foreign]);assert.ok(q036LifecycleProblems(repo).length);
+ q034Git(repo,['checkout','--detach',Q036_BASELINE]);q034Git(repo,['read-tree',tree]);q034Git(repo,['checkout-index','-a','-f']);const c=q036LifeCandidate(repo),m=q036LifeMerge(repo,c);q034Git(repo,['checkout','--detach',m]);q034Git(repo,['commit','--allow-empty','-m','Synthetic later accepted merge history']);q034Git(repo,['update-ref','refs/remotes/origin/main',q034Git(repo,['rev-parse','HEAD'])]);assert.ok(q036LifecycleProblems(repo).length);
+});
+test('Q036 rejects changed protected source committed with the candidate',t=>{
+ const repo=q036LifeFixture(t),file='.github/workflows/ci.yml';fs.appendFileSync(path.join(repo,file),'\n# forbidden\n');q034Git(repo,['add','--',file]);const c=q036LifeCandidate(repo);assert.ok(q036RevisionProblems(repo,c).length);assert.ok(q036SourceProblems(repo).length);
+});
+test('Q036 rejects working source drift after the exact candidate',t=>{
+ const repo=q036LifeFixture(t);q036LifeCandidate(repo);fs.appendFileSync(path.join(repo,'scripts/ci/validate/workflow.mjs'),'\n// forbidden\n');assert.ok(q036SourceProblems(repo).length);
+});
+test('Q036 current681 workflow executes the complete original679 report and all nested probes',async t=>{
+ const repo=q036LifeFixture(t);q036LifeCandidate(repo);const {run}=await import('../validate/workflow.mjs');const good=run({repo});assert.equal(good.result,'PASS',JSON.stringify(good));assert.equal(good.current_workflow.source_files,681);assert.equal(good.original_validation_target.commit,Q036_BASELINE);assert.equal(good.original_complete_workflow_report.current_workflow.source_files,679);assert.equal(good.original_complete_workflow_report.original_complete_workflow_report.current_workflow.source_files,675);assert.equal(good.original_complete_workflow_report.original_complete_workflow_report.original_complete_workflow_report.result,'PASS');assert.equal(good.external_github_requests,0);assert.equal(good.runtime_ready,false);assert.equal(good.paid_callable,false);
+ fs.appendFileSync(path.join(repo,'.github/workflows/ci.yml'),'\n# forbidden\n');const bad=run({repo});assert.equal(bad.result,'FAIL');assert.equal(bad.original_complete_workflow_report,null);
+});
+
+}else{
+// Q038_CURRENT685_TESTS
+const current=q038LiveSource;
+test('Q038 replays every original681 lifecycle test at exact31ce without filtering',t=>{
+ const report=runQ038OriginalTestEntry(current,'scripts/ci/test/b007-lifecycle.test.mjs');
+ assert.equal(report.result,'PASS');assert.equal(report.commit,Q038_BASELINE);assert.equal(report.tree,Q038_BASELINE_TREE);assert.equal(report.historical_go,'1.26.9');
+ assert.match(report.stdout,/^# tests 280$/m);assert.match(report.stdout,/^# pass 280$/m);assert.equal(report.stderr,'');t.diagnostic(report.stdout);
+});
+test('Q038 only prepares original13 plus the single exact failed31ce target without source drift',()=>{
+ const result=prepareQ038FixedCloneOrigin(current);assert.equal(result.fixed_refs.length,14);assert.equal(result.source_HEAD_tree_index_origin_main_unchanged,true);
+ const last=result.fixed_refs.at(-1);assert.equal(last.commit,Q038_BASELINE);assert.equal(last.tree,Q038_BASELINE_TREE);
+ assert.throws(()=>prepareQ038FixedCloneOrigin(current,{}),/no caller targets/);
+});
+function q038Fixture(t) {
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q038-current685-rejection-'));const s=fs.lstatSync(root,{bigint:true});
+ t.after(()=>{const held=fs.lstatSync(root,{bigint:true});for(const key of ['dev','ino','uid','gid','mode'])assert.equal(held[key],s[key]);fs.rmSync(root,{recursive:true});});
+ const child=spawnSync('/usr/bin/git',['clone','--no-local',current,root],{encoding:'utf8'});assert.equal(child.error,undefined);assert.equal(child.signal,null);assert.equal(child.status,0,child.stderr);
+ const git=args=>{const r=spawnSync('/usr/bin/git',['--no-optional-locks','-C',root,...args],{encoding:'utf8'});assert.equal(r.error,undefined);assert.equal(r.signal,null);assert.equal(r.status,0,r.stderr);return r.stdout.trim();};
+ git(['update-ref','refs/remotes/origin/main','cc44fcf16f7f6f6a595b8933f9ab1af508a2646e']);git(['config','user.name','Q038 Synthetic Source Probe']);git(['config','user.email','probe@example.invalid']);
+ return {root,git};
+}
+for(const relative of ['go.sum','internal/pilot/task0_system_ca.go','.github/workflows/ci.yml','docs/pilot/authorities/system-ca-exact-bundle-refresh-q036.json'])test('Q038 current685 rejects protected bytes at '+relative,t=>{
+ const {root}=q038Fixture(t);fs.appendFileSync(path.join(root,relative),'\n');assert.ok(q038SourceProblems(root).length);
+});
+for(const relative of ['.go-version','internal/toolchainsmoke/toolchainsmoke_test.go',Q038_AUTHORITY,Q038_PROPOSAL])test('Q038 current685 rejects altered exact admitted bytes at '+relative,t=>{
+ const {root}=q038Fixture(t);fs.appendFileSync(path.join(root,relative),'\n');assert.ok(q038SourceProblems(root).length);
+});
+test('Q038 rejects an additional current source path',t=>{
+ const {root}=q038Fixture(t);fs.writeFileSync(path.join(root,'unapproved-current-source.txt'),'extra\n');assert.ok(q038SourceProblems(root).some(row=>/exact685 working source set changed/.test(row)));
+});
+test('Q038 rejects a second candidate successor even with the same complete tree',t=>{
+ const {root,git}=q038Fixture(t);git(['commit','--allow-empty','-m','Synthetic forbidden extra successor']);assert.ok(q038Topology(root).problems.length);
+});
+test('Q038 accepts only ordered normal merge parents and identical candidate tree',t=>{
+ const {root,git}=q038Fixture(t),candidate=git(['rev-parse','HEAD']),tree=git(['rev-parse','HEAD^{tree}']);
+ const make=parents=>{const r=spawnSync('/usr/bin/git',['-C',root,'commit-tree',tree,...parents.flatMap(p=>['-p',p]),'-m','Synthetic Q038 merge topology probe'],{encoding:'utf8'});assert.equal(r.error,undefined);assert.equal(r.signal,null);assert.equal(r.status,0,r.stderr);return r.stdout.trim();};
+ const merge=make(['cc44fcf16f7f6f6a595b8933f9ab1af508a2646e',candidate]);git(['reset','--hard',merge]);git(['update-ref','refs/remotes/origin/main',merge]);assert.deepEqual(q038LifecycleProblems(root),[]);
+ const reversed=make([candidate,'cc44fcf16f7f6f6a595b8933f9ab1af508a2646e']);git(['reset','--hard',reversed]);git(['update-ref','refs/remotes/origin/main',reversed]);assert.ok(q038Topology(root).problems.length);
+});
+
+}
+// END_Q038_TEST_ENTRY

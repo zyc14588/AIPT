@@ -40,7 +40,7 @@ func TestTask0SealedCASourceAcceptsAnonymousMemfdMetadataOnly(t *testing.T) {
 }
 
 func TestTask0CAContractsRejectSourceAndSetupPolicySubstitution(t *testing.T) {
-	good := task0SystemCABinding{task0SystemCAPolicy, task0Q013AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}
+	good := task0SystemCABinding{task0SystemCAPolicy, task0Q036AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}
 	if !task0SystemCABindingValid(good) {
 		t.Fatal("accepted composite policies rejected")
 	}
@@ -156,5 +156,24 @@ func TestTask0ThreadReadbackBindsTheAuthenticatedObservationDomain(t *testing.T)
 	mixed := strings.Replace(outer, "Uid:\t1000\t1000\t1000\t1000", "Uid:\t1000\t0\t1000\t1000", 1)
 	if task0ThreadStatusValid([]byte(mixed), 0, 1000, 1000) {
 		t.Fatal("mixed mapped credentials accepted")
+	}
+}
+
+func TestTask0CARefreshRejectsHistoricalAuthorityAndSize(t *testing.T) {
+	legacy := task0SystemCABinding{task0SystemCAPolicy, task0Q013AuthoritySHA, task0SetupPolicy, task0Q014AuthoritySHA}
+	if task0SystemCABindingValid(legacy) {
+		t.Fatal("historical CA authority substituted for exact refreshed authority")
+	}
+	legacyOriginal := syscall.Stat_t{Uid: 0, Mode: syscall.S_IFREG | 0644, Nlink: 1, Size: 182140}
+	if task0OriginalCAMetadata(legacyOriginal) {
+		t.Fatal("historical CA length accepted by refreshed host original contract")
+	}
+	f, err := task0SealedBytes(make([]byte, 182140))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if task0SealedCAMetadata(f, uint32(os.Geteuid())) {
+		t.Fatal("historical CA length accepted as refreshed sealed source")
 	}
 }
