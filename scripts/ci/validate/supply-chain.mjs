@@ -1,3 +1,4 @@
+import { q040Present, runQ040CurrentValidator } from '../lib/b007-toolchain-security-q018.mjs';
 import { q038Present, runQ038CurrentValidator, inspectQ038OriginPolicy } from '../lib/b007-toolchain-security-q018.mjs';
 import { currentQualificationProblems, historicalLockProjection, historicalLicenseInventory } from '../lib/b007-toolchain-security-q018.mjs';
 // AIPT supply-chain validator (B001 foundation, evolved by B002 iteration 4,
@@ -1109,6 +1110,7 @@ function checkToolchainLockObject(toolchainLock) {
 }
 
 export function run(ctx) {
+  if (q040Present(ctx.repo)) return runQ040CurrentValidator(ctx, 'supply-chain', () => q038CurrentSupplyChecks(ctx));
   if (q038Present(ctx.repo)) return runQ038CurrentValidator(ctx, 'supply-chain', () => q038CurrentSupplyChecks(ctx));
   const details = [];
   let pass = true;

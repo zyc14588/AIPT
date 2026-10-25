@@ -1,3 +1,4 @@
+import { Q040_AUTHORITY, Q040_PROPOSAL, Q040_BASELINE, Q040_BASELINE_TREE, Q041_LIFECYCLE_HEAD, Q040_WORK_PATHS, Q040_NEW_PATHS, q040Present, q040Approved, q040Proposal, q040SourceProblems, q040RevisionProblems, q040Topology, q040LifecycleProblems, prepareQ040FixedCloneOrigin, runQ040OriginalEntry } from '../lib/b007-toolchain-security-q018.mjs';
 import { q038ErrorFact, q038PreservedFailure, q038OriginalFailureData, Q038_AUTHORITY, Q038_PROPOSAL, Q038_BASELINE, Q038_BASELINE_TREE, Q038_WORK_PATHS, Q038_NEW_PATHS, q038Present, q038Approved, q038Proposal, q038Qualification, q038SourceProblems, q038RevisionProblems, q038LifecycleProblems, q038Topology, prepareQ038FixedCloneOrigin, runQ038OriginalTestEntry } from '../lib/b007-toolchain-security-q018.mjs';
 import { Q036_BASELINE, Q036_BASELINE_TREE, Q036_AUTHORITY, Q036_AUTHORITY_SHA, Q036_PROPOSAL, Q036_WORK_PATHS, Q036_NEW_PATHS, q036Approved, q036Proposal, q036SourceProblems, q036RevisionProblems, q036LifecycleProblems, q036Topology, prepareQ036FixedCloneOrigin, q036OriginalTestSource, cleanupQ036OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { Q034_AUTHORITY,Q034_PROPOSAL,Q034_BASELINE,Q034_BASELINE_TREE,Q034_PARENT,Q034_OBSERVER,Q034_TEST,Q034_WORK_PATHS,Q034_NEW_PATHS,q034Present,q034Approved,q034Proposal,q034SourceProblems,q034RevisionProblems,q034LifecycleProblems,q034Topology,prepareQ034FixedCloneOrigin,q034OriginalTestSource,cleanupQ034OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
@@ -13,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { Q018_AUTHORITY,Q018_AUTHORITY_SHA,Q018_QUALIFICATION,Q018_QUALIFICATION_SHA,Q018_CURRENT_GATE_SHA,Q018_MODIFIED_PATHS,Q018_NEW_PATHS,Q018_ROUTES,qualification,currentQualificationProblems,historicalLockProjection,historicalLicenseInventory,classifyQ018OriginEvidence,heldQ018Bytes,verifySDK,fixedRouteTarget,historicalEnvironment,Q019_AUTHORITY,Q019_PROPOSAL,Q021_AUTHORITY,Q021_PROPOSAL,q021Approved,verifyQ021CurrentSDK,withQ021VerifiedCurrentSDK,prepareQ021FixedCloneOrigins, Q022_AUTHORITY, Q022_PROPOSAL, Q022_WORK_PATHS, Q022_NEW_PATHS, Q022_BASELINE, q022Approved, q022SourceProblems, q022RevisionProblems, prepareQ022FixedCloneOrigin, q022OriginalTestSource, cleanupQ022OriginalTestSources, Q023_AUTHORITY, Q023_PROPOSAL, Q023_BASELINE, Q023_BASELINE_TREE, Q023_WORK_PATHS, Q023_NEW_PATHS, q023Approved, q023Proposal, q023SourceProblems, q023RevisionProblems, q023LifecycleProblems, prepareQ023FixedCloneOrigin, q023OriginalTestSource, cleanupQ023OriginalTestSources, runQ023FixedP1Reverification, q023FixedP1ReportProblems, Q024_AUTHORITY, Q024_PROPOSAL, Q024_BASELINE, Q024_BASELINE_TREE, Q024_ORIGINAL_CANDIDATE, Q024_TEST, Q024_WORK_PATHS, Q024_NEW_PATHS, q024Approved, q024Proposal, q024SourceProblems, q024RevisionProblems, q024LifecycleProblems, prepareQ024FixedCloneOrigin, q024OriginalTestSource, cleanupQ024OriginalTestSources, Q025_AUTHORITY, Q025_PROPOSAL, Q025_BASELINE, Q025_BASELINE_TREE, Q025_PARENT, Q025_TEST, Q025_WORK_PATHS, Q025_NEW_PATHS, q025Approved, q025Proposal, q025SourceProblems, q025RevisionProblems, q025LifecycleProblems, q025Topology, prepareQ025FixedCloneOrigin, q025OriginalTestSource, cleanupQ025OriginalTestSources, Q026_AUTHORITY, Q026_PROPOSAL, Q026_BASELINE, Q026_BASELINE_TREE, Q026_PARENT, Q026_OBSERVER, Q026_TEST, Q026_WORK_PATHS, Q026_NEW_PATHS, q026Approved, q026Proposal, q026SourceProblems, q026RevisionProblems, q026LifecycleProblems, q026Topology, prepareQ026FixedCloneOrigin, q026OriginalTestSource, cleanupQ026OriginalTestSources, Q027_AUTHORITY, Q027_PROPOSAL, Q027_BASELINE, Q027_BASELINE_TREE, Q027_PARENT, Q027_OBSERVER, Q027_TEST, Q027_WORK_PATHS, Q027_NEW_PATHS, q027Approved, q027Proposal, q027SourceProblems, q027RevisionProblems, q027LifecycleProblems, q027Topology, prepareQ027FixedCloneOrigin, q027OriginalTestSource, cleanupQ027OriginalTestSources, Q028_AUTHORITY, Q028_PROPOSAL, Q028_BASELINE, Q028_BASELINE_TREE, Q028_PARENT, Q028_OBSERVER, Q028_TEST, Q028_WORK_PATHS, Q028_NEW_PATHS, q028Approved, q028Proposal, q028SourceProblems, q028RevisionProblems, q028LifecycleProblems, q028Topology, prepareQ028FixedCloneOrigin, q028OriginalTestSource, cleanupQ028OriginalTestSources, Q032_AUTHORITY, Q032_PROPOSAL, Q032_BASELINE, Q032_BASELINE_TREE, Q032_WORK_PATHS, Q032_NEW_PATHS, q032Present, q032Approved, q032Proposal, q032SourceProblems, q032RevisionProblems, q032LifecycleProblems, q032Topology, prepareQ032FixedCloneOrigin, q032OriginalTestSource, cleanupQ032OriginalTestSources, prepareQ032CurrentSDK, q032CurrentGoVersion } from '../lib/b007-toolchain-security-q018.mjs';
 import { FIXED_ORIGIN_FINDING } from '../lib/b007-fixed-origin-policy-q015.mjs';
 import {successorProblems as q025SuccessorProblems,cleanupSnapshots as q025CleanupPredecessors} from '../lib/b007-successor.mjs';
+const q040LiveSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+if(!q040Present(q040LiveSource)){
 const q038LiveSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 if(!q038Present(q038LiveSource)){
 const q036CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
@@ -1227,3 +1230,28 @@ test('Q038 F2 final error data retains existing publication rollback and both cl
 
 }
 // END_Q038_TEST_ENTRY
+
+}else{
+// Q040_CURRENT687_TESTS
+const current=q040LiveSource;
+test('Q040 replays the complete original685 SDK entry at exactfdf with all nested original tests',t=>{
+ const report=runQ040OriginalEntry(current,'scripts/ci/test/b007-toolchain-security-q018.test.mjs',{test:true}).value;
+ assert.equal(report.result,'PASS');assert.equal(report.commit,Q040_BASELINE);assert.equal(report.origin_main,Q040_BASELINE);assert.equal(report.tree,Q040_BASELINE_TREE);
+ assert.match(report.stdout,/^# tests 20$/m);assert.match(report.stdout,/^# pass 20$/m);assert.equal(report.stderr,'');t.diagnostic(report.stdout);
+});
+test('Q040 current687 and original685 have distinct complete byte and mode guards',()=>{
+ const q=q040Proposal(current);assert.equal(q.baseline685.length,685);assert.equal(q.protected675.length,675);assert.equal(Q040_WORK_PATHS.length,10);assert.equal(Q040_NEW_PATHS.length,2);
+ assert.equal(q040Approved(current),true);assert.deepEqual(q040SourceProblems(current),[]);assert.deepEqual(q040RevisionProblems(current,Q040_BASELINE,{baseline:true}),[]);
+ assert.equal(q.lifecycle_replay_context.head,Q041_LIFECYCLE_HEAD);assert.equal(q.lifecycle_replay_context.origin_main,'cc44fcf16f7f6f6a595b8933f9ab1af508a2646e');
+ assert.deepEqual(currentQualificationProblems(current),[]);assert.equal(q038Qualification(current).SDK.version,'1.26.10');
+});
+test('Q040 current complete Go10 SDK remains reverified around synchronous current actions',()=>{
+ const selected=(process.env.PATH??'').split(path.delimiter).filter(Boolean).map(bin=>path.join(bin,'go')).find(file=>fs.existsSync(file));assert.ok(selected);
+ const root=path.dirname(path.dirname(fs.realpathSync(selected)));
+ assert.deepEqual(verifyQ021CurrentSDK(current,root),{version:'1.26.10',files:15045,directories:1667,complete_fixed_archive_identity:true});
+ let calls=0;assert.equal(withQ021VerifiedCurrentSDK(current,root,()=>++calls),1);assert.equal(calls,1);
+ assert.throws(()=>withQ021VerifiedCurrentSDK(current,root,()=>Promise.resolve(0)),/asynchronous current Go action forbidden/);
+});
+
+}
+// END_Q040_TEST_ENTRY
