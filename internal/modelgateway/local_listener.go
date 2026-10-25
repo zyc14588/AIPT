@@ -460,6 +460,23 @@ func processGroupID(pid int) (int, error) {
 	return group, nil
 }
 
+// vanishedOtherProcessGroupStatRead recognizes only a completed read of a
+// different process's exact proc stat entry that the kernel says no longer
+// exists. The launched process and every other path, operation, or error still
+// require the original positive ownership proof or fail closed.
+func vanishedOtherProcessGroupStatRead(pid, expectedPID int, err error) bool {
+	if pid <= 0 || expectedPID <= 0 || pid == expectedPID {
+		return false
+	}
+	pathError, ok := err.(*os.PathError)
+	if !ok || pathError == nil || pathError.Op != "read" ||
+		pathError.Path != fmt.Sprintf("/proc/%d/stat", pid) {
+		return false
+	}
+	errno, ok := pathError.Err.(syscall.Errno)
+	return ok && errno == syscall.ESRCH
+}
+
 func managedProcessGroupSocketOwners(expectedPID int, inode string) ([]int, error) {
 	wantUID, err := processRealUID(expectedPID)
 	if err != nil {
@@ -491,7 +508,7 @@ func managedProcessGroupSocketOwners(expectedPID int, inode string) ([]int, erro
 		}
 		group, err := processGroupID(pid)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if os.IsNotExist(err) || vanishedOtherProcessGroupStatRead(pid, expectedPID, err) {
 				continue
 			}
 			return nil, err

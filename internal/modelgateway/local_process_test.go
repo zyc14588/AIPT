@@ -708,6 +708,13 @@ func TestManagedListenerSnapshotStartupTransitionIsRevalidated(t *testing.T) {
 	if _, err := verifyManagedListenerOwnershipFromSockets(process, port, socketsBeforeBind); !errors.As(err, &secondOwnership) || errors.Is(err, errManagedListenerNotReady) {
 		t.Fatalf("a second owned TCP listener was not rejected: %v", err)
 	}
+	// Hold only this live direct child's stat entry across its real Wait. This
+	// creates an actual kernel ESRCH, without replacing /proc or its readers.
+	procStat, err := os.Open(fmt.Sprintf("/proc/%d/stat", process.pid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = procStat.Close() })
 	request("STOP", "STOPPED")
 	err = command.Wait()
 	waited = command.ProcessState != nil
@@ -715,6 +722,45 @@ func TestManagedListenerSnapshotStartupTransitionIsRevalidated(t *testing.T) {
 		t.Fatalf("AIPT_TEST_LISTENER_SNAPSHOT_HELPER_WAIT_FAIL normal_stop wait=%v state=%v", err, command.ProcessState)
 	}
 	t.Log("AIPT_TEST_LISTENER_SNAPSHOT_HELPER_WAIT_PASS native_Wait=true state_present=true")
+	var statBytes [4096]byte
+	_, goneStatErr := procStat.Read(statBytes[:])
+	if !vanishedOtherProcessGroupStatRead(process.pid, os.Getpid(), goneStatErr) {
+		t.Fatalf("actual reaped-child stat read was not exact ESRCH: %T %v", goneStatErr, goneStatErr)
+	}
+	if vanishedOtherProcessGroupStatRead(process.pid, process.pid, goneStatErr) {
+		t.Fatal("expected launched PID's vanished stat was accepted")
+	}
+	statPath := fmt.Sprintf("/proc/%d/stat", process.pid)
+	var typedNilPathError *os.PathError
+	for _, rejected := range []struct {
+		name string
+		pid  int
+		err  error
+	}{
+		{"nil", process.pid, nil},
+		{"typed-nil-path-error", process.pid, typedNilPathError},
+		{"raw-errno-without-path", process.pid, syscall.ESRCH},
+		{"wrapped-path-error", process.pid, fmt.Errorf("wrapped: %w", goneStatErr)},
+		{"open-operation", process.pid, &os.PathError{Op: "open", Path: statPath, Err: syscall.ESRCH}},
+		{"status-path", process.pid, &os.PathError{Op: "read", Path: fmt.Sprintf("/proc/%d/status", process.pid), Err: syscall.ESRCH}},
+		{"fd-path", process.pid, &os.PathError{Op: "read", Path: fmt.Sprintf("/proc/%d/fd", process.pid), Err: syscall.ESRCH}},
+		{"another-pid-path", process.pid + 1, goneStatErr},
+		{"zero-pid", 0, goneStatErr},
+		{"EACCES", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EACCES}},
+		{"EPERM", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EPERM}},
+		{"EIO", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EIO}},
+		{"EINTR", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EINTR}},
+		{"ENOENT-not-new-exception", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.ENOENT}},
+		{"joined-errno", process.pid, &os.PathError{Op: "read", Path: statPath, Err: errors.Join(syscall.ESRCH, syscall.EACCES)}},
+	} {
+		if vanishedOtherProcessGroupStatRead(rejected.pid, os.Getpid(), rejected.err) {
+			t.Fatalf("non-exact process-group stat error was accepted: %s", rejected.name)
+		}
+	}
+	if vanishedOtherProcessGroupStatRead(process.pid, 0, goneStatErr) {
+		t.Fatal("invalid expected PID was accepted")
+	}
+	t.Log("AIPT_TEST_GONE_OTHER_STAT_READ_ESRCH_PASS real_kernel=true actual_Wait=true")
 	if err := process.requireAlive(); err == nil {
 		t.Fatal("exited snapshot helper retained a live process-generation identity")
 	}

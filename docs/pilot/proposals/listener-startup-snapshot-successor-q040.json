@@ -1,5 +1,5 @@
 {
-  "schema": "aipt.public.Q040-Q041.bounded-listener-startup-proposal/v1",
+  "schema": "aipt.public.Q040-Q041-Q042.bounded-listener-startup-proposal/v1",
   "baseline": {
     "commit": "fdf9b1a0302dfce4c959c968848737522d426406",
     "tree": "735bc80b7c2cd7cc4f14d9b3a92ee7c544145c07",
@@ -9551,7 +9551,7 @@
   "maximum_linear_candidates": 3,
   "maximum_modified": 10,
   "minimum_original_protected": 675,
-  "runtime_mechanism": "One bounded confirmation of same selected tcp4/127.0.0.1 inode after first PID FD snapshot missed it; fresh PID FD and full TCP table; all existing unique listener/inode/PID/process-group/live generation/HTTP-before-after positive proof remains. No generalized retry, NotReady promotion, error-ignore or protocol change.",
+  "runtime_mechanism": "One bounded same-inode startup confirmation as Q040; additionally only Q042 accepts a positive nonexpected PID direct *os.PathError read of its exact /proc/<pid>/stat with raw syscall.Errno ESRCH as a disappeared scan item. Expected PID, other operations/paths/errors, UID/FD reads and all original positive PIDFD, listener, inode, process-group and HTTP ownership proofs remain fail closed. No generalized retry, NotReady promotion or protocol change.",
   "runtime_patch_sha256": "6194fb174b9d5c1ff6b7723ce0a01e36d4547f23e999cb55776250345dbc171a",
   "preserved_original_library_sha256": "6d40f134c28bf3ed54ffcf2b344b4c0a852916aca49ea418e7e86d4b4b4909f6",
   "preserved_test_entries": [
@@ -9617,5 +9617,71 @@
   "model_API_DIAG_QUAL": 0,
   "new_native_formal_NONCANON_credits": 0,
   "runtime_ready": false,
-  "paid_callable": false
+  "paid_callable": false,
+  "runtime_patch_scope": "runtime_patch_sha256 preserves the ORIGINAL_Q040_INODE_CONFIRMATION_PATCH_ONLY; the exact Q042 delta and admitted runtime source bodies are bound separately in Q042.",
+  "Q042": {
+    "decision_id": "AIPT-MVP-B007-OWNER-Q042",
+    "actual_Owner_approval": {
+      "bytes": 4910,
+      "sha256": "c1c063d1d857fb101fa11196872d7ebf05850d9e5b1e2026ed891a47f7ffcfe6",
+      "scope": "ACTUAL_Q042_EXACT_NONOWNER_STAT_READ_ESRCH_SUPPLEMENT"
+    },
+    "approved_material": {
+      "bytes": 9015,
+      "sha256": "317a2100d8b6f3dc73a7a7a56ed678fea33a3db45a03b5d2f00977bd9d300450",
+      "scope": "EXACT_Q042_MATERIAL003_SIX_EXISTING_CARRIERS"
+    },
+    "approved_contract": {
+      "bytes": 10155,
+      "sha256": "46afff710550978cf5fe18dfa5b6e2d0e670ad5ceedd9369d243ca94ce452f2f",
+      "scope": "EXACT_Q042_CONTRACT003"
+    },
+    "exact_two_Go_patch": {
+      "bytes": 4619,
+      "sha256": "acc081df0dce8b8b6171d175710164833bd451735e4b09b356ae85dd6ce5898c",
+      "scope": "EXACT_UNCHANGED_TWO_GO_C2_TO_C3_DELTA"
+    },
+    "exact_runtime_sources": [
+      {
+        "path": "internal/modelgateway/local_listener.go",
+        "bytes": 17513,
+        "sha256": "8b4570853dbf49a559f7cf0ff926945b8b3a18a00eb639ea81f0cd79eb98230f"
+      },
+      {
+        "path": "internal/modelgateway/local_process_test.go",
+        "bytes": 46295,
+        "sha256": "ac37eb0f5839caaf69d68144ef1b36f54eb3aa48a982e3f6aac052720c4c301c"
+      }
+    ],
+    "only_callsite": "managedProcessGroupSocketOwners -> processGroupID(pid) error branch",
+    "only_positive_nonexpected_PID_direct_read_stat_raw_ESRCH": true,
+    "outer_error_type": "*os.PathError",
+    "operation": "read",
+    "path": "/proc/<pid>/stat",
+    "inner_error_type": "syscall.Errno",
+    "errno": 3,
+    "errno_name": "ESRCH",
+    "expected_PID_and_all_other_errors_reject": true,
+    "UID_and_FD_reads_and_existing_IsNotExist_branch_unchanged": true,
+    "all_original_positive_PIDFD_listener_inode_process_group_HTTP_proofs_required": true,
+    "same_pipe_real_kernel_ESRCH_after_own_child_actual_Wait_regression_required": true,
+    "no_general_retry_NotReady_promotion_protocol_change_or_proc_hook": true,
+    "relative_C2_exact_six_paths": [
+      "internal/modelgateway/local_listener.go",
+      "internal/modelgateway/local_process_test.go",
+      "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+      "docs/pilot/authorities/listener-startup-snapshot-successor-q040.json",
+      "docs/pilot/proposals/listener-startup-snapshot-successor-q040.json",
+      "docs/authority/registry/project-status.json"
+    ],
+    "registry_only_entry_path": [
+      "repositories",
+      "AIPT",
+      "mvp_b007",
+      "q040_bounded_listener_startup_successor"
+    ],
+    "only_final_C3_supplement_with_sole_C2_parent": "da8d41fccfe586803018bd12ed1950b78b12a07a",
+    "maximum_linear_candidates_unchanged": 3,
+    "all_Q040_Q041_other_rules_full_QA_HIGH_and_separate_merge_Start_required": true
+  }
 }
