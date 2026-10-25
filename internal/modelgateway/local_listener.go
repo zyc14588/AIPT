@@ -166,6 +166,20 @@ func verifyManagedListenerOwnership(process *managedProcessIdentity, selectedPor
 	if err != nil {
 		return managedListenerIdentity{}, ownershipMismatch("launched process sockets unavailable")
 	}
+	return verifyManagedListenerOwnershipFromSockets(process, selectedPort, processSockets)
+}
+
+// Complete a real PID socket snapshot with the kernel listener table. Keeping
+// this boundary separate allows a real pipe-controlled startup transition to
+// exercise the same production path without substituting /proc or its readers.
+func verifyManagedListenerOwnershipFromSockets(process *managedProcessIdentity, selectedPort int, processSockets map[string]bool) (managedListenerIdentity, error) {
+	if process == nil || selectedPort < 1 || selectedPort > 65535 {
+		return managedListenerIdentity{}, ownershipMismatch("invalid process or port identity")
+	}
+	if err := process.requireAlive(); err != nil {
+		return managedListenerIdentity{}, err
+	}
+	pid := process.pid
 	listeners, err := procTCPListeners()
 	if err != nil {
 		return managedListenerIdentity{}, ownershipMismatch("kernel listener table unavailable")
@@ -178,6 +192,37 @@ func verifyManagedListenerOwnership(process *managedProcessIdentity, selectedPor
 		}
 		if processSockets[listener.inode] {
 			owned = append(owned, listener)
+		}
+	}
+	// A listener can be created after the PID FD scan and before the TCP scan.
+	// Confirm that one exact observed inode once, then re-read the TCP table.
+	// This grants no readiness credit until every original ownership check passes.
+	if len(selected) == 1 && len(owned) == 0 &&
+		selected[0].table == "tcp" && selected[0].address == "0100007F" {
+		observedInode := selected[0].inode
+		if err := process.requireAlive(); err != nil {
+			return managedListenerIdentity{}, err
+		}
+		confirmedSockets, err := processSocketInodes(pid)
+		if err != nil || !confirmedSockets[observedInode] {
+			return managedListenerIdentity{}, ownershipMismatch("observed listener is not owned by the launched process")
+		}
+		confirmedListeners, err := procTCPListeners()
+		if err != nil {
+			return managedListenerIdentity{}, ownershipMismatch("kernel listener table unavailable")
+		}
+		processSockets = confirmedSockets
+		selected, owned = selected[:0], owned[:0]
+		for _, listener := range confirmedListeners {
+			if listener.port == selectedPort {
+				selected = append(selected, listener)
+			}
+			if processSockets[listener.inode] {
+				owned = append(owned, listener)
+			}
+		}
+		if len(selected) != 1 || selected[0].inode != observedInode {
+			return managedListenerIdentity{}, ownershipMismatch("selected listener changed during ownership confirmation")
 		}
 	}
 	if len(selected) == 0 && len(owned) == 0 {
@@ -415,6 +460,23 @@ func processGroupID(pid int) (int, error) {
 	return group, nil
 }
 
+// vanishedOtherProcessGroupStatRead recognizes only a completed read of a
+// different process's exact proc stat entry that the kernel says no longer
+// exists. The launched process and every other path, operation, or error still
+// require the original positive ownership proof or fail closed.
+func vanishedOtherProcessGroupStatRead(pid, expectedPID int, err error) bool {
+	if pid <= 0 || expectedPID <= 0 || pid == expectedPID {
+		return false
+	}
+	pathError, ok := err.(*os.PathError)
+	if !ok || pathError == nil || pathError.Op != "read" ||
+		pathError.Path != fmt.Sprintf("/proc/%d/stat", pid) {
+		return false
+	}
+	errno, ok := pathError.Err.(syscall.Errno)
+	return ok && errno == syscall.ESRCH
+}
+
 func managedProcessGroupSocketOwners(expectedPID int, inode string) ([]int, error) {
 	wantUID, err := processRealUID(expectedPID)
 	if err != nil {
@@ -446,7 +508,7 @@ func managedProcessGroupSocketOwners(expectedPID int, inode string) ([]int, erro
 		}
 		group, err := processGroupID(pid)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if os.IsNotExist(err) || vanishedOtherProcessGroupStatRead(pid, expectedPID, err) {
 				continue
 			}
 			return nil, err

@@ -1,3 +1,4 @@
+import { q040Present, runQ040CurrentValidator } from '../lib/b007-toolchain-security-q018.mjs';
 import { q038Present, runQ038CurrentValidator } from '../lib/b007-toolchain-security-q018.mjs';
 import { currentQualificationProblems, historicalLockProjection, historicalLicenseInventory } from '../lib/b007-toolchain-security-q018.mjs';
 // B001 exact-toolchain lock validator, evolved by AIPT-M0-B003-SCOPE-
@@ -607,6 +608,7 @@ function checkRepoPins({ goVersion, nodeVersion, goMod, goSum, pkgJson, pnpmLock
 }
 
 export function run(ctx) {
+  if (q040Present(ctx.repo)) return runQ040CurrentValidator(ctx, 'toolchain-lock', () => q038CurrentPinChecks(ctx));
   if (q038Present(ctx.repo)) return runQ038CurrentValidator(ctx, 'toolchain-lock', () => q038CurrentPinChecks(ctx));
   const details = [];
   let pass = true;

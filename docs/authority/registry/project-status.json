@@ -1,6 +1,6 @@
 {
   "schema": "aipt.public.project-status/v1",
-  "as_of": "2026-10-24",
+  "as_of": "2026-10-25",
   "authority_snapshot_id": "AIPT-MVP-B007-START-001",
   "tracks": {
     "AIPT-STANDALONE": {
@@ -1089,6 +1089,51 @@
           "original_eight_conditions": "OPEN",
           "budget_usd": "5.00",
           "QUAL": 0
+        },
+        "q040_bounded_listener_startup_successor": {
+          "decision_id": "AIPT-MVP-B007-OWNER-Q040",
+          "scope_supplement_decision_id": "AIPT-MVP-B007-OWNER-Q041",
+          "authority": {
+            "path": "docs/pilot/authorities/listener-startup-snapshot-successor-q040.json",
+            "bytes": 6427,
+            "sha256": "583b1d865a28ba37bea635bdc3bc33ddad364d40e2dc6bbcb9de6fcf353ee144"
+          },
+          "proposal": {
+            "path": "docs/pilot/proposals/listener-startup-snapshot-successor-q040.json",
+            "bytes": 387447,
+            "sha256": "544cea78a204cbe722cd7c579a73dcaa9eae81b10f32dea875dd90e4fd5d22a8"
+          },
+          "snapshot_state": "Q042_OWNER_APPROVED_LAST_C3_FULL687_HIGH_LOCAL_ACCEPTANCE_AND_EXACT_CI_PENDING",
+          "maximum_modified_added_source_minimum_protected": [
+            10,
+            2,
+            687,
+            675
+          ],
+          "maximum_linear_candidates": 3,
+          "failed_merge_baseline": "fdf9b1a0302dfce4c959c968848737522d426406",
+          "failed_merge_CI_first4of5_retained": true,
+          "original_fdf_history_exception_only_known_fixture_case": true,
+          "original_lifecycle_fresh_complete9db_context": {
+            "entry": "scripts/ci/test/b007-lifecycle.test.mjs",
+            "head": "9db9086e130fe4e418b32d1faebdca336045791c",
+            "tree": "735bc80b7c2cd7cc4f14d9b3a92ee7c544145c07",
+            "parents": [
+              "31ce245d3059628874a5e4e0fba3e2e72a816ec4"
+            ],
+            "origin_main": "cc44fcf16f7f6f6a595b8933f9ab1af508a2646e"
+          },
+          "final_merge_admission_and_actual_Start_separate_approval": true,
+          "new_native_formal_NONCANON_credits": 0,
+          "runtime_ready": false,
+          "paid_callable": false,
+          "all8_production_gates": "OPEN",
+          "budget_usd": "5.00",
+          "QUAL": 0,
+          "model_API_DIAG_QUAL": 0,
+          "runtime_supplement_decision_id": "AIPT-MVP-B007-OWNER-Q042",
+          "Q042_exact_nonowner_read_stat_ESRCH_only": true,
+          "C1_C2_private_failures_retained": true
         }
       }
     },

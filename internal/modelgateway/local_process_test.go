@@ -527,6 +527,245 @@ func TestListenerOwnershipRaceIsRejected(t *testing.T) {
 	}
 }
 
+// This helper owns real TCP listeners in its own process group. Its parent
+// controls the moment of bind using pipes; no production sampler is replaced.
+func TestManagedListenerSnapshotTransitionHelperProcess(t *testing.T) {
+	if os.Getenv("AIPT_TEST_LISTENER_SNAPSHOT_TRANSITION") != "1" {
+		return
+	}
+	commands := os.NewFile(3, "listener-snapshot-commands")
+	phases := os.NewFile(4, "listener-snapshot-phases")
+	if commands == nil || phases == nil {
+		os.Exit(81)
+	}
+	defer commands.Close()
+	defer phases.Close()
+	decoder, encoder := json.NewDecoder(commands), json.NewEncoder(phases)
+	type phase struct {
+		Phase string
+		Port  int
+	}
+	if encoder.Encode(phase{Phase: "BOOTED"}) != nil {
+		os.Exit(82)
+	}
+	var listeners []net.Listener
+	defer func() {
+		for _, listener := range listeners {
+			_ = listener.Close()
+		}
+	}()
+	for {
+		var operation string
+		if decoder.Decode(&operation) != nil {
+			return
+		}
+		switch operation {
+		case "LISTEN":
+			listener, err := net.Listen("tcp4", "127.0.0.1:0")
+			if err != nil {
+				os.Exit(83)
+			}
+			listeners = append(listeners, listener)
+			if encoder.Encode(phase{Phase: "LISTENING", Port: listener.Addr().(*net.TCPAddr).Port}) != nil {
+				os.Exit(84)
+			}
+		case "STOP":
+			for _, listener := range listeners {
+				_ = listener.Close()
+			}
+			listeners = nil
+			if encoder.Encode(phase{Phase: "STOPPED"}) != nil {
+				os.Exit(85)
+			}
+			return
+		default:
+			os.Exit(86)
+		}
+	}
+}
+
+func TestManagedListenerSnapshotStartupTransitionIsRevalidated(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	commandRead, commandWrite, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	phaseRead, phaseWrite, err := os.Pipe()
+	if err != nil {
+		_ = commandRead.Close()
+		_ = commandWrite.Close()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = commandRead.Close()
+		_ = commandWrite.Close()
+		_ = phaseRead.Close()
+		_ = phaseWrite.Close()
+	})
+	command := exec.Command(executable, "-test.run=^TestManagedListenerSnapshotTransitionHelperProcess$")
+	command.Env = []string{"AIPT_TEST_LISTENER_SNAPSHOT_TRANSITION=1", "LANG=C.UTF-8"}
+	command.ExtraFiles = []*os.File{commandRead, phaseWrite}
+	command.Stdout, command.Stderr = io.Discard, io.Discard
+	pidfd := -1
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, PidFD: &pidfd}
+	if err := command.Start(); err != nil {
+		if pidfd >= 0 {
+			_ = syscall.Close(pidfd)
+		}
+		t.Fatal(err)
+	}
+	var process *managedProcessIdentity
+	waited := false
+	t.Cleanup(func() {
+		if !waited {
+			_ = commandWrite.Close()
+			// Signal the retained direct-child handle, never a scanned numeric PID.
+			killErr := command.Process.Kill()
+			waitErr := command.Wait()
+			waited = command.ProcessState != nil
+			validWait := waited && waitErr == nil && command.ProcessState.Success()
+			var exitErr *exec.ExitError
+			if waited && errors.As(waitErr, &exitErr) {
+				status, ok := command.ProcessState.Sys().(syscall.WaitStatus)
+				validWait = ok && status.Signaled() && status.Signal() == syscall.SIGKILL
+			}
+			if (killErr != nil && !errors.Is(killErr, os.ErrProcessDone)) || !validWait {
+				t.Errorf("AIPT_TEST_LISTENER_SNAPSHOT_HELPER_WAIT_FAIL kill=%v wait=%v state=%v", killErr, waitErr, command.ProcessState)
+				return
+			}
+			t.Log("AIPT_TEST_LISTENER_SNAPSHOT_HELPER_WAIT_PASS native_Wait=true state_present=true")
+		}
+		if process != nil {
+			process.close()
+		}
+	})
+	_ = commandRead.Close()
+	_ = phaseWrite.Close()
+	process, err = bindManagedProcessIdentity(command.Process, pidfd)
+	pidfd = -1 // bindManagedProcessIdentity consumed the extra descriptor.
+	if err != nil {
+		t.Fatal(err)
+	}
+	type phase struct {
+		Phase string
+		Port  int
+	}
+	decoder, encoder := json.NewDecoder(phaseRead), json.NewEncoder(commandWrite)
+	readPhase := func(want string) phase {
+		t.Helper()
+		if err := phaseRead.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		var value phase
+		if err := decoder.Decode(&value); err != nil || value.Phase != want {
+			t.Fatalf("snapshot helper phase = %+v, error = %v, want %s", value, err, want)
+		}
+		return value
+	}
+	request := func(operation, want string) phase {
+		t.Helper()
+		if err := commandWrite.SetWriteDeadline(time.Now().Add(3 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		if err := encoder.Encode(operation); err != nil {
+			t.Fatal(err)
+		}
+		return readPhase(want)
+	}
+	readPhase("BOOTED")
+	socketsBeforeBind, err := processSocketInodes(process.pid)
+	if err != nil || len(socketsBeforeBind) != 0 {
+		t.Fatalf("pre-bind real PID socket snapshot = %v, error = %v", socketsBeforeBind, err)
+	}
+	foreign, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = foreign.Close() })
+	foreignPort := foreign.Addr().(*net.TCPAddr).Port
+	var foreignOwnership *listenerOwnershipError
+	if _, err := verifyManagedListenerOwnershipFromSockets(process, foreignPort, socketsBeforeBind); !errors.As(err, &foreignOwnership) || errors.Is(err, errManagedListenerNotReady) {
+		t.Fatalf("a foreign listener was not rejected as an ownership mismatch: %v", err)
+	}
+	_ = foreign.Close()
+	port := request("LISTEN", "LISTENING").Port
+	identity, err := verifyManagedListenerOwnershipFromSockets(process, port, socketsBeforeBind)
+	if err != nil || identity.inode == "" {
+		t.Fatalf("real bind between PID snapshot and TCP snapshot was rejected: %v", err)
+	}
+	current, err := verifyManagedListenerOwnership(process, port)
+	if err != nil || current.inode != identity.inode {
+		t.Fatalf("confirmed listener differs from a fresh complete kernel proof: %v", err)
+	}
+	secondPort := request("LISTEN", "LISTENING").Port
+	if secondPort == port {
+		t.Fatal("second real listener reused the selected port")
+	}
+	var secondOwnership *listenerOwnershipError
+	if _, err := verifyManagedListenerOwnershipFromSockets(process, port, socketsBeforeBind); !errors.As(err, &secondOwnership) || errors.Is(err, errManagedListenerNotReady) {
+		t.Fatalf("a second owned TCP listener was not rejected: %v", err)
+	}
+	// Hold only this live direct child's stat entry across its real Wait. This
+	// creates an actual kernel ESRCH, without replacing /proc or its readers.
+	procStat, err := os.Open(fmt.Sprintf("/proc/%d/stat", process.pid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = procStat.Close() })
+	request("STOP", "STOPPED")
+	err = command.Wait()
+	waited = command.ProcessState != nil
+	if err != nil || !waited || !command.ProcessState.Success() {
+		t.Fatalf("AIPT_TEST_LISTENER_SNAPSHOT_HELPER_WAIT_FAIL normal_stop wait=%v state=%v", err, command.ProcessState)
+	}
+	t.Log("AIPT_TEST_LISTENER_SNAPSHOT_HELPER_WAIT_PASS native_Wait=true state_present=true")
+	var statBytes [4096]byte
+	_, goneStatErr := procStat.Read(statBytes[:])
+	if !vanishedOtherProcessGroupStatRead(process.pid, os.Getpid(), goneStatErr) {
+		t.Fatalf("actual reaped-child stat read was not exact ESRCH: %T %v", goneStatErr, goneStatErr)
+	}
+	if vanishedOtherProcessGroupStatRead(process.pid, process.pid, goneStatErr) {
+		t.Fatal("expected launched PID's vanished stat was accepted")
+	}
+	statPath := fmt.Sprintf("/proc/%d/stat", process.pid)
+	var typedNilPathError *os.PathError
+	for _, rejected := range []struct {
+		name string
+		pid  int
+		err  error
+	}{
+		{"nil", process.pid, nil},
+		{"typed-nil-path-error", process.pid, typedNilPathError},
+		{"raw-errno-without-path", process.pid, syscall.ESRCH},
+		{"wrapped-path-error", process.pid, fmt.Errorf("wrapped: %w", goneStatErr)},
+		{"open-operation", process.pid, &os.PathError{Op: "open", Path: statPath, Err: syscall.ESRCH}},
+		{"status-path", process.pid, &os.PathError{Op: "read", Path: fmt.Sprintf("/proc/%d/status", process.pid), Err: syscall.ESRCH}},
+		{"fd-path", process.pid, &os.PathError{Op: "read", Path: fmt.Sprintf("/proc/%d/fd", process.pid), Err: syscall.ESRCH}},
+		{"another-pid-path", process.pid + 1, goneStatErr},
+		{"zero-pid", 0, goneStatErr},
+		{"EACCES", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EACCES}},
+		{"EPERM", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EPERM}},
+		{"EIO", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EIO}},
+		{"EINTR", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.EINTR}},
+		{"ENOENT-not-new-exception", process.pid, &os.PathError{Op: "read", Path: statPath, Err: syscall.ENOENT}},
+		{"joined-errno", process.pid, &os.PathError{Op: "read", Path: statPath, Err: errors.Join(syscall.ESRCH, syscall.EACCES)}},
+	} {
+		if vanishedOtherProcessGroupStatRead(rejected.pid, os.Getpid(), rejected.err) {
+			t.Fatalf("non-exact process-group stat error was accepted: %s", rejected.name)
+		}
+	}
+	if vanishedOtherProcessGroupStatRead(process.pid, 0, goneStatErr) {
+		t.Fatal("invalid expected PID was accepted")
+	}
+	t.Log("AIPT_TEST_GONE_OTHER_STAT_READ_ESRCH_PASS real_kernel=true actual_Wait=true")
+	if err := process.requireAlive(); err == nil {
+		t.Fatal("exited snapshot helper retained a live process-generation identity")
+	}
+}
+
 func bytesOf(value byte, count int) []byte {
 	result := make([]byte, count)
 	for index := range result {

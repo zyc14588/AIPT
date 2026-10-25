@@ -1,3 +1,4 @@
+import { Q040_AUTHORITY, Q040_PROPOSAL, Q040_BASELINE, Q040_BASELINE_TREE, Q041_LIFECYCLE_HEAD, Q040_WORK_PATHS, Q040_NEW_PATHS, q040Present, q040Approved, q040Proposal, q040SourceProblems, q040RevisionProblems, q040Topology, q040LifecycleProblems, prepareQ040FixedCloneOrigin, runQ040OriginalEntry } from '../lib/b007-toolchain-security-q018.mjs';
 import { q038ErrorFact, q038PreservedFailure, q038OriginalFailureData, Q038_AUTHORITY, Q038_PROPOSAL, Q038_BASELINE, Q038_BASELINE_TREE, Q038_WORK_PATHS, Q038_NEW_PATHS, q038Present, q038Approved, q038Proposal, q038Qualification, q038SourceProblems, q038RevisionProblems, q038LifecycleProblems, q038Topology, prepareQ038FixedCloneOrigin, runQ038OriginalTestEntry } from '../lib/b007-toolchain-security-q018.mjs';
 import { Q036_BASELINE, Q036_BASELINE_TREE, Q036_AUTHORITY, Q036_AUTHORITY_SHA, Q036_PROPOSAL, Q036_WORK_PATHS, Q036_NEW_PATHS, q036Approved, q036Proposal, q036SourceProblems, q036RevisionProblems, q036LifecycleProblems, q036Topology, prepareQ036FixedCloneOrigin, q036OriginalTestSource, cleanupQ036OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
 import { Q034_AUTHORITY,Q034_PROPOSAL,Q034_BASELINE,Q034_BASELINE_TREE,Q034_PARENT,Q034_OBSERVER,Q034_TEST,Q034_WORK_PATHS,Q034_NEW_PATHS,q034Present,q034Approved,q034Proposal,q034SourceProblems,q034RevisionProblems,q034LifecycleProblems,q034Topology,prepareQ034FixedCloneOrigin,q034OriginalTestSource,cleanupQ034OriginalTestSources } from '../lib/b007-toolchain-security-q018.mjs';
@@ -12,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { BASE,Q015_GATE,Q016_AUTHORITY,Q017_AUTHORITY,Q017_FIXTURE,runApprovedPredecessor,cleanupSnapshots,START,AUTHORITY,Q002_AUTHORITY,Q002_SOURCE,Q003_AUTHORITY,Q003_ANNEX,Q004_AUTHORITY,Q004_PROPOSAL,Q005_AUTHORITY,Q009_AUTHORITY,Q009_ANNEX,Q009_REVIEW,Q009_CI,Q009_ADAPTER,Q009_GATEWAY,Q011_AUTHORITY,STATUS,MUTABLE,allowedNew,successorProblems,rows } from '../lib/b007-successor.mjs';
 import { resolveB007 } from '../lib/b007-lifecycle.mjs';
 import { inspectConstruction } from '../validate/mvp-b007.mjs';
+const q040LiveSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
+if(!q040Present(q040LiveSource)){
 const q038LiveSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 if(!q038Present(q038LiveSource)){
 const q036CurrentSource=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
@@ -738,3 +741,95 @@ test('Q038 accepts only ordered normal merge parents and identical candidate tre
 
 }
 // END_Q038_TEST_ENTRY
+
+}else{
+// Q040_CURRENT687_TESTS
+const current=q040LiveSource;
+// This canonical retained source remains owned throughout every fixture.
+const q040FixedOrigins=prepareQ040FixedCloneOrigin(current).fixed_refs;
+test('Q040/Q041 replays every original685 lifecycle case at exact9db in its original main context',t=>{
+ let report;
+ try{report=runQ040OriginalEntry(current,'scripts/ci/test/b007-lifecycle.test.mjs',{test:true}).value;}
+ catch(error){t.diagnostic(JSON.stringify(q038ErrorFact(error)));throw error;}
+ assert.equal(report.result,'PASS');assert.equal(report.commit,Q041_LIFECYCLE_HEAD);assert.equal(report.origin_main,'cc44fcf16f7f6f6a595b8933f9ab1af508a2646e');assert.equal(report.tree,Q040_BASELINE_TREE);
+ assert.match(report.stdout,/^# tests 13$/m);assert.match(report.stdout,/^# pass 13$/m);assert.equal(report.stderr,'');t.diagnostic(report.stdout);
+});
+test('Q040 retains all14 original history targets and only adds the exactfdf source target',()=>{
+ const report=prepareQ040FixedCloneOrigin(current);assert.equal(report.fixed_refs.length,15);assert.equal(report.fixed_refs.at(-1).commit,Q040_BASELINE);assert.equal(report.source_HEAD_tree_index_origin_main_unchanged,true);
+ assert.throws(()=>prepareQ040FixedCloneOrigin(current,{}),/no caller targets/);
+});
+function q040Fixture(t,source=current){
+ let root=null,owner=null;const commands=[];
+ const fact=error=>({name:error?.name??typeof error,message:String(error?.message??error),code:error?.code??null});
+ t.after(()=>{
+  if(root===null)return;
+  if(owner===null||!commands.every(row=>row.normal_zero_and_retired)){
+   t.diagnostic(JSON.stringify({owned_fixture:root,owner_identity_established:owner!==null,retirement:'RETAINED_UNLESS_ALL_GIT_ATTEMPTS_NORMAL_ZERO',commands}));
+   assert.fail('Q040 fixture retained after unknown identity or non-normal/unproven Git retirement');
+  }
+  const held=fs.lstatSync(root,{bigint:true});for(const key of ['dev','ino','uid','gid','mode'])assert.equal(held[key],owner[key]);
+  fs.rmSync(root,{recursive:true});assert.throws(()=>fs.lstatSync(root),error=>error.code==='ENOENT');
+ });
+ root=fs.mkdtempSync(path.join(os.tmpdir(),'aipt-q040-synthetic-source-probe-'));owner=fs.lstatSync(root,{bigint:true});
+ const execute=args=>{
+  const row={argv:['/usr/bin/git',...args],attempt_registered_before_spawn:true,normal_zero_and_retired:false,result:null,primary_error:null};commands.push(row);
+  try{
+   const c=spawnSync('/usr/bin/git',args,{encoding:'utf8'});
+   row.result={pid:c.pid??null,status:c.status??null,signal:c.signal??null,spawn_error:c.error?fact(c.error):null};
+   row.normal_zero_and_retired=Number.isInteger(c.pid)&&c.pid>0&&!c.error&&c.signal===null&&Number.isInteger(c.status)&&c.status===0;
+   assert.equal(c.error,undefined);assert.equal(c.signal,null);assert.equal(c.status,0,c.stderr);assert.equal(row.normal_zero_and_retired,true,'Q040 fixture requires positive normal native Git retirement');
+   return c.stdout.trim();
+  }catch(error){row.primary_error=fact(error);throw error;}
+ };
+ execute(['clone','--no-local','--no-hardlinks',source,root]);const git=args=>execute(['--no-optional-locks','-C',root,...args]);
+ // A second clone only receives local heads. Preserve exactly the fixed15
+ // aliases as heads, with every update covered by this fixture's sticky
+ // native Git retirement ledger, before a nested fixture can clone it.
+ for(const row of q040FixedOrigins)git(['update-ref',row.ref,row.commit]);
+ git(['update-ref','refs/remotes/origin/main',Q040_BASELINE]);git(['config','user.name','Q040 Synthetic Source Probe']);git(['config','user.email','probe@example.invalid']);
+ const make=(tree,parents)=>git(['commit-tree',tree,...parents.flatMap(p=>['-p',p]),'-m','Q040 synthetic unit-only topology probe']);
+ // The source may be any permitted candidate or its normal merge. Preserve
+ // its full current tree, then construct an explicitly synthetic first
+ // candidate; never mistake a later candidate or merge HEAD for the first.
+ const tree=git(['rev-parse','HEAD^{tree}']),first=make(tree,[Q040_BASELINE]);git(['reset','--hard',first]);
+ return {root,git,make};
+}
+for(const context of ['second candidate','third candidate','normal merge'])test('Q040 fixture preserves current bytes from legal '+context+' context',t=>{
+ const outer=q040Fixture(t),tree=outer.git(['rev-parse','HEAD^{tree}']);let last=outer.git(['rev-parse','HEAD']);
+ for(let count=2;count<=(context==='second candidate'?2:3);count++){last=outer.make(tree,[last]);outer.git(['reset','--hard',last]);}
+ if(context==='normal merge'){last=outer.make(tree,[Q040_BASELINE,last]);outer.git(['reset','--hard',last]);outer.git(['update-ref','refs/remotes/origin/main',last]);}
+ assert.deepEqual(q040LifecycleProblems(outer.root),[]);
+ const inner=q040Fixture(t,outer.root);assert.equal(inner.git(['rev-parse','HEAD^{tree}']),tree);assert.equal(q040Topology(inner.root).chain.length,1);
+ assert.deepEqual(q040SourceProblems(inner.root),[]);assert.deepEqual(q040LifecycleProblems(inner.root),[]);
+});
+for(const relative of ['go.sum','.github/workflows/ci.yml','internal/modelgateway/local_isolation.go'])test('Q040 rejects protected original bytes at '+relative,t=>{
+ const {root}=q040Fixture(t);fs.appendFileSync(path.join(root,relative),'\n');assert.ok(q040SourceProblems(root).length);
+});
+for(const relative of ['internal/modelgateway/local_listener.go','internal/modelgateway/local_process_test.go',Q040_AUTHORITY,Q040_PROPOSAL])test('Q040 rejects altered exact admitted bytes at '+relative,t=>{
+ const {root}=q040Fixture(t);fs.appendFileSync(path.join(root,relative),'\n');assert.ok(q040SourceProblems(root).length);
+});
+test('Q040 rejects an additional current source path',t=>{
+ const {root}=q040Fixture(t);fs.writeFileSync(path.join(root,'unapproved-source.txt'),'extra\n');assert.ok(q040SourceProblems(root).some(row=>/exact687 working source/.test(row)));
+});
+test('Q040 permits only three linear candidates and rejects a fourth',t=>{
+ const {root,git,make}=q040Fixture(t),tree=git(['rev-parse','HEAD^{tree}']);let last=git(['rev-parse','HEAD']);assert.equal(q040Topology(root).chain.length,1);
+ for(let count=2;count<=3;count++){last=make(tree,[last]);git(['reset','--hard',last]);assert.deepEqual(q040LifecycleProblems(root),[]);assert.equal(q040Topology(root).chain.length,count);}
+ last=make(tree,[last]);git(['reset','--hard',last]);assert.ok(q040Topology(root).problems.length);
+});
+test('Q040 accepts only ordered normal merge parents with the identical candidate tree',t=>{
+ const {root,git,make}=q040Fixture(t),candidate=git(['rev-parse','HEAD']),tree=git(['rev-parse','HEAD^{tree}']);
+ const valid=make(tree,[Q040_BASELINE,candidate]);git(['reset','--hard',valid]);git(['update-ref','refs/remotes/origin/main',valid]);assert.deepEqual(q040LifecycleProblems(root),[]);
+ const reversed=make(tree,[candidate,Q040_BASELINE]);git(['reset','--hard',reversed]);git(['update-ref','refs/remotes/origin/main',reversed]);assert.ok(q040Topology(root).problems.length);
+ const wrongTree=make(Q040_BASELINE_TREE,[Q040_BASELINE,candidate]);git(['reset','--hard',wrongTree]);git(['update-ref','refs/remotes/origin/main',wrongTree]);assert.ok(q040Topology(root).problems.length);
+});
+test('Q040 rejects protected drift in an intermediate candidate even when a later candidate repairs its tree',t=>{
+ const {root,git}=q040Fixture(t),original=git(['rev-parse','HEAD']);fs.appendFileSync(path.join(root,'go.sum'),'\n');git(['add','--','go.sum']);git(['commit','-m','Synthetic forbidden intermediate protected drift']);
+ git(['restore','--source',original,'--staged','--worktree','--','go.sum']);git(['commit','-m','Synthetic repair does not erase intermediate drift']);
+ assert.ok(q040LifecycleProblems(root).some(row=>/frozen Git source changed: go.sum/.test(row)));
+});
+test('Q040 rejects an origin main outside the approved fixedfdf or exact ordered merge',t=>{
+ const {root,git}=q040Fixture(t);git(['update-ref','refs/remotes/origin/main','cc44fcf16f7f6f6a595b8933f9ab1af508a2646e']);assert.ok(q040Topology(root).problems.length);
+});
+
+}
+// END_Q040_TEST_ENTRY

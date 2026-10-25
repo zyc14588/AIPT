@@ -1,0 +1,154 @@
+{
+  "schema": "aipt.public.Q040-Q041-Q042.bounded-listener-startup-authority/v1",
+  "decision_id": "AIPT-MVP-B007-OWNER-Q040",
+  "state": "OWNER_APPROVED_PENDING_FULL687_REVIEW_LOCAL_ACCEPTANCE_AND_EXACT_CI",
+  "actual_Owner_approval": {
+    "bytes": 2381,
+    "sha256": "d1f9d1b0355bd4d7a7f6d943c7a9d25ec09c489cb15df4e51681ccd836a0db6f",
+    "scope": "ACTUAL_Q040_BOUNDED10M2A_MAX3_LINEAR_CANDIDATES"
+  },
+  "approved_material": {
+    "bytes": 7863,
+    "sha256": "93b3b2b5f2c4ba8dcfec3188412186a10d10c2bf6a0528df647ea30e55a40f8a",
+    "scope": "EXACT_Q040_MATERIAL002"
+  },
+  "approved_contract": {
+    "bytes": 7215,
+    "sha256": "996526ed136fded4af03a6e39fc9c0472d111ed0008277b525bc55c9fb863828",
+    "scope": "EXACT_Q040_CONTRACT002"
+  },
+  "Q041": {
+    "decision_id": "AIPT-MVP-B007-OWNER-Q041",
+    "actual_Owner_approval": {
+      "bytes": 2457,
+      "sha256": "b8d75741070d72a2814ec228ef425fba3feea9c3bd31aaea746eb340d994da15",
+      "scope": "ACTUAL_Q041_EXACT_LIFECYCLE_CONTEXT_SUPPLEMENT"
+    },
+    "approved_material": {
+      "bytes": 4261,
+      "sha256": "e0b7de32c71dd793c4aee7d2b3c797793308af5b6ca0918ef2979c47feecfd51",
+      "scope": "EXACT_Q041_MATERIAL001"
+    },
+    "approved_contract": {
+      "bytes": 3638,
+      "sha256": "0d81ee28146e23c9bf238a5907c817a1d91087624a1282d778faf3af28e41983",
+      "scope": "EXACT_Q041_CONTRACT001"
+    },
+    "only_lifecycle_entry_at_exact9db": true,
+    "original_fdf_full_result_retained_required": true,
+    "only_known_fdf_fixture_failure_exception": true,
+    "other_failures_block": true,
+    "fresh_complete9db13_nested280_required": true,
+    "no_extra_public_paths": true
+  },
+  "maximum_modified_paths": [
+    "internal/modelgateway/local_listener.go",
+    "internal/modelgateway/local_process_test.go",
+    "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+    "scripts/ci/test/b007-toolchain-security-q018.test.mjs",
+    "scripts/ci/test/b007-lifecycle.test.mjs",
+    "scripts/ci/validate/toolchain-lock.mjs",
+    "scripts/ci/validate/supply-chain.mjs",
+    "scripts/ci/sbom/generate-sbom.mjs",
+    "scripts/ci/validate/workflow.mjs",
+    "docs/authority/registry/project-status.json"
+  ],
+  "exact_added_paths": [
+    "docs/pilot/authorities/listener-startup-snapshot-successor-q040.json",
+    "docs/pilot/proposals/listener-startup-snapshot-successor-q040.json"
+  ],
+  "maximum_linear_candidates": 3,
+  "current_source_files": 687,
+  "minimum_protected": 675,
+  "proposal_binding": {
+    "path": "docs/pilot/proposals/listener-startup-snapshot-successor-q040.json",
+    "bytes": 387447,
+    "sha256": "544cea78a204cbe722cd7c579a73dcaa9eae81b10f32dea875dd90e4fd5d22a8"
+  },
+  "original685_complete_replay_required": true,
+  "same_original_agent_and_Root_full687_HIGH_required": true,
+  "full_SDK_before_after_each_current_Go_including_failure_required": true,
+  "fixed_Go1_26_10_and_dependencies_licenses_workflow_unchanged": true,
+  "all_ordinary_race_realPG41_and_Launcher2_required26_separateP1_and_closures45H1_required": true,
+  "three_static_unregistered_images_two_cold_caches_required": true,
+  "each_exact_head_first_CI_all5_jobs_retained_final_candidate5of5_required": true,
+  "original_failures_not_rerun_or_hidden": true,
+  "final_merge_separate_approval": true,
+  "production_admission_and_actual_Start_separate_approval": true,
+  "actual_production_Start_authorized": false,
+  "budget_usd": "5.00",
+  "QUAL": 0,
+  "B007": "OPEN",
+  "all8_production_gates": "OPEN",
+  "runtime_ready": false,
+  "paid_callable": false,
+  "model_API_DIAG_QUAL": 0,
+  "new_native_formal_NONCANON_credits": 0,
+  "six_old_formal_each1_consumed": true,
+  "old_NONCANON1_consumed": true,
+  "Q042": {
+    "decision_id": "AIPT-MVP-B007-OWNER-Q042",
+    "actual_Owner_approval": {
+      "bytes": 4910,
+      "sha256": "c1c063d1d857fb101fa11196872d7ebf05850d9e5b1e2026ed891a47f7ffcfe6",
+      "scope": "ACTUAL_Q042_EXACT_NONOWNER_STAT_READ_ESRCH_SUPPLEMENT"
+    },
+    "approved_material": {
+      "bytes": 9015,
+      "sha256": "317a2100d8b6f3dc73a7a7a56ed678fea33a3db45a03b5d2f00977bd9d300450",
+      "scope": "EXACT_Q042_MATERIAL003_SIX_EXISTING_CARRIERS"
+    },
+    "approved_contract": {
+      "bytes": 10155,
+      "sha256": "46afff710550978cf5fe18dfa5b6e2d0e670ad5ceedd9369d243ca94ce452f2f",
+      "scope": "EXACT_Q042_CONTRACT003"
+    },
+    "exact_two_Go_patch": {
+      "bytes": 4619,
+      "sha256": "acc081df0dce8b8b6171d175710164833bd451735e4b09b356ae85dd6ce5898c",
+      "scope": "EXACT_UNCHANGED_TWO_GO_C2_TO_C3_DELTA"
+    },
+    "exact_runtime_sources": [
+      {
+        "path": "internal/modelgateway/local_listener.go",
+        "bytes": 17513,
+        "sha256": "8b4570853dbf49a559f7cf0ff926945b8b3a18a00eb639ea81f0cd79eb98230f"
+      },
+      {
+        "path": "internal/modelgateway/local_process_test.go",
+        "bytes": 46295,
+        "sha256": "ac37eb0f5839caaf69d68144ef1b36f54eb3aa48a982e3f6aac052720c4c301c"
+      }
+    ],
+    "only_callsite": "managedProcessGroupSocketOwners -> processGroupID(pid) error branch",
+    "only_positive_nonexpected_PID_direct_read_stat_raw_ESRCH": true,
+    "outer_error_type": "*os.PathError",
+    "operation": "read",
+    "path": "/proc/<pid>/stat",
+    "inner_error_type": "syscall.Errno",
+    "errno": 3,
+    "errno_name": "ESRCH",
+    "expected_PID_and_all_other_errors_reject": true,
+    "UID_and_FD_reads_and_existing_IsNotExist_branch_unchanged": true,
+    "all_original_positive_PIDFD_listener_inode_process_group_HTTP_proofs_required": true,
+    "same_pipe_real_kernel_ESRCH_after_own_child_actual_Wait_regression_required": true,
+    "no_general_retry_NotReady_promotion_protocol_change_or_proc_hook": true,
+    "relative_C2_exact_six_paths": [
+      "internal/modelgateway/local_listener.go",
+      "internal/modelgateway/local_process_test.go",
+      "scripts/ci/lib/b007-toolchain-security-q018.mjs",
+      "docs/pilot/authorities/listener-startup-snapshot-successor-q040.json",
+      "docs/pilot/proposals/listener-startup-snapshot-successor-q040.json",
+      "docs/authority/registry/project-status.json"
+    ],
+    "registry_only_entry_path": [
+      "repositories",
+      "AIPT",
+      "mvp_b007",
+      "q040_bounded_listener_startup_successor"
+    ],
+    "only_final_C3_supplement_with_sole_C2_parent": "da8d41fccfe586803018bd12ed1950b78b12a07a",
+    "maximum_linear_candidates_unchanged": 3,
+    "all_Q040_Q041_other_rules_full_QA_HIGH_and_separate_merge_Start_required": true
+  }
+}

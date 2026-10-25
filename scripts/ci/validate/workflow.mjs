@@ -1,3 +1,4 @@
+import { q040Present, runQ040CurrentValidator } from '../lib/b007-toolchain-security-q018.mjs';
 import { q038Present, runQ038CurrentValidator } from '../lib/b007-toolchain-security-q018.mjs';
 import { q036Present, runQ036WorkflowValidation } from '../lib/b007-toolchain-security-q018.mjs';
 import { q034Present, runQ034WorkflowValidation } from '../lib/b007-toolchain-security-q018.mjs';
@@ -1776,6 +1777,7 @@ function mutateJobText(text, name, mutate) {
 }
 
 export function run(ctx) {
+  if (q040Present(ctx.repo)) return runQ040CurrentValidator(ctx, 'workflow');
   if (q038Present(ctx.repo)) return runQ038CurrentValidator(ctx, 'workflow');
   if (q036Present(ctx.repo)) return runQ036WorkflowValidation(ctx, q036OriginalRun);
   return q036OriginalRun(ctx);
